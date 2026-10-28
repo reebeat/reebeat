@@ -13,3 +13,7 @@ The name `reebeat` is working; the GitHub org `reebeat` and the npm org `reebeat
 ## Licence
 
 All rights reserved; licence to be decided. No licence file is present on purpose, so nothing here is licensed for reuse yet.
+
+## Contributing
+
+Every change travels spec → code → PR and passes the same gates locally, in CI and in a recorded review round. Read [`AGENTS.md`](AGENTS.md) for the process and the gate table, then run `devenv shell -- bun install` and `devenv shell -- bun run ready`. The process is specified in [`docs/specs/0000-development-lifecycle.md`](docs/specs/0000-development-lifecycle.md).

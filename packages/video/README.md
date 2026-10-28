@@ -14,9 +14,20 @@ the Plan and the written deck page; it does not parse a screenplay (`import type
 
 ## Frame lag
 
-Under the virtual clock the first changed frame follows a Reveal call by a fixed lag, so the schedule commands a slide
-change 2 frames before its `slideFrame` for Auto-Animate and 1 frame before for a fade or a cut, and a fragment at the
-Plan's `commandFrame`. The commands of one Scene keep their Cue order (a fragment step is the same call for every Cue).
+Per frame the capture steps the virtual clock, runs that frame's Reveal commands, seeks the animations and takes the
+screenshot. Measured on the real deck package's page (`test/lags.test.ts`), the first frame whose pixels differ (more
+than 8 grey levels in 200 pixels) follows the Reveal call by:
+
+| Call | Lag (frames) | Commanded at |
+| --- | --- | --- |
+| scene change, Auto-Animate | 0 (the matched Element's motion starts 2 to 3 frames later) | `slideFrame` |
+| scene change, cut | 0 | `slideFrame` |
+| scene change, default fade | 1 | `slideFrame - 1` |
+| `next` | 1 | `fireFrame - 1` |
+| `focus` | 1 (a `.box` shows a sub-pixel change at the call) | `fireFrame - 1` |
+| `sfx` | no pixels; the sound is mixed at `fireFrame` | `fireFrame` |
+
+The commands of one Scene keep their Cue order (a fragment step is the same call for every Cue).
 
 ## Tests
 

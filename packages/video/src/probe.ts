@@ -225,10 +225,20 @@ const normalisedScore = (
     : dot / Math.sqrt(trackEnergy * referenceEnergy);
 };
 
+/** Where a known clip lies in a track, and how well it matches there. */
+export interface AudioMatch {
+  /** `found start - expectedMs` in milliseconds: positive when the clip is late, negative when it is early. */
+  readonly offsetMs: number;
+  /**
+   * The normalised cross-correlation (`dot / sqrt(trackEnergy * referenceEnergy)`, in [-1, 1]) at the chosen lag:
+   * about 1 for a clip that is there, near 0 for the best match of noise. A check uses it to tell the two apart.
+   */
+  readonly score: number;
+}
+
 /**
  * Where a known clip lies in a mixed track, relative to where it should lie: the normalised cross-correlation of
- * the first 200 ms of `reference` with `track` at every sample offset within `windowMs` of `expectedMs`. The result
- * is `found start - expectedMs` in milliseconds: positive when the clip is late, negative when it is early.
+ * the first 200 ms of `reference` with `track` at every sample offset within `windowMs` of `expectedMs`.
  */
 export const audioOffsetMs = (
   track: Float32Array,
@@ -236,7 +246,7 @@ export const audioOffsetMs = (
   expectedMs: number,
   windowMs: number,
   sampleRate = 48_000
-): number => {
+): AudioMatch => {
   const length = Math.min(reference.length, correlationLength);
   const center = Math.round((expectedMs * sampleRate) / 1000);
   const reach = Math.round((windowMs * sampleRate) / 1000);
@@ -252,7 +262,10 @@ export const audioOffsetMs = (
     }
   }
 
-  return ((bestLag - center) * 1000) / sampleRate;
+  return {
+    offsetMs: ((bestLag - center) * 1000) / sampleRate,
+    score: Number.isFinite(bestScore) ? bestScore : 0,
+  };
 };
 
 const Tags = Schema.Struct({

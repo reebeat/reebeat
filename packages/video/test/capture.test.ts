@@ -21,7 +21,7 @@ const boxB: Box = { height: 150, width: 360, x: 860, y: 520 };
 /**
  * The strip below Element `a`'s start box (cell `tl`). Auto-Animate moves the matched Element `a` toward cell `br`,
  * so it is the only thing that enters this strip; the entering Element `d` sits inside the start box and shows
- * from the command frame on, which is why the whole frame is not the right region for the lag of `a`.
+ * from the command frame on, which is why the whole frame is not the right region for the motion of `a`.
  */
 const boxA: Box = { height: 120, width: 420, x: 60, y: 200 };
 
@@ -49,18 +49,21 @@ it.live(
 
       // `[[next]]` of sc1.l1: commanded at frame 46, its Element fades in from frame 47 (fireFrame).
       assert.strictEqual(changed(40, 60, boxB), 47);
-      // Auto-Animate into sc2: commanded at 79, the matched Element `a` leaves its start box from slideFrame 81.
-      assert.strictEqual(changed(70, 95, boxA), 81);
+      // Auto-Animate into sc2: commanded at its slide frame 81. The whole frame changes at once (the unmatched
+      // Elements swap); the matched Element `a` starts moving two frames later (Reveal starts it in a
+      // requestAnimationFrame), which the strip below its start box shows.
+      assert.strictEqual(changed(70, 95), 81);
+      assert.strictEqual(changed(70, 95, boxA), 83);
       // `[[focus: a]]` of sc2.l1: commanded at 118. Reveal marks `a` as an Auto-Animate target and removes its CSS
       // transitions, so in this deck the ring shows at the command frame (118), not one frame later; F1's tolerance
       // of one frame around fireFrame 119 covers both.
       assert.strictEqual(changed(110, 130), 118);
-      // The cut into sc3: commanded at 155, shown at slideFrame 156.
-      assert.strictEqual(changed(150, 160), 156);
+      // The cut into sc3 is measured on the real deck (lags.test.ts): the hand-written page leaves an
+      // Auto-Animate slide, which Reveal fades, so its lag is not the deck package's.
 
-      // F7 (spot check): the Auto-Animate shows at least 5 consecutive intermediate frames.
+      // F7 (spot check): from three frames after the call, each of the next ten frames moves the matched Element.
       const steps = Arr.makeBy(10, (index) =>
-        firstChangedFrame(sliceClip(clip, 81 + index, 82 + index))
+        firstChangedFrame(sliceClip(clip, 84 + index, 85 + index))
       );
 
       assert.isTrue(Arr.every(steps, (step) => step !== undefined));

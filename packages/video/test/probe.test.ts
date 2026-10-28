@@ -129,7 +129,7 @@ describe("audioOffsetMs", () => {
 
   it("is 0 for a clip exactly where it is expected", () => {
     assert.closeTo(
-      audioOffsetMs(trackWith(clip, 500), clip, 500, 200),
+      audioOffsetMs(trackWith(clip, 500), clip, 500, 200).offsetMs,
       0,
       0.03
     );
@@ -137,7 +137,8 @@ describe("audioOffsetMs", () => {
 
   it("is +100 ms for a clip three frames late (the control of a delayed narration track)", () => {
     assert.closeTo(
-      audioOffsetMs(trackWith(clip, 500 + 3 * frameMs), clip, 500, 200),
+      audioOffsetMs(trackWith(clip, 500 + 3 * frameMs), clip, 500, 200)
+        .offsetMs,
       100,
       0.03
     );
@@ -145,7 +146,8 @@ describe("audioOffsetMs", () => {
 
   it("is negative for a clip that is early", () => {
     assert.closeTo(
-      audioOffsetMs(trackWith(clip, 500 - 2 * frameMs), clip, 500, 200),
+      audioOffsetMs(trackWith(clip, 500 - 2 * frameMs), clip, 500, 200)
+        .offsetMs,
       -2 * frameMs,
       0.03
     );
@@ -161,9 +163,41 @@ describe("audioOffsetMs", () => {
         clip,
         500,
         200
-      ),
+      ).offsetMs,
       100,
       0.03
     );
+  });
+
+  it("scores about 1 for a clip that is there and low for a clip that is absent", () => {
+    const present = audioOffsetMs(trackWith(clip, 500), clip, 500, 200);
+
+    const absent = audioOffsetMs(
+      trackWith(noise(sampleRate / 2, 8), 500),
+      clip,
+      500,
+      200
+    );
+
+    const silent = audioOffsetMs(
+      new Float32Array(sampleRate * 2),
+      clip,
+      500,
+      200
+    );
+
+    assert.isAbove(present.score, 0.99);
+    assert.isBelow(absent.score, 0.1);
+    assert.strictEqual(silent.score, 0);
+  });
+
+  it("the score falls when a louder sound covers the clip", () => {
+    const loud = noise(sampleRate * 2, 5);
+
+    const track = trackWith(clip, 500).map(
+      (sample, index) => sample + (loud[index] ?? 0) * 3
+    );
+
+    assert.isBelow(audioOffsetMs(track, clip, 500, 200).score, 0.5);
   });
 });

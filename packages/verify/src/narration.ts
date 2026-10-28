@@ -54,7 +54,7 @@ export const narration = (build: Build) =>
                 frameStartMs(line.startFrame, fps) +
                   (skipped * 1000) / sampleRate,
                 windowMs
-              ),
+              ).offsetMs,
               fps
             );
           }

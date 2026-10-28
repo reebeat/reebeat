@@ -16,11 +16,7 @@ export {
 
 export type { CaptureOptions } from "./capture.ts";
 
-export {
-  autoAnimateLag,
-  captureSchedule,
-  sceneChangeLag,
-} from "./captureSchedule.ts";
+export { captureSchedule, sceneChangeLag } from "./captureSchedule.ts";
 
 export type {
   CaptureCommand,

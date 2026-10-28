@@ -3,6 +3,10 @@
   "ignore": ["tools/oxlint/anti-slop/**"],
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
+    "packages/core": {
+      "entry": ["src/index.ts", "test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "tools/quality": {
       "entry": ["checkEffectExceptions.ts"],
       "project": ["*.ts", "test/**/*.ts"]

@@ -1,0 +1,59 @@
+Title: Boxes and ids
+Author: Reebeat tests
+
+/* A small original story for the core tests: two Sections, four Scenes,
+   one cut and two auto-animated Scenes. */
+
+# The same box
+
+= One box, two screens.
+
+INT. FIRST SCREEN
+
+A box {#box @tl .box}
+The caption {#cap @bc .muted hidden}
+Old news {#old @mr .label}
+Footer {#foot @bl .muted}
+
+NARRATOR
+(slowly)
+This box sits in the corner. [[next]] The caption says what it is.
+
+NARRATOR
+Look at the box. [[focus: box]] [[sfx: pop]]
+
+> AUTO-ANIMATE
+
+INT. SECOND SCREEN
+
+A box {#box @mc .box .accent}
+The new caption {#cap @bc .muted}
+New arrival {#new @tr .title hidden}
+Footer {#foot @bl .muted}
+
+NARRATOR
+(pause 0.5)
+Same id, new place. [[sfx: whoosh]] [[next]] A new element enters.
+
+# The cut
+
+> CUT
+
+INT. THIRD SCREEN
+
+/* a note that is not a Cue */
+
+Fresh start {#fresh @mc .title}
+
+NARRATOR
+(quickly)
+Nothing is matched across a cut.
+
+> AUTO-ANIMATE
+
+INT. FOURTH SCREEN
+
+Fresh start {#fresh @tc .title}
+
+NARRATOR
+The title moves up. [[sfx: ding]]

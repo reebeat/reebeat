@@ -23,6 +23,12 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/core/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -90,6 +96,41 @@ export default defineConfig({
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         files: ["tools/quality/effectExceptions.ts"],
         rules: { "unicorn/throw-new-error": "off" },
+      },
+      {
+        // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
+        // One file holds every tagged error of the Plan stage (a closed set that reads as one table).
+        files: ["packages/core/src/errors.ts"],
+        rules: {
+          "eslint/max-classes-per-file": "off",
+          "unicorn/throw-new-error": "off",
+        },
+      },
+      {
+        // The public entry of a package re-exports its modules; that is the file's only job.
+        files: ["packages/*/src/index.ts"],
+        rules: { "oxc/no-barrel-file": "off" },
+      },
+      {
+        // F11 (spec 0001): the core is pure. It imports no browser, Playwright, ffmpeg, reveal.js, UI runtime or Node
+        // built-in. Bare Node built-ins are flagged by effecttsgo/node-builtin-import; `node:` specifiers are here.
+        files: ["packages/core/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/core is pure (spec 0001, F11): no browser, Playwright, ffmpeg, reveal.js, React, Remotion or Node built-in.",
+                  regex:
+                    "^(?:node:|playwright|reveal\\.js|react(?:-dom)?(?:/|$)|remotion|@remotion/|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
       },
     ],
     rules: {

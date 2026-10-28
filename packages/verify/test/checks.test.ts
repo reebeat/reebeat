@@ -9,8 +9,6 @@
 import { assert, layer } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
 import { renderDeck } from "@reebeat/deck";
-import { captureFrames, captureSchedule } from "@reebeat/video";
-import type { TimedPlan } from "@reebeat/video";
 import { Array as Arr, Effect, FileSystem, Option, Path, Stream } from "effect";
 
 import { sha256Hex } from "../src/hash.ts";
@@ -28,41 +26,22 @@ import {
   copyBuild,
   editFile,
   failedIds,
+  audioFilter,
   ffmpeg,
   logFailures,
   mapping,
   measuredOf,
+  recapture,
   mp4Of,
   muxFrames,
   replaceInFile,
   rewriteMp4,
   sealBuild,
+  shiftCommand,
+  shiftSlide,
   slideFrameOf,
   verdictOf,
 } from "./support.ts";
-
-/** The plan with the command frame of one Cue moved by `frames`. */
-const shiftCommand = (
-  plan: TimedPlan,
-  cueId: string,
-  frames: number
-): TimedPlan => ({
-  ...plan,
-  timeline: {
-    ...plan.timeline,
-    scenes: Arr.map(plan.timeline.scenes, (scene) => ({
-      ...scene,
-      lines: Arr.map(scene.lines, (line) => ({
-        ...line,
-        cues: Arr.map(line.cues, (cue) =>
-          cue.cueId === cueId
-            ? { ...cue, commandFrame: cue.commandFrame + frames }
-            : cue
-        ),
-      })),
-    })),
-  },
-});
 
 /** The pattern of the line of one fragment span of deck.html. */
 const fragment = (cue: string): string =>
@@ -130,12 +109,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
       "F1: a Cue commanded two frames late is observed two frames late, naming the Cue",
       () =>
         Effect.gen(function* late() {
-          const path = yield* Path.Path;
           const fixture = yield* Fixture;
-
-          const deck = yield* path.toFileUrl(
-            path.join(fixture.build, "deck.html")
-          );
 
           // The video of the shifted capture, under the Plan, deck and subtitles of the intact build.
           const verdicts = yield* control(
@@ -143,19 +117,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             (dir) =>
               muxFrames(
                 dir,
-                Stream.unwrap(
-                  Effect.map(
-                    Stream.runCollect(
-                      captureFrames(
-                        captureSchedule(
-                          shiftCommand(fixture.plan, "sc1.l1.c1", 2)
-                        ),
-                        { deckUrl: deck.href, settleNewAnimations: true }
-                      )
-                    ),
-                    Stream.fromIterable
-                  )
-                )
+                recapture(shiftCommand(fixture.plan, "sc1.l1.c1", 2))
               ),
             ["F1"]
           );
@@ -167,6 +129,37 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.include(
             measuredOf(verdict),
             "sc1.l1.c1 next offset (frames): +2"
+          );
+        })
+    );
+
+    it.effect(
+      "F7: a scene change commanded two frames late, and two frames early, is observed there, naming the Scene",
+      () =>
+        Effect.gen(function* sceneChanges() {
+          const fixture = yield* Fixture;
+
+          const late = yield* control(
+            "f7-late",
+            (dir) =>
+              muxFrames(dir, recapture(shiftSlide(fixture.plan, "sc2", 2))),
+            ["F7"]
+          );
+
+          const early = yield* control(
+            "f7-early",
+            (dir) =>
+              muxFrames(dir, recapture(shiftSlide(fixture.plan, "sc2", -2))),
+            ["F7"]
+          );
+
+          assert.include(
+            verdictOf(late, "F7").detail,
+            "the slide change into sc2 (auto-animate) is observed +2 frames"
+          );
+          assert.include(
+            verdictOf(early, "F7").detail,
+            "the slide change into sc2 (auto-animate) is observed -2 frames"
           );
         })
     );
@@ -465,24 +458,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
         Effect.gen(function* delayed() {
           const verdicts = yield* control(
             "f8-delay",
-            (dir) =>
-              rewriteMp4(
-                dir,
-                [],
-                [
-                  ...mapping("0:s", "0"),
-                  "-c:v",
-                  "copy",
-                  "-c:s",
-                  "copy",
-                  "-c:a",
-                  "aac",
-                  "-b:a",
-                  "160k",
-                  "-af",
-                  "adelay=100:all=1",
-                ]
-              ),
+            audioFilter("adelay=100:all=1"),
             ["F1", "F8"]
           );
 
@@ -494,6 +470,34 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdictOf(verdicts, "F1").detail,
             "sc1.l1.c2 sfx: pop"
           );
+        })
+    );
+
+    it.effect(
+      "F8 and F1: audio delayed beyond the search window, and a silent track, are not found: the match score is below the floor",
+      () =>
+        Effect.gen(function* notFound() {
+          const late = yield* control(
+            "f8-far",
+            audioFilter("adelay=400:all=1"),
+            ["F1", "F8"]
+          );
+
+          const silent = yield* control("f8-silent", audioFilter("volume=0"), [
+            "F1",
+            "F8",
+          ]);
+
+          for (const verdicts of [late, silent]) {
+            assert.include(
+              verdictOf(verdicts, "F8").detail,
+              "Line sc1.l1: its audio is not found within 150 ms"
+            );
+            assert.include(
+              verdictOf(verdicts, "F1").detail,
+              "sc1.l1.c2 sfx: pop at frame 65: the sound is not found within 150 ms"
+            );
+          }
         })
     );
 

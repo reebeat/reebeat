@@ -1,13 +1,15 @@
-// F7, the clock covers the transitions: for every Scene that enters with `auto-animate`, the decoded frames from three
-// before the slide change to thirty after show at least five distinct intermediate frames between the first frame
-// and the settled one, and each intermediate frame is no farther from the settled frame than the one before it (the
-// sum of absolute pixel differences does not grow). That the same frames come out of two runs is F6.
+// F7, the clock covers the transitions. Every Scene change begins at its slide frame (`sceneChanges.ts`). For every
+// Scene that enters with `auto-animate`, the decoded frames from three before the slide change to thirty after show at
+// least five distinct intermediate frames between the first frame and the settled one, and each intermediate frame is
+// no farther from the settled frame than the one before it (the sum of absolute pixel differences does not grow, beyond
+// a slack). That the same frames come out of two runs is F6.
 import { changedPixels, decodeGrayFrames } from "@reebeat/video";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { guarded } from "./guard.ts";
 import { sha256Hex } from "./hash.ts";
 import type { Build } from "./load.ts";
+import { observeSceneChanges } from "./sceneChanges.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 
@@ -118,7 +120,7 @@ const problemOf = (found: Transition): readonly string[] => [
       ]),
 ];
 
-/** F7 on the Auto-Animate transitions of the written video. */
+/** F7 on the scene changes and the Auto-Animate transitions of the written video. */
 export const transitions = (build: Build) =>
   guarded(
     "F7",
@@ -133,8 +135,10 @@ export const transitions = (build: Build) =>
         animated.has(scene.sceneId)
       );
 
-      if (scenes.length === 0) {
-        return fail("F7", "the Plan has no auto-animate Scene to observe");
+      const changes = yield* observeSceneChanges(build);
+
+      if (scenes.length === 0 && changes.measured.length === 0) {
+        return fail("F7", "the Plan has no Scene change to observe");
       }
 
       const found = yield* Effect.forEach(scenes, (scene) =>
@@ -146,19 +150,22 @@ export const transitions = (build: Build) =>
         )
       );
 
-      const measured: Measured = Arr.flatMap(found, (one) => [
-        [`${one.sceneId} intermediate frames`, one.intermediate],
-        [`${one.sceneId} distinct intermediate frames`, one.distinct],
-        [
-          `${one.sceneId} largest rise (% of the whole change)`,
-          Math.round(one.largestRise * 1000) / 10,
-        ],
-      ]);
+      const measured: Measured = [
+        ...changes.measured,
+        ...Arr.flatMap(found, (one): Measured => [
+          [`${one.sceneId} intermediate frames`, one.intermediate],
+          [`${one.sceneId} distinct intermediate frames`, one.distinct],
+          [
+            `${one.sceneId} largest rise (% of the whole change)`,
+            Math.round(one.largestRise * 1000) / 10,
+          ],
+        ]),
+      ];
 
       return verdictOf(
         "F7",
-        `every one of the ${found.length} auto-animate transitions shows at least ${minIntermediate} distinct intermediate frames and approaches its settled frame monotonically`,
-        Arr.flatMap(found, problemOf),
+        `all ${changes.measured.length} scene changes begin within one frame of their slide frame, and every one of the ${found.length} auto-animate transitions shows at least ${minIntermediate} distinct intermediate frames and approaches its settled frame monotonically`,
+        [...changes.problems, ...Arr.flatMap(found, problemOf)],
         measured
       );
     })

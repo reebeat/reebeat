@@ -3,17 +3,13 @@
 // whose pixels differ from the frame before it; an `sfx` is the start of the catalogue sound found in the decoded
 // audio track near the fire frame. The offset of each Cue is reported, positive when the step is late.
 import { sfxNames, sfxWav } from "@reebeat/sfx";
-import {
-  audioOffsetMs,
-  decodeGrayFrames,
-  decodeMonoPcm,
-  firstChangedFrame,
-} from "@reebeat/video";
+import { audioOffsetMs, decodeMonoPcm } from "@reebeat/video";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
 import { planCues, timedLines } from "./planParts.ts";
+import { stepOffset } from "./steps.ts";
 import {
   frameStartMs,
   msToFrames,
@@ -24,20 +20,8 @@ import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 import { withSilentLead, wavSamples } from "./wav.ts";
 
-/** The window of frames either side of the fire frame in which the step is looked for. */
-const windowFrames = 3;
-
 /** How far from the fire frame, in milliseconds, the catalogue sound is looked for. */
 const soundWindowMs = 150;
-
-/** Pixels that differ by at most this many gray levels are compression noise, not a step. */
-const stepTolerance = 8;
-
-/**
- * A frame has a step when at least this many pixels changed by more than the tolerance. Measured: the encoder's noise
- * between two frames of a still slide is at most about 120 such pixels, the first frame of the smallest step 349.
- */
-const stepMinPixels = 200;
 
 /**
  * The sound is correlated with a silent lead of this many milliseconds before it. A tonal sound (`ding`) matches
@@ -80,26 +64,6 @@ const found = (frames: number): Observation => ({ frames, tag: "found" });
 
 const missing = (reason: string): Observation => ({ reason, tag: "missing" });
 
-/** The first changed frame in the window, as an offset from the fire frame. */
-const observeStep = Effect.fn("observeStep")(function* step(
-  mp4: string,
-  fireFrame: number
-) {
-  const from = Math.max(0, fireFrame - windowFrames - 1);
-  const clip = yield* decodeGrayFrames(mp4, from, fireFrame + windowFrames);
-
-  const first = firstChangedFrame(clip, undefined, {
-    minPixels: stepMinPixels,
-    tolerance: stepTolerance,
-  });
-
-  return first === undefined
-    ? missing(
-        `no frame within ${windowFrames} frames of frame ${fireFrame} differs from the one before it`
-      )
-    : found(first - fireFrame);
-});
-
 /** Where the catalogue sound `name` starts in the mixed track, as an offset from the fire frame. */
 const observeSound = (
   track: Float32Array,
@@ -131,6 +95,18 @@ const observeSound = (
 const hasSound = (facts: readonly CueFact[]): boolean =>
   Arr.some(facts, (cue) => cue.kind === "sfx");
 
+/** The window of frames either side of the fire frame in which a step is looked for. */
+const cueWindowFrames = 3;
+
+const observeCueStep = (mp4: string, fireFrame: number) =>
+  Effect.map(stepOffset(mp4, fireFrame, cueWindowFrames), (offset) =>
+    offset === undefined
+      ? missing(
+          `no frame within ${cueWindowFrames} frames of frame ${fireFrame} differs from the one before it`
+        )
+      : found(offset)
+  );
+
 const label = (cue: CueFact): string =>
   `${cue.cueId} ${cue.kind}${cue.arg === null ? "" : `: ${cue.arg}`} at frame ${cue.fireFrame}`;
 
@@ -149,7 +125,7 @@ export const cueTiming = (build: Build) =>
       const observations = yield* Effect.forEach(facts, (cue) =>
         cue.kind === "sfx"
           ? Effect.succeed(observeSound(track, cue.arg, cue.fireFrame, fps))
-          : observeStep(build.mp4, cue.fireFrame)
+          : observeCueStep(build.mp4, cue.fireFrame)
       );
 
       const rows = Arr.zip(facts, observations);

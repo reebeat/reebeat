@@ -179,6 +179,8 @@ export interface FixtureData {
   /** The intact build directory. */
   readonly build: string;
   readonly cacheDir: string;
+  /** The `file://` URL of the intact build's `deck.html`. */
+  readonly deckUrl: string;
   /** The captured PNG frames of the intact build. */
   readonly frames: readonly Uint8Array[];
   readonly plan: TimedPlan;
@@ -225,9 +227,11 @@ const buildFixture = Effect.gen(function* buildFixtureDirectory() {
     fs.writeFile(path.join(build, "assets", "sfx", `${name}.wav`), sfxWav(name))
   );
 
+  const deckUrl = (yield* path.toFileUrl(path.join(build, "deck.html"))).href;
+
   const frames = yield* Stream.runCollect(
     captureFrames(captureSchedule(timed), {
-      deckUrl: (yield* path.toFileUrl(path.join(build, "deck.html"))).href,
+      deckUrl,
       settleNewAnimations: true,
     })
   );
@@ -243,7 +247,7 @@ const buildFixture = Effect.gen(function* buildFixtureDirectory() {
   );
   yield* sealBuild(build, sourcePath);
 
-  return { build, cacheDir, frames, plan: timed, root, sourcePath };
+  return { build, cacheDir, deckUrl, frames, plan: timed, root, sourcePath };
 });
 
 /** The small build, made once per test block. */
@@ -421,6 +425,63 @@ type MutationServices =
   | MediaTools
   | Path.Path;
 
+/** The plan with the command frame of one Cue moved by `frames`. */
+export const shiftCommand = (
+  plan: TimedPlan,
+  cueId: string,
+  frames: number
+): TimedPlan => ({
+  ...plan,
+  timeline: {
+    ...plan.timeline,
+    scenes: Arr.map(plan.timeline.scenes, (scene) => ({
+      ...scene,
+      lines: Arr.map(scene.lines, (line) => ({
+        ...line,
+        cues: Arr.map(line.cues, (cue) =>
+          cue.cueId === cueId
+            ? { ...cue, commandFrame: cue.commandFrame + frames }
+            : cue
+        ),
+      })),
+    })),
+  },
+});
+
+/** The plan with the slide frame of one Scene moved by `frames`: its scene change is commanded that much later. */
+export const shiftSlide = (
+  plan: TimedPlan,
+  sceneId: string,
+  frames: number
+): TimedPlan => ({
+  ...plan,
+  timeline: {
+    ...plan.timeline,
+    scenes: Arr.map(plan.timeline.scenes, (scene) =>
+      scene.sceneId === sceneId
+        ? { ...scene, slideFrame: scene.slideFrame + frames }
+        : scene
+    ),
+  },
+});
+
+/** A new capture of the intact build's deck, commanded by the schedule of `plan`, as the frames to mux. */
+export const recapture = (plan: TimedPlan) =>
+  Stream.unwrap(
+    Effect.gen(function* capture() {
+      const fixture = yield* Fixture;
+
+      const frames = yield* Stream.runCollect(
+        captureFrames(captureSchedule(plan), {
+          deckUrl: fixture.deckUrl,
+          settleNewAnimations: true,
+        })
+      );
+
+      return Stream.fromIterable(frames);
+    })
+  );
+
 /** Muxes `frames` under the intact build's Plan into the mp4 and `.vtt` of `dir`, replacing the video. */
 export const muxFrames = Effect.fn("muxFrames")(function* mux<R>(
   dir: string,
@@ -465,3 +526,23 @@ export const control = Effect.fn("control")(function* control(
 /** `name: value` for every measured value of a verdict. */
 export const measuredOf = (verdict: Verdict): readonly string[] =>
   Arr.map(verdict.measured, ([name, value]) => `${name}: ${value}`);
+
+/** A mutation that re-encodes the audio of the mp4 through the ffmpeg filter `filter` and copies everything else. */
+export const audioFilter = (filter: string) => (dir: string) =>
+  rewriteMp4(
+    dir,
+    [],
+    [
+      ...mapping("0:s", "0"),
+      "-c:v",
+      "copy",
+      "-c:s",
+      "copy",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "160k",
+      "-af",
+      filter,
+    ]
+  );

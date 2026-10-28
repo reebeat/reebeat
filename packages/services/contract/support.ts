@@ -96,3 +96,18 @@ export const failureOf = <A, E, R>(
     onSuccess: () =>
       Effect.sync(() => assert.fail(`${what} succeeded; it must fail`)),
   });
+
+const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+
+/** The width and height in a PNG's IHDR chunk, or undefined when the bytes are not a PNG. */
+export const pngSize = (
+  bytes: Uint8Array
+): { readonly height: number; readonly width: number } | undefined => {
+  if (!Arr.every(pngSignature, (byte, index) => bytes[index] === byte)) {
+    return undefined;
+  }
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+
+  return { height: view.getUint32(20), width: view.getUint32(16) };
+};

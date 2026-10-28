@@ -178,7 +178,10 @@ export default defineConfig({
       ...effectConfigResult.overrides,
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        files: ["tools/quality/effectExceptions.ts"],
+        files: [
+          "tools/quality/checkTiers.ts",
+          "tools/quality/effectExceptions.ts",
+        ],
         rules: { "unicorn/throw-new-error": "off" },
       },
       {

@@ -9,10 +9,11 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent && effect-tsgo patch --typescript --oxlint",
-    "ready": "bun run check && bun run check:exceptions && bun run test && bun run knip && bun run cpd && bun run secrets && bun run journey",
+    "ready": "bun run check && bun run check:exceptions && bun run check:tiers && bun run test && bun run knip && bun run cpd && bun run secrets && bun run journey",
     "check": "vp check",
     "test": "vp run -r --no-cache test",
     "check:exceptions": "bun tools/quality/checkEffectExceptions.ts",
+    "check:tiers": "bun tools/quality/checkTiers.ts",
     "knip": "knip",
     "cpd": "jscpd --config .jscpd.json .",
     "secrets": "gitleaks git --config .gitleaks.toml --redact",

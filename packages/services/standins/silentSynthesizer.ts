@@ -3,9 +3,9 @@
 import { Array as Arr, Effect, Layer } from "effect";
 
 import { EmptyText } from "../src/errors.ts";
+import { evenSpans } from "../src/spans.ts";
 import { SpeechSynthesizer } from "../src/speechSynthesizer.ts";
 import { localEgress } from "../src/types.ts";
-import type { WordSpan } from "../src/types.ts";
 
 const sampleRate = 24_000;
 
@@ -35,17 +35,12 @@ export const silentSynthesizer = Layer.succeed(
         Math.max(minimumMs, words.length * perWordMs) / speed
       );
 
-      const spans: readonly WordSpan[] = Arr.map(words, (_, index) => ({
-        endMs: Math.round(((index + 1) * ms) / words.length),
-        startMs: Math.round((index * ms) / words.length),
-      }));
-
       return Effect.succeed({
         clip: {
           sampleRate,
           samples: new Float32Array(Math.round((sampleRate * ms) / 1000)),
         },
-        words: spans,
+        words: evenSpans(ms, words.length),
       });
     },
   })

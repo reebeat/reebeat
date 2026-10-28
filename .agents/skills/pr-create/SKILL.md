@@ -3,7 +3,7 @@ name: pr-create
 description: "Open a reebeat pull request: the PR body is the report, in eight fixed sections, and the PR opens only when the whole journey is built and `bun run ready` passed on the head. Use when a spec's code is finished and a PR is to be opened, or when drafting a PR body for this repository."
 ---
 
-<!-- Credits: builds on the machine skill `pr` (/srv/share/projects/.agents/skills/pr/SKILL.md), whose Summary, Evidence
+<!-- Credits: builds on the machine skill `pr` (`skill://pr`), whose Summary, Evidence
      and Merge Danger sections it reuses; the Summary's menu of visuals comes from Dex Horthy's `show-me` skill
      (https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md). New here: the eight
      sections and their order, the opening rule, and the `gh` command (spec 0000, "The PR body is the report"). -->
@@ -20,7 +20,7 @@ Freeze the spec when the PR opens. A later change to the plan is a dated entry i
 
 ## The body: eight sections, in this order
 
-Skip preambles. Use the terms of `GLOSSARY.md`. Read the machine skill `pr` (`/srv/share/projects/.agents/skills/pr/SKILL.md`) for the Summary visuals, the Evidence tiers and the Merge Danger wording.
+Skip preambles. Use the terms of `GLOSSARY.md`. Read the machine skill `pr` (`skill://pr`) for the Summary visuals, the Evidence tiers and the Merge Danger wording.
 
 1. **Spec**: link to `docs/specs/NNNN-*.md` and the commit of the frozen text, and list its Revisions entries (date and one line each), or write "no revisions".
 2. **Journey**: the exact steps that experience the feature (commands or clicks), and one line on what is real (what runs for real, what is a stand-in).

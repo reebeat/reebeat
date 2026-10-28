@@ -60,6 +60,16 @@ export const fontFaces = [
   { file: "inter-latin-700-normal.woff2", weight: 700 },
 ] as const;
 
+/** What the Deck takes from `plan.settings`: the slide size in pixels and the Auto-Animate duration in seconds. */
+export interface DeckSettings {
+  readonly height: number;
+  readonly transition: number;
+  readonly width: number;
+}
+
+/** The height the type scale is designed for (px values below are written for a 720 px slide). */
+const designHeight = 720;
+
 const flexEdges = { 1: "flex-start", 2: "center", 3: "flex-end" } as const;
 
 const alignment = { 1: "left", 2: "center", 3: "right" } as const;
@@ -84,9 +94,15 @@ const cellCss = (): string =>
     "\n"
   );
 
-/** The text of `assets/theme.css`. A pure function of the palette: no input, so the same bytes every time. */
-export const themeCss = (): string =>
-  `${fontFaceCss()}
+/**
+ * The text of `assets/theme.css`: a pure function of the palette and of the slide height. Lengths are written for a
+ * 720 px slide and scale with `settings.height / 720`, so a taller slide has proportionally larger type and spacing.
+ */
+export const themeCss = (settings: DeckSettings): string => {
+  const px = (design: number): string =>
+    `${Math.round((design * settings.height * 100) / designHeight) / 100}px`;
+
+  return `${fontFaceCss()}
 
 html,
 body,
@@ -96,7 +112,7 @@ body,
 
 .reveal {
   font-family: "Inter", sans-serif;
-  font-size: 28px;
+  font-size: ${px(28)};
   color: ${palette.text};
 }
 
@@ -114,14 +130,14 @@ body,
   grid-template-rows: repeat(3, 1fr);
   width: 100%;
   height: 100%;
-  padding: 36px;
-  gap: 12px;
+  padding: ${px(36)};
+  gap: ${px(12)};
 }
 
 .cell {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: ${px(14)};
   min-width: 0;
   min-height: 0;
 }
@@ -140,24 +156,24 @@ ${cellCss()}
 
 .el.box {
   box-sizing: border-box;
-  padding: 18px 26px;
-  border: 3px solid ${palette.boxBorder};
-  border-radius: 14px;
+  padding: ${px(18)} ${px(26)};
+  border: ${px(3)} solid ${palette.boxBorder};
+  border-radius: ${px(14)};
   background: ${palette.boxBackground};
   color: ${classColors.box};
-  font-size: 26px;
+  font-size: ${px(26)};
   font-weight: 700;
 }
 
 .el.title {
-  font-size: 46px;
+  font-size: ${px(46)};
   font-weight: 700;
   line-height: 1.1;
   color: ${classColors.title};
 }
 
 .el.label {
-  font-size: 26px;
+  font-size: ${px(26)};
   font-weight: 700;
   color: ${classColors.label};
 }
@@ -180,8 +196,8 @@ ${cellCss()}
 }
 
 .el.focused {
-  box-shadow: 0 0 0 5px ${palette.focusRing};
-  border-radius: 14px;
+  box-shadow: 0 0 0 ${px(5)} ${palette.focusRing};
+  border-radius: ${px(14)};
   transform: scale(1.04);
 }
 
@@ -189,3 +205,4 @@ ${cellCss()}
   display: none;
 }
 `;
+};

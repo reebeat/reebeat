@@ -6,7 +6,10 @@ import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Order, Schema } from "effect";
 import type { Page } from "playwright-core";
 
-import { revealConfig } from "../src/runtime.ts";
+import { renderDeck } from "../src/index.ts";
+import { runtimeJs } from "../src/runtime.ts";
+import { themeCss } from "../src/theme.ts";
+import type { DeckSettings } from "../src/theme.ts";
 import {
   evaluate,
   evaluateFailure,
@@ -27,7 +30,7 @@ const Rect = Schema.Struct({
 
 const Samples = Schema.Array(Schema.Finite);
 
-/** The keys of `revealConfig`, as `Reveal.getConfig()` reports them. */
+/** The keys of the Deck's reveal.js configuration, as `Reveal.getConfig()` reports them. */
 const RevealSettings = Schema.Struct({
   autoAnimateDuration: Schema.Finite,
   autoAnimateEasing: Schema.String,
@@ -163,9 +166,24 @@ describe("the Deck page", () => {
         const plan = yield* storyPlan;
         const { page } = yield* openDeck(yield* writtenDeck(plan));
 
+        // The contract's configuration for the settings of the Plan (1280x720, 0.8 s).
         assert.deepStrictEqual(
           yield* evaluate(page, "Reveal.getConfig()", RevealSettings),
-          revealConfig
+          {
+            autoAnimateDuration: 0.8,
+            autoAnimateEasing: "ease",
+            controls: false,
+            fragments: true,
+            hash: false,
+            height: 720,
+            margin: 0,
+            maxScale: 1,
+            minScale: 1,
+            progress: false,
+            slideNumber: false,
+            transition: "fade",
+            width: 1280,
+          }
         );
 
         const { width, x } = yield* evaluate(
@@ -175,6 +193,53 @@ describe("the Deck page", () => {
         );
 
         assert.strictEqual(x + width / 2, 640);
+      })
+  );
+
+  it.live(
+    "follows the settings it is given: slide size, type scale and Auto-Animate duration",
+    () =>
+      Effect.gen(function* settings() {
+        const plan = yield* storyPlan;
+
+        const large: DeckSettings = {
+          height: 1080,
+          transition: 1.2,
+          width: 1920,
+        };
+
+        // The Plan contract pins 1280x720 today, so the files are generated from other settings by hand; the page
+        // must still follow them.
+        const { page } = yield* openDeck(
+          yield* writtenDeck(plan, {
+            ...renderDeck(plan),
+            files: [
+              { path: "assets/theme.css", text: themeCss(large) },
+              { path: "assets/deck.js", text: runtimeJs(large) },
+            ],
+          })
+        );
+
+        const config = yield* evaluate(
+          page,
+          "Reveal.getConfig()",
+          RevealSettings
+        );
+
+        assert.deepStrictEqual(
+          [config.width, config.height, config.autoAnimateDuration],
+          [1920, 1080, 1.2]
+        );
+
+        // The type scale follows the height: the title is 46 px on a 720 px slide, so 69 px on a 1080 px slide.
+        assert.strictEqual(
+          yield* evaluate(
+            page,
+            `getComputedStyle(${elementOf("sc1", "title")}).fontSize`,
+            Schema.String
+          ),
+          "69px"
+        );
       })
   );
 

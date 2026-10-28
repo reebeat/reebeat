@@ -4,23 +4,28 @@
 import { Array as Arr } from "effect";
 
 import { fontFaces } from "./theme.ts";
+import type { DeckSettings } from "./theme.ts";
 
-/** The reveal.js configuration of the Deck page (spec 0001, Deck page contract). */
-export const revealConfig = {
-  autoAnimateDuration: 0.8,
-  autoAnimateEasing: "ease",
-  controls: false,
-  fragments: true,
-  hash: false,
-  height: 720,
-  margin: 0,
-  maxScale: 1,
-  minScale: 1,
-  progress: false,
-  slideNumber: false,
-  transition: "fade",
-  width: 1280,
-} as const;
+/**
+ * The reveal.js configuration of the Deck page (spec 0001, Deck page contract). The slide size and the Auto-Animate
+ * duration come from `plan.settings` (`width`, `height`, `transition`); the rest is fixed.
+ */
+export const revealConfig = (settings: DeckSettings) =>
+  ({
+    autoAnimateDuration: settings.transition,
+    autoAnimateEasing: "ease",
+    controls: false,
+    fragments: true,
+    hash: false,
+    height: settings.height,
+    margin: 0,
+    maxScale: 1,
+    minScale: 1,
+    progress: false,
+    slideNumber: false,
+    transition: "fade",
+    width: settings.width,
+  }) as const;
 
 const fontLoads = Arr.join(
   Arr.map(
@@ -30,8 +35,8 @@ const fontLoads = Arr.join(
   ", "
 );
 
-/** The text of `assets/deck.js`. */
-export const runtimeJs = `(function () {
+/** The text of `assets/deck.js` for a Plan's settings. */
+export const runtimeJs = (settings: DeckSettings): string => `(function () {
   "use strict";
 
   var slides = Array.prototype.slice.call(
@@ -135,7 +140,7 @@ export const runtimeJs = `(function () {
     },
   };
 
-  var config = ${JSON.stringify(revealConfig)};
+  var config = ${JSON.stringify(revealConfig(settings))};
   config.plugins = [RevealNotes];
   Reveal.initialize(config);
 })();

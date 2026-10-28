@@ -18,9 +18,11 @@ import {
 import type {
   BrowserFailed,
   CaptureTimeout,
+  InvalidOutputName,
   MediaToolFailed,
   OutputFailed,
   TimedPlan,
+  UnknownSfx,
 } from "@reebeat/video";
 import {
   Array as Arr,
@@ -85,10 +87,19 @@ const encoder = new TextEncoder();
 const linesOf = (plan: PlanJson) =>
   Arr.flatMap(plan.scenes, (scene) => scene.lines);
 
+/** A cache file name of the Plan contract (64 hex digits and `.flac`), unique per Line id: the hex of its characters. */
+const audioFileOf = (lineId: string): string =>
+  `${Arr.join(
+    Arr.map(lineId.split(""), (char) =>
+      (char.codePointAt(0) ?? 0).toString(16)
+    ),
+    ""
+  ).padEnd(64, "0")}.flac`;
+
 /** Each word is 300 ms long, spoken in its first 280 ms: the same shape as the video package's fixture. */
 const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
   Arr.map(linesOf(plan), (line) => ({
-    audio: { file: `${line.id}.flac`, sha256: "00" },
+    audio: { file: audioFileOf(line.id), sha256: "00" },
     durationMs: line.words.length * wordMs,
     lineId: line.id,
     words: Arr.map(line.words, (w, index) => ({
@@ -414,9 +425,11 @@ export const mapping = (subtitles: string, chapters: string): string[] => [
 type MutationError =
   | BrowserFailed
   | CaptureTimeout
+  | InvalidOutputName
   | MediaToolFailed
   | OutputFailed
-  | PlatformError.PlatformError;
+  | PlatformError.PlatformError
+  | UnknownSfx;
 
 type MutationServices =
   | Browser

@@ -15,6 +15,7 @@ import {
   fixtureHash,
   fixturePlan,
   withLineText,
+  withSfxArg,
   timedFixture,
 } from "./fixturePlan.ts";
 
@@ -183,18 +184,7 @@ describe("audioMixPlan", () => {
   it("fails with UnknownSfx for a Cue whose sound the catalogue does not have", () => {
     const plan = timed();
 
-    const broken: TimedPlan = {
-      ...plan,
-      scenes: Arr.map(plan.scenes, (scene) => ({
-        ...scene,
-        lines: Arr.map(scene.lines, (line) => ({
-          ...line,
-          cues: Arr.map(line.cues, (cue) =>
-            cue.kind === "sfx" ? { ...cue, arg: "gong" } : cue
-          ),
-        })),
-      })),
-    };
+    const broken = withSfxArg(plan, "gong");
 
     const failure = Result.getOrThrowWith(
       Result.flip(audioMixPlan(broken)),

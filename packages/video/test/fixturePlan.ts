@@ -7,7 +7,7 @@
 // Every frame below was worked out by hand with the core's rules: a Line starts `sceneLead` (1 s) after its slide
 // frame; a Line ends its audio duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; a Cue fires at
 // `Line start + round(30 * word end)`; `commandFrame` is `fireFrame - 1` for next and focus, `fireFrame` for sfx.
-import type { PlanJson } from "@reebeat/core";
+import type { Line, PlanJson } from "@reebeat/core";
 import { Array as Arr, Result } from "effect";
 
 import { requireTimeline } from "../src/timedPlan.ts";
@@ -257,17 +257,31 @@ export const timedFixture = (): TimedPlan => {
   return result.success;
 };
 
+/** The Plan with every Line of every Scene changed by `change`. */
+const mapLines = (
+  plan: TimedPlan,
+  change: (line: Line) => Line
+): TimedPlan => ({
+  ...plan,
+  scenes: Arr.map(plan.scenes, (scene) => ({
+    ...scene,
+    lines: Arr.map(scene.lines, change),
+  })),
+});
+
 /** The Plan with the narration text of one Line replaced. */
 export const withLineText = (
   plan: TimedPlan,
   lineId: string,
   text: string
-): TimedPlan => ({
-  ...plan,
-  scenes: Arr.map(plan.scenes, (scene) => ({
-    ...scene,
-    lines: Arr.map(scene.lines, (line) =>
-      line.id === lineId ? { ...line, text } : line
+): TimedPlan =>
+  mapLines(plan, (line) => (line.id === lineId ? { ...line, text } : line));
+
+/** The Plan with the sound every `sfx` Cue asks for replaced. */
+export const withSfxArg = (plan: TimedPlan, arg: string): TimedPlan =>
+  mapLines(plan, (line) => ({
+    ...line,
+    cues: Arr.map(line.cues, (cue) =>
+      cue.kind === "sfx" ? { ...cue, arg } : cue
     ),
-  })),
-});
+  }));

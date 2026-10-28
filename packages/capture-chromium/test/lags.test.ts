@@ -1,6 +1,6 @@
 // The lags of the capture, measured on the REAL deck package's page (spec 0001, F1 and F7): a small Plan built by
 // the real core from test/fixtures/lags.fountain (the committed story's mechanics: a default fade, a CUT, two
-// AUTO-ANIMATEs, and focus, next and sfx Cues), the real `renderDeck`/`writeDeck`, and the real capture. A frame
+// AUTO-ANIMATEs, and focus, next and sfx Cues), the real reveal.js Renderer, and the real capture. A frame
 // "changes" when at least 200 pixels differ by more than 8 grey levels from the frame before.
 import { assert, it } from "@effect/vitest";
 import { Array as Arr, Effect, Option, Stream } from "effect";
@@ -8,8 +8,8 @@ import { Array as Arr, Effect, Option, Stream } from "effect";
 import { captureFrames } from "../src/capture.ts";
 import { captureSchedule } from "../src/captureSchedule.ts";
 import type { CaptureSchedule } from "../src/captureSchedule.ts";
-import { firstChangedFrame, sliceClip } from "../src/probe.ts";
-import type { GrayClip } from "../src/probe.ts";
+import { firstChangedFrame, sliceClip } from "./pixels.ts";
+import type { GrayClip } from "./pixels.ts";
 import { makeRealWorkspace, realServices } from "./realDeck.ts";
 import { pngGrayFrames } from "./support.ts";
 
@@ -30,7 +30,6 @@ const grayFramesOf = (
 const clipOf = (frames: readonly Uint8Array[]): GrayClip => ({
   firstFrame: 0,
   frames,
-  height: 720,
   width: 1280,
 });
 

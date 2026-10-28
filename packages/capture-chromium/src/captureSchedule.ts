@@ -1,4 +1,3 @@
-import type { Scene } from "@reebeat/core";
 // The commands the capture runs, frame by frame (spec 0001, Revision "M0 measured: the clock decides the
 // mechanism", corrected by the measurement on the real deck below). Per frame the capture steps the virtual clock,
 // then runs the commands of that frame, then seeks the animations and takes the screenshot. A Reveal call at frame c
@@ -20,9 +19,8 @@ import type { Scene } from "@reebeat/core";
 // every Cue: the Nth step shows the Nth fragment. The commands of one Scene are therefore kept in Cue order: a Cue
 // whose own command frame is later than a following Cue's (an `sfx` at `fireFrame` followed by a `next` at
 // `fireFrame - 1`) is commanded no later than that Cue.
+import type { Scene, TimedPlan } from "@reebeat/core";
 import { Array as Arr, Order } from "effect";
-
-import type { TimedPlan } from "./timedPlan.ts";
 
 export type CaptureCommand =
   | { readonly kind: "goToScene"; readonly sceneId: string }

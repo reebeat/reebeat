@@ -1,5 +1,5 @@
 // The two writers and the reader, against a Plan whose frames follow from the core's rules: a Line starts 1 s
-// (30 frames) after its slide frame, a Line lasts 400 ms a word, a Scene ends 0.5 s after its last Line.
+// (30 frames) after its slide frame, a Line lasts 500 ms a word, a Scene ends 0.5 s after its last Line.
 import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 
@@ -46,15 +46,15 @@ describe("vtt", () => {
               `NOTE source-sha256 ${hash}`,
               "",
               "sc1.l1",
-              "00:00:01.000 --> 00:00:02.600",
+              "00:00:01.000 --> 00:00:03.000",
               "One two three four.",
               "",
               "sc2.l1",
-              "00:00:04.100 --> 00:00:05.300",
+              "00:00:04.500 --> 00:00:06.000",
               "Five six seven.",
               "",
               "sc3.l1",
-              "00:00:06.800 --> 00:00:07.200",
+              "00:00:07.500 --> 00:00:08.000",
               "Done.",
               "",
             ],
@@ -103,15 +103,15 @@ describe("srt", () => {
           Arr.join(
             [
               "1",
-              "00:00:01,000 --> 00:00:02,600",
+              "00:00:01,000 --> 00:00:03,000",
               "One two three four.",
               "",
               "2",
-              "00:00:04,100 --> 00:00:05,300",
+              "00:00:04,500 --> 00:00:06,000",
               "Five six seven.",
               "",
               "3",
-              "00:00:06,800 --> 00:00:07,200",
+              "00:00:07,500 --> 00:00:08,000",
               "Done.",
               "",
             ],
@@ -164,9 +164,9 @@ describe("parseVtt", () => {
         assert.deepStrictEqual(
           Arr.map(cues, ({ endMs, startMs }) => [startMs, endMs]),
           [
-            [1000, 2600],
-            [4100, 5300],
-            [6800, 7200],
+            [1000, 3000],
+            [4500, 6000],
+            [7500, 8000],
           ]
         );
         assert.strictEqual(vttSourceHash(vtt(plan)), hash);

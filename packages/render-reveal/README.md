@@ -1,23 +1,28 @@
-# @reebeat/deck
+# @reebeat/render-reveal
 
-`plan.json` in, `deck.html` out: a reveal.js presentation with the narration as speaker notes and the Cues as
-fragments. It reads the Plan, never the screenplay: its manifest depends on `@reebeat/core` (types only), `effect`,
-`reveal.js`, `@fontsource/inter` and `parse5`, and a test and a lint rule keep it that way (spec 0001, F11).
+The reveal.js `Renderer` (spec 0001, design R3): a Plan in, a Deck out, all in memory: `deck.html`, the theme, the page
+runtime and the binary assets read from the installed packages (reveal.js, Inter). It reads the Plan, never the
+screenplay: its manifest depends on `@reebeat/core` (types only), `@reebeat/services`, `@reebeat/lint`, `effect`,
+`reveal.js`, `@fontsource/inter` and `parse5`, and a test and a lint rule keep it that way (spec 0001, F11). Writing the
+files of a `RenderedDeck` to a directory is the pipeline's file-system work, not this package's.
 Spec: [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md).
 
 ```text
-PlanJson ──renderDeck──▶ DeckBundle { html, files }            pure
-DeckBundle + outDir + PlanJson ──writeDeck──▶ files on disk     FileSystem, Path; reads deck.html back and runs checkDeck
-deck.html text ──readDeck──▶ DeckModel                          pure
-PlanJson + deck.html text ──checkDeck──▶ void | DeckMismatch    F3, F4, F5 (deck side), Elements, slide marks
+PlanJson ──renderDeck──▶ DeckBundle { html, files }                       pure
+DeckBundle + PlanJson + DeckAssets ──assembleDeck──▶ RenderedDeck          runs checkDeck on the page first (F4)
+PlanJson ──revealRenderer.render──▶ RenderedDeck                           Layer over FileSystem, Path
+deck.html text ──readDeck──▶ DeckModel                                     pure
+PlanJson + deck.html text ──checkDeck──▶ void | DeckMismatch               F3, F4, F5 (deck side), Elements, slide marks
 ```
 
 | Export | What it is |
 | --- | --- |
+| `revealRenderer` | `Layer<Renderer, AdapterUnavailable, FileSystem \| Path>`; `info.id` is `reveal.js@<installed version>`, `info.settings` holds the theme (palette, fonts, Inter version), the egress is local. The layer reads the packages' files once, when it is built; a package that is not installed is `AdapterUnavailable`. `render(plan)` is `assembleDeck(plan, renderDeck(plan), assets)`; a Deck that disagrees with its Plan fails as `RenderFailed` carrying the `DeckMismatch` |
 | `renderDeck(plan)` | `DeckBundle`: `html` is `deck.html`; `files` are `assets/theme.css` and `assets/deck.js`. Same Plan, same bytes |
-| `writeDeck(bundle, outDir, plan)` | `Effect<void, PlatformError \| DeckAssetMissing \| DeckMismatch, FileSystem \| Path>`. Writes the page and the text files, copies the binary assets, then reads `deck.html` back and fails with `DeckMismatch` if it differs from `plan`: a stale or edited bundle fails the build |
+| `readAssets()` | `Effect<DeckAssets, DeckAssetMissing, FileSystem \| Path>`: the bytes of the reveal.js and Inter files and the two package versions |
+| `assembleDeck(plan, bundle, assets)` | `Effect<RenderedDeck, DeckMismatch>`: reads the page back with `checkDeck` and returns the files (`deck.html` is the entry) |
 | `readDeck(html)` | `DeckModel`: per slide the scene id, chapter id, notes paragraphs, fragments, Elements and marks; the two source hashes. Total: it never fails |
-| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index` |
+| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index`. The Cue and fragment comparison is `@reebeat/lint`'s rule `cue-fragment-agreement`; the page's own checks (the Element a `next` reveals, the fragment index) stay here |
 
 `DeckMismatch.check` is one of `F3 notes` (note $k$ is the narration of Line $k$), `F4 fragments` (fragments equal Cues in
 kind, argument, revealed Element and order), `F5 source hash` (`<html data-source-sha256>` and the `reebeat:source-sha256`
@@ -60,9 +65,9 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   Known interplay: `focused` is not cleared when the slide changes, so an Element still focused when an Auto-Animate
   starts is measured with its scale of 1.04 and animates from that box.
 - **Files.** `assets/reveal/{reveal.js,reveal.css,reset.css,plugin/notes.js,LICENSE}` and
-  `assets/fonts/{inter-latin-400-normal.woff2,inter-latin-700-normal.woff2,LICENSE}` are copied from the installed
+  `assets/fonts/{inter-latin-400-normal.woff2,inter-latin-700-normal.woff2,LICENSE}` are read from the installed
   packages (found with `import.meta.resolve`); the licences travel with them. The Latin subset of Inter is bundled.
-  The Deck loads only relative `file:` URLs: no CDN, no network. The sound files are written by the CLI.
+  The Deck loads only relative `file:` URLs: no CDN, no network. The sound files are written by the pipeline.
 
 ## HTML parser
 
@@ -78,8 +83,8 @@ The page follows the Deck page contract of the spec. Where the contract left roo
 
 One light palette in `src/theme.ts` (the stylesheet is generated from the same data the tests read; lengths scale with the
 slide height, see Settings). The classes are `box`,
-`title`, `label`, `accent` and `muted`; `test/theme.test.ts` computes the WCAG 2.x contrast of each class against the slide
-background and against the box background with the WCAG formula and requires at least 4.5:1. Inter is bundled
+`title`, `label`, `accent` and `muted`; `test/theme.test.ts` asserts, through `@reebeat/lint`'s `contrast` rule, that each class keeps at least 4.5:1 (WCAG 2.x)
+against the slide background and against the box background. Inter is bundled
 (`@fontsource/inter`, OFL), so frames do not depend on system fonts.
 
 ## Tests
@@ -90,11 +95,11 @@ background and against the box background with the WCAG formula and requires at 
 | File | Proves |
 | --- | --- |
 | `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, cues (pure) |
-| `check.test.ts` | F3, F4, F5 and Element controls on the written file; `writeDeck` fails on a bad bundle (pure) |
-| `write.test.ts` | the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
+| `check.test.ts` | F3, F4, F5 and Element controls on the written file; `assembleDeck` fails on a bad bundle (pure) |
+| `renderer.test.ts` | the Renderer contract (`@reebeat/services/contract`) with two negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
 | `theme.test.ts` | contrast of every class |
 | `boundaries.test.ts` | F11: the manifest and an import scan of `src` |
 | `browser.test.ts` | Chromium: `reebeatDeck`, each Cue's effect, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box |
 
-The browser tests use the real clock; the controlled clock belongs to `packages/video`. The only suppression is the
+The browser tests use the real clock; the controlled clock belongs to `packages/capture-chromium`. The only suppression is the
 Promise adapter of `test/browser.ts` (`EX-0030` in `tools/quality/effect-exceptions.json`).

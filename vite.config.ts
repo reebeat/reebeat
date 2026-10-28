@@ -208,6 +208,7 @@ export default defineConfig({
         files: [
           "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
+          "packages/capture-chromium/src/errors.ts",
           "packages/render-reveal/src/errors.ts",
           "packages/speech/src/errors.ts",
           "packages/services/src/errors.ts",

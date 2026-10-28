@@ -1,7 +1,6 @@
 // The lint rules, each with a control that shows the rule fails when the thing it guards is broken.
 import { assert, describe, it } from "@effect/vitest";
-import { PlanJsonSchema } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
+import { PlanJsonSchema, encodePlan } from "@reebeat/core";
 import { Array as Arr, Effect, Exit, Schema } from "effect";
 
 import {
@@ -13,19 +12,13 @@ import {
 import type { Fragment } from "../src/index.ts";
 import { plan } from "./support.ts";
 
-/** The fragments a faithful Rendering shows for `given`: one per Cue, in order. */
-const faithful = (given: PlanJson): readonly Fragment[] =>
-  Arr.flatMap(given.scenes, (scene) =>
-    Arr.map(
-      Arr.flatMap(scene.lines, (line) => line.cues),
-      (cue) => ({
-        arg: cue.arg ?? "",
-        cueId: cue.id,
-        kind: cue.kind,
-        sceneId: scene.id,
-      })
-    )
-  );
+/** The fragments a faithful Rendering of the Plan in `support.ts` shows, written out: one per Cue, in order. */
+const faithful = (): readonly Fragment[] => [
+  { arg: "", cueId: "sc1.l1.c1", kind: "next", sceneId: "sc1" },
+  { arg: "a", cueId: "sc2.l1.c1", kind: "focus", sceneId: "sc2" },
+  { arg: "pop", cueId: "sc2.l1.c2", kind: "sfx", sceneId: "sc2" },
+  { arg: "ding", cueId: "sc3.l1.c1", kind: "sfx", sceneId: "sc3" },
+];
 
 const places = (diagnostics: ReturnType<typeof cueFragmentAgreement>) =>
   Arr.map(diagnostics, ({ index, sceneId }) => [sceneId, index]);
@@ -35,8 +28,8 @@ describe("cueFragmentAgreement", () => {
     Effect.gen(function* agrees() {
       const given = yield* plan;
 
-      assert.strictEqual(faithful(given).length, 4);
-      assert.deepStrictEqual(cueFragmentAgreement(given, faithful(given)), []);
+      assert.strictEqual(faithful().length, 4);
+      assert.deepStrictEqual(cueFragmentAgreement(given, faithful()), []);
     })
   );
 
@@ -46,10 +39,7 @@ describe("cueFragmentAgreement", () => {
       Effect.gen(function* missing() {
         const given = yield* plan;
 
-        const fragments = Arr.filter(
-          faithful(given),
-          ({ kind }) => kind !== "sfx"
-        );
+        const fragments = Arr.filter(faithful(), ({ kind }) => kind !== "sfx");
 
         const diagnostics = cueFragmentAgreement(given, fragments);
 
@@ -71,7 +61,7 @@ describe("cueFragmentAgreement", () => {
     () =>
       Effect.gen(function* broken() {
         const given = yield* plan;
-        const all = faithful(given);
+        const all = faithful();
 
         const extra = [
           ...all,
@@ -166,25 +156,20 @@ describe("absoluteTimesNeedReason", () => {
     "holds because no absolute time is representable in the Plan schema: a Cue with `at` does not decode",
     () =>
       Effect.gen(function* unrepresentable() {
-        const given = yield* plan;
-        const encoded = yield* Schema.encodeEffect(PlanJsonSchema)(given);
+        const text = yield* Effect.flatMap(plan, encodePlan);
 
-        const withAt = {
-          ...encoded,
-          scenes: Arr.map(encoded.scenes, (scene) => ({
-            ...scene,
-            lines: Arr.map(scene.lines, (line) => ({
-              ...line,
-              cues: Arr.map(line.cues, (cue) => ({ ...cue, at: 1500 })),
-            })),
-          })),
-        };
+        const withAt = text.replaceAll(
+          '"afterWord"',
+          '"at": 1500, "afterWord"'
+        );
 
-        const decode = Schema.decodeUnknownEffect(PlanJsonSchema, {
-          onExcessProperty: "error",
-        });
+        const decode = Schema.decodeUnknownEffect(
+          Schema.fromJsonString(PlanJsonSchema),
+          { onExcessProperty: "error" }
+        );
 
-        assert.isTrue(Exit.isSuccess(yield* Effect.exit(decode(encoded))));
+        assert.notStrictEqual(withAt, text);
+        assert.isTrue(Exit.isSuccess(yield* Effect.exit(decode(text))));
         assert.isTrue(Exit.isFailure(yield* Effect.exit(decode(withAt))));
       })
   );

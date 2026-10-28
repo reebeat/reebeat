@@ -14,3 +14,5 @@ export {
 export type { Fragment } from "./cueFragments.ts";
 
 export type { Diagnostic } from "./diagnostic.ts";
+
+export { firstDifference } from "./difference.ts";

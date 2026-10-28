@@ -2,7 +2,7 @@
 // `readDeck` and compares it with the Plan: the source hash, the slides in order, the notes (F3), the fragments (F4),
 // the Elements and the slide marks. It reports the first difference, naming the slide and the position in it.
 import type { PlanJson, Scene } from "@reebeat/core";
-import { cueFragmentAgreement } from "@reebeat/lint";
+import { cueFragmentAgreement, firstDifference } from "@reebeat/lint";
 import type { Diagnostic, Fragment } from "@reebeat/lint";
 import { Array as Arr, Effect, Option } from "effect";
 
@@ -11,26 +11,6 @@ import { expectedFragments, expectedMarks } from "./expected.ts";
 import type { ExpectedMarks } from "./expected.ts";
 import { readDeck } from "./read.ts";
 import type { DeckModel, DeckSlide } from "./read.ts";
-
-/** The first position at which two lists differ (a missing or extra member counts), or undefined when they agree. */
-const firstDifference = <Wanted, Found>(
-  wanted: readonly Wanted[],
-  found: readonly Found[],
-  same: (want: Wanted, have: Found) => boolean
-): number | undefined =>
-  Option.match(
-    Arr.findFirstIndex(
-      Arr.zip(wanted, found),
-      ([want, have]) => !same(want, have)
-    ),
-    {
-      onNone: () =>
-        wanted.length === found.length
-          ? undefined
-          : Math.min(wanted.length, found.length),
-      onSome: (position) => position,
-    }
-  );
 
 const show = (value: string | null | undefined): string =>
   value === null || value === undefined ? "nothing" : JSON.stringify(value);

@@ -3,9 +3,21 @@
 // Chromium named by `REEBEAT_CHROMIUM` (spec 0001, "The controlled clock"). Each `open` launches a fresh
 // browser in the caller's Scope and closes it when the Scope closes; interruption stops the waiting fiber, and
 // the close that follows kills the browser, so a Promise that is still pending changes nothing afterwards.
+// The layer checks what the capture needs when it is built (the variable, the binary, the clock script) and reads
+// the two versions that name the adapter; a missing one is `AdapterUnavailable`, never a fallback.
 // Retirement trigger: an Effect-native browser driver in the installed Effect packages.
-import { Config, Context, Effect, Layer, Path } from "effect";
+import { AdapterUnavailable } from "@reebeat/services";
+import {
+  Config,
+  Context,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Schema,
+} from "effect";
 import type { Scope } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { chromium } from "playwright-core";
 import type { Page } from "playwright-core";
 
@@ -44,7 +56,8 @@ export interface DeckPage {
   ) => Effect.Effect<void, BrowserFailed>;
 }
 
-const chromiumFlags = [
+/** The Chromium flags of the capture (spec 0001, "Risks": fixed rendering); they change the pixels. */
+export const chromiumFlags = [
   "--force-color-profile=srgb",
   "--disable-gpu",
   "--font-render-hinting=none",
@@ -103,6 +116,103 @@ const deckPage = (page: Page): DeckPage => ({
   seek: seekAnimations(page),
 });
 
+/** The versions that name this adapter: the Chromium binary and the `timeweb` clock script. */
+export interface BrowserVersions {
+  readonly chromium: string;
+  readonly timeweb: string;
+}
+
+const unavailable = (requirement: string, message: string) =>
+  new AdapterUnavailable({
+    adapter: "chromium",
+    message,
+    requirement,
+    service: "FrameCapturer",
+  });
+
+const timewebMissing = (cause: unknown) =>
+  unavailable(
+    "package timeweb",
+    `timeweb is not installed: ${cause instanceof Error ? cause.message : String(cause)}`
+  );
+
+/** A variable of the environment, or "" when it is absent; a failing config source is `AdapterUnavailable` too. */
+const readVariable = (name: string) =>
+  Config.String(name).pipe(
+    Config.withDefault(""),
+    Effect.mapError(() =>
+      unavailable(`env ${name}`, `${name} cannot be read from the environment`)
+    )
+  );
+
+const PackageVersion = Schema.fromJsonString(
+  Schema.Struct({ version: Schema.String })
+);
+
+const decodePackageVersion = Schema.decodeUnknownEffect(PackageVersion);
+
+/** The binary named by `REEBEAT_CHROMIUM`, and the version it prints. */
+const findChromium = Effect.fnUntraced(function* findChromium() {
+  const executable = yield* readVariable("REEBEAT_CHROMIUM");
+
+  if (executable === "") {
+    return yield* unavailable(
+      "env REEBEAT_CHROMIUM",
+      "REEBEAT_CHROMIUM is not set: it names the Chromium binary the capture drives"
+    );
+  }
+
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+  const printed = yield* spawner
+    .string(ChildProcess.make(executable, ["--version"]))
+    .pipe(
+      Effect.mapError(() =>
+        unavailable(
+          "binary named by REEBEAT_CHROMIUM",
+          "the binary named by REEBEAT_CHROMIUM did not run `--version`"
+        )
+      )
+    );
+
+  const version = /\d+(?:\.\d+)+/u.exec(printed)?.[0];
+
+  return version === undefined
+    ? yield* unavailable(
+        "binary named by REEBEAT_CHROMIUM",
+        "the binary named by REEBEAT_CHROMIUM printed no version"
+      )
+    : { executable, version };
+});
+
+/** The `timeweb` browser build and its package version (`timeweb` has no export map: both are files of the package). */
+const findTimeweb = Effect.fnUntraced(function* findTimeweb() {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+
+  const resolved = yield* Effect.try({
+    catch: timewebMissing,
+    try: () => import.meta.resolve("timeweb/dist/timeweb.js"),
+  });
+
+  const script = yield* Effect.mapError(
+    path.fromFileUrl(new URL(resolved)),
+    timewebMissing
+  );
+
+  const manifest = yield* Effect.mapError(
+    fs.readFileString(path.join(path.dirname(script), "..", "package.json")),
+    timewebMissing
+  );
+
+  const { version } = yield* Effect.mapError(
+    decodePackageVersion(manifest),
+    timewebMissing
+  );
+
+  return { script, version };
+});
+
 export class Browser extends Context.Service<
   Browser,
   {
@@ -110,22 +220,17 @@ export class Browser extends Context.Service<
     open: (
       options: OpenOptions
     ) => Effect.Effect<DeckPage, BrowserFailed, Scope.Scope>;
+    readonly versions: BrowserVersions;
   }
->()("@reebeat/video/browser/Browser") {
+>()("@reebeat/capture-chromium/browser/Browser") {
   static readonly layer = Layer.effect(
     Browser,
     Effect.gen(function* build() {
-      const path = yield* Path.Path;
-      const executablePath = yield* Config.String("REEBEAT_CHROMIUM");
+      const chromiumBinary = yield* findChromium();
+      const timeweb = yield* findTimeweb();
+      const executablePath = chromiumBinary.executable;
 
-      const noSandbox = yield* Config.String(
-        "REEBEAT_CHROMIUM_NO_SANDBOX"
-      ).pipe(Config.withDefault(""));
-
-      // `timeweb` has no export map: its browser build is a file of the installed package.
-      const timeweb = yield* path.fromFileUrl(
-        new URL(import.meta.resolve("timeweb/dist/timeweb.js"))
-      );
+      const noSandbox = yield* readVariable("REEBEAT_CHROMIUM_NO_SANDBOX");
 
       const args =
         noSandbox === "1" ? [...chromiumFlags, "--no-sandbox"] : chromiumFlags;
@@ -151,7 +256,7 @@ export class Browser extends Context.Service<
         const page = yield* inPage("new page", () => context.newPage());
 
         yield* inPage("install clock", () =>
-          page.addInitScript({ path: timeweb })
+          page.addInitScript({ path: timeweb.script })
         );
         yield* inPage("install seek layer", () =>
           page.addInitScript({ content: pageRuntime })
@@ -161,7 +266,13 @@ export class Browser extends Context.Service<
         return deckPage(page);
       });
 
-      return Browser.of({ open });
+      return Browser.of({
+        open,
+        versions: {
+          chromium: chromiumBinary.version,
+          timeweb: timeweb.version,
+        },
+      });
     })
   );
 }

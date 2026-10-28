@@ -2,9 +2,10 @@
 // the Cue's kind and argument. The rule compares the Plan with a neutral list of the fragments a Rendering shows,
 // so any Renderer's reader can use it; for the reveal.js Deck, `readDeck` supplies the list.
 import type { PlanJson, Scene } from "@reebeat/core";
-import { Array as Arr, Option } from "effect";
+import { Array as Arr } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";
+import { firstDifference } from "./difference.ts";
 
 export const cueFragmentAgreementRule = "cue-fragment-agreement";
 
@@ -44,32 +45,13 @@ const describe = (
 const same = (want: Wanted, have: Fragment): boolean =>
   want.cueId === have.cueId && want.kind === have.kind && want.arg === have.arg;
 
-/** The first position at which the Scene's Cues and its fragments differ (a missing or extra member counts). */
-const firstDifference = (
-  wanted: readonly Wanted[],
-  found: readonly Fragment[]
-): number | undefined =>
-  Option.match(
-    Arr.findFirstIndex(
-      Arr.zip(wanted, found),
-      ([want, have]) => !same(want, have)
-    ),
-    {
-      onNone: () =>
-        wanted.length === found.length
-          ? undefined
-          : Math.min(wanted.length, found.length),
-      onSome: (position) => position,
-    }
-  );
-
 const diagnoseScene = (
   scene: Scene,
   fragments: readonly Fragment[]
 ): readonly Diagnostic[] => {
   const wanted = wantedIn(scene);
   const found = Arr.filter(fragments, ({ sceneId }) => sceneId === scene.id);
-  const position = firstDifference(wanted, found);
+  const position = firstDifference(wanted, found, same);
 
   if (position === undefined) {
     return [];

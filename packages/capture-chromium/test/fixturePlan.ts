@@ -53,8 +53,7 @@ const source = Arr.join(
 );
 
 /** A cache file name of the Plan contract: 64 hex digits and `.flac`; `n` picks the digits. */
-export const audioFile = (n: number): string =>
-  `${n.toString(16).repeat(64)}.flac`;
+const audioFile = (n: number): string => `${n.toString(16).repeat(64)}.flac`;
 
 /** How long each Line is spoken, in ms, by Line id. The last word of sc3.l1 ends at 580 ms, the others at `index * 300 + 280`. */
 const durations = new Map([

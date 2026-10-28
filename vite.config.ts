@@ -29,8 +29,8 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
-      // The composition roots of the CLI: the executable, the journey script and the layers they share.
-      files: ["packages/cli/bin/**", "packages/cli/scripts/**"],
+      // The composition root of the CLI: the executable, which provides the platform and runs the commands.
+      files: ["packages/cli/bin/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",
@@ -65,12 +65,6 @@ const effectConfig: EffectConfigInput = {
       files: ["packages/pipeline/src/**"],
       platform: "portable",
       role: "effect-library",
-      strictness: "strict",
-    },
-    {
-      files: ["packages/pipeline/scripts/**"],
-      platform: "node",
-      role: "composition-root",
       strictness: "strict",
     },
     {

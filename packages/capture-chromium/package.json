@@ -20,8 +20,6 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@reebeat/render-reveal": "workspace:*",
-    "@reebeat/sounds-synth": "workspace:*",
     "@types/node": "catalog:",
     "oxc-parser": "catalog:",
     "reveal.js": "catalog:",

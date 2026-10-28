@@ -19,7 +19,7 @@
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
     "commitlint": "commitlint",
     "reebeat": "bun packages/cli/bin/reebeat.ts",
-    "journey": "bun packages/cli/bin/journey.ts"
+    "journey": "bun packages/cli/bin/reebeat.ts journey stories/same-id/story.fountain"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",

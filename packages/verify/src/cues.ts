@@ -1,11 +1,14 @@
 // F1, cue timing: every Cue of the Timeline has an observed step in the written video within one frame of its
 // fire frame. A `next` or `focus` step is the first frame in a window of three frames either side of the fire frame
-// whose pixels differ from the frame before it; an `sfx` is the start of the catalogue sound found in the decoded
-// audio track near the fire frame. The offset of each Cue is reported, positive when the step is late.
-import { sfxNames, sfxWav } from "@reebeat/sfx";
-import { audioOffsetMs, decodeMonoPcm } from "@reebeat/video";
+// whose pixels differ from the frame before it, inside the grid cell of the Element the Cue acts on (`cueRegion`); an
+// `sfx` is the start of the catalogue sound found in the decoded audio track near the fire frame. The offset of each
+// Cue is reported, positive when the step is late.
+import { audioOffsetMs, decodeMonoPcm } from "@reebeat/encode-ffmpeg";
+import type { Box } from "@reebeat/encode-ffmpeg";
+import { sfxNames, synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect, Option } from "effect";
 
+import { cueRegion } from "./cueRegion.ts";
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
 import { planCues, timedLines } from "./planParts.ts";
@@ -16,9 +19,9 @@ import {
   signedFrames,
   withinOneFrame,
 } from "./units.ts";
-import { fail, verdictOf } from "./verdict.ts";
+import { fail, notApplicable, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { soundMatchFloor, wavSamples, withSilentLead } from "./wav.ts";
+import { soundMatchFloor, withSilentLead } from "./wav.ts";
 
 /** How far from the fire frame, in milliseconds, the catalogue sound is looked for. */
 const soundWindowMs = 150;
@@ -34,6 +37,8 @@ interface CueFact {
   readonly cueId: string;
   readonly fireFrame: number;
   readonly kind: "focus" | "next" | "sfx";
+  /** Where a step of the picture shows (the target Element's cell); none: the whole frame. */
+  readonly region: Box | undefined;
 }
 
 /** The Cues of the Timeline with their kind and argument from the Plan, in timeline order. */
@@ -49,6 +54,7 @@ const cueFacts = (build: Build): readonly CueFact[] => {
           cueId: cue.id,
           fireFrame: timed.fireFrame,
           kind: cue.kind,
+          region: Option.getOrUndefined(cueRegion(build.plan, cue.id)),
         })
       )
     )
@@ -86,10 +92,7 @@ const observeSound = (
     return missing(`the sound ${name ?? "(none)"} is not in the catalogue`);
   }
 
-  const reference = withSilentLead(
-    wavSamples(sfxWav(known.value)),
-    soundLeadMs
-  );
+  const reference = withSilentLead(synthClip(known.value).samples, soundLeadMs);
 
   const { offsetMs, score } = audioOffsetMs(
     track,
@@ -111,8 +114,12 @@ const hasSound = (facts: readonly CueFact[]): boolean =>
 /** The window of frames either side of the fire frame in which a step is looked for. */
 const cueWindowFrames = 3;
 
-const observeCueStep = (mp4: string, fireFrame: number) =>
-  Effect.map(stepOffset(mp4, fireFrame, cueWindowFrames), (offset) =>
+const observeCueStep = (
+  mp4: string,
+  fireFrame: number,
+  region: Box | undefined
+) =>
+  Effect.map(stepOffset(mp4, fireFrame, cueWindowFrames, region), (offset) =>
     offset === undefined
       ? missing(
           `no frame within ${cueWindowFrames} frames of frame ${fireFrame} differs from the one before it`
@@ -128,7 +135,14 @@ export const cueTiming = (build: Build) =>
   guarded(
     "F1",
     Effect.gen(function* observe() {
-      const facts = cueFacts(build);
+      const all = cueFacts(build);
+      const silent = Option.isSome(build.silentNarrator);
+
+      const skipped = silent
+        ? Arr.filter(all, (cue) => cue.kind === "sfx")
+        : [];
+
+      const facts = silent ? Arr.filter(all, (cue) => cue.kind !== "sfx") : all;
       const { fps } = build.plan.settings;
 
       const track = hasSound(facts)
@@ -138,7 +152,7 @@ export const cueTiming = (build: Build) =>
       const observations = yield* Effect.forEach(facts, (cue) =>
         cue.kind === "sfx"
           ? Effect.succeed(observeSound(track, cue.arg, cue.fireFrame, fps))
-          : observeCueStep(build.mp4, cue.fireFrame)
+          : observeCueStep(build.mp4, cue.fireFrame, cue.region)
       );
 
       const rows = Arr.zip(facts, observations);
@@ -157,6 +171,14 @@ export const cueTiming = (build: Build) =>
 
       const measured: Measured = [
         ["cues checked", facts.length],
+        ...(skipped.length === 0
+          ? []
+          : ([
+              [
+                "sfx cues",
+                `N/A (silent stand-in): ${skipped.length} not observed`,
+              ],
+            ] as const)),
         ...Arr.flatMap(rows, ([cue, seen]): Measured => [
           [
             `${cue.cueId} ${cue.kind} offset (frames)`,
@@ -170,13 +192,21 @@ export const cueTiming = (build: Build) =>
         ]),
       ];
 
-      return facts.length === 0
-        ? fail("F1", "the Timeline has no Cue to observe", measured)
-        : verdictOf(
-            "F1",
-            `all ${facts.length} Cues are observed within one frame of their fire frame`,
-            problems,
-            measured
-          );
+      if (facts.length === 0) {
+        return skipped.length === 0
+          ? fail("F1", "the Timeline has no Cue to observe", measured)
+          : notApplicable(
+              "F1",
+              "N/A (silent stand-in): the only Cues are sfx and the narrator's track is silent by construction",
+              measured
+            );
+      }
+
+      return verdictOf(
+        "F1",
+        `all ${facts.length} Cues are observed within one frame of their fire frame${skipped.length === 0 ? "" : `; the ${skipped.length} sfx Cues are N/A (silent stand-in)`}`,
+        problems,
+        measured
+      );
     })
   );

@@ -4,7 +4,7 @@ Lifecycle: build
 
 Now:
 
-reebeat turns a Fountain screenplay into a reveal.js Deck and a captured Video. Spec 0000 (development lifecycle) is merged. Spec 0001 (release 1) is built and in review: `stories/same-id` builds end to end (parse, Plan, speech cache, schedule, Deck, Video, checks) and `reebeat check` verifies the falsifiers on the written files.
+reebeat turns a Fountain screenplay into a reveal.js Deck and a captured Video. Spec 0000 (development lifecycle) is merged. Spec 0001 (release 1) is built and in review, in the composable layout of design R3 (libraries, services, a build program, adapters, tools): `stories/same-id` builds end to end (parse, Plan, speech cache, schedule, Deck, Video, checks) on adapters chosen by `reebeat.config.json` or flags, the whole pipeline also builds offline with stand-in speech (`--speech silent --aligner even`), and `reebeat check` verifies the falsifiers on the written files.
 
 Next:
 

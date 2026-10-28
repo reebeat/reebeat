@@ -1,6 +1,7 @@
-// The boundaries of the verify package (spec 0001): it depends on exactly core, deck, sfx, video and effect; no file
-// under src imports the parser (it re-builds the Plan with the core's `buildPlan`), a browser, a Playwright wrapper
-// or a Node built-in; and every import is a relative file, one of those packages by name, or `effect`.
+// The boundaries of the verify package (spec 0001): it depends on exactly core, encode-ffmpeg, lint, pipeline,
+// render-reveal, services, sounds-synth, subtitles and effect; no file under src imports the parser (it re-builds the
+// Plan with the core's `buildPlan`), a browser, a Playwright wrapper or a Node built-in; and every import is a relative
+// file, one of those packages by name, or `effect`.
 import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect, Order, Record, Schema } from "effect";
 import { parseSync } from "oxc-parser";
@@ -31,7 +32,7 @@ const specifiersOf = (text: string): readonly string[] => {
 };
 
 const allowed =
-  /^(?:\.{1,2}\/|effect(?:\/|$)|@reebeat\/(?:core|deck|sfx|video)$)/u;
+  /^(?:\.{1,2}\/|effect(?:\/|$)|@reebeat\/(?:core|encode-ffmpeg|lint|pipeline|render-reveal|services|sounds-synth|subtitles)$)/u;
 
 /** The specifiers of a file that it may not import. */
 const violations = (name: string, text: string): readonly string[] =>
@@ -40,24 +41,30 @@ const violations = (name: string, text: string): readonly string[] =>
   );
 
 describe("F11: packages/verify imports no parser", () => {
-  it.effect("depends on exactly core, deck, sfx, video and effect", () =>
-    Effect.gen(function* manifest() {
-      const { dependencies } = yield* Effect.flatMap(
-        readPackageText("package.json"),
-        Schema.decodeEffect(Schema.fromJsonString(PackageJson))
-      );
+  it.effect(
+    "depends on exactly core, encode-ffmpeg, lint, pipeline, render-reveal, services, sounds-synth, subtitles and effect",
+    () =>
+      Effect.gen(function* manifest() {
+        const { dependencies } = yield* Effect.flatMap(
+          readPackageText("package.json"),
+          Schema.decodeEffect(Schema.fromJsonString(PackageJson))
+        );
 
-      assert.deepStrictEqual(
-        Arr.sort(Record.keys(dependencies), Order.String),
-        [
-          "@reebeat/core",
-          "@reebeat/deck",
-          "@reebeat/sfx",
-          "@reebeat/video",
-          "effect",
-        ]
-      );
-    })
+        assert.deepStrictEqual(
+          Arr.sort(Record.keys(dependencies), Order.String),
+          [
+            "@reebeat/core",
+            "@reebeat/encode-ffmpeg",
+            "@reebeat/lint",
+            "@reebeat/pipeline",
+            "@reebeat/render-reveal",
+            "@reebeat/services",
+            "@reebeat/sounds-synth",
+            "@reebeat/subtitles",
+            "effect",
+          ]
+        );
+      })
   );
 
   it.effect(

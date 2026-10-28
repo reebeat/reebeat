@@ -1,6 +1,26 @@
 # @reebeat/pipeline
 
-The build program over services only (design R3). Release 1 so far: the speech stage. It imports `@reebeat/core` and `@reebeat/services`; it names no model, binary, directory or vendor, and the tier gate (`tools/quality/tiers.ts`) keeps it that way. The composition root (`@reebeat/cli`) picks the adapters.
+The build program over services only (design R3): `buildProgram` takes a story to a finished build directory and nothing else. It imports `@reebeat/core`, `@reebeat/subtitles` and `@reebeat/services`; it names no model, binary, directory or vendor, and the tier gate (`tools/quality/tiers.ts`) keeps it that way. The composition root (`@reebeat/cli`) picks the adapters.
+
+```text
+story ─hash─▶ Plan ─speechStage─▶ aligned Lines ─schedule─▶ Timeline ─▶ plan.json
+  Renderer.render ─▶ writeRenderedDeck (deck.html, assets)          SoundLibrary ─▶ assets/sfx/<name>.wav (core audioClipToWav)
+  FrameCapturer.capture ─▶ muxStage: Encoder.mux { frames, tracks: narration clips (decoded from the cached FLACs) at each Line's start
+                                                    + sound clips at each sfx Cue's fire frame, WebVTT, chapters, title, source hash }
+  ─▶ <name>.mp4, <name>.vtt ─▶ build.json (schema 2: files, adapters with egress, provenance of every asset used) written last
+```
+
+Everything is written into `<out>.partial` and renamed to `<out>` once `build.json` is in; any failure or interrupt removes the partial directory and an earlier build at `<out>` is removed first, so nothing `check` would accept is left (F12). A non-empty `<out>` with no `build.json` is `OutputDirOccupied`. `BuildManifestSchema` (the one definition of `build.json`, read by `@reebeat/verify`) lives here because the program writes it; a tool may import a program, a program may not import a tool.
+
+| Export | What it is |
+| --- | --- |
+| `buildProgram(options)` | the build above; needs the seven services, `FileSystem`, `Path` and `Crypto`; returns the summary (files, frames, sizes, seconds, the adapters) |
+| `muxStage(plan, frames, { name, outDir })` | the narration, sounds, subtitles and chapters of a Plan muxed with a given frame stream: what the verify tests use to re-mux a changed capture |
+| `writeRenderedDeck`, `writeSounds` | the Renderer's files and the sounds under one directory (a path that leaves it is refused) |
+| `manifestFile`, `BuildManifestSchema`, `writeManifest` | `build.json` |
+| `readSource`, `sha256Hex` | the screenplay's bytes and text, and the one SHA-256 |
+
+## The speech stage
 
 ```text
 Plan ──speechStage(plan, { refresh })──▶ AlignedLine[] ──core `schedule`──▶ Timeline
@@ -25,7 +45,7 @@ An asset is two files, `flac` (FLAC s16 mono, bit-exact) and `words.json` (`{ du
 
 ## Refill the cache
 
-The committed cache of the story is `stories/same-id/speech-cache/`, written by `@reebeat/cache-fs` (`<key>.flac`, `<key>.words.json`, `<key>.provenance.json`). It is produced by `bun run refill:speech` in `packages/cli`, which removes the old assets and runs `speechStage(plan, { refresh: true })` with Kokoro, whisper.cpp, ffmpeg and the filesystem cache. Needs devenv (`ffmpeg`, `whisper-cli`), network for the first Kokoro download, and these files outside the repository:
+The committed cache of the story is `stories/same-id/speech-cache/`, written by `@reebeat/cache-fs` (`<key>.flac`, `<key>.words.json`, `<key>.provenance.json`). Refill it with the build itself: remove the old assets (their keys name the adapters and settings, so a change of either leaves them stale) and build with `--refresh-speech`, for example `rm -r stories/same-id/speech-cache && bun run reebeat build stories/same-id/story.fountain --refresh-speech --out /tmp/refill`. Needs devenv (`ffmpeg`, `whisper-cli`, Chromium), network for the first Kokoro download, and these files outside the repository:
 
 | Config | Meaning | Default |
 | --- | --- | --- |
@@ -43,4 +63,4 @@ The Kokoro model is fetched by model id without a pinned revision, and the key n
 
 ## Tests
 
-`bun run test` (no model, no network): the stage over the stand-ins (`silentSynthesizer`, `evenAligner`, `memoryCache`) and a tiny fake `Encoder`: a hit, a miss (F12), a refresh, a match below the threshold, an invalid words file, the provenance, key sensitivity and determinism. The committed cache against the committed story, with the real adapters' declarations, is `packages/cli/test/speechCache.test.ts`.
+`bun run test` (no model, no browser, no network): the speech stage over the stand-ins (`silentSynthesizer`, `evenAligner`, `memoryCache`) and a tiny fake `Encoder`: a hit, a miss (F12), a refresh, a match below the threshold, an invalid words file, the provenance, key sensitivity and determinism. The build program over the stand-ins, a fake `Renderer`, a fake `FrameCapturer` and a recording fake `Encoder` (`buildProgram.test.ts`): the files of a finished build and `build.json` last, what `Encoder.mux` is asked (narration at each Line's start, each sound at its Cue's fire frame, chapters, source hash), manifest v2 (seven adapters with egress, provenance of each asset used), a rebuild from the cache alone writing the same manifest, and F12 (a miss, a failing capture, a refused output directory, a secret-named setting) leaving no output. The committed cache against the committed story, with the real adapters' declarations, is `packages/cli/test/speechCache.test.ts`.

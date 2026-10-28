@@ -13,7 +13,7 @@ The largest unit with one concern and one audience, such as "4EM explained" or a
 _Avoid_: Video (a Video is a rendering), project, presentation
 
 **Screenplay**:
-The one source file of a Story, written in [Fountain](https://fountain.io/syntax) with the fixed vocabulary of the table "Screenplay mapping" below. Every Rendering is generated from it; nothing generated is kept by hand.
+The one source file of a Story, written in [Fountain](https://fountain.io/syntax) with the fixed vocabulary of the table "Screenplay mapping" below. Every Rendering is generated from it; nothing generated is kept by hand. Which pieces generate it (the Selection) is not in the Screenplay.
 _Avoid_: Script (ambiguous with the narration and with code), storyboard
 
 **Scene**:
@@ -81,6 +81,31 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 | Parenthetical | Hint: delivery | none | speech settings |
 | `[[...]]` in a Line | Cue | fragment | step or sound at the aligned word |
 | `> AUTO-ANIMATE`, `> CUT` | Hint: transition | `data-auto-animate` or none | transition frames |
+
+## Pieces of the pipeline
+
+reebeat is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
+
+**Library**:
+Pure functions and types with no runtime: the Fountain reader and the Plan (`core`), the subtitle writers (`subtitles`), the lint rules (`lint`). A library imports libraries only.
+
+**Service**:
+An Effect interface with a contract that every implementation passes: `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`. A service imports libraries only.
+_Avoid_: Plug-in, backend
+
+**Adapter**:
+A Layer that fills one service on an outside runtime, such as Kokoro for `SpeechSynthesizer` or ffmpeg for `Encoder`. An adapter imports services and libraries and never another adapter; only the `reebeat` command composes adapters. Release 1 has local adapters only.
+_Avoid_: Integration (as a package name; it is the tier's description), driver
+
+**Selection**:
+Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `reebeat.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
+
+**Stand-in**:
+An offline adapter for tests and for running the whole pipeline with no model (`silent` narrator, `even` aligner, tone sounds, in-memory cache). Its id ends `-standin`. A build made with a stand-in narrator is silent by construction, so the checks that compare narration audio report `N/A (silent stand-in)` for it, and only for it.
+_Avoid_: Mock, fake (a fake is a test double inside one test)
+
+**Egress**:
+What an adapter sends out of the machine when it runs, declared in its `info`: nothing (`none`) for every local adapter, the kinds of data (for example the script text) for a hosted one. The build prints each adapter's egress and lists it in `build.json` with the adapter's id and settings and the provenance of every cached asset. Credentials come from the environment only and never appear in a cache key, the Plan, the manifest or the output.
 
 ## Groupings (reserved; not modelled until a real case needs them)
 

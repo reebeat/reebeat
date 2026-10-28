@@ -6,9 +6,11 @@ title = "reebeat secret checks"
 useDefault = true
 
 # A speech cache provenance file names its own SHA-256 content address in a field called `key`; that is not a credential.
+# The first commits named the file `<key>.json`; the history keeps that name, the cache now writes
+# `<key>.provenance.json` and `<key>.words.json`.
 [[allowlists]]
 description = "speech cache provenance files (packages/cache-fs)"
 targetRules = ["generic-api-key"]
 paths = [
-  '''stories/[^/]+/speech-cache/[0-9a-f]{64}\.(?:provenance|words)\.json$''',
+  '''stories/[^/]+/speech-cache/[0-9a-f]{64}(?:\.provenance|\.words)?\.json$''',
 ]

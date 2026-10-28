@@ -18,15 +18,24 @@ devenv shell -- bun run reebeat build stories/same-id/story.fountain --out build
 devenv shell -- bun run reebeat check build/same-id --source stories/same-id/story.fountain # the falsifiers
 ```
 
-Open `build/same-id/deck.html` for the Deck (arrow keys; `s` for speaker notes) and `build/same-id/same-id.mp4` for the Video. The narration is a synthetic voice; the speech is cached in `stories/same-id/speech-cache` so building needs no models.
+Open `build/same-id/deck.html` for the Deck (arrow keys; `s` for speaker notes) and `build/same-id/same-id.mp4` for the Video. The narration is a synthetic voice; the speech is cached in `stories/same-id/speech-cache` so building needs no models. The build prints the adapters it used and what each sends out (`egress: none` for every local one).
+
+The adapters are a choice, not a given: `reebeat.config.json` beside the story or the flags `--speech kokoro|silent`, `--aligner whisper|even`, `--sounds`, `--renderer`, `--capturer`, `--encoder`, `--cache` and `--cache-dir` select them. To run the whole pipeline with no model at all, use the offline stand-ins (Chromium and ffmpeg are still used):
+
+```sh
+devenv shell -- bun run reebeat build stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin --out build/offline
+devenv shell -- bun run reebeat check build/offline --source stories/same-id/story.fountain --cache-dir /tmp/standin
+```
+
+The silent narrator makes the narration check (F8) and the sound part of the cue check (F1) meaningless; they print `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator.
 
 ## Where to read
 
 - [`GLOSSARY.md`](GLOSSARY.md): the vocabulary and the screenplay mapping (Story, Scene, Beat, Keyframe, Line, Cue, Hint, Element, Identity diff, Rendering).
-- [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first).
+- [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first; R3: composable pieces).
 - [`docs/specs/`](docs/specs/): one spec per felt journey; [`STATE.md`](STATE.md) says which is active.
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).
-- Packages: `packages/core` (screenplay to Plan, schedule), `speech` (Kokoro and whisper.cpp with a content-addressed cache), `deck`, `video` and `sfx`, `verify` (the checks), `cli` (the `reebeat` command).
+- Packages, in three tiers with one dependency direction (library, then service, then adapter; [design R3](docs/design/keyframe-engine.md)): libraries `core` (screenplay to Plan, schedule), `subtitles` and `lint`; the service package `services` (the seven service interfaces, their contract suites and offline stand-ins); the build program `pipeline`; adapters `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg` and `cache-fs`; and the tools `verify` (the checks) and `cli` (the `reebeat` command, the only place adapters are chosen and composed).
 
 The name `reebeat` is working; the GitHub org `reebeat` and the npm org `reebeat` are reserved.
 

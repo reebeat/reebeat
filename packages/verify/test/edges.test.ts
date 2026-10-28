@@ -94,8 +94,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const verdict = yield* compareBuilds(fixture.build, quieter);
           const same = yield* compareBuilds(fixture.build, copy);
 
-          assert.isTrue(same.ok, same.detail);
-          assert.isFalse(verdict.ok);
+          assert.strictEqual(same.status, "pass", same.detail);
+          assert.strictEqual(verdict.status, "fail");
           assert.match(
             verdict.detail,
             /the first differing audio sample is \d+ \(\d+ and \d+ samples\)/u
@@ -140,7 +140,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const quieter = yield* mutate("f8-quieter", remix(parts(1, 0.5)));
 
           for (const verdicts of [absent, drowned]) {
-            assert.isFalse(verdictOf(verdicts, "F8").ok);
+            assert.strictEqual(verdictOf(verdicts, "F8").status, "fail");
             assert.include(
               verdictOf(verdicts, "F8").detail,
               "Line sc1.l1: its audio is not found within 150 ms"
@@ -166,7 +166,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.isBelow(scores.absent, 0.3);
           assert.isAbove(scores.drowned, 0.3);
           assert.isBelow(scores.drowned, 0.8);
-          assert.isTrue(verdictOf(quieter, "F8").ok);
+          assert.strictEqual(verdictOf(quieter, "F8").status, "pass");
           assert.isAbove(scores.quieter, 0.8);
           assert.isBelow(reportedMatch(verdictOf(drowned, "F8").detail), 0.8);
         })
@@ -191,7 +191,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const quieter = yield* mutate("f1-quieter", remix(parts(1, 0.3)));
 
           for (const verdicts of [wrong, drowned]) {
-            assert.isFalse(verdictOf(verdicts, "F1").ok);
+            assert.strictEqual(verdictOf(verdicts, "F1").status, "fail");
             assert.include(
               verdictOf(verdicts, "F1").detail,
               "sc1.l1.c2 sfx: pop at frame 65: the sound is not found within 150 ms"
@@ -210,7 +210,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.isBelow(scores.wrong, 0.2);
           assert.isAbove(scores.drowned, 0.2);
           assert.isBelow(scores.drowned, 0.5);
-          assert.isTrue(verdictOf(quieter, "F1").ok);
+          assert.strictEqual(verdictOf(quieter, "F1").status, "pass");
           assert.isAbove(scores.quieter, 0.5);
         })
     );

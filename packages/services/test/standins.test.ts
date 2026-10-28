@@ -62,21 +62,36 @@ describe("every stand-in declares itself", () => {
 });
 
 describe("silentSynthesizer", () => {
-  it.effect("speaks max(300, words * 330) ms divided by the speed", () =>
-    Effect.gen(function* durations() {
-      const synthesizer = yield* SpeechSynthesizer;
+  it.effect(
+    "speaks max(300, words * 330) ms divided by the speed, then 400 ms of silence, and the words end before it",
+    () =>
+      Effect.gen(function* durations() {
+        const synthesizer = yield* SpeechSynthesizer;
 
-      const ms = (text: string, speed: number) =>
-        Effect.map(
-          synthesizer.synthesize({ speed, text, voice: "v" }),
-          ({ clip }) =>
-            Math.round((clip.samples.length / clip.sampleRate) * 1000)
-        );
+        const spoken = (text: string, speed: number) =>
+          Effect.map(
+            synthesizer.synthesize({ speed, text, voice: "v" }),
+            ({ clip, words }) => ({
+              clipMs: Math.round(
+                (clip.samples.length / clip.sampleRate) * 1000
+              ),
+              lastEnd: words?.at(-1)?.endMs,
+            })
+          );
 
-      assert.strictEqual(yield* ms("one", 1), 330);
-      assert.strictEqual(yield* ms("one two three four", 1), 1320);
-      assert.strictEqual(yield* ms("one two three four", 2), 660);
-    }).pipe(Effect.provide(silentSynthesizer))
+        assert.deepStrictEqual(yield* spoken("one", 1), {
+          clipMs: 730,
+          lastEnd: 330,
+        });
+        assert.deepStrictEqual(yield* spoken("one two three four", 1), {
+          clipMs: 1720,
+          lastEnd: 1320,
+        });
+        assert.deepStrictEqual(yield* spoken("one two three four", 2), {
+          clipMs: 1060,
+          lastEnd: 660,
+        });
+      }).pipe(Effect.provide(silentSynthesizer))
   );
 });
 

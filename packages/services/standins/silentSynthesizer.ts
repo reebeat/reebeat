@@ -1,4 +1,5 @@
-// The silent stand-in for SpeechSynthesizer: silence as long as the words would take, with synthetic word timings.
+// The silent stand-in for SpeechSynthesizer: silence as long as the words would take, with synthetic word timings and
+// a trailing silence.
 // Offline and pure; its id ends `-standin`.
 import { Array as Arr, Effect, Layer } from "effect";
 
@@ -13,14 +14,24 @@ const perWordMs = 330;
 
 const minimumMs = 300;
 
-/** The silent stand-in: `max(300, words * 330)` ms divided by the speed, and the words spread evenly over it. */
+/**
+ * Silence after the last word, as a real narrator leaves: a Cue after the last word fires at that word's end, and the
+ * next change of picture comes a fixed tail after the clip ends. Without it the Cue's own animation would still run
+ * when the next scene changes, and the checks that look for the first changed frame would read the wrong one.
+ */
+const trailingMs = 400;
+
+/**
+ * The silent stand-in: the words take `max(300, words * 330)` ms divided by the speed, spread evenly, followed by 400 ms
+ * of silence.
+ */
 export const silentSynthesizer = Layer.succeed(
   SpeechSynthesizer,
   SpeechSynthesizer.of({
     info: {
       egress: localEgress,
-      id: "silent@1-standin",
-      settings: { perWordMs, sampleRate },
+      id: "silent@2-standin",
+      settings: { perWordMs, sampleRate, trailingMs },
     },
     synthesize: ({ speed, text }) => {
       const words = Arr.filter(text.split(/\s+/u), (word) => word !== "");
@@ -31,16 +42,18 @@ export const silentSynthesizer = Layer.succeed(
         );
       }
 
-      const ms = Math.round(
+      const spokenMs = Math.round(
         Math.max(minimumMs, words.length * perWordMs) / speed
       );
 
       return Effect.succeed({
         clip: {
           sampleRate,
-          samples: new Float32Array(Math.round((sampleRate * ms) / 1000)),
+          samples: new Float32Array(
+            Math.round((sampleRate * (spokenMs + trailingMs)) / 1000)
+          ),
         },
-        words: evenSpans(ms, words.length),
+        words: evenSpans(spokenMs, words.length),
       });
     },
   })

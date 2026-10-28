@@ -1,6 +1,6 @@
 // The Deck in a real Chromium (spec 0001, M3): the runtime API of the page contract, the effect of each Cue, the
 // notes, and reveal.js Auto-Animate keeping the identity of a matched Element. These tests use the real clock; the
-// controlled clock belongs to packages/video. One browser per test, closed with the test's scope.
+// controlled clock belongs to packages/capture-chromium. One browser per test, closed with the test's scope.
 import { assert, describe, it } from "@effect/vitest";
 import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Order, Schema } from "effect";

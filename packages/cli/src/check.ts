@@ -8,13 +8,13 @@ import { Verifier } from "./verifier.ts";
 import { exitCode, renderVerdicts } from "./verify.ts";
 import type { Verdict } from "./verify.ts";
 
-/** Prints the verdicts and fails with `ChecksFailed`, naming each falsifier that failed, unless all are ok. */
+/** Prints the verdicts and fails with `ChecksFailed`, naming each falsifier that failed, unless none fails. */
 export const reportVerdicts = Effect.fn("reportVerdicts")(
   function* reportVerdicts(verdicts: readonly Verdict[]) {
     yield* Console.log(renderVerdicts(verdicts));
 
     const failed = Arr.map(
-      Arr.filter(verdicts, (verdict) => !verdict.ok),
+      Arr.filter(verdicts, (verdict) => verdict.status === "fail"),
       (verdict) => verdict.id
     );
 
@@ -31,10 +31,12 @@ export const reportVerdicts = Effect.fn("reportVerdicts")(
 
 /**
  * Checks `dir` against `source`. A directory without a valid `build.json` is refused with `NotABuild` before any
- * check runs: a build that stopped half way leaves none (F12).
+ * check runs: a build that stopped half way leaves none (F12). `cacheDir` is where the narration of each Line is
+ * compared from (F8); the commands default it to the speech cache beside the source.
  */
 export const checkBuild = Effect.fn("checkBuild")(
   function* checkBuild(options: {
+    readonly cacheDir: string;
     readonly dir: string;
     readonly source: string;
   }) {
@@ -45,6 +47,7 @@ export const checkBuild = Effect.fn("checkBuild")(
     return yield* reportVerdicts(
       yield* verifier.check({
         buildDir: options.dir,
+        cacheDir: options.cacheDir,
         sourcePath: options.source,
       })
     );

@@ -41,3 +41,47 @@ export type SpeechStageError =
   | SpeechCacheMiss
   | AlignmentBelowThreshold
   | SpeechAssetInvalid;
+
+/** The `.fountain` file cannot be read or is not valid UTF-8. */
+export class SourceUnreadable extends Schema.TaggedError<
+  SourceUnreadable,
+  { readonly brand: unique symbol }
+>()("SourceUnreadable", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+  path: Schema.String,
+}) {}
+
+/** The output directory is neither empty nor an earlier build, so the build will not replace it. */
+export class OutputDirOccupied extends Schema.TaggedError<
+  OutputDirOccupied,
+  { readonly brand: unique symbol }
+>()("OutputDirOccupied", { message: Schema.String, path: Schema.String }) {}
+
+/** Writing, moving or removing a file of the build failed. */
+export class BuildOutputFailed extends Schema.TaggedError<
+  BuildOutputFailed,
+  { readonly brand: unique symbol }
+>()("BuildOutputFailed", {
+  cause: Schema.Defect(),
+  message: Schema.String,
+  path: Schema.String,
+}) {}
+
+/** The `cause` handler of an effect that writes, moves or removes `path`: `what` completes "cannot ...". */
+export const outputFailed = (path: string, what: string) => (cause: unknown) =>
+  new BuildOutputFailed({
+    cause,
+    message: `cannot ${what} ${path}: ${cause instanceof Error ? cause.message : String(cause)}`,
+    path,
+  });
+
+/** The cache holds an asset the Plan's Line names, but `build.json` cannot record it: it is missing from `list`. */
+export class AssetNotListed extends Schema.TaggedError<
+  AssetNotListed,
+  { readonly brand: unique symbol }
+>()("AssetNotListed", {
+  key: Schema.String,
+  lineId: Schema.String,
+  message: Schema.String,
+}) {}

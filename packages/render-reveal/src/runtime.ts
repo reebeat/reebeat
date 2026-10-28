@@ -1,6 +1,6 @@
 // The page runtime: the reveal.js configuration, the effect of each fragment (a Cue) and `window.reebeatDeck`, the
 // handle the capture drives. It is plain JavaScript text (no framework, no module system) so that `deck.html` works
-// from `file://`. The text is generated here and written to `assets/deck.js` by `writeDeck`.
+// from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
 import { Array as Arr } from "effect";
 
 import { fontFaces } from "./theme.ts";

@@ -1,38 +1,38 @@
-// `reebeat build` on a real file system and a real ffmpeg, with a fake browser (no Chromium starts): what a
-// finished build holds, and F12, "failure is loud": a speech-cache miss, a capture timeout and a browser failure each
-// stop the build with their typed error and leave neither `<out>` nor `<out>.partial` for `check` to accept.
-import { assert, describe, it as realClock, layer } from "@effect/vitest";
+// `reebeat build` on a real file system, the real reveal.js Renderer and a real ffmpeg, with the offline stand-ins
+// for narration and a fake capturer (no Chromium starts): what a finished build holds, the adapters it lists, and
+// F12, "failure is loud": a speech-cache miss and a capture failure each stop the build with their typed error and
+// leave neither `<out>` nor `<out>.partial` for `check` to accept.
+import { assert, layer } from "@effect/vitest";
 import { decodePlan } from "@reebeat/core";
-import { sha256Hex } from "@reebeat/speech";
-import { BrowserFailed, MediaTools, probeMedia } from "@reebeat/video";
+import { MediaTools, probeMedia } from "@reebeat/encode-ffmpeg";
+import { sha256Hex } from "@reebeat/pipeline";
+import { CaptureError } from "@reebeat/services";
 import {
   Array as Arr,
   Effect,
   Exit,
-  Fiber,
   FileSystem,
-  Option,
   Order,
   Path,
+  Stream,
 } from "effect";
 
 import { readManifest } from "../src/manifest.ts";
 import {
-  fakeBrowser,
-  fillCache,
-  hangingBrowser,
-  keysOf,
-  planOf,
+  fakeCapturerWith,
   platform,
   runBuild,
   runCli,
-  sameId,
-  storyFile,
-  storyText,
-  storyWithCache,
+  storySetup,
   tempDirectory,
   writeText,
 } from "./support.ts";
+import type { Fakes } from "./support.ts";
+
+/** The flags of the offline stand-ins for narration. */
+const offline = ["--speech", "silent", "--aligner", "even"] as const;
+
+const setup = storySetup;
 
 /** Every file under `dir`, as a path relative to it, sorted. */
 const filesUnder = Effect.fnUntraced(function* filesUnder(dir: string) {
@@ -51,22 +51,26 @@ const filesUnder = Effect.fnUntraced(function* filesUnder(dir: string) {
 const absent = Effect.fnUntraced(function* absent(...paths: string[]) {
   const fs = yield* FileSystem.FileSystem;
 
-  for (const path of paths) {
-    assert.isFalse(yield* fs.exists(path), `${path} must not exist`);
+  for (const target of paths) {
+    assert.isFalse(yield* fs.exists(target), `${target} must not exist`);
   }
 });
 
 layer(platform)("reebeat build", (it) => {
   it.effect(
-    "writes the files of a finished build, listed in build.json, and no partial directory",
+    "writes the files of a finished build, listed in build.json with the adapters and their egress, and no partial directory",
     () =>
       Effect.gen(function* finished() {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
-        const setup = yield* storyWithCache;
-        const { out, story } = setup;
+        const where = yield* setup;
+        const { out, story } = where;
 
-        const { exit, stdout } = yield* runBuild(setup, ["--name", "cli"]);
+        const { exit, stdout } = yield* runBuild(where, [
+          ...offline,
+          "--name",
+          "cli",
+        ]);
 
         assert.isTrue(Exit.isSuccess(exit));
 
@@ -117,6 +121,19 @@ layer(platform)("reebeat build", (it) => {
           yield* sha256Hex(yield* fs.readFile(story))
         );
 
+        // The seven adapters, each local: nothing leaves the machine; and the provenance of both Lines' audio.
+        assert.deepStrictEqual(
+          Arr.map(manifest.adapters, (adapter) => adapter.id).slice(0, 2),
+          ["silent@2-standin", "even@1-standin"]
+        );
+        assert.strictEqual(manifest.adapters.length, 7);
+
+        for (const adapter of manifest.adapters) {
+          assert.deepStrictEqual(adapter.egress, { kind: "local", sends: [] });
+        }
+
+        assert.strictEqual(manifest.assets.length, 2);
+
         // plan.json is the Plan with its Timeline; the video has exactly the Timeline's frames.
         const plan = yield* decodePlan(
           yield* fs.readFileString(path.join(out, "plan.json"))
@@ -132,6 +149,21 @@ layer(platform)("reebeat build", (it) => {
           frames
         );
         assert.include(stdout, `${frames} frames`);
+
+        // The summary names every adapter and what it sends out: nothing, for each local one.
+        assert.include(
+          stdout,
+          "SpeechSynthesizer: silent@2-standin, egress: none"
+        );
+
+        assert.strictEqual(
+          Arr.length(
+            Arr.filter(stdout.split("\n"), (row) =>
+              row.endsWith("egress: none")
+            )
+          ),
+          7
+        );
       }).pipe(Effect.provide(MediaTools.layer))
   );
 
@@ -140,267 +172,185 @@ layer(platform)("reebeat build", (it) => {
     () =>
       Effect.gen(function* named() {
         const path = yield* Path.Path;
-        const setup = yield* storyWithCache;
+        const where = yield* setup;
 
-        assert.isTrue(Exit.isSuccess((yield* runBuild(setup)).exit));
+        const { exit } = yield* runBuild(where, [...offline]);
+
+        assert.isTrue(Exit.isSuccess(exit));
         assert.include(
-          yield* filesUnder(setup.out),
-          `${path.basename(setup.dir)}.mp4`
+          yield* filesUnder(where.out),
+          `${path.basename(where.dir)}.mp4`
         );
       })
   );
 
   it.effect(
-    "replaces an earlier build, and removes a stale partial directory",
+    "the speech cache is the story's speech-cache directory, or --cache-dir",
     () =>
-      Effect.gen(function* replaced() {
-        const fs = yield* FileSystem.FileSystem;
-        const setup = yield* storyWithCache;
-        const { out } = setup;
-
-        yield* fs.makeDirectory(`${out}.partial`);
-        yield* writeText(`${out}.partial`, "left-by-a-crash.txt", "x");
-
-        assert.isTrue(Exit.isSuccess((yield* runBuild(setup)).exit));
-        yield* writeText(out, "stray.txt", "not in the manifest");
-        assert.isTrue(Exit.isSuccess((yield* runBuild(setup)).exit));
-
-        assert.notInclude(yield* filesUnder(out), "stray.txt");
-        yield* absent(`${out}.partial`);
-      })
-  );
-
-  it.effect(
-    "refuses to replace a directory that is not an earlier build, and leaves it alone",
-    () =>
-      Effect.gen(function* occupied() {
-        const fs = yield* FileSystem.FileSystem;
-        const setup = yield* storyWithCache;
-        const { out } = setup;
-
-        yield* fs.makeDirectory(out);
-        yield* writeText(out, "mine.txt", "mine");
-
-        const { exit, stderr } = yield* runBuild(setup);
-
-        assert.isTrue(Exit.isFailure(exit));
-        assert.match(stderr, /^OutputDirOccupied: /u);
-        assert.deepStrictEqual(yield* filesUnder(out), ["mine.txt"]);
-      })
-  );
-});
-
-/** The narration audio file of every Line of the `plan.json` text, in order. */
-const audioOf = (plan: string) =>
-  Effect.map(decodePlan(plan), (decoded) =>
-    Arr.flatMap(decoded.timeline?.scenes ?? [], (scene) =>
-      Arr.map(scene.lines, (line) => line.audio.file)
-    )
-  );
-
-/** A story directory with its own cache, built from `text`. */
-const storyOf = (text: string) =>
-  Effect.gen(function* made() {
-    const path = yield* Path.Path;
-    const story = yield* storyFile(text);
-    const dir = path.dirname(story);
-
-    yield* fillCache(path.join(dir, "speech-cache"), yield* planOf(text));
-
-    return { out: path.join(dir, "out"), story };
-  });
-
-layer(platform)("reebeat build keeps one source (F5, build side)", (it) => {
-  it.effect(
-    "one changed narration word changes the notes, the subtitles, the narration audio and the hash together",
-    () =>
-      Effect.gen(function* oneSource() {
+      Effect.gen(function* caches() {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
-        const before = yield* storyOf(storyText);
+        const beside = yield* setup;
+        const elsewhere = yield* setup;
+        const named = path.join(yield* tempDirectory, "cache");
 
-        const after = yield* storyOf(
-          storyText.replace("One two three.", "Uno two three.")
+        yield* runBuild(beside, [...offline]);
+        yield* runBuild(elsewhere, [...offline, "--cache-dir", named]);
+
+        assert.isAbove(
+          Arr.filter(
+            yield* fs.readDirectory(path.join(beside.dir, "speech-cache")),
+            (name) => name.endsWith(".flac")
+          ).length,
+          0
         );
-
-        assert.isTrue(
-          Exit.isSuccess((yield* runBuild(before, ["--name", "v"])).exit)
+        assert.isAbove(
+          Arr.filter(yield* fs.readDirectory(named), (name) =>
+            name.endsWith(".flac")
+          ).length,
+          0
         );
-        assert.isTrue(
-          Exit.isSuccess((yield* runBuild(after, ["--name", "v"])).exit)
-        );
-
-        const read = (setup: typeof before, file: string) =>
-          fs.readFileString(path.join(setup.out, file));
-
-        const hashes = yield* Effect.forEach([before, after], (setup) =>
-          Effect.map(
-            readManifest(setup.out),
-            (manifest) => manifest.sourceSha256
-          )
-        );
-
-        assert.notStrictEqual(hashes[0], hashes[1]);
-
-        // Every output of the new build carries the new hash and the new word; none carries the old.
-        const outputs = {
-          deck: yield* read(after, "deck.html"),
-          plan: yield* read(after, "plan.json"),
-          vtt: yield* read(after, "v.vtt"),
-        };
-
-        const media = yield* probeMedia(path.join(after.out, "v.mp4"));
-
-        for (const text of [outputs.deck, outputs.plan, outputs.vtt]) {
-          assert.include(text, hashes[1] ?? "");
-          assert.notInclude(text, hashes[0] ?? "");
-          assert.include(text, "Uno two three.");
-          assert.notInclude(text, "One two three.");
-        }
-
-        assert.strictEqual(
-          media.format.tags?.comment,
-          `reebeat source-sha256 ${hashes[1]}`
-        );
-
-        // The narration audio of the changed Line is another cache entry: the Timeline names another file.
-        const [oldAudio, newAudio] = [
-          yield* audioOf(yield* read(before, "plan.json")),
-          yield* audioOf(outputs.plan),
-        ];
-
-        assert.notStrictEqual(oldAudio[0], newAudio[0]);
-        assert.strictEqual(oldAudio[1], newAudio[1]);
-      }).pipe(Effect.provide(MediaTools.layer))
+        yield* absent(path.join(elsewhere.dir, "speech-cache"));
+      })
   );
-});
 
-layer(platform)("reebeat build fails loudly (F12)", (it) => {
   it.effect(
-    "a cache entry deleted from a copy of the committed cache: SpeechCacheMiss names the Line, and no output is left",
+    "a story's reebeat.config.json selects the adapters, and a flag beats it",
+    () =>
+      Effect.gen(function* configured() {
+        const where = yield* setup;
+
+        yield* writeText(
+          where.dir,
+          "reebeat.config.json",
+          '{ "speech": "silent", "aligner": "even" }'
+        );
+
+        const fromFile = yield* runBuild(where);
+
+        assert.isTrue(Exit.isSuccess(fromFile.exit));
+        assert.include(fromFile.stdout, "SpeechSynthesizer: silent@2-standin");
+
+        // The flag says kokoro: with no cache and no refresh that is a miss, not the config's silent narrator.
+        const overridden = yield* runBuild(where, ["--speech", "kokoro"]);
+
+        assert.isTrue(Exit.isFailure(overridden.exit));
+        assert.match(overridden.stderr, /^SpeechCacheMiss: /u);
+      })
+  );
+
+  it.effect(
+    "F12: a cache miss stops the build with SpeechCacheMiss naming the Line and the key, and leaves no output",
     () =>
       Effect.gen(function* miss() {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const committed = yield* sameId;
-        const scratch = yield* tempDirectory;
-        const cache = path.join(scratch, "speech-cache");
+        const where = yield* setup;
 
-        const setup = {
-          out: path.join(scratch, "out"),
-          story: committed.story,
-        };
-
-        yield* fs.copy(committed.cache, cache);
-
-        // Control: the unmodified copy reads, for every Line (`plan --timing` reads the cache and writes nothing).
-        const intact = yield* runCli([
-          "plan",
-          setup.story,
-          "--timing",
-          "--cache",
-          cache,
-        ]);
-
-        assert.isTrue(Exit.isSuccess(intact.exit));
-
-        // Mutation: delete the entry of one Line.
-        const keys = yield* keysOf(
-          yield* planOf(yield* fs.readFileString(setup.story))
-        );
-
-        const victim = Option.getOrThrow(
-          Arr.findFirst(keys, (entry) => entry.lineId === "sc4.l2")
-        );
-
-        yield* fs.remove(path.join(cache, `${victim.key}.json`));
-        yield* fs.remove(path.join(cache, `${victim.key}.flac`));
-
-        const { exit, stderr, stdout } = yield* runBuild(setup, [
-          "--cache",
-          cache,
+        const { exit, stderr, stdout } = yield* runBuild(where, [
+          "--aligner",
+          "even",
         ]);
 
         assert.isTrue(Exit.isFailure(exit));
+        assert.match(stderr, /^SpeechCacheMiss: .*Line sc1\.l1/u);
+        assert.match(stderr, /[0-9a-f]{64}/u);
         assert.strictEqual(stdout, "");
-        assert.match(stderr, /^SpeechCacheMiss: /u);
-        assert.include(stderr, "Line sc4.l2");
-        assert.include(stderr, victim.key);
-        yield* absent(setup.out, `${setup.out}.partial`);
+        yield* absent(where.out, `${where.out}.partial`);
       })
   );
 
   it.effect(
-    "a browser that fails: its typed error surfaces unchanged, and no output is left",
+    "F12: a capture that fails stops the build with its typed error, leaves no output and replaces an earlier build with nothing",
     () =>
-      Effect.gen(function* browser() {
-        const setup = yield* storyWithCache;
+      Effect.gen(function* failing() {
+        const fs = yield* FileSystem.FileSystem;
+        const where = yield* setup;
 
-        const { exit, stderr } = yield* runBuild(setup, [], {
-          browser: fakeBrowser(
-            Effect.fail(
-              new BrowserFailed({
-                cause: undefined,
-                message: "screenshot failed: the page crashed",
-                operation: "screenshot",
+        const earlier = yield* runBuild(where, [...offline]);
+
+        assert.isTrue(Exit.isSuccess(earlier.exit));
+        assert.isTrue(yield* fs.exists(`${where.out}/build.json`));
+
+        const { exit, stderr } = yield* runBuild(where, [...offline], {
+          capturer: fakeCapturerWith(() =>
+            Stream.fail(
+              new CaptureError({
+                adapter: "fake-capturer@1",
+                cause: "timeout",
+                message: "the capture timed out",
               })
             )
           ),
         });
 
         assert.isTrue(Exit.isFailure(exit));
-        assert.match(
-          stderr,
-          /^BrowserFailed: screenshot failed: the page crashed/u
-        );
-        yield* absent(setup.out, `${setup.out}.partial`);
+        assert.match(stderr, /^CaptureError: the capture timed out/u);
+        yield* absent(where.out, `${where.out}.partial`);
       })
   );
-});
 
-// The deadline and the interrupt need the real clock, which a `layer` block does not offer.
-describe("reebeat build fails loudly on the real clock (F12)", () => {
-  realClock.live(
-    "a capture past its deadline: CaptureTimeout, and no output is left",
+  it.effect(
+    "--capture-timeout reaches the capturer; without it the capturer's default applies",
     () =>
       Effect.gen(function* timeout() {
-        const setup = yield* storyWithCache;
+        const seen: (number | undefined)[] = [];
 
-        const { exit, stderr } = yield* runBuild(
-          setup,
-          ["--capture-timeout", "0.5"],
+        const spy: NonNullable<Fakes["spy"]> = (_selection, options) => {
+          seen.push(options.captureTimeoutSeconds);
+        };
+
+        yield* runBuild(
+          yield* setup,
+          [...offline, "--capture-timeout", "0.5"],
           {
-            browser: hangingBrowser,
+            spy,
           }
         );
+        yield* runBuild(yield* setup, [...offline], { spy });
 
-        assert.isTrue(Exit.isFailure(exit));
-        assert.match(
-          stderr,
-          /^CaptureTimeout: capturing \d+ frames took longer than 0\.5 s/u
-        );
-        yield* absent(setup.out, `${setup.out}.partial`);
-      }).pipe(Effect.provide(platform))
+        assert.deepStrictEqual(seen, [0.5, undefined]);
+      })
   );
 
-  realClock.live(
-    "an interrupt while the capture runs removes the partial directory",
+  it.effect(
+    "refuses an output directory that is neither empty nor an earlier build, naming it, and leaves it alone",
     () =>
-      Effect.gen(function* interrupted() {
+      Effect.gen(function* occupied() {
         const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const setup = yield* storyWithCache;
-        const deck = path.join(`${setup.out}.partial`, "deck.html");
+        const where = yield* setup;
 
-        const running = yield* Effect.forkChild(
-          runBuild(setup, [], { browser: hangingBrowser })
+        yield* fs.makeDirectory(where.out, { recursive: true });
+        yield* writeText(where.out, "notes.txt", "mine");
+
+        const { exit, stderr } = yield* runBuild(where, [...offline]);
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.match(stderr, /^OutputDirOccupied: /u);
+        assert.strictEqual(
+          yield* fs.readFileString(`${where.out}/notes.txt`),
+          "mine"
         );
+        yield* absent(`${where.out}.partial`);
+      })
+  );
 
-        // The deck is written just before the capture starts: the build is inside its scope.
-        yield* Effect.repeat(fs.exists(deck), { until: (written) => written });
-        yield* Fiber.interrupt(running);
+  it.effect(
+    "a story that does not exist is SourceUnreadable and builds nothing",
+    () =>
+      Effect.gen(function* nothing() {
+        const dir = yield* tempDirectory;
+        const out = `${dir}/out`;
 
-        yield* absent(setup.out, `${setup.out}.partial`);
-      }).pipe(Effect.provide(platform))
+        const { exit, stderr } = yield* runCli([
+          "build",
+          `${dir}/nothing.fountain`,
+          "--out",
+          out,
+          ...offline,
+        ]);
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.match(stderr, /^SourceUnreadable: cannot read /u);
+        yield* absent(out, `${out}.partial`);
+      })
   );
 });

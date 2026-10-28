@@ -6,4 +6,4 @@ export {
   runChecks,
 } from "@reebeat/verify";
 
-export type { Verdict, VerifyError } from "@reebeat/verify";
+export type { Status, Verdict, VerifyError } from "@reebeat/verify";

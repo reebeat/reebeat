@@ -4,6 +4,8 @@ import { NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
+import type { HeardWord } from "../src/align.ts";
+
 /** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
 export const fixtureSha256 =
   "5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e";
@@ -62,3 +64,13 @@ export const lineOf = (source: string, needle: string): number => {
 
   return matches[0] ?? 0;
 };
+
+/** What whisper would hear if it heard every word of `words` exactly, 100 ms each. */
+export const perfectlyHeard = (
+  words: readonly string[]
+): readonly HeardWord[] =>
+  Arr.map(words, (w, index) => ({
+    endMs: index * 100 + 100,
+    startMs: index * 100,
+    w,
+  }));

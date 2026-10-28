@@ -4,7 +4,7 @@ The release-1 story of reebeat: why a box that keeps its name between two screen
 
 - **Source:** [`story.fountain`](story.fountain), one Fountain screenplay in the vocabulary of [spec 0001](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md).
 - **Text:** original, written for this repository, and public. It uses no course material.
-- **Narration:** a synthetic voice (Kokoro, voice `af_heart`), not a human recording. The speech cache committed in `speech-cache/` holds 12 Lines of FLAC and word times, about 1.2 MB.
+- **Narration:** a synthetic voice (Kokoro, voice `af_heart`), not a human recording. The speech cache committed in `speech-cache/` holds 12 Lines of FLAC, word times and provenance, about 1.2 MB; `bun run refill:speech` in `packages/cli` regenerates it (see [`packages/pipeline`](../../packages/pipeline/README.md)).
 
 ## Build
 

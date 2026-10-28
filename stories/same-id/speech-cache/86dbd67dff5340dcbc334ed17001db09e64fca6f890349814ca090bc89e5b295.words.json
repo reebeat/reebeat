@@ -1,0 +1,36 @@
+{
+  "durationMs": 2225,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 330,
+      "startMs": 230,
+      "w": "The"
+    },
+    {
+      "endMs": 540,
+      "startMs": 330,
+      "w": "same"
+    },
+    {
+      "endMs": 850,
+      "startMs": 540,
+      "w": "name"
+    },
+    {
+      "endMs": 1280,
+      "startMs": 850,
+      "w": "means"
+    },
+    {
+      "endMs": 1390,
+      "startMs": 1280,
+      "w": "it"
+    },
+    {
+      "endMs": 2040,
+      "startMs": 1390,
+      "w": "moves."
+    }
+  ]
+}

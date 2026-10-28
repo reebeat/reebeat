@@ -30,7 +30,7 @@ const effectConfig: EffectConfigInput = {
     },
     {
       // The composition roots of the CLI: the executable, the journey script and the layers they share.
-      files: ["packages/cli/bin/**"],
+      files: ["packages/cli/bin/**", "packages/cli/scripts/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",
@@ -42,46 +42,69 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
-      files: ["packages/speech/src/**"],
-      platform: "node",
-      role: "service",
-      strictness: "strict",
-    },
-    {
-      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
-      files: ["packages/speech/src/kokoro.ts"],
+      // Adapters (design R3): a Layer over a service, on an outside runtime. Each is its own package.
+      files: [
+        "packages/cache-fs/src/**",
+        "packages/align-whisper/src/**",
+        "packages/encode-ffmpeg/src/**",
+      ],
       platform: "node",
       role: "runtime-adapter",
       strictness: "strict",
     },
     {
-      files: ["packages/speech/scripts/**"],
+      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
+      adapterDependencies: ["@huggingface/transformers", "kokoro-js"],
+      files: ["packages/speech-kokoro/src/**"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      // The build program over services only: no outside runtime.
+      files: ["packages/pipeline/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/pipeline/scripts/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",
     },
     {
-      files: ["packages/deck/src/**"],
+      // The reveal.js Renderer reads the installed packages' files, so its platform is node.
+      files: ["packages/render-reveal/src/**"],
       platform: "node",
       role: "effect-library",
       strictness: "strict",
     },
     {
-      files: ["packages/sfx/src/**"],
+      // The synthesised SoundLibrary: pure waveforms behind one Layer.
+      files: ["packages/sounds-synth/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // Libraries (design R3): pure functions over the Plan, no service and no runtime.
+      files: ["packages/subtitles/src/**", "packages/lint/src/**"],
       platform: "portable",
       role: "pure-library",
       strictness: "strict",
     },
     {
-      files: ["packages/video/src/**"],
-      platform: "portable",
+      // The Chromium FrameCapturer: the Layer, the capture and the schedule; the one Playwright module is below.
+      files: ["packages/capture-chromium/src/**"],
+      platform: "node",
       role: "effect-library",
       strictness: "strict",
     },
     {
       // The one module that imports Playwright (spec 0001, "The controlled clock").
       adapterDependencies: ["playwright-core"],
-      files: ["packages/video/src/browser.ts"],
+      files: ["packages/capture-chromium/src/browser.ts"],
       platform: "node",
       role: "runtime-adapter",
       strictness: "strict",
@@ -90,6 +113,19 @@ const effectConfig: EffectConfigInput = {
       files: ["packages/verify/src/**"],
       platform: "portable",
       role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/services/src/**", "packages/services/standins/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The contract suites register vitest tests; every adapter package imports them.
+      files: ["packages/services/contract/**"],
+      platform: "node",
+      role: "test",
       strictness: "strict",
     },
     {
@@ -140,7 +176,7 @@ export default defineConfig({
       ...(ultraciteFmt.ignorePatterns ?? []),
       "**/*.md",
       "packages/*/test/fixtures/**",
-      // The speech cache is written by `@reebeat/speech` in its own JSON layout.
+      // The speech cache is written by `@reebeat/cache-fs` in its own JSON layout.
       "stories/*/speech-cache/**",
     ],
   },
@@ -165,13 +201,11 @@ export default defineConfig({
       ...effectConfigResult.overrides,
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        files: ["tools/quality/effectExceptions.ts"],
+        files: [
+          "tools/quality/checkTiers.ts",
+          "tools/quality/effectExceptions.ts",
+        ],
         rules: { "unicorn/throw-new-error": "off" },
-      },
-      {
-        // speech's services.ts declares its five capabilities as Context.Service classes, one table of one stage.
-        files: ["packages/speech/src/services.ts"],
-        rules: { "eslint/max-classes-per-file": "off" },
       },
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
@@ -179,10 +213,12 @@ export default defineConfig({
         files: [
           "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
-          "packages/deck/src/errors.ts",
-          "packages/speech/src/errors.ts",
+          "packages/capture-chromium/src/errors.ts",
+          "packages/encode-ffmpeg/src/errors.ts",
+          "packages/pipeline/src/errors.ts",
+          "packages/render-reveal/src/errors.ts",
+          "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
-          "packages/video/src/errors.ts",
         ],
         rules: {
           "eslint/max-classes-per-file": "off",
@@ -191,7 +227,11 @@ export default defineConfig({
       },
       {
         // The public entry of a package re-exports its modules; that is the file's only job.
-        files: ["packages/*/src/index.ts"],
+        files: [
+          "packages/*/src/index.ts",
+          "packages/services/contract/index.ts",
+          "packages/services/standins/index.ts",
+        ],
         rules: { "oxc/no-barrel-file": "off" },
       },
       {
@@ -216,9 +256,33 @@ export default defineConfig({
         },
       },
       {
+        // Tier rule (design R3): a service imports libraries only, never an adapter or another tier.
+        files: [
+          "packages/services/src/**",
+          "packages/services/contract/**",
+          "packages/services/standins/**",
+        ],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/services imports libraries only (design R3): core, subtitles and lint.",
+                  regex:
+                    "^@reebeat/(?!(?:core|subtitles|lint|services)(?:/|$))",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
         // F11 (spec 0001): the Deck reads the Plan, never the screenplay. It takes the core's types only and imports
         // no parser, Playwright or ffmpeg wrapper.
-        files: ["packages/deck/src/**"],
+        files: ["packages/render-reveal/src/**"],
         rules: {
           "no-restricted-imports": [
             "error",
@@ -227,7 +291,7 @@ export default defineConfig({
                 {
                   allowTypeImports: true,
                   message:
-                    "packages/deck takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
+                    "packages/render-reveal takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
                   name: "@reebeat/core",
                 },
               ],
@@ -235,7 +299,7 @@ export default defineConfig({
                 ...restrictedSourcePatterns,
                 {
                   message:
-                    "packages/deck imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
+                    "packages/render-reveal imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
                   regex:
                     "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
                 },

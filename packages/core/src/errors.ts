@@ -136,3 +136,9 @@ export type ScheduleError =
   | AlignmentMismatch
   | SceneLeadTooShort
   | CueOutsideLine;
+
+/** The Plan has no Timeline, or its Timeline names a Scene, Line or Cue the Plan does not have. */
+export class PlanNotScheduled extends Schema.TaggedError<
+  PlanNotScheduled,
+  { readonly brand: unique symbol }
+>()("PlanNotScheduled", { message: Schema.String }) {}

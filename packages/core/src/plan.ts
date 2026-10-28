@@ -16,7 +16,7 @@ export const cells = [
   "br",
 ] as const;
 
-/** The classes of the fixed theme (`packages/deck`). */
+/** The classes of the fixed theme (`packages/render-reveal`). */
 export const elementClasses = [
   "box",
   "title",
@@ -25,7 +25,7 @@ export const elementClasses = [
   "muted",
 ] as const;
 
-/** The built-in sound catalogue (synthesised in TypeScript by `@reebeat/sfx`); the one list of sound names. */
+/** The built-in sound catalogue (synthesised in TypeScript by `@reebeat/sounds-synth`); the one list of sound names. */
 export const sfxNames = ["pop", "whoosh", "ding"] as const;
 
 export type SfxName = (typeof sfxNames)[number];

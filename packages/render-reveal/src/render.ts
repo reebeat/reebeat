@@ -1,5 +1,5 @@
 // Plan to page: `renderDeck` is a pure function of the Plan (spec 0001, "Module layout" and the Deck page
-// contract). The same Plan gives the same bytes. Nothing here reads a file; `writeDeck` copies the binary assets.
+// contract). The same Plan gives the same bytes. Nothing here reads a file; `assembleDeck` adds the binary assets.
 import type { Element, PlanJson, Scene } from "@reebeat/core";
 import { Array as Arr } from "effect";
 
@@ -138,8 +138,8 @@ ${sections}
 
 /**
  * The Deck of a Plan: `html` is `deck.html`; `files` are the generated text files it loads (the theme and the
- * runtime). The binary assets (reveal.js, Inter) are copied by `writeDeck`; the sound files `assets/sfx/<name>.wav`
- * are written by the CLI.
+ * runtime). The binary assets (reveal.js, Inter) are added by `assembleDeck`; the sound files `assets/sfx/<name>.wav`
+ * are written by the build program (`@reebeat/pipeline`).
  */
 export const renderDeck = (plan: PlanJson): DeckBundle => ({
   files: [

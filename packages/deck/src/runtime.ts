@@ -10,7 +10,7 @@ import type { DeckSettings } from "./theme.ts";
  * The reveal.js configuration of the Deck page (spec 0001, Deck page contract). The slide size and the Auto-Animate
  * duration come from `plan.settings` (`width`, `height`, `transition`); the rest is fixed.
  */
-export const revealConfig = (settings: DeckSettings) =>
+const revealConfig = (settings: DeckSettings) =>
   ({
     autoAnimateDuration: settings.transition,
     autoAnimateEasing: "ease",

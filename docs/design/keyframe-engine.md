@@ -1183,3 +1183,32 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 **Where Effect is used.** `Schema` for every plain-JSON boundary (alignment, style, `PreparedStory`, reference pins, fixture manifest); tagged errors for expected compile and pipeline failures; services for what has a dependency or authority (fixture source, alignment, media tools over `ChildProcess`, frame renderer, reference store); `Layer`s selected in the CLI composition root; `Scope` for temporary files and child processes; the render pipeline as one Effect program.
 
 **Why it is safe.** The exit ramp needs only `FrameState` and `PreparedStory`, both plain data. The compile stages that use Effect run at prepare time under Bun; none runs per frame. Spec 0001 states the split per module and tests it (F9).
+
+### R2 (2026-10-28): screenplay-first, Fountain to Deck and Video
+
+**Decided by:** the operator, 2026-10-28. **Supersedes** for release 1: section 0 rows "Build on Remotion or adopt Reframe?" and "Use reveal.js Auto-Animate itself?", "Which Renderings?" and decision 7 ("Video first, Deck later"), decision 2 (own engine, R0+R3, no reveal.js animator), and every statement that Remotion is the first Video adapter. **Keeps:** the vocabulary, the Plan stage and `reebeat plan`, anchoring to spoken words, determinism as a requirement, R1 (Effect in the core).
+
+**What changed.** reebeat is **screenplay-first**. One [Fountain](https://fountain.io/syntax) file is the source. `reebeat plan` shows the Plan. Two Renderings are generated from the same Plan and cannot disagree:
+
+- a **Deck**: reveal.js slides, the narration as speaker notes, the Cues as fragments, Auto-Animate (`data-id`) as the identity diff;
+- a **Video**: the same reveal.js page captured frame by frame on a controlled clock (prior art: `timeweb`, the clock behind `timesnap` and `timecut`), stepped through slides and fragments at the aligned time of each Cue, muxed with narration (Kokoro), sound effects, WebVTT subtitles and chapter marks (ffmpeg). Word timing comes from whisper.cpp alignment, as in the first prototype, with the idea of anchoring to a spoken word taken from manim-voiceover's bookmarks.
+
+**Mapping** (also in `GLOSSARY.md`, "Screenplay mapping"):
+
+| Fountain | reebeat |
+|---|---|
+| `# Section`, `= synopsis` | Story and Chapter outline: slide groups, chapter marks |
+| scene heading | Scene (identity boundary): one slide |
+| Action | Keyframe: what is on screen |
+| `NARRATOR` dialogue | Line: speaker notes, narration, subtitles |
+| Parenthetical | delivery hint (speech settings) |
+| `[[note]]` inline | Cue (`next`, `sfx: name`, `focus: id`), anchored to the spoken word before it |
+| Transition | Hint: `> AUTO-ANIMATE` matches Elements by id with the previous Scene; `> CUT` does not |
+
+**Why.** A screenplay is the form writers already use for "what is seen, what is said, when", it has maintained editors and parsers, and one file produces a Deck for the room and a Video for sharing without a second copy to keep. reveal.js already supplies identity matching (`data-id`), fragments, speaker notes and PDF export, which the design had listed as the reasons for a Deck Rendering (2.5). The first prototype's motion-graphic engine is larger than the story needs to start.
+
+**What this reopens.** Section 2.5 rejected reveal.js as the animator because Auto-Animate has no exit, no spring, no path morph, and because a seek of the Chromium animation clock can only be falsified, not proved deterministic. Both remain true. Release 1 accepts them: it **measures** whether the controlled clock drives reveal's CSS transitions and whether two builds are frame-identical (spec 0001, F6 and F7), and records the outcome. If the clock does not cover them, the recorded fallback order is a per-frame seek of `document.getAnimations()`, then JS-driven transitions.
+
+**Roadmap (recorded, not built).** (1) reebeat's own motion engine (path morphs, springs, exits, layout, the per-frame contrast gate; sections 3 to 6) as a renderer plug-in behind the same Plan. (2) The pixel-identical port of the existing 4EM explainer as that engine's regression test; what was measured for it is in [`4em-regression-baseline.md`](4em-regression-baseline.md). (3) Cue offsets and further cue kinds, more than one voice, richer Element vocabulary, a theme system.
+
+**Consequences for earlier sections.** The Remotion licence question (section 9, question 4) no longer blocks release 1: Remotion is not a dependency of it. The `PreparedStory` and `frameState` of section 4 are not built in release 1; reveal.js plus the controlled clock take their place, and the Plan and Timeline stages stay. Property P10 now reads: the core imports no browser, Playwright, ffmpeg, reveal.js or Node built-in.

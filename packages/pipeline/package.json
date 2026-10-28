@@ -13,6 +13,7 @@
   "dependencies": {
     "@reebeat/core": "workspace:*",
     "@reebeat/services": "workspace:*",
+    "@reebeat/subtitles": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

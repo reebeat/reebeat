@@ -19,14 +19,14 @@ import {
 } from "@reebeat/services";
 import type { Asset, Egress, Provenance } from "@reebeat/services";
 import type { Schema } from "effect";
-import { Array as Arr, Crypto, Effect, Option } from "effect";
-import { Hex } from "effect/encoding";
+import { Array as Arr, Effect, Option } from "effect";
 
 import {
   AlignmentBelowThreshold,
   SpeechAssetInvalid,
   SpeechCacheMiss,
 } from "./errors.ts";
+import { sha256Hex } from "./hash.ts";
 import {
   audioName,
   decodeWords,
@@ -59,13 +59,6 @@ const mergedEgress = (left: Egress, right: Egress): Egress => ({
       : "local",
   sends: Arr.dedupe([...left.sends, ...right.sends]),
 });
-
-const sha256Hex = (bytes: Uint8Array) =>
-  Effect.gen(function* digest() {
-    const crypto = yield* Crypto.Crypto;
-
-    return Hex.encode(yield* Effect.orDie(crypto.digest("SHA-256", bytes)));
-  });
 
 /** The key of a Line's asset and the extra JSON that went into it (the provenance records the latter). */
 const keyOf = Effect.fnUntraced(function* keyOf(line: Line, voice: string) {

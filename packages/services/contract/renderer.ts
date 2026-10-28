@@ -1,22 +1,16 @@
 // The contract of Renderer: what every deck renderer (reveal.js, a later motion engine) promises.
 import { assert } from "@effect/vitest";
-import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Predicate } from "effect";
 import type { Layer } from "effect";
 
-import type { RenderFailed } from "../src/errors.ts";
+import type { RenderError } from "../src/errors.ts";
 import { Renderer } from "../src/renderer.ts";
 import type { RenderedDeck } from "../src/renderer.ts";
 import { registerClauses } from "./clause.ts";
 import type { Clause } from "./clause.ts";
 import { contractPlan } from "./fixture.ts";
-import type { FixtureError } from "./fixture.ts";
+import type { FixtureError, PlanOptions } from "./fixture.ts";
 import { assertInfoDeclared, sameBytes } from "./support.ts";
-
-export interface RendererOptions {
-  /** A Plan with a Timeline and at least one Element; the default is the contract Plan. */
-  readonly plan?: PlanJson;
-}
 
 const bytesOf = (content: string | Uint8Array): Uint8Array =>
   Predicate.isString(content) ? new TextEncoder().encode(content) : content;
@@ -44,8 +38,8 @@ const sameDeck = (left: RenderedDeck, right: RenderedDeck): boolean =>
 
 /** The clauses of the contract, as data (a test runs them against broken adapters). */
 export const rendererClauses = (
-  options: RendererOptions = {}
-): readonly Clause<FixtureError | RenderFailed, Renderer>[] => {
+  options: PlanOptions = {}
+): readonly Clause<FixtureError | RenderError, Renderer>[] => {
   const plan =
     options.plan === undefined ? contractPlan : Effect.succeed(options.plan);
 
@@ -129,7 +123,7 @@ export const rendererClauses = (
 export const rendererContract = <LE>(
   label: string,
   layer: Layer.Layer<Renderer, LE>,
-  options?: RendererOptions
+  options?: PlanOptions
 ): void => {
   registerClauses(label, layer, rendererClauses(options));
 };

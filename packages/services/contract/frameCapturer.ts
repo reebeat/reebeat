@@ -2,46 +2,17 @@ import { assert } from "@effect/vitest";
 // The contract of FrameCapturer: what every capturer (headless Chromium on a controlled clock) promises. The
 // adapter's layer also provides the Renderer, because a capture needs a written Deck.
 import type { PlanJson } from "@reebeat/core";
-import {
-  Array as Arr,
-  Effect,
-  FileSystem,
-  Path,
-  Predicate,
-  Stream,
-} from "effect";
-import type { Layer, PlatformError } from "effect";
+import { Effect, FileSystem, Path, Predicate, Stream } from "effect";
+import type { Layer } from "effect";
 
-import type { CaptureError, RenderFailed } from "../src/errors.ts";
 import { FrameCapturer } from "../src/frameCapturer.ts";
 import { Renderer } from "../src/renderer.ts";
 import { registerClauses } from "./clause.ts";
-import type { Clause } from "./clause.ts";
 import { contractPlan } from "./fixture.ts";
-import type { FixtureError } from "./fixture.ts";
-import { assertInfoDeclared, sameBytes } from "./support.ts";
-
-export interface FrameCapturerOptions {
-  /** A Plan with a Timeline; the default is the contract Plan. */
-  readonly plan?: PlanJson;
-}
+import type { PlanOptions } from "./fixture.ts";
+import { assertInfoDeclared, pngSize, sameBytes } from "./support.ts";
 
 type Services = FrameCapturer | Renderer | FileSystem.FileSystem | Path.Path;
-
-const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-
-/** The width and height in a PNG's IHDR chunk, or undefined when the bytes are not a PNG. */
-const pngSize = (
-  bytes: Uint8Array
-): { readonly height: number; readonly width: number } | undefined => {
-  if (!Arr.every(pngSignature, (byte, index) => bytes[index] === byte)) {
-    return undefined;
-  }
-
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
-  return { height: view.getUint32(20), width: view.getUint32(16) };
-};
 
 /** Renders `plan` and writes the deck into a temporary directory owned by the scope; returns the directory. */
 const writeDeck = Effect.fnUntraced(function* writeDeck(plan: PlanJson) {
@@ -77,12 +48,7 @@ const captureAll = Effect.fnUntraced(function* captureAll(plan: PlanJson) {
 });
 
 /** The clauses of the contract, as data (a test runs them against broken adapters). */
-export const frameCapturerClauses = (
-  options: FrameCapturerOptions = {}
-): readonly Clause<
-  CaptureError | FixtureError | PlatformError.PlatformError | RenderFailed,
-  Services
->[] => {
+export const frameCapturerClauses = (options: PlanOptions = {}) => {
   const plan =
     options.plan === undefined ? contractPlan : Effect.succeed(options.plan);
 
@@ -169,7 +135,7 @@ export const frameCapturerClauses = (
 export const frameCapturerContract = <LE>(
   label: string,
   layer: Layer.Layer<Services, LE>,
-  options?: FrameCapturerOptions
+  options?: PlanOptions
 ): void => {
   registerClauses(label, layer, frameCapturerClauses(options));
 };

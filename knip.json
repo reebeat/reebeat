@@ -61,7 +61,7 @@
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "tools/quality": {
-      "entry": ["checkEffectExceptions.ts"],
+      "entry": ["checkEffectExceptions.ts", "checkTiers.ts"],
       "project": ["*.ts", "test/**/*.ts"]
     }
   },

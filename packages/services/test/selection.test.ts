@@ -35,15 +35,22 @@ describe("decodeSelection", () => {
   );
 
   it("the registry names the choices of every key", () => {
-    assert.deepStrictEqual(choices, {
-      aligner: ["whisper", "even"],
-      cache: ["fs"],
-      capturer: ["chromium"],
-      encoder: ["ffmpeg"],
-      renderer: ["reveal"],
-      sounds: ["synth"],
-      speech: ["kokoro", "silent"],
-    });
+    assert.deepStrictEqual(Record.keys(choices), [
+      "aligner",
+      "cache",
+      "capturer",
+      "encoder",
+      "renderer",
+      "sounds",
+      "speech",
+    ]);
+    assert.deepStrictEqual(choices.speech, ["kokoro", "silent"]);
+    assert.deepStrictEqual(choices.aligner, ["whisper", "even"]);
+    assert.deepStrictEqual(choices.sounds, ["synth"]);
+    assert.deepStrictEqual(choices.renderer, ["reveal"]);
+    assert.deepStrictEqual(choices.capturer, ["chromium"]);
+    assert.deepStrictEqual(choices.encoder, ["ffmpeg"]);
+    assert.deepStrictEqual(choices.cache, ["fs"]);
   });
 
   it.effect(

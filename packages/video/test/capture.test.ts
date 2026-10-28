@@ -106,30 +106,3 @@ it.live(
       assert.deepStrictEqual(second, first);
     }).pipe(Effect.provide(services))
 );
-
-it.live(
-  "measurement: how many frames differ between two launches without the settle wait",
-  () =>
-    Effect.gen(function* unsettled() {
-      const workspace = yield* makeWorkspace;
-
-      const first = yield* pngFrameHashes(
-        framesOf(workspace, undefined, { settleNewAnimations: false })
-      );
-
-      const second = yield* pngFrameHashes(
-        framesOf(workspace, undefined, { settleNewAnimations: false })
-      );
-
-      const differing = Arr.length(
-        Arr.filter(Arr.zip(first, second), ([left, right]) => left !== right)
-      );
-
-      assert.strictEqual(first.length, second.length);
-      // Measurement, reported by the task: how many frames differ without the wait.
-      assert.isAtLeast(differing, 0);
-      yield* Effect.log(
-        `no settle: ${differing} of ${first.length} frames differ between two launches`
-      );
-    }).pipe(Effect.provide(services))
-);

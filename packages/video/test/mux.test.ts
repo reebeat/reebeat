@@ -15,11 +15,13 @@ import { MediaTools } from "../src/mediaTools.ts";
 import { muxVideo } from "../src/mux.ts";
 import {
   audioOffsetMs,
+  decodeGrayFrames,
   decodeMonoPcm,
+  firstChangedFrame,
   frameHashes,
   probeMedia,
 } from "../src/probe.ts";
-import type { MediaInfo } from "../src/probe.ts";
+import type { Box, MediaInfo } from "../src/probe.ts";
 import { vtt } from "../src/vtt.ts";
 import { timedFixture } from "./fixturePlan.ts";
 import { buildFixture, framesOf, makeWorkspace, services } from "./support.ts";
@@ -170,6 +172,22 @@ const assertAudio = Effect.fnUntraced(function* audio(
   );
 });
 
+/** Element `b` of the first Scene (cell `br`) fades in when `[[next]]` fires at frame 47. */
+const boxB: Box = { height: 150, width: 360, x: 860, y: 520 };
+
+/** The step of a `[[next]]` Cue is observable in the decoded video, within a frame of its aligned word end. */
+const assertNextStep = Effect.fnUntraced(function* step(mp4: string) {
+  const clip = yield* decodeGrayFrames(mp4, 40, 60);
+
+  const first = firstChangedFrame(clip, boxB, {
+    minPixels: 1000,
+    tolerance: 8,
+  });
+
+  assert.isDefined(first);
+  assert.isAtMost(Math.abs((first ?? 0) - 47), 1);
+});
+
 it.live(
   "the fixture story becomes an mp4 that holds its streams, chapters, subtitles and sounds",
   () =>
@@ -189,6 +207,7 @@ it.live(
       );
       yield* assertSubtitles(built);
       yield* assertAudio(workspace, built.mp4);
+      yield* assertNextStep(built.mp4);
     }).pipe(Effect.provide(services))
 );
 

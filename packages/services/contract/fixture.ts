@@ -54,5 +54,10 @@ export const contractPlan = Effect.flatMap(buildPlan(source, digest), (plan) =>
   schedule(plan, alignedLines(plan))
 );
 
+export interface PlanOptions {
+  /** A Plan with a Timeline and at least one Element; the default is the contract Plan. */
+  readonly plan?: PlanJson;
+}
+
 /** What building the contract Plan can fail with. */
 export type FixtureError = PlanError | ScheduleError;

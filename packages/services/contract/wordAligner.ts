@@ -1,9 +1,10 @@
 // The contract of WordAligner: what every adapter (whisper.cpp, the even stand-in, provider timings) promises.
 import { assert } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Effect } from "effect";
 import type { Layer } from "effect";
 
 import type { AlignError } from "../src/errors.ts";
+import { evenSpans } from "../src/spans.ts";
 import type { AudioClip, WordSpan } from "../src/types.ts";
 import { WordAligner } from "../src/wordAligner.ts";
 import { registerClauses } from "./clause.ts";
@@ -38,12 +39,7 @@ export const wordAlignerClauses = (
   const words = options.words ?? ["names", "are", "cheap", "today"];
   const clipMs = durationMs(clip);
 
-  const truth =
-    options.truth ??
-    Arr.map(words, (_, index) => ({
-      endMs: Math.round(((index + 1) * clipMs) / words.length),
-      startMs: Math.round((index * clipMs) / words.length),
-    }));
+  const truth = options.truth ?? evenSpans(clipMs, words.length);
 
   const request = { clip, words };
 

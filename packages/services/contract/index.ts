@@ -19,16 +19,14 @@ export type { EncoderOptions, MuxProbe } from "./encoder.ts";
 
 export { contractPlan } from "./fixture.ts";
 
+export type { PlanOptions } from "./fixture.ts";
+
 export {
   frameCapturerClauses,
   frameCapturerContract,
 } from "./frameCapturer.ts";
 
-export type { FrameCapturerOptions } from "./frameCapturer.ts";
-
 export { rendererClauses, rendererContract } from "./renderer.ts";
-
-export type { RendererOptions } from "./renderer.ts";
 
 export { soundLibraryClauses, soundLibraryContract } from "./soundLibrary.ts";
 

@@ -37,6 +37,9 @@ jobs:
       - name: Effect exception registry
         shell: bash
         run: devenv shell -- bun run check:exceptions
+      - name: Package tiers
+        shell: bash
+        run: devenv shell -- bun run check:tiers
       - name: Workspace tests
         shell: bash
         run: devenv shell -- bun run test

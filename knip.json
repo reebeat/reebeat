@@ -7,6 +7,15 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/sfx": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/video": {
+      "entry": ["test/**/*.test.ts"],
+      "ignoreDependencies": ["reveal.js"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "tools/quality": {
       "entry": ["checkEffectExceptions.ts"],
       "project": ["*.ts", "test/**/*.ts"]

@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- A minimal hand-written deck page for the video tests. It satisfies the "Deck page" contract of spec 0001 for
+     the plan in test/fixturePlan.ts, with absolute cell positions and no web font. The tests copy it next to
+     assets/reveal.js and assets/reveal.css (from the reveal.js package) in a temporary directory. -->
+<html lang="en" data-source-sha256="5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e">
+<head>
+<meta charset="utf-8">
+<title>Fixture: a small story</title>
+<meta name="reebeat:source-sha256" content="5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e">
+<link rel="stylesheet" href="assets/reveal.css">
+<style>
+html, body { margin: 0; background: #101820; }
+.reveal { font-family: sans-serif; font-size: 36px; color: #fff; }
+.reveal .slides section { text-align: left; }
+.el { position: absolute; box-sizing: border-box; width: 360px; height: 150px; display: flex; align-items: center;
+  justify-content: center; opacity: 1; transition: opacity 0.2s, box-shadow 0.2s; }
+.el.hidden { opacity: 0; }
+.el.shown { opacity: 1; }
+.el.focused { box-shadow: 0 0 0 12px #ffd166; }
+.el.box { background: #e63946; }
+.el.accent { background: #1d4ed8; }
+.el.label { background: #2a9d8f; }
+.el.title { background: transparent; font-size: 96px; width: 600px; }
+.el[data-cell="tl"] { left: 60px; top: 50px; }
+.el[data-cell="mc"] { left: 340px; top: 285px; }
+.el[data-cell="br"] { left: 860px; top: 520px; }
+</style>
+</head>
+<body>
+<div class="reveal"><div class="slides">
+<section data-scene="sc1" data-chapter="ch1" data-auto-animate>
+  <div class="el box" data-id="a" data-cell="tl">Box</div>
+  <div class="el label hidden" data-id="b" data-cell="br">Later</div>
+  <aside class="notes"><p>One two three four.</p></aside>
+  <span class="fragment cue" data-fragment-index="0" data-cue-id="sc1.l1.c1" data-cue-kind="next" data-cue-arg="" data-reveals="b"></span>
+  <span class="fragment cue" data-fragment-index="1" data-cue-id="sc1.l1.c2" data-cue-kind="sfx" data-cue-arg="pop" data-reveals=""></span>
+</section>
+<section data-scene="sc2" data-chapter="ch1" data-auto-animate>
+  <div class="el box accent" data-id="a" data-cell="br">Box</div>
+  <div class="el label" data-id="d" data-cell="tl">Entering</div>
+  <aside class="notes"><p>Five six seven.</p></aside>
+  <span class="fragment cue" data-fragment-index="0" data-cue-id="sc2.l1.c1" data-cue-kind="focus" data-cue-arg="a" data-reveals=""></span>
+</section>
+<section data-scene="sc3" data-chapter="ch2" data-transition="none">
+  <div class="el title" data-id="c" data-cell="mc">Done</div>
+  <aside class="notes"><p>Done.</p></aside>
+</section>
+</div></div>
+<script src="assets/reveal.js"></script>
+<script>
+(() => {
+  const sceneIds = [...document.querySelectorAll(".slides > section")].map((section) => section.dataset.scene);
+  const target = (cue) => cue.closest("section").querySelector('[data-id="' + cue.dataset.cueArg + '"]');
+  const revealed = (cue) => cue.closest("section").querySelector('[data-id="' + cue.dataset.reveals + '"]');
+  const apply = (cue) => {
+    const kind = cue.dataset.cueKind;
+
+    if (kind === "next") {
+      revealed(cue).classList.replace("hidden", "shown");
+    } else if (kind === "focus") {
+      for (const previous of cue.closest("section").querySelectorAll(".focused")) previous.classList.remove("focused");
+      target(cue).classList.add("focused");
+    } else {
+      new Audio("assets/sfx/" + cue.dataset.cueArg + ".wav").play().catch(() => undefined);
+    }
+  };
+  const ready = Reveal.initialize({
+    width: 1280, height: 720, margin: 0, minScale: 1, maxScale: 1, controls: false, progress: false, hash: false,
+    slideNumber: false, transition: "fade", autoAnimateDuration: 0.8, autoAnimateEasing: "ease", fragments: true,
+    center: false,
+  }).then(() => undefined);
+
+  Reveal.on("fragmentshown", (event) => {
+    for (const fragment of event.fragments) if (fragment.classList.contains("cue")) apply(fragment);
+  });
+  window.reebeatDeck = {
+    sceneIds,
+    goToScene: (sceneId) => Reveal.slide(sceneIds.indexOf(sceneId), 0, -1),
+    stepFragment: () => Reveal.nextFragment(),
+    ready,
+  };
+})();
+</script>
+</body>
+</html>

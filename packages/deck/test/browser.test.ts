@@ -226,6 +226,36 @@ describe("the Deck page", () => {
       })
   );
 
+  it.live(
+    "has both Inter faces loaded when ready resolves, even if the first slide uses one",
+    () =>
+      Effect.gen(function* fonts() {
+        const plan = yield* planOf(
+          asText([
+            "# Plain",
+            "",
+            "INT. QUIET - DAY",
+            "",
+            "Only regular text {#note @mc .muted}",
+            "",
+            "NARRATOR",
+            "One face is enough here.",
+          ])
+        );
+
+        const { page } = yield* openDeck(yield* writtenDeck(plan));
+
+        assert.deepStrictEqual(
+          yield* evaluate(
+            page,
+            `[...document.fonts].filter((face) => face.status === "loaded").map((face) => face.family + face.weight).sort()`,
+            Strings
+          ),
+          ["Inter400", "Inter700"]
+        );
+      })
+  );
+
   it.live("rejects an unknown scene id", () =>
     Effect.gen(function* unknown() {
       const plan = yield* storyPlan;

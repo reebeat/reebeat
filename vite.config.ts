@@ -61,15 +61,31 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
-      files: ["packages/deck/src/**"],
+      // The reveal.js Renderer reads the installed packages' files, so its platform is node.
+      files: ["packages/render-reveal/src/**"],
       platform: "node",
       role: "effect-library",
       strictness: "strict",
     },
     {
-      files: ["packages/sfx/src/**"],
+      // The synthesised SoundLibrary: pure waveforms behind one Layer.
+      files: ["packages/sounds-synth/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // Libraries (design R3): pure functions over the Plan, no service and no runtime.
+      files: ["packages/subtitles/src/**", "packages/lint/src/**"],
       platform: "portable",
       role: "pure-library",
+      strictness: "strict",
+    },
+    {
+      // The Chromium FrameCapturer: the Layer, the capture and the schedule; the one Playwright module is below.
+      files: ["packages/capture-chromium/src/**"],
+      platform: "node",
+      role: "effect-library",
       strictness: "strict",
     },
     {
@@ -81,7 +97,7 @@ const effectConfig: EffectConfigInput = {
     {
       // The one module that imports Playwright (spec 0001, "The controlled clock").
       adapterDependencies: ["playwright-core"],
-      files: ["packages/video/src/browser.ts"],
+      files: ["packages/capture-chromium/src/browser.ts"],
       platform: "node",
       role: "runtime-adapter",
       strictness: "strict",
@@ -192,7 +208,7 @@ export default defineConfig({
         files: [
           "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
-          "packages/deck/src/errors.ts",
+          "packages/render-reveal/src/errors.ts",
           "packages/speech/src/errors.ts",
           "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
@@ -260,7 +276,7 @@ export default defineConfig({
       {
         // F11 (spec 0001): the Deck reads the Plan, never the screenplay. It takes the core's types only and imports
         // no parser, Playwright or ffmpeg wrapper.
-        files: ["packages/deck/src/**"],
+        files: ["packages/render-reveal/src/**"],
         rules: {
           "no-restricted-imports": [
             "error",
@@ -269,7 +285,7 @@ export default defineConfig({
                 {
                   allowTypeImports: true,
                   message:
-                    "packages/deck takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
+                    "packages/render-reveal takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
                   name: "@reebeat/core",
                 },
               ],
@@ -277,7 +293,7 @@ export default defineConfig({
                 ...restrictedSourcePatterns,
                 {
                   message:
-                    "packages/deck imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
+                    "packages/render-reveal imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
                   regex:
                     "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
                 },

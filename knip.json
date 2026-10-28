@@ -29,13 +29,26 @@
         "scripts/**/*.ts"
       ]
     },
-    "packages/deck": {
+    "packages/render-reveal": {
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"],
       "ignoreDependencies": ["@fontsource/inter", "reveal.js"]
     },
-    "packages/sfx": {
+    "packages/sounds-synth": {
       "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/subtitles": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/lint": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/capture-chromium": {
+      "entry": ["test/**/*.test.ts"],
+      "ignoreDependencies": ["reveal.js"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "packages/verify": {

@@ -1,4 +1,27 @@
 {
   "description": "Registered suppressions. Every live suppression directive (oxlint, eslint, ts-expect-error, ts-ignore, ts-nocheck) must match an entry by file and directive, and every entry needs a live suppression. An entry names its scope, reason, native alternatives examined, owner, versions and retirement trigger.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "id": "EX-0001",
+      "scope": {
+        "files": ["packages/speech/src/kokoro.ts"],
+        "directives": ["oxlint-disable"]
+      },
+      "reason": "kokoro-js (from_pretrained, generate) and the dynamic import that keeps onnxruntime-node unloaded on a cache hit return Promises. Passing such a thunk to Effect.tryPromise makes typescript/promise-function-async demand an async arrow (its autofix adds it), which effecttsgo/async-function then flags: the two rules contradict each other for every Promise thunk. The file is the speech package's only Promise boundary.",
+      "nativeAlternativesExamined": [
+        "Effect.tryPromise with a non-async thunk: rejected by typescript/promise-function-async (the fixer rewrites it to async)",
+        "Effect.promise and Effect.callback: the same Promise-returning thunk, so the same conflict",
+        "Stream.fromAsyncIterable over KokoroTTS.stream: streams sentence chunks, no cancellation, and would still need the dynamic import and from_pretrained Promises",
+        "a child process running kokoro: no CLI ships with kokoro-js, and the 311 MiB model would load once per Line"
+      ],
+      "owner": "packages/speech",
+      "versions": {
+        "effect": "4.0.6",
+        "kokoro-js": "1.2.1",
+        "@effect/tsgo": "0.53.1",
+        "typescript": "7.0.2"
+      },
+      "retirementTrigger": "effecttsgo/async-function stops flagging thunks passed to Effect.tryPromise, or kokoro-js is replaced by an Effect-native text-to-speech client"
+    }
+  ]
 }

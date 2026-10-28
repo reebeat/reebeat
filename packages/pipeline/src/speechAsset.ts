@@ -12,7 +12,7 @@ export const wordsName = "words.json";
 
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
-export const WordsFileSchema = Schema.Struct({
+const WordsFileSchema = Schema.Struct({
   durationMs: Milliseconds,
   /** The match ratio of the alignment, at least `matchThreshold`. */
   match: Schema.Finite,

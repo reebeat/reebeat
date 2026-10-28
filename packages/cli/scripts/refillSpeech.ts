@@ -8,14 +8,12 @@
 //   REEBEAT_WHISPER_MODEL  ggml-base.en.bin (SHA-256 in packages/align-whisper/src/whisperAligner.ts)
 //   REEBEAT_WHISPER_BIN    the whisper.cpp binary (default `whisper-cli`)
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
-import { whisperAligner } from "@reebeat/align-whisper";
-import { fsAssetCache } from "@reebeat/cache-fs";
 import { buildPlan, schedule } from "@reebeat/core";
-import { ffmpegEncoder } from "@reebeat/encode-ffmpeg";
 import { speechStage } from "@reebeat/pipeline";
-import { kokoroSynthesizer } from "@reebeat/speech-kokoro";
 import { Crypto, Duration, Effect, FileSystem, Layer, Path } from "effect";
 import { Hex } from "effect/encoding";
+
+import { speechAdapters } from "../src/speechAdapters.ts";
 
 const refill = Effect.gen(function* refillStory() {
   const fs = yield* FileSystem.FileSystem;
@@ -34,12 +32,9 @@ const refill = Effect.gen(function* refillStory() {
 
   yield* fs.remove(cacheDir, { force: true, recursive: true });
 
-  const adapters = Layer.mergeAll(
-    kokoroSynthesizer,
-    whisperAligner,
-    ffmpegEncoder,
-    fsAssetCache(cacheDir)
-  ).pipe(Layer.provide(NodeServices.layer));
+  const adapters = speechAdapters(cacheDir).pipe(
+    Layer.provide(NodeServices.layer)
+  );
 
   const [elapsed, aligned] = yield* Effect.timed(
     Effect.provide(speechStage(plan, { refresh: true }), adapters)

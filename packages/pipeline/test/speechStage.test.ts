@@ -195,78 +195,75 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
   );
 });
 
-const countedWorld = (
-  calls: Ref.Ref<number>,
-  requests: Ref.Ref<readonly unknown[]>,
+interface Counters {
+  readonly calls: Ref.Ref<number>;
+  readonly requests: Ref.Ref<readonly unknown[]>;
+}
+
+/** Runs `use` with fresh counters over the stand-ins that feed them; `match` replaces the aligner's match. */
+const withCounters = <A, E, R>(
+  use: (counters: Counters) => Effect.Effect<A, E, R>,
   match?: number
 ) =>
-  Layer.provideMerge(
-    Layer.mergeAll(
-      countingSynthesizer(calls, silentSynthesizer),
-      recordingAligner(requests, evenAligner, match),
-      fakeEncoder,
-      memoryCache
-    ),
-    platform
-  );
+  Effect.gen(function* counted() {
+    const calls = yield* Ref.make(0);
+    const requests = yield* Ref.make<readonly unknown[]>([]);
+
+    return yield* Effect.provide(
+      use({ calls, requests }),
+      Layer.provideMerge(
+        Layer.mergeAll(
+          countingSynthesizer(calls, silentSynthesizer),
+          recordingAligner(requests, evenAligner, match),
+          fakeEncoder,
+          memoryCache
+        ),
+        platform
+      )
+    );
+  });
 
 layer(platform)("speech stage: what is called", (it) => {
   it.effect(
     "a hit calls neither the synthesiser nor the aligner; a refresh calls each once per Line",
     () =>
-      Effect.gen(function* counted() {
-        const calls = yield* Ref.make(0);
-        const requests = yield* Ref.make<readonly unknown[]>([]);
-        const plan = yield* fixturePlan;
+      withCounters(({ calls, requests }) =>
+        Effect.gen(function* counted() {
+          const plan = yield* fixturePlan;
 
-        yield* Effect.provide(
-          Effect.gen(function* run() {
+          for (const _ of [1, 2]) {
             yield* speechStage(plan, { refresh: true });
             assert.strictEqual(yield* Ref.get(calls), 2);
             assert.strictEqual((yield* Ref.get(requests)).length, 2);
-
-            yield* speechStage(plan, { refresh: true });
-            assert.strictEqual(yield* Ref.get(calls), 2);
-            assert.strictEqual((yield* Ref.get(requests)).length, 2);
-          }),
-          countedWorld(calls, requests)
-        );
-      })
+          }
+        })
+      )
   );
 
   it.effect("the provider's word timings go to the aligner as the hint", () =>
-    Effect.gen(function* hinted() {
-      const calls = yield* Ref.make(0);
-      const requests = yield* Ref.make<readonly unknown[]>([]);
-      const plan = yield* fixturePlan;
+    withCounters(({ requests }) =>
+      Effect.gen(function* hinted() {
+        yield* speechStage(yield* fixturePlan, { refresh: true });
 
-      yield* Effect.provide(
-        speechStage(plan, { refresh: true }),
-        countedWorld(calls, requests)
-      );
-
-      for (const request of yield* Ref.get(requests)) {
-        assert.isTrue(
-          Predicate.hasProperty(request, "hint") &&
-            Arr.isArray(request.hint) &&
-            request.hint.length === 3
-        );
-      }
-    })
+        for (const request of yield* Ref.get(requests)) {
+          assert.isTrue(
+            Predicate.hasProperty(request, "hint") &&
+              Arr.isArray(request.hint) &&
+              request.hint.length === 3
+          );
+        }
+      })
+    )
   );
 
   it.effect(
     "an alignment below 0.9 fails AlignmentBelowThreshold naming the Line, and caches nothing",
     () =>
-      Effect.gen(function* below() {
-        const calls = yield* Ref.make(0);
-        const requests = yield* Ref.make<readonly unknown[]>([]);
-        const plan = yield* fixturePlan;
-
-        yield* Effect.provide(
-          Effect.gen(function* run() {
+      withCounters(
+        () =>
+          Effect.gen(function* below() {
             const failure = yield* Effect.flip(
-              speechStage(plan, { refresh: true })
+              speechStage(yield* fixturePlan, { refresh: true })
             );
 
             assert.isTrue(
@@ -280,9 +277,8 @@ layer(platform)("speech stage: what is called", (it) => {
             );
             assert.deepStrictEqual(yield* (yield* AssetCache).list, []);
           }),
-          countedWorld(calls, requests, 0.89)
-        );
-      })
+        0.89
+      )
   );
 });
 

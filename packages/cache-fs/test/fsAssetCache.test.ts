@@ -26,12 +26,7 @@ const asset = (key: string, text: string): Asset => ({
 
 const key = "ab".repeat(32);
 
-const inTemp = <A, E>(
-  use: (
-    dir: string,
-    cache: AssetCache["Service"]
-  ) => Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>
-) =>
+const inTemp = <A, E>(use: Use<A, E>) =>
   Effect.gen(function* run() {
     const fs = yield* FileSystem.FileSystem;
     const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-cache-" });
@@ -43,6 +38,17 @@ const inTemp = <A, E>(
       fsAssetCache(dir)
     );
   });
+
+type Use<A, E> = (
+  dir: string,
+  cache: AssetCache["Service"]
+) => Effect.Effect<A, E, FileSystem.FileSystem | Path.Path>;
+
+/** Like `inTemp`, with the asset of `text` already stored under `key`. */
+const inStored = <A, E>(use: Use<A, E>) =>
+  inTemp((dir, cache) =>
+    Effect.flatMap(cache.put(key, asset(key, "hello")), () => use(dir, cache))
+  );
 
 layer(platform)("fsAssetCache layout", (it) => {
   it.effect("writes <key>.<name> files and the provenance file last", () =>
@@ -61,12 +67,11 @@ layer(platform)("fsAssetCache layout", (it) => {
   );
 
   it.effect("shows nothing while the provenance file is absent", () =>
-    inTemp((dir, cache) =>
+    inStored((dir, cache) =>
       Effect.gen(function* orphan() {
         const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
 
-        yield* cache.put(key, asset(key, "hello"));
         yield* fs.remove(path.join(dir, `${key}.provenance.json`));
 
         assert.isTrue(Option.isNone(yield* cache.get(key)));
@@ -78,12 +83,11 @@ layer(platform)("fsAssetCache layout", (it) => {
   it.effect(
     "fails CacheFailed when a file no longer has the recorded hash",
     () =>
-      inTemp((dir, cache) =>
+      inStored((dir, cache) =>
         Effect.gen(function* tampered() {
           const fs = yield* FileSystem.FileSystem;
           const path = yield* Path.Path;
 
-          yield* cache.put(key, asset(key, "hello"));
           yield* fs.writeFileString(
             path.join(dir, `${key}.audio.bin`),
             "hellp"

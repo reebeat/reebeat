@@ -9,10 +9,8 @@ import { MediaTools } from "./mediaTools.ts";
 import { probeMedia } from "./probe.ts";
 import { flacArgs } from "./settings.ts";
 
-/** The clip as FLAC bytes: s16, mono, the clip's own sample rate. */
-export const encodeFlac = Effect.fn("encodeFlac")(function* encodeFlac(
-  clip: AudioClip
-) {
+/** The services every codec step uses, and a temporary directory that the caller's scope removes. */
+const scratch = Effect.gen(function* scratch() {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const tools = yield* MediaTools;
@@ -20,6 +18,15 @@ export const encodeFlac = Effect.fn("encodeFlac")(function* encodeFlac(
   const directory = yield* fs.makeTempDirectoryScoped({
     prefix: "reebeat-flac-",
   });
+
+  return { directory, fs, path, tools };
+});
+
+/** The clip as FLAC bytes: s16, mono, the clip's own sample rate. */
+export const encodeFlac = Effect.fn("encodeFlac")(function* encodeFlac(
+  clip: AudioClip
+) {
+  const { directory, fs, path, tools } = yield* scratch;
 
   const input = path.join(directory, "in.f32");
   const output = path.join(directory, "out.flac");
@@ -56,13 +63,7 @@ export const encodeFlac = Effect.fn("encodeFlac")(function* encodeFlac(
 export const decodeFlac = Effect.fn("decodeFlac")(function* decodeFlac(
   bytes: Uint8Array
 ) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const tools = yield* MediaTools;
-
-  const directory = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-flac-",
-  });
+  const { directory, fs, path, tools } = yield* scratch;
 
   const input = path.join(directory, "in.flac");
 

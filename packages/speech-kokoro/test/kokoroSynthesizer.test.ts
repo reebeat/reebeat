@@ -27,6 +27,20 @@ const recordingModel = (asked: Ref.Ref<readonly unknown[]>, rate = 24_000) =>
       ),
   });
 
+/** A load that counts how often it runs. */
+const countingLoad = Effect.gen(function* counting() {
+  const loads = yield* Ref.make(0);
+  const asked = yield* Ref.make<readonly unknown[]>([]);
+
+  return {
+    load: Effect.flatMap(
+      Ref.update(loads, (count) => count + 1),
+      () => recordingModel(asked)
+    ),
+    loads,
+  };
+});
+
 const withLoad = <A, E, R>(
   load: Effect.Effect<KokoroModel, AdapterUnavailable>,
   use: (service: SpeechSynthesizer["Service"]) => Effect.Effect<A, E, R>
@@ -75,13 +89,7 @@ describe("kokoro adapter, model faked", () => {
 
   it.effect("fails EmptyText for no words and never loads the model", () =>
     Effect.gen(function* empty() {
-      const loads = yield* Ref.make(0);
-      const asked = yield* Ref.make<readonly unknown[]>([]);
-
-      const load = Effect.flatMap(
-        Ref.update(loads, (count) => count + 1),
-        () => recordingModel(asked)
-      );
+      const { load, loads } = yield* countingLoad;
 
       const failure = yield* Effect.flip(
         withLoad(load, (service) =>
@@ -98,13 +106,7 @@ describe("kokoro adapter, model faked", () => {
     "loads on the first use, once, and not when the layer is built",
     () =>
       Effect.gen(function* lazily() {
-        const loads = yield* Ref.make(0);
-        const asked = yield* Ref.make<readonly unknown[]>([]);
-
-        const load = Effect.flatMap(
-          Ref.update(loads, (count) => count + 1),
-          () => recordingModel(asked)
-        );
+        const { load, loads } = yield* countingLoad;
 
         yield* withLoad(load, () => Effect.void);
         assert.strictEqual(yield* Ref.get(loads), 0);

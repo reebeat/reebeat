@@ -1212,3 +1212,32 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 **Roadmap (recorded, not built).** (1) reebeat's own motion engine (path morphs, springs, exits, layout, the per-frame contrast gate; sections 3 to 6) as a renderer plug-in behind the same Plan. (2) The pixel-identical port of the existing 4EM explainer as that engine's regression test; what was measured for it is in [`4em-regression-baseline.md`](4em-regression-baseline.md). (3) Cue offsets and further cue kinds, more than one voice, richer Element vocabulary, a theme system.
 
 **Consequences for earlier sections.** The Remotion licence question (section 9, question 4) no longer blocks release 1: Remotion is not a dependency of it. The `PreparedStory` and `frameState` of section 4 are not built in release 1; reveal.js plus the controlled clock take their place, and the Plan and Timeline stages stay. Property P10 now reads: the core imports no browser, Playwright, ffmpeg, reveal.js or Node built-in.
+
+### R3 (2026-10-28): composable pieces: libraries, services, integrations
+
+**Decided by:** the operator, 2026-10-28. **Supersedes** the module layouts of section 3.0 and of spec 0001 "Module layout" (the dependency rule of R1 stays and is made structural).
+
+reebeat is built from pieces that can be replaced one by one. Three categories, with one dependency direction (library, then service, then integration; never back):
+
+| Category | What it is | Release 1 |
+|---|---|---|
+| **Library** | Pure functions and types, no runtime, no service. | Fountain to Story (parser adapter), Story to Plan (identity diff, timeline, cue anchoring), subtitle writers (WebVTT, SRT), lint rules (cue and fragment agreement; contrast; "absolute times need a reason" when absolute times exist) |
+| **Service** | An Effect service: an interface plus a contract. Each has at least one adapter and **one contract suite that every adapter must pass**. A service may ship stand-ins for offline tests. | `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`; `Layouter` (ELK at build time) only when diagrams need it |
+| **Integration / platform adapter** | `Layer`s that implement a service and depend on an outside runtime or provider. | Kokoro (local), whisper.cpp (local), synthesised sounds, reveal.js deck, headless Chromium with a controlled clock, ffmpeg, filesystem cache. First future integration: ElevenLabs for `SpeechSynthesizer`, once the operator provides a key |
+
+Service sketches (release 1 builds the interfaces, the local adapters and the stand-ins):
+
+- `SpeechSynthesizer`: text, voice, speed to audio, optionally the provider's own word timings. Adapters: Kokoro (local); a **silent stand-in** that returns silence with synthetic word timings. Later: ElevenLabs (credential-gated; it may return its own timings).
+- `WordAligner`: audio and the expected words to word times and a match ratio. Adapters: whisper.cpp (local); later "provider timings" when the synthesiser supplies them; the stand-in spreads the words evenly.
+- `SoundLibrary`: a sound name to audio. Release 1: sounds synthesised in TypeScript; later local files or generated or third-party sounds.
+- `Renderer`: Plan to a Deck (reveal.js in release 1; reebeat's own motion engine later).
+- `FrameCapturer`: Deck, schedule and a controlled clock to a stream of frames (headless Chromium).
+- `Encoder`: frames, audio mix, subtitles, chapters to a media file, plus lossless audio encode and decode (ffmpeg, local).
+- `AssetCache`: content-addressed; **key = adapter and model or voice and settings and input text**, so re-renders reuse paid or slow outputs and stay deterministic; the output manifest records the provenance of every asset.
+
+Rules:
+
+1. **Selection is explicit configuration at the composition root** (for example `speech: kokoro | silent`, later `elevenlabs`). A selected adapter whose requirement is missing (a credential, a model, a binary) **fails with a clear error**; there is never a silent fallback to another adapter.
+2. **Every integration has a test stand-in** so the whole pipeline runs offline in tests, and **declares what it sends out** (for a speech provider: the script text). The build manifest lists each adapter's declaration.
+3. **Secrets only through the environment or the secret store**: never in a config file or the repository, never printed, never part of a cache key or manifest.
+4. **The dependency direction is enforced by the linter** (restricted imports per category), not by review.

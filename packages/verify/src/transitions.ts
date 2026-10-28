@@ -8,9 +8,9 @@
 // what:
 //   - the scene-change timing, the intermediate-frame count and the monotone approach: `test/checks.test.ts` (a scene
 //     change commanded 2 frames late and early, a hard cut, a reversed transition), each failing F7 and nothing else;
-//   - run-to-run identity (F6): `test/checks.test.ts` (a copy passes; one frame replaced, or only the audio changed,
-//     fails naming the first differing frame or sample); the clock-jitter control (a `Math.random()` jitter in the
-//     clock makes two captures differ) lives in the tests of `packages/video`;
+//   - run-to-run identity (F6): `test/checks.test.ts` and `test/edges.test.ts` (a copy passes; one frame
+//     replaced, or only the audio changed, fails naming the first differing frame or sample); the clock-jitter control (a seeded jitter of the virtual
+//     clock makes two captures differ, the same jitter makes them equal) is in `packages/video/test/capture.test.ts`;
 //   - capture with the settle wait off and capture without the virtual clock are recorded manual measurements (spec
 //     0001, Revision "M0 measured: the clock decides the mechanism"), not automated tests.
 import { changedPixels, decodeGrayFrames } from "@reebeat/video";

@@ -43,6 +43,26 @@
         "typescript": "7.0.2"
       },
       "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.promise and Effect.tryPromise."
+    },
+    {
+      "id": "EX-0040",
+      "scope": {
+        "files": ["packages/video/src/browser.ts"],
+        "directives": ["oxlint-disable"]
+      },
+      "reason": "The Browser service adapts Playwright, whose API returns Promises. Each call is wrapped once, in `inPage`, as `Effect.tryPromise({ try: () => page.method(...) })`; typescript/promise-function-async wants those arrow functions to be `async`, and its autofix then adds `await` and trips eslint/require-await and effecttsgo/async-function.",
+      "nativeAlternativesExamined": [
+        "Effect.tryPromise and Effect.promise take a thunk that returns the Promise; they have no overload that takes a method and its arguments.",
+        "Making the thunks async: async-function is an Effect diagnostic at error severity and require-await rejects an async function that only returns the Promise.",
+        "An Effect-native browser driver: none in the installed effect 4.0.6 or @effect/platform-node 4.0.6."
+      ],
+      "owner": "packages/video",
+      "versions": {
+        "effect": "4.0.6",
+        "playwright-core": "1.64.1",
+        "@effect/tsgo": "0.53.1"
+      },
+      "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.tryPromise."
     }
   ]
 }

@@ -54,6 +54,26 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/sfx/src/**"],
+      platform: "portable",
+      role: "pure-library",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/video/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The one module that imports Playwright (spec 0001, "The controlled clock").
+      adapterDependencies: ["playwright-core"],
+      files: ["packages/video/src/browser.ts"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -131,19 +151,13 @@ export default defineConfig({
       },
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        // One file holds every tagged error of a package's stage (a closed set that reads as one table).
-        files: ["packages/core/src/errors.ts", "packages/deck/src/errors.ts"],
-        rules: {
-          "eslint/max-classes-per-file": "off",
-          "unicorn/throw-new-error": "off",
-        },
-      },
-      {
-        // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        // errors.ts holds every tagged error of the speech stage and services.ts its five capabilities (closed sets that read as one table).
+        // One file holds every tagged error of a stage (a closed set that reads as one table); speech's services.ts holds its five capabilities.
         files: [
+          "packages/core/src/errors.ts",
+          "packages/deck/src/errors.ts",
           "packages/speech/src/errors.ts",
           "packages/speech/src/services.ts",
+          "packages/video/src/errors.ts",
         ],
         rules: {
           "eslint/max-classes-per-file": "off",

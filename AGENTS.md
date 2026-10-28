@@ -68,3 +68,12 @@ gh api -X DELETE repos/reebeat/reebeat/branches/main/protection
 ```
 
 Restore it afterwards as spec 0000 describes it.
+
+## Environment
+
+`devenv shell` provides the tools release 1 (spec 0001) needs; every one is substitutable from cache.nixos.org, nothing builds locally.
+
+- **Chromium** (`pkgs.chromium`, `chromium` on `PATH`, Linux only). `REEBEAT_CHROMIUM` is its absolute path: pass it to Playwright as `executablePath` (`playwright-core` and the browser versions are independent). On other systems set `REEBEAT_CHROMIUM` yourself.
+- **ffmpeg and ffprobe** (`pkgs.ffmpeg-headless`): libx264, AAC, FLAC, the `mp4` muxer and the `mov_text` subtitle encoder.
+- **`whisper-cli`** (`pkgs.whisper-cpp`): word timestamps; the model file (`ggml-base.en.bin`) is not in the closure.
+- No `PLAYWRIGHT_BROWSERS_PATH` is set and no Playwright browser download runs (`playwright-driver.browsers` was measured and rejected: older Chromium, 954 MiB).

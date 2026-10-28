@@ -47,3 +47,19 @@ export class OutputFailed extends Schema.TaggedError<
   message: Schema.String,
   path: Schema.String,
 }) {}
+
+/** The output name is not a plain file stem, so `<name>.mp4` could land outside the output directory. */
+export class InvalidOutputName extends Schema.TaggedError<
+  InvalidOutputName,
+  { readonly brand: unique symbol }
+>()("InvalidOutputName", { message: Schema.String, stem: Schema.String }) {}
+
+/** An `sfx` Cue names a sound the catalogue does not have: the audio track would silently lack it. */
+export class UnknownSfx extends Schema.TaggedError<
+  UnknownSfx,
+  { readonly brand: unique symbol }
+>()("UnknownSfx", {
+  cueId: Schema.String,
+  message: Schema.String,
+  sound: Schema.NullOr(Schema.String),
+}) {}

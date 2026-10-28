@@ -1,6 +1,6 @@
 // Public surface of @reebeat/video: the pure derivations of a scheduled Plan (subtitles, chapters, audio mix,
 // capture schedule), the capture under the controlled clock, the mux, and the probes that observe the written file.
-export { audioMixPlan, sampleRateHz } from "./audioMix.ts";
+export { audioMixPlan } from "./audioMix.ts";
 
 export type { AudioInput, AudioMixPlan } from "./audioMix.ts";
 

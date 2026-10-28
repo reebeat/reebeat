@@ -96,8 +96,9 @@ const writeSounds = Effect.fnUntraced(function* writeSounds(
   const target = path.join(dir, "assets", "sfx");
 
   const names = new Set(
-    Arr.flatMap(audioMixPlan(timed).inputs, (input) =>
-      input.kind === "sfx" ? [input.name] : []
+    Arr.flatMap(
+      (yield* Effect.fromResult(audioMixPlan(timed))).inputs,
+      (input) => (input.kind === "sfx" ? [input.name] : [])
     )
   );
 

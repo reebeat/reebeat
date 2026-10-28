@@ -256,3 +256,18 @@ export const timedFixture = (): TimedPlan => {
 
   return result.success;
 };
+
+/** The Plan with the narration text of one Line replaced. */
+export const withLineText = (
+  plan: TimedPlan,
+  lineId: string,
+  text: string
+): TimedPlan => ({
+  ...plan,
+  scenes: Arr.map(plan.scenes, (scene) => ({
+    ...scene,
+    lines: Arr.map(scene.lines, (line) =>
+      line.id === lineId ? { ...line, text } : line
+    ),
+  })),
+});

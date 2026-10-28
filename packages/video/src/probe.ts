@@ -1,3 +1,4 @@
+import { sampleRate as defaultSampleRate } from "@reebeat/sfx";
 // What the written files show: the decoded frames, the decoded audio, and the container's streams and chapters. The
 // verify slice reads these to check the falsifiers F1 and F6 to F9 on the mp4; the tests here use them too.
 import { Array as Arr, Effect, Schema } from "effect";
@@ -173,7 +174,7 @@ export const frameHashes = Effect.fn("frameHashes")(function* hashes(
 /** The decoded audio of `file` as mono 32-bit float samples at `sampleRate`. */
 export const decodeMonoPcm = Effect.fn("decodeMonoPcm")(function* decode(
   file: string,
-  sampleRate = 48_000
+  sampleRate = defaultSampleRate
 ) {
   const tools = yield* MediaTools;
 
@@ -245,7 +246,7 @@ export const audioOffsetMs = (
   reference: Float32Array,
   expectedMs: number,
   windowMs: number,
-  sampleRate = 48_000
+  sampleRate = defaultSampleRate
 ): AudioMatch => {
   const length = Math.min(reference.length, correlationLength);
   const center = Math.round((expectedMs * sampleRate) / 1000);

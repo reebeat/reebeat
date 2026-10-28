@@ -9,6 +9,7 @@ import {
   Option,
   Path,
   Predicate,
+  Stream,
 } from "effect";
 
 import { MediaTools } from "../src/mediaTools.ts";
@@ -22,8 +23,9 @@ import {
   probeMedia,
 } from "../src/probe.ts";
 import type { Box, MediaInfo } from "../src/probe.ts";
+import type { TimedPlan } from "../src/timedPlan.ts";
 import { vtt } from "../src/vtt.ts";
-import { timedFixture } from "./fixturePlan.ts";
+import { timedFixture, withLineText } from "./fixturePlan.ts";
 import { buildFixture, framesOf, makeWorkspace, services } from "./support.ts";
 import type { Workspace } from "./support.ts";
 
@@ -83,14 +85,13 @@ const assertChapters = (media: MediaInfo): void => {
 };
 
 /** The `.vtt` beside the mp4 is the WebVTT of the Plan, and the `mov_text` stream holds the same cue texts. */
-const assertSubtitles = Effect.fnUntraced(function* subtitles(built: {
-  mp4: string;
-  vtt: string;
-}) {
+const assertSubtitles = Effect.fnUntraced(function* subtitles(
+  built: { mp4: string; vtt: string },
+  plan: TimedPlan = timedFixture()
+) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const tools = yield* MediaTools;
-  const plan = timedFixture();
 
   assert.strictEqual(yield* fs.readFileString(built.vtt), vtt(plan));
   assert.strictEqual(path.dirname(built.vtt), path.dirname(built.mp4));
@@ -262,5 +263,51 @@ it.live(
 
       assert.isTrue(Predicate.isTagged(failure, "CaptureTimeout"));
       assert.deepStrictEqual(yield* fs.readDirectory(workspace.outDir), []);
+    }).pipe(Effect.provide(services))
+);
+
+it.live(
+  "the mov_text stream holds the narration, not the escaped WebVTT, for & < >",
+  () =>
+    Effect.gen(function* escaped() {
+      const plan = timedFixture();
+      const text = "Five < six and <b>bold</b> & ok.";
+
+      const edited = withLineText(plan, "sc2.l1", text);
+
+      const workspace = yield* makeWorkspace;
+      const built = yield* buildFixture(workspace, "escaped", {}, edited);
+
+      yield* assertSubtitles(built, edited);
+      assert.include(
+        yield* FileSystem.FileSystem.pipe(
+          Effect.flatMap((fs) => fs.readFileString(built.vtt))
+        ),
+        "&lt;b&gt;bold&lt;/b&gt; &amp; ok."
+      );
+    }).pipe(Effect.provide(services))
+);
+
+it.live(
+  "an output name that is not a plain file stem is refused before anything is written",
+  () =>
+    Effect.gen(function* names() {
+      const fs = yield* FileSystem.FileSystem;
+      const workspace = yield* makeWorkspace;
+
+      for (const bad of ["../x", "a/b", "", ".hidden", "a..b", "x y"]) {
+        const failure = yield* muxVideo(timedFixture(), Stream.empty, {
+          cacheDir: workspace.cacheDir,
+          name: bad,
+          outDir: workspace.outDir,
+        }).pipe(Effect.flip);
+
+        assert.isTrue(
+          Predicate.isTagged(failure, "InvalidOutputName"),
+          `"${bad}" is refused`
+        );
+      }
+
+      assert.isFalse(yield* fs.exists(workspace.outDir));
     }).pipe(Effect.provide(services))
 );

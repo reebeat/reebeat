@@ -1,4 +1,4 @@
-import { sfxWav } from "@reebeat/sfx";
+import { sampleRate, sfxWav } from "@reebeat/sfx";
 // The mux: the captured frames (on ffmpeg's stdin), the mixed audio, the subtitles and the chapters become
 // `<name>.mp4`, and the WebVTT text becomes `<name>.vtt` beside it. ffmpeg writes into a temporary directory inside
 // the output directory; the files are renamed into place only after ffmpeg exited with 0, and any earlier failure
@@ -12,7 +12,7 @@ import { Array as Arr, Effect, FileSystem, Path, Stream } from "effect";
 
 import { audioMixPlan } from "./audioMix.ts";
 import type { AudioInput, AudioMixPlan } from "./audioMix.ts";
-import { MediaToolFailed, OutputFailed } from "./errors.ts";
+import { InvalidOutputName, MediaToolFailed, OutputFailed } from "./errors.ts";
 import type { BrowserFailed, CaptureTimeout } from "./errors.ts";
 import { ffmetadata } from "./ffmetadata.ts";
 import { MediaTools } from "./mediaTools.ts";
@@ -110,7 +110,7 @@ export const muxArgs = (
     "-b:a",
     "160k",
     "-ar",
-    "48000",
+    String(sampleRate),
     "-ac",
     "2",
     "-c:s",
@@ -143,6 +143,20 @@ export interface MuxResult {
   readonly vtt: string;
 }
 
+/** A plain file stem: it starts with a letter or digit and holds letters, digits, `.`, `_` and `-` only. */
+const stemPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
+
+/** The name as a stem, or why it is not one. `..` inside a name is refused too. */
+const requireStem = (name: string): Effect.Effect<string, InvalidOutputName> =>
+  stemPattern.test(name) && !name.includes("..")
+    ? Effect.succeed(name)
+    : Effect.fail(
+        new InvalidOutputName({
+          message: `the output name ${JSON.stringify(name)} is not a plain file stem (letters, digits, ".", "_" and "-", starting with a letter or digit, no "..")`,
+          stem: name,
+        })
+      );
+
 const output = (path: string, message: string) => (cause: unknown) =>
   new OutputFailed({ cause, message, path });
 
@@ -158,10 +172,11 @@ export const muxVideo = Effect.fn("muxVideo")(function* mux<R>(
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const tools = yield* MediaTools;
+  const stem = yield* requireStem(options.name);
 
   const target = {
-    mp4: path.join(options.outDir, `${options.name}.mp4`),
-    vtt: path.join(options.outDir, `${options.name}.vtt`),
+    mp4: path.join(options.outDir, `${stem}.mp4`),
+    vtt: path.join(options.outDir, `${stem}.vtt`),
   };
 
   yield* fs
@@ -191,7 +206,7 @@ export const muxVideo = Effect.fn("muxVideo")(function* mux<R>(
           )
         );
 
-      const mix = audioMixPlan(plan);
+      const mix = yield* Effect.fromResult(audioMixPlan(plan));
 
       const paths: MuxPaths = {
         ffmetadata: path.join(scratch, "chapters.ffmetadata"),

@@ -60,7 +60,7 @@ is not touched (`OutputDirOccupied`). Typed errors of the stages (`SpeechCacheMi
 | File | Proves |
 | --- | --- |
 | `plan.test.ts` | the review text and JSON, determinism, the hash of a file with a byte-order mark, `--timing` read-only, one mutation per Plan error class stops with its tag and line (F10, F12) |
-| `build.test.ts` | the files, the manifest and the frame count of a finished build; replacing an earlier build; the F12 controls: a cache entry deleted from a copy of the committed cache (`SpeechCacheMiss` naming the Line), a capture past its deadline (`CaptureTimeout`), a browser failure, an interrupt: no `<out>` and no `<out>.partial` |
+| `build.test.ts` | the files, the manifest and the frame count of a finished build; replacing an earlier build; the F12 controls: a cache entry deleted from a copy of the committed cache (`SpeechCacheMiss` naming the Line), a capture past its deadline (`CaptureTimeout`), a browser failure, an interrupt: no `<out>` and no `<out>.partial`; F5 build side: one changed narration word changes the notes, the subtitles, the narration audio file and the hash in every output together |
 | `check.test.ts` | `check` refuses a directory without a valid `build.json`; verdict rows; exit code |
 | `journey.test.ts` | build, check, build, compare in order; the first failure stops the journey |
 | `cli.test.ts` | help, version, usage errors exit non-zero and run nothing |

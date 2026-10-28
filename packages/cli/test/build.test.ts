@@ -19,6 +19,7 @@ import {
 import { readManifest } from "../src/manifest.ts";
 import {
   fakeBrowser,
+  fillCache,
   hangingBrowser,
   keysOf,
   planOf,
@@ -26,6 +27,8 @@ import {
   runBuild,
   runCli,
   sameId,
+  storyFile,
+  storyText,
   storyWithCache,
   tempDirectory,
   writeText,
@@ -184,6 +187,91 @@ layer(platform)("reebeat build", (it) => {
         assert.match(stderr, /^OutputDirOccupied: /u);
         assert.deepStrictEqual(yield* filesUnder(out), ["mine.txt"]);
       })
+  );
+});
+
+/** The narration audio file of every Line of the `plan.json` text, in order. */
+const audioOf = (plan: string) =>
+  Effect.map(decodePlan(plan), (decoded) =>
+    Arr.flatMap(decoded.timeline?.scenes ?? [], (scene) =>
+      Arr.map(scene.lines, (line) => line.audio.file)
+    )
+  );
+
+/** A story directory with its own cache, built from `text`. */
+const storyOf = (text: string) =>
+  Effect.gen(function* made() {
+    const path = yield* Path.Path;
+    const story = yield* storyFile(text);
+    const dir = path.dirname(story);
+
+    yield* fillCache(path.join(dir, "speech-cache"), yield* planOf(text));
+
+    return { out: path.join(dir, "out"), story };
+  });
+
+layer(platform)("reebeat build keeps one source (F5, build side)", (it) => {
+  it.effect(
+    "one changed narration word changes the notes, the subtitles, the narration audio and the hash together",
+    () =>
+      Effect.gen(function* oneSource() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const before = yield* storyOf(storyText);
+
+        const after = yield* storyOf(
+          storyText.replace("One two three.", "Uno two three.")
+        );
+
+        assert.isTrue(
+          Exit.isSuccess((yield* runBuild(before, ["--name", "v"])).exit)
+        );
+        assert.isTrue(
+          Exit.isSuccess((yield* runBuild(after, ["--name", "v"])).exit)
+        );
+
+        const read = (setup: typeof before, file: string) =>
+          fs.readFileString(path.join(setup.out, file));
+
+        const hashes = yield* Effect.forEach([before, after], (setup) =>
+          Effect.map(
+            readManifest(setup.out),
+            (manifest) => manifest.sourceSha256
+          )
+        );
+
+        assert.notStrictEqual(hashes[0], hashes[1]);
+
+        // Every output of the new build carries the new hash and the new word; none carries the old.
+        const outputs = {
+          deck: yield* read(after, "deck.html"),
+          plan: yield* read(after, "plan.json"),
+          vtt: yield* read(after, "v.vtt"),
+        };
+
+        const media = yield* probeMedia(path.join(after.out, "v.mp4"));
+
+        for (const text of [outputs.deck, outputs.plan, outputs.vtt]) {
+          assert.include(text, hashes[1] ?? "");
+          assert.notInclude(text, hashes[0] ?? "");
+          assert.include(text, "Uno two three.");
+          assert.notInclude(text, "One two three.");
+        }
+
+        assert.strictEqual(
+          media.format.tags?.comment,
+          `reebeat source-sha256 ${hashes[1]}`
+        );
+
+        // The narration audio of the changed Line is another cache entry: the Timeline names another file.
+        const [oldAudio, newAudio] = [
+          yield* audioOf(yield* read(before, "plan.json")),
+          yield* audioOf(outputs.plan),
+        ];
+
+        assert.notStrictEqual(oldAudio[0], newAudio[0]);
+        assert.strictEqual(oldAudio[1], newAudio[1]);
+      }).pipe(Effect.provide(MediaTools.layer))
   );
 });
 

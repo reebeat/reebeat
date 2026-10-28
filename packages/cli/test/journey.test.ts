@@ -1,7 +1,6 @@
-// The journey program (`bun run journey`): build, check, build again, compare (F6); the first failure stops it.
+// The journey program (`reebeat journey`): build, check, build again, compare (F6); the first failure stops it. It
+// runs the real build program on the stand-ins and a fake capturer, with a fake verification.
 import { assert, layer } from "@effect/vitest";
-import { speechCacheOnly } from "@reebeat/speech";
-import { MediaTools } from "@reebeat/video";
 import { Effect, FileSystem, Layer, Path } from "effect";
 
 import { journey } from "../src/journey.ts";
@@ -9,20 +8,22 @@ import { readManifest } from "../src/manifest.ts";
 import type { Verifier } from "../src/verifier.ts";
 import {
   fakeVerifier,
+  fakeWorld,
   platform,
-  solidBrowser,
-  storyWithCache,
+  standins,
+  storyFile,
   verdict,
 } from "./support.ts";
 
 const prepare = Effect.gen(function* preparation() {
   const path = yield* Path.Path;
-  const { cacheDir, dir, story } = yield* storyWithCache;
+  const story = yield* storyFile();
+  const dir = path.dirname(story);
   const outRoot = path.join(dir, "build");
   const name = path.basename(dir);
 
   return {
-    cacheDir,
+    cacheDir: path.join(dir, "speech-cache"),
     first: path.join(outRoot, name),
     outRoot,
     second: path.join(outRoot, `${name}-2`),
@@ -30,22 +31,19 @@ const prepare = Effect.gen(function* preparation() {
   };
 });
 
-const services = (cacheDir: string, verifier: Layer.Layer<Verifier>) =>
-  Layer.mergeAll(
-    verifier,
-    speechCacheOnly(cacheDir),
-    Layer.provideMerge(solidBrowser, MediaTools.layer)
-  );
-
 const journeyWith = (
   prepared: { cacheDir: string; outRoot: string; story: string },
   verifier: Layer.Layer<Verifier>
 ) =>
-  journey({
-    cacheDir: prepared.cacheDir,
-    outRoot: prepared.outRoot,
-    story: prepared.story,
-  }).pipe(Effect.provide(services(prepared.cacheDir, verifier)));
+  Effect.gen(function* run() {
+    return yield* journey({
+      cacheDir: prepared.cacheDir,
+      outRoot: prepared.outRoot,
+      refreshSpeech: false,
+      selection: yield* standins,
+      story: prepared.story,
+    });
+  }).pipe(Effect.provide(Layer.mergeAll(verifier, fakeWorld())));
 
 layer(platform)("the journey", (it) => {
   it.effect("builds, checks, builds again and compares, in that order", () =>
@@ -56,7 +54,7 @@ layer(platform)("the journey", (it) => {
 
       yield* journeyWith(
         prepared,
-        fakeVerifier([verdict("F1", true)], verdict("F6", true), calls)
+        fakeVerifier([verdict("F1", "pass")], verdict("F6", "pass"), calls)
       );
 
       assert.deepStrictEqual(calls, [
@@ -79,7 +77,7 @@ layer(platform)("the journey", (it) => {
         const failure = yield* Effect.flip(
           journeyWith(
             prepared,
-            fakeVerifier([verdict("F3", false)], verdict("F6", true), calls)
+            fakeVerifier([verdict("F3", "fail")], verdict("F6", "pass"), calls)
           )
         );
 
@@ -96,7 +94,7 @@ layer(platform)("the journey", (it) => {
       const failure = yield* Effect.flip(
         journeyWith(
           yield* prepare,
-          fakeVerifier([verdict("F1", true)], verdict("F6", false), [])
+          fakeVerifier([verdict("F1", "pass")], verdict("F6", "fail"), [])
         )
       );
 

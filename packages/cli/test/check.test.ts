@@ -1,10 +1,11 @@
 // `reebeat check`: it refuses a directory that is not a finished build before any check runs (F12: a build that
 // failed or was interrupted leaves no `build.json`), prints one row per verdict, and exits non-zero when any
-// verdict fails. The verdicts themselves are `@reebeat/verify`'s; here they are fakes.
+// verdict fails; a not-applicable verdict is printed and does not fail. The verdicts themselves are
+// `@reebeat/verify`'s; here they are fakes.
 import { assert, layer } from "@effect/vitest";
+import { writeManifest } from "@reebeat/pipeline";
 import { Effect, Exit, FileSystem, Path } from "effect";
 
-import { writeManifest } from "../src/manifest.ts";
 import type { Verdict } from "../src/verify.ts";
 import {
   fakeVerifier,
@@ -23,7 +24,7 @@ const check = (
   calls: string[]
 ) =>
   runCli(["check", dir, "--source", source], {
-    verifier: fakeVerifier(verdicts, verdict("F6", true), calls),
+    verifier: fakeVerifier(verdicts, verdict("F6", "pass"), calls),
   });
 
 const aBuild = Effect.gen(function* build() {
@@ -31,7 +32,11 @@ const aBuild = Effect.gen(function* build() {
 
   yield* writeText(dir, "plan.json", "{}");
   yield* writeText(dir, "deck.html", "<html></html>");
-  yield* writeManifest(dir, { path: "story.fountain", sha256: "0".repeat(64) });
+  yield* writeManifest(dir, {
+    adapters: [],
+    assets: [],
+    source: { path: "story.fountain", sha256: "0".repeat(64) },
+  });
 
   return dir;
 });
@@ -45,7 +50,7 @@ const assertRefused = (dir: string, message: RegExp) =>
     const { exit, stderr, stdout } = yield* check(
       dir,
       story,
-      [verdict("F1", true)],
+      [verdict("F1", "pass")],
       calls
     );
 
@@ -71,7 +76,7 @@ layer(platform)("reebeat check", (it) => {
     Effect.gen(function* garbled() {
       const dir = yield* tempDirectory;
 
-      yield* writeText(dir, "build.json", '{ "schema": 2 }');
+      yield* writeText(dir, "build.json", '{ "schema": 1 }');
       yield* assertRefused(dir, /^NotABuild: .*is not a build manifest/u);
     })
   );
@@ -91,7 +96,7 @@ layer(platform)("reebeat check", (it) => {
   );
 
   it.effect(
-    "prints one row per verdict and exits 0 when every verdict is ok",
+    "prints one row per verdict and exits 0 when no verdict fails",
     () =>
       Effect.gen(function* passing() {
         const calls: string[] = [];
@@ -102,8 +107,8 @@ layer(platform)("reebeat check", (it) => {
           dir,
           story,
           [
-            verdict("F1", true, "all cues within a frame"),
-            verdict("F2", true, "12 cues"),
+            verdict("F1", "pass", "all cues within a frame"),
+            verdict("F2", "pass", "12 cues"),
           ],
           calls
         );
@@ -117,6 +122,27 @@ layer(platform)("reebeat check", (it) => {
       })
   );
 
+  it.effect("prints a not-applicable verdict as N/A and still exits 0", () =>
+    Effect.gen(function* skipped() {
+      const dir = yield* aBuild;
+      const story = yield* storyFile();
+
+      const { exit, stdout } = yield* check(
+        dir,
+        story,
+        [
+          verdict("F1", "pass"),
+          verdict("F8", "na", "N/A (silent stand-in): the narrator is silent"),
+        ],
+        []
+      );
+
+      assert.isTrue(Exit.isSuccess(exit));
+      assert.match(stdout, /F8 +N\/A +N\/A \(silent stand-in\)/u);
+      assert.include(stdout, "1 of 2 falsifiers hold; not applicable: F8");
+    })
+  );
+
   it.effect(
     "exits non-zero when one verdict fails, and names the falsifier",
     () =>
@@ -127,7 +153,7 @@ layer(platform)("reebeat check", (it) => {
         const { exit, stderr, stdout } = yield* check(
           dir,
           story,
-          [verdict("F1", true), verdict("F2", false, "Line sc1.l1 differs")],
+          [verdict("F1", "pass"), verdict("F2", "fail", "Line sc1.l1 differs")],
           []
         );
 
@@ -143,7 +169,7 @@ layer(platform)("reebeat check", (it) => {
       const dir = yield* aBuild;
 
       const { exit, stderr } = yield* runCli(["check", dir], {
-        verifier: fakeVerifier([], verdict("F6", true), calls),
+        verifier: fakeVerifier([], verdict("F6", "pass"), calls),
       });
 
       assert.isTrue(Exit.isFailure(exit));

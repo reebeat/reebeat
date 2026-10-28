@@ -1,6 +1,6 @@
-import type { MediaTools } from "@reebeat/video";
 // The verification as a capability of the CLI: `check` and `journey` ask it, and the composition root decides
 // what answers. The live layer is the verify package (through `verify.ts`); the tests answer with fakes.
+import type { MediaTools } from "@reebeat/encode-ffmpeg";
 import type { Crypto, FileSystem, Path } from "effect";
 import { Context, Effect, Layer } from "effect";
 

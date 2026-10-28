@@ -1,235 +1,77 @@
-import { encodePlan } from "@reebeat/core";
-// `reebeat build`: one Effect program from the story to a finished build directory (spec 0001, "Journey").
-//
-//   story -> hash -> Plan -> speech (cache) -> Timeline -> plan.json, deck, sounds -> capture + mux -> build.json
-//
-// Everything is written into `<out>.partial` and moved to `<out>` in one rename after `build.json`, the last file,
-// is in. Any failure, or an interrupt, removes `<out>.partial`; an earlier build at `<out>` is removed before the
-// new one starts, so a failed build leaves no directory `reebeat check` could accept (F12).
-import { renderDeck, writeDeck } from "@reebeat/deck";
-import { sfxWav } from "@reebeat/sfx";
-import {
-  audioMixPlan,
-  captureFrames,
-  captureSchedule,
-  muxVideo,
-  requireTimeline,
-} from "@reebeat/video";
-import type { TimedPlan } from "@reebeat/video";
-import {
-  Array as Arr,
-  Duration,
-  Effect,
-  Exit,
-  FileSystem,
-  Option,
-  Path,
-} from "effect";
+// `reebeat build`: the build program (`@reebeat/pipeline`) run on the adapters the selection picks. This file is the
+// composition: it turns the selection into Layers (`Composition`), runs the program on them once and says what ran.
+// Everything the build does, and its atomic `<out>.partial` and `build.json` last, is the program's.
+import { buildProgram } from "@reebeat/pipeline";
+import type { AdapterRecord, BuildSummary } from "@reebeat/pipeline";
+import type { Egress, Selection } from "@reebeat/services";
+import { Array as Arr, Effect } from "effect";
 
-import { OutputDirOccupied, outputFailed } from "./errors.ts";
-import { manifestFile, writeManifest } from "./manifest.ts";
-import { readPlan, scheduledPlan } from "./plan.ts";
+import { Composition, servicesOf } from "./adapters.ts";
 
-export interface BuildOptions {
-  /** The capture's deadline in seconds; `undefined` is the video package's default. */
-  readonly captureTimeoutSeconds?: number | undefined;
+export interface BuildCommand {
   /** The speech cache directory. */
   readonly cacheDir: string;
+  /** The capture's deadline in seconds; `undefined` is the capturer's default. */
+  readonly captureTimeoutSeconds?: number | undefined;
   /** The base name of `<name>.mp4` and `<name>.vtt`. */
   readonly name: string;
   readonly out: string;
+  /** Fill missing speech assets from the speech adapter (see `refillsSpeech`). */
+  readonly refreshSpeech: boolean;
+  readonly selection: Selection;
   /** The `.fountain` file. */
   readonly story: string;
 }
 
-export interface BuildSummary {
-  readonly files: number;
-  readonly frames: number;
-  readonly mp4Bytes: number;
-  readonly out: string;
-  /** Wall time of the whole build. */
-  readonly seconds: number;
-  readonly vttBytes: number;
-}
+/**
+ * Whether a missing speech asset is filled: when `--refresh-speech` says so, and always for a stand-in narrator
+ * (`silent`), which needs no model and whose assets carry its own id, so they never stand in for a real voice's.
+ */
+const refillsSpeech = (selection: Selection, refreshSpeech: boolean): boolean =>
+  refreshSpeech || selection.speech === "silent";
 
-/** Removes the stale `<out>.partial` and an earlier build (or an empty directory) at `<out>`; refuses anything else. */
-const clearEarlier = Effect.fnUntraced(function* clearEarlier(
-  out: string,
-  partial: string
-) {
-  const fs = yield* FileSystem.FileSystem;
+/** What an adapter sends out, as a line of the summary: `none` for a local adapter, else the kinds of data. */
+const egressText = (egress: Egress): string =>
+  egress.kind === "local" && egress.sends.length === 0
+    ? "none"
+    : `${egress.kind}, sends ${Arr.join(egress.sends, ", ")}`;
 
-  yield* Effect.mapError(
-    fs.remove(partial, { force: true, recursive: true }),
-    outputFailed(partial, "remove")
-  );
-
-  const present = yield* Effect.mapError(
-    fs.exists(out),
-    outputFailed(out, "look for")
-  );
-
-  const entries = present
-    ? yield* Effect.mapError(fs.readDirectory(out), outputFailed(out, "list"))
-    : [];
-
-  if (entries.length > 0 && !entries.includes(manifestFile)) {
-    return yield* new OutputDirOccupied({
-      message: `${out} is not empty and holds no ${manifestFile}, so it is not an earlier build: it is not replaced`,
-      path: out,
-    });
-  }
-
-  return yield* Effect.mapError(
-    fs.remove(out, { force: true, recursive: true }),
-    outputFailed(out, "remove")
-  );
-});
-
-/** `assets/sfx/<name>.wav` for every sound the Plan's Cues play: the Deck's `sfx` step fetches them. */
-const writeSounds = Effect.fnUntraced(function* writeSounds(
-  dir: string,
-  timed: TimedPlan
-) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const target = path.join(dir, "assets", "sfx");
-
-  const names = new Set(
-    Arr.flatMap(
-      (yield* Effect.fromResult(audioMixPlan(timed))).inputs,
-      (input) => (input.kind === "sfx" ? [input.name] : [])
-    )
-  );
-
-  yield* Effect.mapError(
-    fs.makeDirectory(target, { recursive: true }),
-    outputFailed(target, "create")
-  );
-
-  yield* Effect.forEach(
-    names,
-    (name) =>
-      Effect.mapError(
-        fs.writeFile(path.join(target, `${name}.wav`), sfxWav(name)),
-        outputFailed(path.join(target, `${name}.wav`), "write")
+/** The adapters a build used, one line each, with the egress each declares. */
+const renderAdapters = (adapters: readonly AdapterRecord[]): string =>
+  Arr.join(
+    [
+      "adapters:",
+      ...Arr.map(
+        adapters,
+        (adapter) =>
+          `  ${adapter.service}: ${adapter.id}, egress: ${egressText(adapter.egress)}`
       ),
-    { discard: true }
+    ],
+    "\n"
   );
-});
 
-/** Fills `partial`: everything except the rename. */
-const assemble = Effect.fnUntraced(function* assemble(
-  options: BuildOptions,
-  partial: string
+/** The line `build` and `journey` print for a finished build, then its adapters and their egress. */
+export const renderSummary = (summary: BuildSummary): string =>
+  `built ${summary.out}: ${summary.files} files, ${summary.frames} frames, mp4 ${summary.mp4Bytes} bytes, vtt ${summary.vttBytes} bytes, ${summary.seconds.toFixed(1)} s\n${renderAdapters(summary.adapters)}`;
+
+/** Builds the story into `command.out` on the adapters of `command.selection`. */
+export const buildStory = Effect.fn("buildStory")(function* buildStory(
+  command: BuildCommand
 ) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const { plan, source } = yield* readPlan(options.story);
-  const scheduled = yield* scheduledPlan(plan);
-  const timed = yield* Effect.fromResult(requireTimeline(scheduled));
-  const planFile = path.join(partial, "plan.json");
+  const compose = yield* Composition;
 
-  yield* Effect.mapError(
-    Effect.flatMap(encodePlan(scheduled), (text) =>
-      fs.writeFileString(planFile, text)
-    ),
-    outputFailed(planFile, "write")
-  );
-
-  yield* writeDeck(renderDeck(scheduled), partial, scheduled);
-  yield* writeSounds(partial, timed);
-
-  const deckUrl = (yield* path.toFileUrl(path.resolve(partial, "deck.html")))
-    .href;
-
-  yield* muxVideo(
-    timed,
-    captureFrames(captureSchedule(timed), {
-      deckUrl,
-      settleNewAnimations: true,
-      timeoutSeconds: options.captureTimeoutSeconds,
-    }),
-    { cacheDir: options.cacheDir, name: options.name, outDir: partial }
-  );
-
-  const manifest = yield* writeManifest(partial, {
-    path: options.story,
-    sha256: source.sha256,
+  const parts = compose(command.selection, {
+    cacheDir: command.cacheDir,
+    captureTimeoutSeconds: command.captureTimeoutSeconds,
   });
 
-  const bytesOf = (file: string): number =>
-    Option.getOrElse(
-      Option.map(
-        Arr.findFirst(manifest.files, (entry) => entry.path === file),
-        (entry) => entry.bytes
-      ),
-      () => 0
-    );
-
-  return {
-    files: manifest.files.length,
-    frames: timed.timeline.totalFrames,
-    mp4Bytes: bytesOf(`${options.name}.mp4`),
-    vttBytes: bytesOf(`${options.name}.vtt`),
-  };
-});
-
-/** The line `build` and `journey` print for a finished build. */
-export const renderSummary = (summary: BuildSummary): string =>
-  `built ${summary.out}: ${summary.files} files, ${summary.frames} frames, mp4 ${summary.mp4Bytes} bytes, vtt ${summary.vttBytes} bytes, ${summary.seconds.toFixed(1)} s`;
-
-const buildInto = Effect.fnUntraced(function* buildInto(
-  options: BuildOptions,
-  out: string
-) {
-  const fs = yield* FileSystem.FileSystem;
-  const partial = `${out}.partial`;
-
-  yield* clearEarlier(out, partial);
-
-  return yield* Effect.scoped(
-    Effect.gen(function* publish() {
-      yield* Effect.acquireRelease(
-        Effect.mapError(
-          fs.makeDirectory(partial, { recursive: true }),
-          outputFailed(partial, "create")
-        ),
-        (_, exit) =>
-          Exit.isSuccess(exit)
-            ? Effect.void
-            : Effect.ignore(
-                fs.remove(partial, { force: true, recursive: true }),
-                {
-                  log: "Warn",
-                  message: `cannot remove ${partial}`,
-                }
-              )
-      );
-
-      const summary = yield* assemble(options, partial);
-
-      yield* Effect.mapError(
-        fs.rename(partial, out),
-        outputFailed(out, "move into place")
-      );
-
-      return { ...summary, out };
-    })
+  return yield* Effect.provide(
+    buildProgram({
+      name: command.name,
+      out: command.out,
+      refreshSpeech: refillsSpeech(command.selection, command.refreshSpeech),
+      story: command.story,
+    }),
+    servicesOf(parts)
   );
-});
-
-/** Builds the story into `options.out`. Needs the speech cache (the `Speech` service), Chromium and ffmpeg. */
-export const buildStory = Effect.fn("buildStory")(function* buildStory(
-  options: BuildOptions
-) {
-  const path = yield* Path.Path;
-  const out = path.resolve(options.out);
-
-  const [elapsed, summary] = yield* Effect.timed(buildInto(options, out));
-
-  return {
-    ...summary,
-    seconds: Duration.toSeconds(elapsed),
-  } satisfies BuildSummary;
 });

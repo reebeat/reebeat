@@ -191,7 +191,7 @@ describe("a package that uses a tier it must not is reported with package, tier,
   );
 });
 
-describe("tools and legacy packages may use anything", () => {
+describe("tools may use anything", () => {
   it.effect(
     "a tool importing an adapter, a program, a service and a library passes",
     () =>
@@ -216,30 +216,15 @@ describe("tools and legacy packages may use anything", () => {
       }).pipe(Effect.provide(platform))
   );
 
-  it.effect("a legacy package importing a tool and an adapter passes", () =>
-    Effect.gen(function* legacy() {
-      const findings = yield* check({
-        "cache-fs": {},
-        cli: {},
-        speech: {
-          dependencies: ["@reebeat/cli", "@reebeat/cache-fs"],
-          source: import_("@reebeat/cache-fs"),
-        },
-      });
-
-      assert.deepStrictEqual(findings, []);
-    }).pipe(Effect.provide(platform))
-  );
-
-  it.effect("negative control: a library importing a legacy package", () =>
+  it.effect("negative control: a library importing a tool", () =>
     Effect.gen(function* control() {
       const findings = yield* check({
-        core: { source: import_("@reebeat/speech") },
-        speech: {},
+        cli: {},
+        core: { source: import_("@reebeat/cli") },
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/core (libraries): tier libraries must not depend on tier legacy: @reebeat/speech at packages/core/src/index.ts:1",
+        "@reebeat/core (libraries): tier libraries must not depend on tier tools: @reebeat/cli at packages/core/src/index.ts:1",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -286,6 +271,20 @@ describe("a package must be in the table", () => {
     assert.deepStrictEqual(Arr.dedupe(names), names);
     assert.isTrue(Option.isSome(tierOf("services")));
     assert.isTrue(Option.isNone(tierOf("mystery")));
+  });
+
+  it("the table has five tiers and none holds a package of the first release's layout", () => {
+    assert.deepStrictEqual(Record.keys(tiers), [
+      "adapters",
+      "libraries",
+      "programs",
+      "services",
+      "tools",
+    ]);
+
+    for (const old of ["speech", "deck", "video", "sfx"]) {
+      assert.isTrue(Option.isNone(tierOf(old)), old);
+    }
   });
 });
 

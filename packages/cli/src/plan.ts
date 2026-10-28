@@ -1,28 +1,19 @@
 // `reebeat plan`: the Plan of a story, for review. Needs no browser and no audio; `--timing` also reads the speech
-// cache, read-only (`speechCacheOnly`), to show frames.
+// cache, read-only (a stage that never refreshes), to show frames.
 import { buildPlan, encodePlan, reviewText, schedule } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
-import { Speech } from "@reebeat/speech";
+import { readSource, speechStage } from "@reebeat/pipeline";
+import type { Selection } from "@reebeat/services";
 import { Effect } from "effect";
 
-import { readSource } from "./source.ts";
+import { Composition, speechServicesOf } from "./adapters.ts";
+import type { RunOptions } from "./adapters.ts";
 
 /** The source of a story and its Plan, which carries the hash of the source's bytes. */
-export const readPlan = Effect.fn("readPlan")(function* readPlan(
-  story: string
-) {
+const readPlan = Effect.fn("readPlan")(function* readPlan(story: string) {
   const source = yield* readSource(story);
 
   return { plan: yield* buildPlan(source.text, source.sha256), source };
-});
-
-/** The Plan scheduled onto the narration the `Speech` service provides. */
-export const scheduledPlan = Effect.fn("scheduledPlan")(function* scheduledPlan(
-  plan: PlanJson
-) {
-  const speech = yield* Speech;
-
-  return yield* schedule(plan, yield* speech.alignLines(plan));
 });
 
 const present = (plan: PlanJson, json: boolean, timing: boolean) =>
@@ -38,14 +29,22 @@ export const planText = Effect.fn("planText")(function* planText(options: {
   return yield* present(plan, options.json, false);
 });
 
-/** The same with the Timeline: the narration comes from the speech cache the `Speech` service reads. */
+/** The same with the Timeline: the narration comes from the speech cache the selected adapters key into. */
 export const timedPlanText = Effect.fn("timedPlanText")(
   function* timedPlanText(options: {
     readonly json: boolean;
+    readonly run: RunOptions;
+    readonly selection: Selection;
     readonly story: string;
   }) {
+    const compose = yield* Composition;
     const { plan } = yield* readPlan(options.story);
 
-    return yield* present(yield* scheduledPlan(plan), options.json, true);
+    const aligned = yield* Effect.provide(
+      speechStage(plan, { refresh: false }),
+      speechServicesOf(compose(options.selection, options.run))
+    );
+
+    return yield* present(yield* schedule(plan, aligned), options.json, true);
   }
 );

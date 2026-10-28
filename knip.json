@@ -4,19 +4,8 @@
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
     "packages/cli": {
-      "entry": [
-        "bin/*.ts",
-        "scripts/*.ts",
-        "test/**/*.test.ts",
-        "live/**/*.test.ts"
-      ],
-      "project": [
-        "bin/**/*.ts",
-        "live/**/*.ts",
-        "scripts/**/*.ts",
-        "src/**/*.ts",
-        "test/**/*.ts"
-      ]
+      "entry": ["bin/*.ts", "test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["bin/**/*.ts", "live/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
     },
     "packages/core": {
       "entry": ["test/**/*.test.ts"],

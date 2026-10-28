@@ -26,8 +26,6 @@ export const tiers = {
     "encode-ffmpeg",
     "cache-fs",
   ],
-  // The first release's packages, until the migration deletes them: they may use anything.
-  legacy: ["speech", "deck", "video", "sfx"],
   libraries: ["core", "subtitles", "lint"],
   programs: ["pipeline"],
   services: ["services"],
@@ -41,7 +39,6 @@ const allTiers: readonly Tier[] = Record.keys(tiers);
 /** The tiers a package of each tier may depend on. A package may always use itself, never another of its tier. */
 const allowedTargets: Readonly<Record<Tier, readonly Tier[]>> = {
   adapters: ["services", "libraries"],
-  legacy: allTiers,
   libraries: ["libraries"],
   programs: ["services", "libraries"],
   services: ["libraries"],
@@ -311,9 +308,9 @@ const manifestFindings = Effect.fnUntraced(function* manifestFindings(
   );
 });
 
-/** Tools and the legacy packages may use anything, so nothing about their imports is checked. */
+/** Tools may use anything, so nothing about their imports is checked. */
 const unrestricted = (dir: string): boolean =>
-  Option.exists(tierOf(dir), (tier) => tier === "tools" || tier === "legacy");
+  Option.exists(tierOf(dir), (tier) => tier === "tools");
 
 const outside = "<outside>";
 

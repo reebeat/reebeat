@@ -3,13 +3,11 @@
 import { assert, layer } from "@effect/vitest";
 import { decodePlan } from "@reebeat/core";
 import type { PlanError } from "@reebeat/core";
-import { sha256Hex } from "@reebeat/speech";
+import { sha256Hex } from "@reebeat/pipeline";
 import { Array as Arr, Effect, Exit, FileSystem, Option, Path } from "effect";
 
 import {
   fillCache,
-  keysOf,
-  planOf,
   platform,
   runCli,
   sameId,
@@ -20,6 +18,9 @@ import {
   writeIn,
   writeText,
 } from "./support.ts";
+
+/** The flags of the offline stand-ins for narration. */
+const offline = ["--speech", "silent", "--aligner", "even"] as const;
 
 layer(platform)("reebeat plan", (it) => {
   it.effect("prints the review text of the committed story and exits 0", () =>
@@ -81,8 +82,16 @@ layer(platform)("reebeat plan", (it) => {
       const { cacheDir, story } = yield* storyWithCache;
       const before = yield* fs.readDirectory(cacheDir);
 
-      const review = yield* runCli(["plan", story, "--timing"]);
-      const json = yield* runCli(["plan", story, "--timing", "--json"]);
+      const review = yield* runCli(["plan", story, "--timing", ...offline]);
+
+      const json = yield* runCli([
+        "plan",
+        story,
+        "--timing",
+        "--json",
+        ...offline,
+      ]);
+
       const plan = yield* decodePlan(json.stdout);
 
       assert.isTrue(Exit.isSuccess(review.exit));
@@ -92,20 +101,21 @@ layer(platform)("reebeat plan", (it) => {
     })
   );
 
-  it.effect("--timing takes the cache named by --cache", () =>
+  it.effect("--timing takes the cache named by --cache-dir", () =>
     Effect.gen(function* elsewhere() {
       const path = yield* Path.Path;
       const story = yield* storyFile();
       const cacheDir = path.join(yield* tempDirectory, "cache");
 
-      yield* fillCache(cacheDir, yield* planOf(storyText));
+      yield* fillCache(cacheDir, storyText);
 
       const { exit, stdout } = yield* runCli([
         "plan",
         story,
         "--timing",
-        "--cache",
+        "--cache-dir",
         cacheDir,
+        ...offline,
       ]);
 
       assert.isTrue(Exit.isSuccess(exit));
@@ -114,17 +124,42 @@ layer(platform)("reebeat plan", (it) => {
   );
 
   it.effect(
-    "--timing without a cache entry fails with SpeechCacheMiss naming the Line",
+    "--timing without a cache entry fails with SpeechCacheMiss naming the Line and the key",
     () =>
       Effect.gen(function* miss() {
         const story = yield* storyFile();
-        const { exit, stderr } = yield* runCli(["plan", story, "--timing"]);
-        const [first] = yield* keysOf(yield* planOf(storyText));
+
+        const { exit, stderr } = yield* runCli([
+          "plan",
+          story,
+          "--timing",
+          ...offline,
+        ]);
 
         assert.isTrue(Exit.isFailure(exit));
         assert.include(stderr, "SpeechCacheMiss");
         assert.include(stderr, "sc1.l1");
-        assert.include(stderr, first?.key ?? "no key");
+        assert.match(stderr, /[0-9a-f]{64}/u);
+      })
+  );
+
+  it.effect(
+    "--timing under the other narrator is a miss: the key names the adapter that made the audio",
+    () =>
+      Effect.gen(function* otherNarrator() {
+        const { cacheDir, story } = yield* storyWithCache;
+
+        // The cache holds the silent narrator's assets; the default narrator, Kokoro, finds none of its own.
+        const { exit, stderr } = yield* runCli([
+          "plan",
+          story,
+          "--timing",
+          "--cache-dir",
+          cacheDir,
+        ]);
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.include(stderr, "SpeechCacheMiss");
       })
   );
 

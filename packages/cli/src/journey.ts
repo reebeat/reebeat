@@ -1,5 +1,7 @@
-// `bun run journey`: the whole road on one story (spec 0001, "Journey"). Build it, check the build, build it a
-// second time and compare the two builds (F6). The first failure stops the journey.
+// `reebeat journey`: the whole road on one story (spec 0001, "Journey"). Build it, check the build, build it a
+// second time and compare the two builds (F6). The first failure stops the journey. Both builds run on the same
+// selection, and so does the check.
+import type { Selection } from "@reebeat/services";
 import { Console, Duration, Effect, Path } from "effect";
 
 import { buildStory, renderSummary } from "./build.ts";
@@ -11,6 +13,8 @@ export interface JourneyOptions {
   readonly cacheDir: string;
   /** The directory that receives `<name>` and `<name>-2`. */
   readonly outRoot: string;
+  readonly refreshSpeech: boolean;
+  readonly selection: Selection;
   readonly story: string;
 }
 
@@ -33,10 +37,24 @@ export const journey = Effect.fn("journey")(function* journey(
   const second = path.join(options.outRoot, `${name}-2`);
 
   const build = (out: string) =>
-    buildStory({ cacheDir: options.cacheDir, name, out, story: options.story });
+    buildStory({
+      cacheDir: options.cacheDir,
+      name,
+      out,
+      refreshSpeech: options.refreshSpeech,
+      selection: options.selection,
+      story: options.story,
+    });
 
   yield* Console.log(renderSummary(yield* build(first)));
-  yield* phase("check", checkBuild({ dir: first, source: options.story }));
+  yield* phase(
+    "check",
+    checkBuild({
+      cacheDir: options.cacheDir,
+      dir: first,
+      source: options.story,
+    })
+  );
   yield* Console.log(renderSummary(yield* build(second)));
 
   return yield* phase(

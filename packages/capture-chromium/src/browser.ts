@@ -213,34 +213,71 @@ const findTimeweb = Effect.fnUntraced(function* findTimeweb() {
   return { script, version };
 });
 
+/** What the capture needs from the machine, once found: the binary, its flags, the clock script and the versions. */
+interface Install {
+  readonly args: readonly string[];
+  readonly executablePath: string;
+  readonly timewebScript: string;
+  readonly versions: BrowserVersions;
+}
+
+const findInstall = Effect.fnUntraced(function* findInstall() {
+  const chromiumBinary = yield* findChromium();
+  const timeweb = yield* findTimeweb();
+  const noSandbox = yield* readVariable("REEBEAT_CHROMIUM_NO_SANDBOX");
+
+  return {
+    args:
+      noSandbox === "1" ? [...chromiumFlags, "--no-sandbox"] : chromiumFlags,
+    executablePath: chromiumBinary.executable,
+    timewebScript: timeweb.script,
+    versions: { chromium: chromiumBinary.version, timeweb: timeweb.version },
+  } satisfies Install;
+});
+
 export class Browser extends Context.Service<
   Browser,
   {
-    /** Launches Chromium, installs the clock before the page's scripts and loads the deck. */
+    /**
+     * Launches Chromium, installs the clock before the page's scripts and loads the deck. Fails with
+     * `AdapterUnavailable` when the machine lacks what `versions` names.
+     */
     open: (
       options: OpenOptions
-    ) => Effect.Effect<DeckPage, BrowserFailed, Scope.Scope>;
-    readonly versions: BrowserVersions;
+    ) => Effect.Effect<
+      DeckPage,
+      AdapterUnavailable | BrowserFailed,
+      Scope.Scope
+    >;
+    /** The versions that name the adapter, or why the machine cannot run it. */
+    readonly versions: Effect.Effect<BrowserVersions, AdapterUnavailable>;
   }
 >()("@reebeat/capture-chromium/browser/Browser") {
+  /**
+   * Looks for the variable, the binary and the clock script when the layer is built and settles the outcome; nothing
+   * fails then. A machine that lacks one makes every `open` (and `versions`) fail with `AdapterUnavailable`.
+   */
   static readonly layer = Layer.effect(
     Browser,
     Effect.gen(function* build() {
-      const chromiumBinary = yield* findChromium();
-      const timeweb = yield* findTimeweb();
-      const executablePath = chromiumBinary.executable;
+      const platform = yield* Effect.context<
+        | ChildProcessSpawner.ChildProcessSpawner
+        | FileSystem.FileSystem
+        | Path.Path
+      >();
 
-      const noSandbox = yield* readVariable("REEBEAT_CHROMIUM_NO_SANDBOX");
-
-      const args =
-        noSandbox === "1" ? [...chromiumFlags, "--no-sandbox"] : chromiumFlags;
+      const settled = yield* Effect.exit(
+        Effect.provideContext(findInstall(), platform)
+      );
 
       const open = Effect.fn("Browser.open")(function* openPage(
         options: OpenOptions
       ) {
+        const { args, executablePath, timewebScript } = yield* settled;
+
         const browser = yield* Effect.acquireRelease(
           inPage("launch", () =>
-            chromium.launch({ args, executablePath, headless: true })
+            chromium.launch({ args: [...args], executablePath, headless: true })
           ),
           (launched) =>
             inPage("close", () => launched.close()).pipe(Effect.ignore)
@@ -256,7 +293,7 @@ export class Browser extends Context.Service<
         const page = yield* inPage("new page", () => context.newPage());
 
         yield* inPage("install clock", () =>
-          page.addInitScript({ path: timeweb.script })
+          page.addInitScript({ path: timewebScript })
         );
         yield* inPage("install seek layer", () =>
           page.addInitScript({ content: pageRuntime })
@@ -268,10 +305,7 @@ export class Browser extends Context.Service<
 
       return Browser.of({
         open,
-        versions: {
-          chromium: chromiumBinary.version,
-          timeweb: timeweb.version,
-        },
+        versions: Effect.map(settled, (install) => install.versions),
       });
     })
   );

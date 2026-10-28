@@ -1,15 +1,23 @@
 // The Renderer contract for reveal.js, and the files of a Deck (spec 0001, Deck page contract): generated text plus
 // assets read from the installed packages, relative URLs only, no network, licences kept.
 import { assert, describe, it } from "@effect/vitest";
-import { Renderer } from "@reebeat/services";
+import { AdapterUnavailable, Renderer } from "@reebeat/services";
 import type { RenderedDeck } from "@reebeat/services";
 import {
   failingClauses,
   rendererClauses,
   rendererContract,
 } from "@reebeat/services/contract";
-import { Array as Arr, Effect, Layer, Predicate } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Predicate,
+} from "effect";
 
+import { revealRenderer } from "../src/index.ts";
 import { fontFaces } from "../src/theme.ts";
 import {
   existsIn,
@@ -45,6 +53,28 @@ describe("revealRenderer", () => {
         assert.strictEqual(declared.settings.theme, "light");
         assert.strictEqual(declared.settings["palette.accent"], "#1a3fa8");
       }).pipe(Effect.provide(adapter))
+  );
+});
+
+/** The reveal.js renderer over a file system that holds nothing: the packages' files cannot be read. */
+const withoutPackages = revealRenderer.pipe(
+  Layer.provide(Layer.merge(FileSystem.layerNoop({}), Path.layer))
+);
+
+describe("requirements", () => {
+  it.effect(
+    "control: packages that cannot be read do not stop the layer; the first render is AdapterUnavailable naming the package, and nothing falls back",
+    () =>
+      Effect.gen(function* missing() {
+        const renderer = yield* Renderer;
+        const error = yield* Effect.flip(renderer.render(yield* storyPlan));
+
+        assert.strictEqual(renderer.info.id, "reveal.js@unavailable");
+        assert.instanceOf(error, AdapterUnavailable);
+        assert.strictEqual(error.service, "Renderer");
+        assert.strictEqual(error.adapter, "reveal.js");
+        assert.strictEqual(error.requirement, "package reveal.js/reveal.css");
+      }).pipe(Effect.provide(withoutPackages))
   );
 });
 

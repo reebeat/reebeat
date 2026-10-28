@@ -13,7 +13,14 @@ import {
   frameCapturerClauses,
   frameCapturerContract,
 } from "@reebeat/services/contract";
-import { ConfigProvider, Effect, FileSystem, Layer, Path } from "effect";
+import {
+  ConfigProvider,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Stream,
+} from "effect";
 
 import { chromiumCapturer } from "../src/index.ts";
 import { fixture } from "./fixturePlan.ts";
@@ -106,29 +113,37 @@ const withEnvironment = (values: Record<string, string>) =>
     Layer.provide(nodeServices)
   );
 
+/** What the first `capture` of a capturer over `values` fails with. */
+const firstCapture = (values: Record<string, string>) =>
+  Effect.gen(function* capturing() {
+    const capturer = yield* FrameCapturer;
+
+    return yield* Effect.flip(
+      Stream.runCollect(capturer.capture({ deckDir: "/unused", plan: fixture }))
+    );
+  }).pipe(Effect.provide(withEnvironment(values)));
+
 describe("requirements", () => {
   it.effect(
-    "control: no REEBEAT_CHROMIUM is AdapterUnavailable naming the variable, not a fallback",
+    "control: no REEBEAT_CHROMIUM does not stop the layer; the first capture is AdapterUnavailable naming the variable, and no fallback emits a frame",
     () =>
       Effect.gen(function* missing() {
-        const error = yield* Effect.flip(Layer.build(withEnvironment({})));
+        const error = yield* firstCapture({});
 
         assert.instanceOf(error, AdapterUnavailable);
         assert.strictEqual(error.service, "FrameCapturer");
         assert.strictEqual(error.adapter, "chromium");
         assert.strictEqual(error.requirement, "env REEBEAT_CHROMIUM");
-      }).pipe(Effect.scoped)
+      })
   );
 
   it.effect(
     "control: a binary that does not run is AdapterUnavailable naming the requirement, not its path",
     () =>
       Effect.gen(function* broken() {
-        const error = yield* Effect.flip(
-          Layer.build(
-            withEnvironment({ REEBEAT_CHROMIUM: "/nonexistent/chromium" })
-          )
-        );
+        const error = yield* firstCapture({
+          REEBEAT_CHROMIUM: "/nonexistent/chromium",
+        });
 
         assert.instanceOf(error, AdapterUnavailable);
         assert.strictEqual(
@@ -136,7 +151,18 @@ describe("requirements", () => {
           "binary named by REEBEAT_CHROMIUM"
         );
         assert.notInclude(error.message, "nonexistent");
-      }).pipe(Effect.scoped)
+      })
+  );
+
+  it.effect("the id of a capturer that cannot run says so", () =>
+    Effect.gen(function* named() {
+      const capturer = yield* FrameCapturer;
+
+      assert.strictEqual(
+        capturer.info.id,
+        "chromium@unavailable+timeweb@unavailable"
+      );
+    }).pipe(Effect.provide(withEnvironment({})))
   );
 });
 

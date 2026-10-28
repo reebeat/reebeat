@@ -5,9 +5,18 @@
 import { SettingsSchema, requireTimeline } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { CaptureError, FrameCapturer, localEgress } from "@reebeat/services";
-import type { AdapterUnavailable } from "@reebeat/services";
+import type { CaptureFailure } from "@reebeat/services";
 import type { FileSystem } from "effect";
-import { Array as Arr, Effect, Layer, Path, Record, Stream } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Exit,
+  Layer,
+  Path,
+  Predicate,
+  Record,
+  Stream,
+} from "effect";
 import type { ChildProcessSpawner } from "effect/process";
 
 import { Browser, chromiumFlags } from "./browser.ts";
@@ -20,21 +29,30 @@ const deckEntry = "deck.html";
 /** Whether the animations that start with a command settle for two real frames before the first seek: always. */
 const settleNewAnimations = true;
 
+/** What `info.id` says of a machine that cannot run Chromium. */
+const unread = "unavailable";
+
 /**
- * Headless Chromium as a `FrameCapturer`. The layer checks `REEBEAT_CHROMIUM`, the binary and `timeweb` when it is
- * built: whatever is missing is `AdapterUnavailable`, never a fallback. `capture` launches one browser per stream,
- * in the stream's scope, and emits PNG frame 0 to `frames(plan) - 1` in order.
+ * Headless Chromium as a `FrameCapturer`. The layer looks for `REEBEAT_CHROMIUM`, the binary and `timeweb` when it is
+ * built and settles the outcome: a machine that lacks one does not stop the layer, it fails every `capture` with
+ * `AdapterUnavailable` (never a fallback). `capture` launches one browser per stream, in the stream's scope, and
+ * emits PNG frame 0 to `frames(plan) - 1` in order.
  */
 export const chromiumCapturer: Layer.Layer<
   FrameCapturer,
-  AdapterUnavailable,
+  never,
   FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner
 > = Layer.effect(
   FrameCapturer,
   Effect.gen(function* build() {
     const browser = yield* Browser;
     const path = yield* Path.Path;
-    const id = `chromium@${browser.versions.chromium}+timeweb@${browser.versions.timeweb}`;
+
+    const id = Exit.match(yield* Effect.exit(browser.versions), {
+      onFailure: () => `chromium@${unread}+timeweb@${unread}`,
+      onSuccess: (versions) =>
+        `chromium@${versions.chromium}+timeweb@${versions.timeweb}`,
+    });
 
     const failed = (cause: { readonly message: string }) =>
       new CaptureError({ adapter: id, cause, message: cause.message });
@@ -42,7 +60,7 @@ export const chromiumCapturer: Layer.Layer<
     const capture = (request: {
       readonly deckDir: string;
       readonly plan: PlanJson;
-    }) =>
+    }): Stream.Stream<Uint8Array, CaptureFailure> =>
       Stream.unwrap(
         Effect.gen(function* start() {
           const plan = yield* Effect.fromResult(requireTimeline(request.plan));
@@ -56,7 +74,14 @@ export const chromiumCapturer: Layer.Layer<
             settleNewAnimations,
           });
         })
-      ).pipe(Stream.mapError(failed), Stream.provideService(Browser, browser));
+      ).pipe(
+        Stream.mapError((cause): CaptureFailure =>
+          Predicate.isTagged(cause, "AdapterUnavailable")
+            ? cause
+            : failed(cause)
+        ),
+        Stream.provideService(Browser, browser)
+      );
 
     return FrameCapturer.of({
       capture,

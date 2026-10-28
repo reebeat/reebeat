@@ -10,6 +10,7 @@
 // The commands run after the clock step, as in the measurement. The lag between a Reveal call and the first
 // changed frame, measured on the real deck (spec Revision "capture lags re-measured", `captureSchedule.ts`): an
 // Auto-Animate scene change and a cut 0 frames, a default fade 1, `next` and `focus` 1, and `sfx` changes no pixel.
+import type { AdapterUnavailable } from "@reebeat/services";
 import { Duration, Effect, Stream } from "effect";
 
 import { Browser } from "./browser.ts";
@@ -98,12 +99,17 @@ const captureFrame = (
 
 /**
  * The PNG frames `0 .. totalFrames - 1` of the deck, one at a time and in order. The browser lives as long as the
- * stream runs. A capture that outlasts its deadline fails with `CaptureTimeout`.
+ * stream runs. A machine without Chromium fails with `AdapterUnavailable`; a capture that outlasts its deadline fails
+ * with `CaptureTimeout`.
  */
 export const captureFrames = (
   schedule: CaptureSchedule,
   options: CaptureOptions
-): Stream.Stream<Uint8Array, BrowserFailed | CaptureTimeout, Browser> => {
+): Stream.Stream<
+  Uint8Array,
+  AdapterUnavailable | BrowserFailed | CaptureTimeout,
+  Browser
+> => {
   const seconds =
     options.timeoutSeconds ?? defaultTimeoutSeconds(schedule.totalFrames);
 

@@ -20,6 +20,8 @@ export type {
   ScheduledCommand,
 } from "./captureSchedule.ts";
 
-export { chromiumCapturer } from "./chromium.ts";
+export { chromiumCapturer, chromiumCapturerWith } from "./chromium.ts";
+
+export type { ChromiumOptions } from "./chromium.ts";
 
 export * from "./errors.ts";

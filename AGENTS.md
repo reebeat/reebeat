@@ -34,6 +34,7 @@ Every gate is a root script in `package.json`; `bun run ready` runs them in this
 | Dead code | `bun run knip` | `ready`, CI | unused files, exports and dependencies | export a symbol nothing imports |
 | Duplication | `bun run cpd` | `ready`, CI | copy-paste (threshold 0) | paste a 40-token block twice |
 | Secrets, history | `bun run secrets` | `ready`, CI | a secret anywhere in the git history | commit a fake key on a scratch branch |
+| Journey | `bun run journey` (`reebeat build` twice, `reebeat check`, F6 compare) | last step of `ready`, CI | any falsifier F1 to F9 of spec 0001 failing on the written Deck and Video of `stories/same-id`: cue timing, subtitles, notes, fragments, source hash, transitions, narration timing, chapters, two-build determinism | edit one word of the story after a build and run `reebeat check`; change a lag in `packages/video/src/captureSchedule.ts` |
 
 ## Exceptions
 

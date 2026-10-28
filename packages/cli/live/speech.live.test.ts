@@ -1,5 +1,5 @@
-// Opt-in: `bun run test:live` in packages/cli, with REEBEAT_KOKORO_CACHE and REEBEAT_WHISPER_MODEL set (see
-// `scripts/refillSpeech.ts`). It regenerates one Line of stories/same-id with the real adapters into a scratch
+// Opt-in: `bun run test:live` in packages/cli, with REEBEAT_KOKORO_CACHE and REEBEAT_WHISPER_MODEL set (the models
+// are the ones `reebeat build --refresh-speech` uses). It regenerates one Line of stories/same-id with the real adapters into a scratch
 // cache and compares the aligned Line with the committed one: the models, ffmpeg and whisper-cli must still
 // produce what the committed cache holds. The aligned Line holds the SHA-256 of its FLAC, so equal Lines are
 // equal audio.

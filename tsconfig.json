@@ -9,11 +9,13 @@
           "@effect/platform-node/NodeServices",
           "@effect/vitest",
           "effect/Crypto",
+          "effect/cli",
           "effect/FileSystem",
           "effect/PlatformError",
           "effect/Path",
           "effect/process/ChildProcess",
-          "effect/process/ChildProcessSpawner"
+          "effect/process/ChildProcessSpawner",
+          "effect/Stdio"
         ],
         "diagnosticSeverity": {
           "abortControllerInEffect": "error",

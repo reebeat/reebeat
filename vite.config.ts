@@ -23,6 +23,19 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/cli/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The composition roots of the CLI: the executable, the journey script and the layers they share.
+      files: ["packages/cli/bin/**"],
+      platform: "node",
+      role: "composition-root",
+      strictness: "strict",
+    },
+    {
       files: ["packages/core/src/**"],
       platform: "portable",
       role: "effect-library",
@@ -153,6 +166,7 @@ export default defineConfig({
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         // One file holds every tagged error of a stage (a closed set that reads as one table); speech's services.ts holds its five capabilities.
         files: [
+          "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
           "packages/deck/src/errors.ts",
           "packages/speech/src/errors.ts",

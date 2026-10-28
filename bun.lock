@@ -19,6 +19,28 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/cli": {
+      "name": "@reebeat/cli",
+      "version": "0.0.0",
+      "bin": {
+        "reebeat": "./src/bin.ts",
+      },
+      "dependencies": {
+        "@effect/platform-node": "catalog:",
+        "@reebeat/core": "workspace:*",
+        "@reebeat/deck": "workspace:*",
+        "@reebeat/sfx": "workspace:*",
+        "@reebeat/speech": "workspace:*",
+        "@reebeat/video": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@effect/vitest": "catalog:",
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/core": {
       "name": "@reebeat/core",
       "version": "0.0.0",
@@ -501,6 +523,8 @@
     "@redis/search": ["@redis/search@6.3.0", "", { "peerDependencies": { "@redis/client": "^6.3.0" } }, "sha512-RPXAZmKjZZG7Tm7m1w9keFdXzbL91PiSHQBfQRe9xwW40jNsTRbG0FwhIz4QlHPU4gKDAsCy8IQHj4yZl4H9rw=="],
 
     "@redis/time-series": ["@redis/time-series@6.3.0", "", { "peerDependencies": { "@redis/client": "^6.3.0" } }, "sha512-+fJOB8mN1z5WRakCJNh5lVdz1KqvHGSOistsKeitD24QsCtPwyRQXWC0iq6T/i/ubLE/YcguZqPm8F598MKk4A=="],
+
+    "@reebeat/cli": ["@reebeat/cli@workspace:packages/cli"],
 
     "@reebeat/core": ["@reebeat/core@workspace:packages/core"],
 

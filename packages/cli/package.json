@@ -1,0 +1,28 @@
+{
+  "name": "@reebeat/cli",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "reebeat": "./bin/reebeat.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "bunx vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@reebeat/core": "workspace:*",
+    "@reebeat/deck": "workspace:*",
+    "@reebeat/sfx": "workspace:*",
+    "@reebeat/speech": "workspace:*",
+    "@reebeat/video": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

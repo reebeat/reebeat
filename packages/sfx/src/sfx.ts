@@ -6,11 +6,11 @@
 //   whoosh 450 ms  band-limited noise, envelope rising from 0.2 to 1 and falling back
 //   ding  1200 ms  sine 880 Hz plus a 1760 Hz partial at half amplitude, exponential decay
 //
+// The catalogue is core's `SfxName`: a sound the Plan can ask for without a synthesis here fails to type-check.
 // Every sound has a sample of magnitude above 0.01 within its first 2 ms and a peak of at most 0.6 full scale.
 
-export const sfxNames = ["pop", "whoosh", "ding"] as const;
-
-export type SfxName = (typeof sfxNames)[number];
+import type { SfxName } from "@reebeat/core";
+import { Record } from "effect";
 
 export const sampleRate = 48_000;
 
@@ -111,7 +111,12 @@ const whoosh = (): Float64Array => {
   return filtered.map((value) => (peakAmplitude * value) / peak);
 };
 
-const synth: Record<SfxName, () => Float64Array> = { ding, pop, whoosh };
+const synth = { ding, pop, whoosh } satisfies {
+  readonly [name in SfxName]: () => Float64Array;
+};
+
+/** The sounds of the catalogue: exactly the names of `synth`, which must cover core's `SfxName`. */
+export const sfxNames: readonly SfxName[] = Record.keys(synth);
 
 const toWav = (samples: Float64Array): Uint8Array => {
   const dataBytes = samples.length * 2;

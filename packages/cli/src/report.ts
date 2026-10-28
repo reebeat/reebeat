@@ -10,7 +10,7 @@ export interface Reportable {
 }
 
 /** One line: `UnknownCue (line 12): the message`, or `SpeechCacheMiss: the message` when there is no line. */
-export const describeFailure = (failure: Reportable): string => {
+const describeFailure = (failure: Reportable): string => {
   const line: unknown = Predicate.hasProperty(failure, "line")
     ? failure.line
     : undefined;

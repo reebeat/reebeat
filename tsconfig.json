@@ -15,7 +15,8 @@
           "effect/Path",
           "effect/process/ChildProcess",
           "effect/process/ChildProcessSpawner",
-          "effect/Stdio"
+          "effect/Stdio",
+          "effect/testing/TestConsole"
         ],
         "diagnosticSeverity": {
           "abortControllerInEffect": "error",

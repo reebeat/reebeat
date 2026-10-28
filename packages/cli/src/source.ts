@@ -7,7 +7,7 @@ import { Effect, FileSystem, Path } from "effect";
 
 import { SourceUnreadable } from "./errors.ts";
 
-export interface Source {
+interface Source {
   /** SHA-256 of the file's bytes, lower-case hexadecimal. */
   readonly sha256: string;
   readonly text: string;

@@ -4,7 +4,7 @@ import { sha256Hex } from "@reebeat/speech";
 // equal text. `@reebeat/verify` reads the same file; the field names are the contract between the two.
 import { Array as Arr, Effect, FileSystem, Order, Path, Schema } from "effect";
 
-import { BuildOutputFailed, NotABuild } from "./errors.ts";
+import { NotABuild, outputFailed } from "./errors.ts";
 
 export const manifestFile = "build.json";
 
@@ -14,7 +14,7 @@ const FileEntrySchema = Schema.Struct({
   sha256: Schema.String,
 });
 
-export const BuildManifestSchema = Schema.Struct({
+const BuildManifestSchema = Schema.Struct({
   files: Schema.Array(FileEntrySchema),
   schema: Schema.Literal(1),
   /** The base name of the `.fountain` file. */
@@ -22,18 +22,11 @@ export const BuildManifestSchema = Schema.Struct({
   sourceSha256: Schema.String,
 });
 
-export type BuildManifest = typeof BuildManifestSchema.Type;
+type BuildManifest = typeof BuildManifestSchema.Type;
 
 const manifestJson = Schema.fromJsonString(BuildManifestSchema, { space: 2 });
 const encodeManifest = Schema.encodeEffect(manifestJson);
 const decodeManifest = Schema.decodeUnknownEffect(manifestJson);
-
-const failure = (path: string, what: string) => (cause: unknown) =>
-  new BuildOutputFailed({
-    cause,
-    message: `cannot ${what} ${path}: ${cause instanceof Error ? cause.message : String(cause)}`,
-    path,
-  });
 
 /** Every file under `dir` (not directories), as a POSIX path relative to `dir`, sorted. */
 const listFiles = Effect.fnUntraced(function* listFiles(dir: string) {
@@ -42,12 +35,15 @@ const listFiles = Effect.fnUntraced(function* listFiles(dir: string) {
 
   const entries = yield* Effect.mapError(
     fs.readDirectory(dir, { recursive: true }),
-    failure(dir, "list")
+    outputFailed(dir, "list")
   );
 
   const files = yield* Effect.filter(entries, (entry) =>
     Effect.map(
-      Effect.mapError(fs.stat(path.join(dir, entry)), failure(entry, "stat")),
+      Effect.mapError(
+        fs.stat(path.join(dir, entry)),
+        outputFailed(entry, "stat")
+      ),
       (info) => info.type === "File"
     )
   );
@@ -75,12 +71,12 @@ export const writeManifest = Effect.fn("writeManifest")(function* writeManifest(
 
       const bytes = yield* Effect.mapError(
         fs.readFile(location),
-        failure(location, "read")
+        outputFailed(location, "read")
       );
 
       const sha256 = yield* Effect.mapError(
         sha256Hex(bytes),
-        failure(location, "hash")
+        outputFailed(location, "hash")
       );
 
       return { bytes: bytes.byteLength, path: file, sha256 };
@@ -100,7 +96,7 @@ export const writeManifest = Effect.fn("writeManifest")(function* writeManifest(
     Effect.flatMap(encodeManifest(manifest), (text) =>
       fs.writeFileString(target, text)
     ),
-    failure(target, "write")
+    outputFailed(target, "write")
   );
 
   return manifest;

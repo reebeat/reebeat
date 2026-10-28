@@ -26,7 +26,7 @@ export class NotABuild extends Schema.TaggedError<
 >()("NotABuild", { dir: Schema.String, message: Schema.String }) {}
 
 /** Writing, moving or removing a file of the build failed. */
-export class BuildOutputFailed extends Schema.TaggedError<
+class BuildOutputFailed extends Schema.TaggedError<
   BuildOutputFailed,
   { readonly brand: unique symbol }
 >()("BuildOutputFailed", {
@@ -34,6 +34,14 @@ export class BuildOutputFailed extends Schema.TaggedError<
   message: Schema.String,
   path: Schema.String,
 }) {}
+
+/** The `cause` handler of an effect that writes, moves or removes `path`: `what` completes "cannot ...". */
+export const outputFailed = (path: string, what: string) => (cause: unknown) =>
+  new BuildOutputFailed({
+    cause,
+    message: `cannot ${what} ${path}: ${cause instanceof Error ? cause.message : String(cause)}`,
+    path,
+  });
 
 /** At least one verdict is not ok (`check`, `journey`). */
 export class ChecksFailed extends Schema.TaggedError<

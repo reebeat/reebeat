@@ -12,16 +12,7 @@ import type { Crypto, FileSystem, Path } from "effect";
 
 import { VerifyNotWired } from "./errors.ts";
 
-export type FalsifierId =
-  | "F1"
-  | "F2"
-  | "F3"
-  | "F4"
-  | "F5"
-  | "F6"
-  | "F7"
-  | "F8"
-  | "F9";
+type FalsifierId = "F1" | "F2" | "F3" | "F4" | "F5" | "F6" | "F7" | "F8" | "F9";
 
 export interface Verdict {
   readonly detail: string;

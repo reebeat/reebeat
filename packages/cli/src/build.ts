@@ -26,7 +26,7 @@ import {
   Path,
 } from "effect";
 
-import { BuildOutputFailed, OutputDirOccupied } from "./errors.ts";
+import { OutputDirOccupied, outputFailed } from "./errors.ts";
 import { manifestFile, writeManifest } from "./manifest.ts";
 import { readPlan, scheduledPlan } from "./plan.ts";
 
@@ -52,13 +52,6 @@ export interface BuildSummary {
   readonly vttBytes: number;
 }
 
-const failure = (path: string, what: string) => (cause: unknown) =>
-  new BuildOutputFailed({
-    cause,
-    message: `cannot ${what} ${path}: ${cause instanceof Error ? cause.message : String(cause)}`,
-    path,
-  });
-
 /** Removes the stale `<out>.partial` and an earlier build (or an empty directory) at `<out>`; refuses anything else. */
 const clearEarlier = Effect.fnUntraced(function* clearEarlier(
   out: string,
@@ -68,16 +61,16 @@ const clearEarlier = Effect.fnUntraced(function* clearEarlier(
 
   yield* Effect.mapError(
     fs.remove(partial, { force: true, recursive: true }),
-    failure(partial, "remove")
+    outputFailed(partial, "remove")
   );
 
   const present = yield* Effect.mapError(
     fs.exists(out),
-    failure(out, "look for")
+    outputFailed(out, "look for")
   );
 
   const entries = present
-    ? yield* Effect.mapError(fs.readDirectory(out), failure(out, "list"))
+    ? yield* Effect.mapError(fs.readDirectory(out), outputFailed(out, "list"))
     : [];
 
   if (entries.length > 0 && !entries.includes(manifestFile)) {
@@ -89,7 +82,7 @@ const clearEarlier = Effect.fnUntraced(function* clearEarlier(
 
   return yield* Effect.mapError(
     fs.remove(out, { force: true, recursive: true }),
-    failure(out, "remove")
+    outputFailed(out, "remove")
   );
 });
 
@@ -110,7 +103,7 @@ const writeSounds = Effect.fnUntraced(function* writeSounds(
 
   yield* Effect.mapError(
     fs.makeDirectory(target, { recursive: true }),
-    failure(target, "create")
+    outputFailed(target, "create")
   );
 
   yield* Effect.forEach(
@@ -118,7 +111,7 @@ const writeSounds = Effect.fnUntraced(function* writeSounds(
     (name) =>
       Effect.mapError(
         fs.writeFile(path.join(target, `${name}.wav`), sfxWav(name)),
-        failure(path.join(target, `${name}.wav`), "write")
+        outputFailed(path.join(target, `${name}.wav`), "write")
       ),
     { discard: true }
   );
@@ -140,7 +133,7 @@ const assemble = Effect.fnUntraced(function* assemble(
     Effect.flatMap(encodePlan(scheduled), (text) =>
       fs.writeFileString(planFile, text)
     ),
-    failure(planFile, "write")
+    outputFailed(planFile, "write")
   );
 
   yield* writeDeck(renderDeck(scheduled), partial, scheduled);
@@ -199,7 +192,7 @@ const buildInto = Effect.fnUntraced(function* buildInto(
       yield* Effect.acquireRelease(
         Effect.mapError(
           fs.makeDirectory(partial, { recursive: true }),
-          failure(partial, "create")
+          outputFailed(partial, "create")
         ),
         (_, exit) =>
           Exit.isSuccess(exit)
@@ -217,7 +210,7 @@ const buildInto = Effect.fnUntraced(function* buildInto(
 
       yield* Effect.mapError(
         fs.rename(partial, out),
-        failure(out, "move into place")
+        outputFailed(out, "move into place")
       );
 
       return { ...summary, out };

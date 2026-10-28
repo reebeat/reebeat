@@ -74,7 +74,7 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 | Fountain | reebeat | Deck | Video |
 |---|---|---|---|
 | `Title:`, `Author:` | Story metadata | title | title tag |
-| `# Section`, `= synopsis` | Chapter outline | slide group | chapter mark |
+| `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
 | scene heading | Scene (identity boundary) | slide | stretch between two slide changes |
 | Action | Keyframe: the Elements on screen | slide content | the same page |
 | `NARRATOR` dialogue | Line | speaker notes | narration and subtitles |

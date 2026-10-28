@@ -9,6 +9,7 @@
 // The catalogue is core's `SfxName`: a sound the Plan can ask for without a synthesis here fails to type-check.
 // Every sound has a sample of magnitude above 0.01 within its first 2 ms and a peak of at most 0.6 full scale.
 
+import { audioClipToWav } from "@reebeat/core";
 import type { SfxName } from "@reebeat/core";
 import type { AudioClip } from "@reebeat/services";
 import { Record } from "effect";
@@ -16,7 +17,6 @@ import { Record } from "effect";
 export const sampleRate = 48_000;
 
 const peakAmplitude = 0.55;
-const headerBytes = 44;
 const twoPi = 2 * Math.PI;
 
 const samplesFor = (seconds: number): number =>
@@ -119,43 +119,12 @@ const synth = { ding, pop, whoosh } satisfies {
 /** The sounds of the catalogue: exactly the names of `synth`, which must cover core's `SfxName`. */
 export const sfxNames: readonly SfxName[] = Record.keys(synth);
 
-const toWav = (samples: Float64Array): Uint8Array => {
-  const dataBytes = samples.length * 2;
-  const bytes = new Uint8Array(headerBytes + dataBytes);
-  const view = new DataView(bytes.buffer);
-
-  const tag = (offset: number, text: string): void => {
-    for (let index = 0; index < text.length; index += 1) {
-      view.setUint8(offset + index, text.codePointAt(index) ?? 0);
-    }
-  };
-
-  tag(0, "RIFF");
-  view.setUint32(4, headerBytes - 8 + dataBytes, true);
-  tag(8, "WAVE");
-  tag(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  tag(36, "data");
-  view.setUint32(40, dataBytes, true);
-
-  for (const [index, sample] of samples.entries()) {
-    view.setInt16(headerBytes + index * 2, Math.round(sample * 32_767), true);
-  }
-
-  return bytes;
-};
-
-/** The catalogue sound `name` as a WAV file (16-bit PCM, mono, 48 kHz). Equal names give equal bytes. */
-export const sfxWav = (name: SfxName): Uint8Array => toWav(synth[name]());
-
 /** The catalogue sound `name` as a mono clip of 32-bit floats at `sampleRate`. Equal names give equal samples. */
 export const synthClip = (name: SfxName): AudioClip => ({
   sampleRate,
   samples: Float32Array.from(synth[name]()),
 });
+
+/** The catalogue sound `name` as a WAV file (16-bit PCM, mono, 48 kHz). Equal names give equal bytes. */
+export const sfxWav = (name: SfxName): Uint8Array =>
+  audioClipToWav(synthClip(name));

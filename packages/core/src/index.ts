@@ -21,3 +21,5 @@ export type { AlignedLine } from "./schedule.ts";
 export { cuesById, frameToMs, linesById, requireTimeline } from "./timed.ts";
 
 export type { TimedPlan } from "./timed.ts";
+
+export { audioClipToWav } from "./wav.ts";

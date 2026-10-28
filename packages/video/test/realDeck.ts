@@ -36,7 +36,7 @@ const alignedLines = (
   );
 
 /** The scheduled Plan of the fixture story, checked against its Scenes. */
-export const realPlan = Effect.gen(function* realPlan() {
+const realPlan = Effect.gen(function* realPlan() {
   const source = yield* readLocal("./fixtures/lags.fountain");
   const plan = yield* buildPlan(source, "0".repeat(64));
   const scheduled = yield* schedule(plan, alignedLines(plan));

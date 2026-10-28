@@ -17,7 +17,7 @@ PlanJson + deck.html text ──checkDeck──▶ void | DeckMismatch          
 
 | Export | What it is |
 | --- | --- |
-| `revealRenderer` | `Layer<Renderer, AdapterUnavailable, FileSystem \| Path>`; `info.id` is `reveal.js@<installed version>`, `info.settings` holds the theme (palette, fonts, Inter version), the egress is local. The layer reads the packages' files once, when it is built; a package that is not installed is `AdapterUnavailable`. `render(plan)` is `assembleDeck(plan, renderDeck(plan), assets)`; a Deck that disagrees with its Plan fails as `RenderFailed` carrying the `DeckMismatch` |
+| `revealRenderer` | `Layer<Renderer, never, FileSystem \| Path>`; `info.id` is `reveal.js@<installed version>`, `info.settings` holds the theme (palette, fonts, Inter version), the egress is local. The layer reads the packages' files once, when it is built; a package that cannot be read does not stop the layer, `render` then fails with `AdapterUnavailable` (and `info.id` is `reveal.js@unavailable`). `render(plan)` is `assembleDeck(plan, renderDeck(plan), assets)`; a Deck that disagrees with its Plan fails as `RenderFailed` carrying the `DeckMismatch` |
 | `renderDeck(plan)` | `DeckBundle`: `html` is `deck.html`; `files` are `assets/theme.css` and `assets/deck.js`. Same Plan, same bytes |
 | `readAssets()` | `Effect<DeckAssets, DeckAssetMissing, FileSystem \| Path>`: the bytes of the reveal.js and Inter files and the two package versions |
 | `assembleDeck(plan, bundle, assets)` | `Effect<RenderedDeck, DeckMismatch>`: reads the page back with `checkDeck` and returns the files (`deck.html` is the entry) |

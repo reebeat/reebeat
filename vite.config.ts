@@ -102,12 +102,6 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
-      files: ["packages/video/src/**"],
-      platform: "portable",
-      role: "effect-library",
-      strictness: "strict",
-    },
-    {
       // The one module that imports Playwright (spec 0001, "The controlled clock").
       adapterDependencies: ["playwright-core"],
       files: ["packages/capture-chromium/src/browser.ts"],
@@ -225,7 +219,6 @@ export default defineConfig({
           "packages/render-reveal/src/errors.ts",
           "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
-          "packages/video/src/errors.ts",
         ],
         rules: {
           "eslint/max-classes-per-file": "off",

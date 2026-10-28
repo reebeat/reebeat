@@ -89,8 +89,8 @@ export const sliceClip = (
 ): GrayClip => ({
   ...clip,
   firstFrame: fromFrame,
-  frames: clip.frames.slice(
-    fromFrame - clip.firstFrame,
-    toFrame - clip.firstFrame + 1
+  frames: Arr.take(
+    Arr.drop(clip.frames, fromFrame - clip.firstFrame),
+    toFrame - fromFrame + 1
   ),
 });

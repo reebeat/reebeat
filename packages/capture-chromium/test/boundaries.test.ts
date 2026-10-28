@@ -55,15 +55,17 @@ const violations = (name: string, text: string): readonly string[] =>
       : [`${name}: ${specifier}`];
   });
 
+const manifestOf = Effect.flatMap(
+  readPackageText("package.json"),
+  Schema.decodeUnknownEffect(Schema.fromJsonString(PackageJson))
+);
+
 describe("boundaries: packages/capture-chromium", () => {
   it.effect(
     "depends on exactly core, services, effect, playwright-core and timeweb",
     () =>
       Effect.gen(function* manifest() {
-        const { dependencies } = yield* Effect.flatMap(
-          readPackageText("package.json"),
-          Schema.decodeEffect(Schema.fromJsonString(PackageJson))
-        );
+        const { dependencies } = yield* manifestOf;
 
         const expected = [
           "@reebeat/core",

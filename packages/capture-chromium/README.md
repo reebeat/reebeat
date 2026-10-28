@@ -6,14 +6,15 @@ owns the pipe. Nothing leaves the machine (`info.egress` is local).
 
 | Export | What it is |
 | --- | --- |
-| `chromiumCapturer` | `Layer<FrameCapturer, AdapterUnavailable, FileSystem \| Path \| ChildProcessSpawner>`. `info.id` is `chromium@<version>+timeweb@<version>`, read from the binary (`--version`) and from `timeweb`'s `package.json` when the layer is built; `info.settings` holds the frame rate, the canvas size, the lag table, the settle flag, the clock origin and the Chromium flags. `frames(plan)` is the Timeline's `totalFrames` (0 without a Timeline). `capture({ deckDir, plan })` launches one browser in the stream's scope and emits frame 0 to `frames(plan) - 1`; every failure is `CaptureError` |
+| `chromiumCapturer` | `Layer<FrameCapturer, never, FileSystem \| Path \| ChildProcessSpawner>`. `info.id` is `chromium@<version>+timeweb@<version>`, read from the binary (`--version`) and from `timeweb`'s `package.json` when the layer is built (`chromium@unavailable+timeweb@unavailable` when the machine cannot run it); `info.settings` holds the frame rate, the canvas size, the lag table, the settle flag, the clock origin and the Chromium flags. `frames(plan)` is the Timeline's `totalFrames` (0 without a Timeline). `capture({ deckDir, plan })` launches one browser in the stream's scope and emits frame 0 to `frames(plan) - 1`; a failure is `CaptureError`, or `AdapterUnavailable` on a machine without the binary |
 | `captureSchedule(plan)` | Pure: the Reveal commands per frame (`goToScene`, `stepFragment`), sorted by frame |
 | `captureFrames(schedule, options)` | The capture under the controlled clock (mechanism Hp: `timeweb` virtual clock pre-rolled past `Reveal.initialize`, plus the seek layer in `pageRuntime.ts`); `virtualTimeOf` is the seam of the F6 control |
-| `Browser` | The service over Playwright: the only module that imports it is `browser.ts`. Its layer checks `REEBEAT_CHROMIUM` (the binary), `timeweb` and, optionally, `REEBEAT_CHROMIUM_NO_SANDBOX=1` |
+| `Browser` | The service over Playwright: the only module that imports it is `browser.ts`. Its layer looks for `REEBEAT_CHROMIUM` (the binary), `timeweb` and, optionally, `REEBEAT_CHROMIUM_NO_SANDBOX=1` when it is built and settles the outcome |
 
-A missing requirement is `AdapterUnavailable { service: "FrameCapturer", adapter: "chromium", requirement }` when the
-layer is built: `env REEBEAT_CHROMIUM`, `binary named by REEBEAT_CHROMIUM` or `package timeweb`. There is no fallback
-and the message never names the path.
+A missing requirement does not stop the layer: the first `capture` fails with
+`AdapterUnavailable { service: "FrameCapturer", adapter: "chromium", requirement }`, where `requirement` is
+`env REEBEAT_CHROMIUM`, `binary named by REEBEAT_CHROMIUM` or `package timeweb`. No frame is emitted, there is no
+fallback, and the message never names the path.
 
 ## Frame lag
 
@@ -50,7 +51,7 @@ hands the clock's lateness to the seek layer, as a clock that the page's animati
 
 | File | Proves |
 | --- | --- |
-| `chromium.test.ts` | the FrameCapturer contract on the tiny fixture deck (`test/fixtures/deck/deck.html`) with a negative control; the adapter's declaration; `AdapterUnavailable` for a missing variable and a binary that does not run |
+| `chromium.test.ts` | the FrameCapturer contract on the tiny fixture deck (`test/fixtures/deck/deck.html`) with a negative control (a miscounting capturer fails C2 only); the adapter's declaration; `AdapterUnavailable` on first use for a missing variable and a binary that does not run |
 | `capture.test.ts` | the lags, a shifted command, two launches giving identical frames, and the jittered-clock control (F1, F6, F7) |
 | `lags.test.ts` | the same lags on the real reveal.js page (`render-reveal`) built from `test/fixtures/lags.fountain` |
 | `schedule.test.ts` | `captureSchedule`, a pure function |

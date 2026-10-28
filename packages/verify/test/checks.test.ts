@@ -218,7 +218,15 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
                 yield* rewriteMp4(
                   dir,
                   [edited],
-                  [...mapping("1:0", "0"), "-c", "copy"]
+                  [
+                    ...mapping("1:0", "0"),
+                    "-c:v",
+                    "copy",
+                    "-c:a",
+                    "copy",
+                    "-c:s",
+                    "mov_text",
+                  ]
                 );
               }),
             ["F2"]

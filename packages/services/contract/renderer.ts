@@ -4,7 +4,7 @@ import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Predicate } from "effect";
 import type { Layer } from "effect";
 
-import type { RenderFailed } from "../src/errors.ts";
+import type { RenderError } from "../src/errors.ts";
 import { Renderer } from "../src/renderer.ts";
 import type { RenderedDeck } from "../src/renderer.ts";
 import { registerClauses } from "./clause.ts";
@@ -45,7 +45,7 @@ const sameDeck = (left: RenderedDeck, right: RenderedDeck): boolean =>
 /** The clauses of the contract, as data (a test runs them against broken adapters). */
 export const rendererClauses = (
   options: RendererOptions = {}
-): readonly Clause<FixtureError | RenderFailed, Renderer>[] => {
+): readonly Clause<FixtureError | RenderError, Renderer>[] => {
   const plan =
     options.plan === undefined ? contractPlan : Effect.succeed(options.plan);
 

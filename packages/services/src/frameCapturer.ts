@@ -4,7 +4,7 @@ import type { PlanJson } from "@reebeat/core";
 import { Context } from "effect";
 import type { Scope, Stream } from "effect";
 
-import type { CaptureError } from "./errors.ts";
+import type { CaptureFailure } from "./errors.ts";
 import type { AdapterInfo } from "./types.ts";
 
 export interface CaptureRequest {
@@ -22,7 +22,7 @@ export class FrameCapturer extends Context.Service<
   {
     readonly capture: (
       request: CaptureRequest
-    ) => Stream.Stream<Uint8Array, CaptureError, Scope.Scope>;
+    ) => Stream.Stream<Uint8Array, CaptureFailure, Scope.Scope>;
     /** How many frames `capture` will emit for this Plan. */
     readonly frames: (plan: PlanJson) => number;
     readonly info: AdapterInfo;

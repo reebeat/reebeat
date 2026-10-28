@@ -3,7 +3,7 @@ import { assert } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 import type { Layer } from "effect";
 
-import type { EmptyText, SynthesisFailed } from "../src/errors.ts";
+import type { SpeechError } from "../src/errors.ts";
 import { SpeechSynthesizer } from "../src/speechSynthesizer.ts";
 import { registerClauses } from "./clause.ts";
 import type { Clause } from "./clause.ts";
@@ -22,7 +22,7 @@ export interface SpeechSynthesizerOptions {
   readonly voice?: string;
 }
 
-type Failure = EmptyText | SynthesisFailed;
+type Failure = SpeechError;
 
 /** The clauses of the contract, as data (the stand-ins' tests run them against broken adapters). */
 export const speechSynthesizerClauses = (

@@ -8,7 +8,7 @@ import type { EncodingError } from "effect/encoding";
 
 import { Encoder } from "../src/encoder.ts";
 import type { MuxRequest } from "../src/encoder.ts";
-import type { CaptureError, EncodeFailed } from "../src/errors.ts";
+import type { CaptureFailure, EncodeError } from "../src/errors.ts";
 import type { AudioClip } from "../src/types.ts";
 import { registerClauses } from "./clause.ts";
 import type { Clause } from "./clause.ts";
@@ -46,8 +46,8 @@ export interface EncoderOptions {
 type Services = Encoder | FileSystem.FileSystem | Path.Path;
 
 type Failure =
-  | CaptureError
-  | EncodeFailed
+  | CaptureFailure
+  | EncodeError
   | EncodingError.EncodingError
   | PlatformError.PlatformError;
 

@@ -7,6 +7,11 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/deck": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+      "ignoreDependencies": ["@fontsource/inter", "reveal.js"]
+    },
     "tools/quality": {
       "entry": ["checkEffectExceptions.ts"],
       "project": ["*.ts", "test/**/*.ts"]

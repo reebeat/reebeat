@@ -55,6 +55,10 @@
     "@effect/platform-node": "4.0.6",
     "@effect/vitest": "4.0.6",
     "oxc-parser": "0.153.0",
-    "fountain-js": "1.2.4"
+    "fountain-js": "1.2.4",
+    "@fontsource/inter": "5.3.0",
+    "parse5": "8.0.1",
+    "playwright-core": "1.64.1",
+    "reveal.js": "6.0.2"
   }
 }

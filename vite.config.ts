@@ -29,6 +29,12 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/deck/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -104,8 +110,8 @@ export default defineConfig({
       },
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        // One file holds every tagged error of the Plan stage (a closed set that reads as one table).
-        files: ["packages/core/src/errors.ts"],
+        // One file holds every tagged error of a package's stage (a closed set that reads as one table).
+        files: ["packages/core/src/errors.ts", "packages/deck/src/errors.ts"],
         rules: {
           "eslint/max-classes-per-file": "off",
           "unicorn/throw-new-error": "off",
@@ -131,6 +137,35 @@ export default defineConfig({
                     "packages/core is pure (spec 0001, F11): no browser, Playwright, ffmpeg, reveal.js, React, Remotion or Node built-in.",
                   regex:
                     "^(?:node:|playwright|reveal\\.js|react(?:-dom)?(?:/|$)|remotion|@remotion/|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // F11 (spec 0001): the Deck reads the Plan, never the screenplay. It takes the core's types only and imports
+        // no parser, Playwright or ffmpeg wrapper.
+        files: ["packages/deck/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [
+                {
+                  allowTypeImports: true,
+                  message:
+                    "packages/deck takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
+                  name: "@reebeat/core",
+                },
+              ],
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/deck imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
+                  regex:
+                    "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
                 },
               ],
             },

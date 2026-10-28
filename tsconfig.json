@@ -8,7 +8,9 @@
           "@effect/platform-node/NodeRuntime",
           "@effect/platform-node/NodeServices",
           "@effect/vitest",
+          "effect/Crypto",
           "effect/FileSystem",
+          "effect/PlatformError",
           "effect/Path",
           "effect/process/ChildProcess",
           "effect/process/ChildProcessSpawner"

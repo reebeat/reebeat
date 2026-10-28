@@ -29,6 +29,25 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/speech/src/**"],
+      platform: "node",
+      role: "service",
+      strictness: "strict",
+    },
+    {
+      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
+      files: ["packages/speech/src/kokoro.ts"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/speech/scripts/**"],
+      platform: "node",
+      role: "composition-root",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -76,6 +95,8 @@ export default defineConfig({
       ...(ultraciteFmt.ignorePatterns ?? []),
       "**/*.md",
       "packages/*/test/fixtures/**",
+      // The speech cache is written by `@reebeat/speech` in its own JSON layout.
+      "stories/*/speech-cache/**",
     ],
   },
   lint: {
@@ -106,6 +127,18 @@ export default defineConfig({
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         // One file holds every tagged error of the Plan stage (a closed set that reads as one table).
         files: ["packages/core/src/errors.ts"],
+        rules: {
+          "eslint/max-classes-per-file": "off",
+          "unicorn/throw-new-error": "off",
+        },
+      },
+      {
+        // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
+        // errors.ts holds every tagged error of the speech stage and services.ts its five capabilities (closed sets that read as one table).
+        files: [
+          "packages/speech/src/errors.ts",
+          "packages/speech/src/services.ts",
+        ],
         rules: {
           "eslint/max-classes-per-file": "off",
           "unicorn/throw-new-error": "off",

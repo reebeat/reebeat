@@ -7,6 +7,15 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/speech": {
+      "entry": ["test/**/*.test.ts", "live/**/*.test.ts", "scripts/*.ts"],
+      "project": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "live/**/*.ts",
+        "scripts/**/*.ts"
+      ]
+    },
     "tools/quality": {
       "entry": ["checkEffectExceptions.ts"],
       "project": ["*.ts", "test/**/*.ts"]

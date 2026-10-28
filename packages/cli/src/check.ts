@@ -5,7 +5,7 @@ import { Array as Arr, Console, Effect } from "effect";
 import { ChecksFailed } from "./errors.ts";
 import { readManifest } from "./manifest.ts";
 import { Verifier } from "./verifier.ts";
-import { renderVerdicts } from "./verify.ts";
+import { exitCode, renderVerdicts } from "./verify.ts";
 import type { Verdict } from "./verify.ts";
 
 /** Prints the verdicts and fails with `ChecksFailed`, naming each falsifier that failed, unless all are ok. */
@@ -18,7 +18,7 @@ export const reportVerdicts = Effect.fn("reportVerdicts")(
       (verdict) => verdict.id
     );
 
-    if (failed.length > 0) {
+    if (exitCode(verdicts) !== 0) {
       return yield* new ChecksFailed({
         failed,
         message: `${failed.length} of ${verdicts.length} checks failed: ${Arr.join(failed, ", ")}`,

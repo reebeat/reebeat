@@ -51,9 +51,3 @@ export class ChecksFailed extends Schema.TaggedError<
   failed: Schema.Array(Schema.String),
   message: Schema.String,
 }) {}
-
-/** The stand-in for the verify package's own failure (see `verify.ts`; deleted when that package is merged). */
-export class VerifyNotWired extends Schema.TaggedError<
-  VerifyNotWired,
-  { readonly brand: unique symbol }
->()("VerifyNotWired", { message: Schema.String }) {}

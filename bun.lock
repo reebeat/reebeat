@@ -23,7 +23,7 @@
       "name": "@reebeat/cli",
       "version": "0.0.0",
       "bin": {
-        "reebeat": "./src/bin.ts",
+        "reebeat": "./bin/reebeat.ts",
       },
       "dependencies": {
         "@effect/platform-node": "catalog:",
@@ -31,6 +31,7 @@
         "@reebeat/deck": "workspace:*",
         "@reebeat/sfx": "workspace:*",
         "@reebeat/speech": "workspace:*",
+        "@reebeat/verify": "workspace:*",
         "@reebeat/video": "workspace:*",
         "effect": "catalog:",
       },

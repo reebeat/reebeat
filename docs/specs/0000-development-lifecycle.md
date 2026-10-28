@@ -75,6 +75,8 @@ Adapted from the donor. Independent reviewers (a verification reviewer and a con
 
 Donor-specific parts are dropped: the `verify-vektorprogrammet` and `verify-membership-writes` skills, the `Formal verification` job, database worktree notes. The verification reviewer instead runs `bun run ready` on the head in a detached worktree and checks the PR body's falsifier table against the branch.
 
+A PR carries the spec and its code together (plan and build are one step, Revisions 2026-10-28). Reviewers judge three things, and the round record says which they checked: **(a) the plan**: the right problem, journey and falsifiers; **(b) the implementation**: correct, gates green, every control shown; **(c) their agreement**: the code does what the spec with its Revisions says, with no undeclared scope, no unbuilt falsifier and no silent drift. A finding in (c) is medium or higher.
+
 ## Scope and non-goals
 
 In scope: everything in *What is built*, committed to `main` by the PR that carries this spec.
@@ -120,3 +122,9 @@ Each falsifier has a negative control that is run and observed to fail, with the
 1. Is a required human approval wanted later (the protection currently requires a PR and the `checks` status only; the recorded review round is the review)?
 2. Should commits be signed (`required_signatures`)? Not required now.
 3. Renovate or Dependabot for the pinned set: deferred (an upgrade is its own spec).
+
+## Revisions
+
+Dated entries. A spec is revised only here; its text above is never edited silently after the PR opens. Before the PR opens, the plan may change freely as the build teaches; a change that alters the journey, scope or a falsifier gets an entry anyway.
+
+- **2026-10-28, operator: plan and build are one step.** Earlier text said a spec waits for approval before its code. Now: write the plan first, implement without waiting for approval, revise the plan as the build teaches (entries here), and freeze it when the PR opens. The PR carries spec and code. Work stops only at an operator-owned fork (preference, authority, external effects), which is reported. Consequence: the journey step "write or pick a spec" and the PR body's **Spec** section include this Revisions list; `AGENTS.md`, `pr-create` and `review-pr` state the three-part review above.

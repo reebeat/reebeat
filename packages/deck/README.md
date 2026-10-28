@@ -43,6 +43,8 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   `assets/sfx/<name>.wav` and ignores a rejection from a blocked autoplay. `reebeatDeck.ready` resolves when Reveal is
   ready **and both Inter faces are loaded**, so a capture never shows a fallback font. `goToScene` throws for an unknown
   id. reveal.js's notes plugin is loaded, so the arrow keys step through the Deck and `s` opens the speaker view.
+  Known interplay: `focused` is not cleared when the slide changes, so an Element still focused when an Auto-Animate
+  starts is measured with its scale of 1.04 and animates from that box.
 - **Files.** `assets/reveal/{reveal.js,reveal.css,reset.css,plugin/notes.js,LICENSE}` and
   `assets/fonts/{inter-latin-400-normal.woff2,inter-latin-700-normal.woff2,LICENSE}` are copied from the installed
   packages (found with `import.meta.resolve`); the licences travel with them. The Latin subset of Inter is bundled.

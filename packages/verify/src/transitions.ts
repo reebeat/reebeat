@@ -1,8 +1,18 @@
-// F7, the clock covers the transitions. Every Scene change begins at its slide frame (`sceneChanges.ts`). For every
-// Scene that enters with `auto-animate`, the decoded frames from three before the slide change to thirty after show at
-// least five distinct intermediate frames between the first frame and the settled one, and each intermediate frame is
-// no farther from the settled frame than the one before it (the sum of absolute pixel differences does not grow, beyond
-// a slack). That the same frames come out of two runs is F6.
+// F7, the clock covers the transitions, observed on ONE written video. Every Scene change begins at its slide frame
+// (`sceneChanges.ts`). For every Scene that enters with `auto-animate`, the decoded frames from three before the slide
+// change to thirty after show at least five distinct intermediate frames between the first frame and the settled one,
+// and each intermediate frame is no farther from the settled frame than the one before it (the sum of absolute pixel
+// differences does not rise by more than a slack).
+//
+// F7 does NOT check that two runs give the same frames: that is F6 (`compareBuilds`, on two builds). Which test covers
+// what:
+//   - the scene-change timing, the intermediate-frame count and the monotone approach: `test/checks.test.ts` (a scene
+//     change commanded 2 frames late and early, a hard cut, a reversed transition), each failing F7 and nothing else;
+//   - run-to-run identity (F6): `test/checks.test.ts` (a copy passes; one frame replaced, or only the audio changed,
+//     fails naming the first differing frame or sample); the clock-jitter control (a `Math.random()` jitter in the
+//     clock makes two captures differ) lives in the tests of `packages/video`;
+//   - capture with the settle wait off and capture without the virtual clock are recorded manual measurements (spec
+//     0001, Revision "M0 measured: the clock decides the mechanism"), not automated tests.
 import { changedPixels, decodeGrayFrames } from "@reebeat/video";
 import { Array as Arr, Effect, Option } from "effect";
 
@@ -10,6 +20,7 @@ import { guarded } from "./guard.ts";
 import { sha256Hex } from "./hash.ts";
 import type { Build } from "./load.ts";
 import { observeSceneChanges } from "./sceneChanges.ts";
+import { stepMinPixels, stepTolerance } from "./steps.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 
@@ -21,12 +32,6 @@ const tail = 30;
 
 /** The count of distinct intermediate frames the transition must show. */
 const minIntermediate = 5;
-
-/** Gray levels of difference below which a pixel counts as unchanged (compression noise). */
-const noise = 8;
-
-/** A frame is an intermediate frame when at least this many pixels differ from both ends. */
-const minPixels = 200;
 
 /**
  * The approach to the settled frame is monotonic when no frame is farther from it than the frame before by more than
@@ -58,8 +63,10 @@ interface Transition {
 const isIntermediate =
   (first: Uint8Array, settled: Uint8Array, width: number) =>
   (frame: Uint8Array): boolean =>
-    changedPixels(frame, first, width, undefined, noise) >= minPixels &&
-    changedPixels(frame, settled, width, undefined, noise) >= minPixels;
+    changedPixels(frame, first, width, undefined, stepTolerance) >=
+      stepMinPixels &&
+    changedPixels(frame, settled, width, undefined, stepTolerance) >=
+      stepMinPixels;
 
 /** The largest increase from one value to the next; 0 when the values never increase. */
 const largestRise = (values: readonly number[]): number =>

@@ -1,8 +1,8 @@
-import { sha256Hex } from "@reebeat/speech";
 // The screenplay as the pipeline sees it: its text and the SHA-256 of its bytes. The CLI is the composition root
 // that hashes (Effect's `Crypto`, through `sha256Hex`); `buildPlan` copies the hash and computes nothing.
 // The file is read as bytes and decoded without removing a byte-order mark, so the hash of the text the core
 // receives is the hash of the file's bytes, which is what `reebeat check` compares (F5).
+import { sha256Hex } from "@reebeat/speech";
 import { Effect, FileSystem, Path } from "effect";
 
 import { SourceUnreadable } from "./errors.ts";

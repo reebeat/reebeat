@@ -1,10 +1,10 @@
-import { sampleRate as defaultSampleRate } from "@reebeat/sfx";
 // What the written files show: the decoded frames, the decoded audio, and the container's streams and chapters. The
 // verify slice reads these to check the falsifiers F1 and F6 to F9 on the mp4; the tests here use them too.
 import { Array as Arr, Effect, Schema } from "effect";
 
 import { MediaToolFailed } from "./errors.ts";
 import { MediaTools } from "./mediaTools.ts";
+import { outputSampleRate as defaultSampleRate } from "./settings.ts";
 
 /** A rectangle of pixels, in the frame's own coordinates. */
 export interface Box {

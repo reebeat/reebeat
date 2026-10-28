@@ -1,0 +1,59 @@
+{
+  "name": "reebeat",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "tools/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "prepare": "vp config --no-agent && effect-tsgo patch --typescript --oxlint",
+    "ready": "bun run check && bun run check:exceptions && bun run test && bun run knip && bun run cpd && bun run secrets",
+    "check": "vp check",
+    "test": "vp run -r --no-cache test",
+    "check:exceptions": "bun tools/quality/checkEffectExceptions.ts",
+    "knip": "knip",
+    "cpd": "jscpd --config .jscpd.json .",
+    "secrets": "gitleaks git --config .gitleaks.toml --redact",
+    "commitlint": "commitlint"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
+    "@effect/tsgo": "0.53.1",
+    "@phibkro/oxlint-effect-plugin": "0.2.0",
+    "jscpd": "5.4.1",
+    "knip": "6.41.0",
+    "oxc-parser": "catalog:",
+    "oxlint-plugin-complexity": "4.0.0",
+    "typescript": "catalog:",
+    "ultracite": "8.0.1",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "overrides": {
+    "@effect/platform-node-shared": "4.0.6",
+    "vite": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "^1.4.2",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "catalog": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@1.2.0",
+    "vite-plus": "1.2.0",
+    "typescript": "7.0.2",
+    "@types/node": "^26.6.5",
+    "effect": "4.0.6",
+    "@effect/platform-node": "4.0.6",
+    "@effect/vitest": "4.0.6",
+    "oxc-parser": "0.153.0"
+  }
+}

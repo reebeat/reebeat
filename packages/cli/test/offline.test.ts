@@ -64,7 +64,7 @@ layer(platform)("the offline pipeline (F15)", (it) => {
         );
 
         assert.isTrue(Exit.isSuccess(built.exit), built.stderr);
-        assert.include(built.stdout, "SpeechSynthesizer: silent@1-standin");
+        assert.include(built.stdout, "SpeechSynthesizer: silent@2-standin");
         assert.include(built.stdout, "Encoder: ffmpeg@");
 
         const checked = yield* runCli(

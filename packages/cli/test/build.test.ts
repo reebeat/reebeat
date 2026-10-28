@@ -124,7 +124,7 @@ layer(platform)("reebeat build", (it) => {
         // The seven adapters, each local: nothing leaves the machine; and the provenance of both Lines' audio.
         assert.deepStrictEqual(
           Arr.map(manifest.adapters, (adapter) => adapter.id).slice(0, 2),
-          ["silent@1-standin", "even@1-standin"]
+          ["silent@2-standin", "even@1-standin"]
         );
         assert.strictEqual(manifest.adapters.length, 7);
 
@@ -153,7 +153,7 @@ layer(platform)("reebeat build", (it) => {
         // The summary names every adapter and what it sends out: nothing, for each local one.
         assert.include(
           stdout,
-          "SpeechSynthesizer: silent@1-standin, egress: none"
+          "SpeechSynthesizer: silent@2-standin, egress: none"
         );
 
         assert.strictEqual(
@@ -229,7 +229,7 @@ layer(platform)("reebeat build", (it) => {
         const fromFile = yield* runBuild(where);
 
         assert.isTrue(Exit.isSuccess(fromFile.exit));
-        assert.include(fromFile.stdout, "SpeechSynthesizer: silent@1-standin");
+        assert.include(fromFile.stdout, "SpeechSynthesizer: silent@2-standin");
 
         // The flag says kokoro: with no cache and no refresh that is a miss, not the config's silent narrator.
         const overridden = yield* runBuild(where, ["--speech", "kokoro"]);

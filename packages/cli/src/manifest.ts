@@ -1,32 +1,14 @@
 import { sha256Hex } from "@reebeat/speech";
 // `build.json`, written last: its presence says the build finished. It lists every other file of the build with
 // its SHA-256 and size, and the hash of the source. The declared field order is alphabetical so equal builds write
-// equal text. `@reebeat/verify` reads the same file; the field names are the contract between the two.
-import { Array as Arr, Effect, FileSystem, Order, Path, Schema } from "effect";
+// equal text. The schema and its codec are `@reebeat/verify`'s: one definition for the writer and the reader.
+import { decodeBuildManifest, encodeBuildManifest } from "@reebeat/verify";
+import type { BuildManifest } from "@reebeat/verify";
+import { Array as Arr, Effect, FileSystem, Order, Path } from "effect";
 
 import { NotABuild, outputFailed } from "./errors.ts";
 
 export const manifestFile = "build.json";
-
-const FileEntrySchema = Schema.Struct({
-  bytes: Schema.Int,
-  path: Schema.NonEmptyString,
-  sha256: Schema.String,
-});
-
-const BuildManifestSchema = Schema.Struct({
-  files: Schema.Array(FileEntrySchema),
-  schema: Schema.Literal(1),
-  /** The base name of the `.fountain` file. */
-  sourcePath: Schema.NonEmptyString,
-  sourceSha256: Schema.String,
-});
-
-type BuildManifest = typeof BuildManifestSchema.Type;
-
-const manifestJson = Schema.fromJsonString(BuildManifestSchema, { space: 2 });
-const encodeManifest = Schema.encodeEffect(manifestJson);
-const decodeManifest = Schema.decodeUnknownEffect(manifestJson);
 
 /** Every file under `dir` (not directories), as a POSIX path relative to `dir`, sorted. */
 const listFiles = Effect.fnUntraced(function* listFiles(dir: string) {
@@ -93,7 +75,7 @@ export const writeManifest = Effect.fn("writeManifest")(function* writeManifest(
   const target = path.join(dir, manifestFile);
 
   yield* Effect.mapError(
-    Effect.flatMap(encodeManifest(manifest), (text) =>
+    Effect.flatMap(encodeBuildManifest(manifest), (text) =>
       fs.writeFileString(target, text)
     ),
     outputFailed(target, "write")
@@ -131,7 +113,7 @@ export const readManifest = Effect.fn("readManifest")(function* readManifest(
     refusal(dir, `cannot read ${location}: ${cause.message}`)
   );
 
-  const manifest = yield* Effect.mapError(decodeManifest(text), (cause) =>
+  const manifest = yield* Effect.mapError(decodeBuildManifest(text), (cause) =>
     refusal(dir, `${location} is not a build manifest: ${cause.message}`)
   );
 

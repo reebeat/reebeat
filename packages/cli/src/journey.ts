@@ -1,6 +1,6 @@
 // `bun run journey`: the whole road on one story (spec 0001, "Journey"). Build it, check the build, build it a
 // second time and compare the two builds (F6). The first failure stops the journey.
-import { Console, Effect, Path } from "effect";
+import { Console, Duration, Effect, Path } from "effect";
 
 import { buildStory, renderSummary } from "./build.ts";
 import { checkBuild, reportVerdicts } from "./check.ts";
@@ -13,6 +13,15 @@ export interface JourneyOptions {
   readonly outRoot: string;
   readonly story: string;
 }
+
+/** Runs a phase of the journey and prints how long it took. */
+const phase = <A, E, R>(name: string, run: Effect.Effect<A, E, R>) =>
+  Effect.flatMap(Effect.timed(run), ([elapsed, result]) =>
+    Effect.as(
+      Console.log(`${name}: ${Duration.toSeconds(elapsed).toFixed(1)} s`),
+      result
+    )
+  );
 
 export const journey = Effect.fn("journey")(function* journey(
   options: JourneyOptions
@@ -27,8 +36,13 @@ export const journey = Effect.fn("journey")(function* journey(
     buildStory({ cacheDir: options.cacheDir, name, out, story: options.story });
 
   yield* Console.log(renderSummary(yield* build(first)));
-  yield* checkBuild({ dir: first, source: options.story });
+  yield* phase("check", checkBuild({ dir: first, source: options.story }));
   yield* Console.log(renderSummary(yield* build(second)));
 
-  return yield* reportVerdicts([yield* verifier.compare(first, second)]);
+  return yield* phase(
+    "compare",
+    Effect.flatMap(verifier.compare(first, second), (verdict) =>
+      reportVerdicts([verdict])
+    )
+  );
 });

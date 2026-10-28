@@ -16,6 +16,7 @@
     "@reebeat/deck": "workspace:*",
     "@reebeat/sfx": "workspace:*",
     "@reebeat/speech": "workspace:*",
+    "@reebeat/verify": "workspace:*",
     "@reebeat/video": "workspace:*",
     "effect": "catalog:"
   },

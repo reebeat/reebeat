@@ -111,7 +111,7 @@ layer(platform)("reebeat check", (it) => {
         assert.isTrue(Exit.isSuccess(exit));
         assert.match(
           stdout,
-          /F1 +ok +all cues within a frame\nF2 +ok +12 cues/u
+          /F1 +PASS +all cues within a frame\nF2 +PASS +12 cues\n2 of 2 falsifiers hold/u
         );
         assert.deepStrictEqual(calls, [`check ${dir} ${story}`]);
       })

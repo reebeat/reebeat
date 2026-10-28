@@ -11,7 +11,7 @@ import type { Measured } from "./verdict.ts";
 /** The window of frames either side of the slide frame in which the change is looked for. */
 const windowFrames = 4;
 
-export interface SceneChanges {
+interface SceneChanges {
   readonly measured: Measured;
   readonly problems: readonly string[];
 }

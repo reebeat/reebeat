@@ -429,9 +429,10 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
         Effect.gen(function* backwards() {
           const fixture = yield* Fixture;
 
-          // The transition runs from two frames before the slide frame to 24 after: reverse that run.
-          const first = slideFrameOf(fixture.plan, "sc2") - 2;
-          const last = first + 26;
+          // The transition runs from the slide frame to 24 frames after: reverse that run. The picture still changes
+          // at the slide frame, so only the approach to the settled frame is wrong.
+          const first = slideFrameOf(fixture.plan, "sc2");
+          const last = first + 24;
 
           const reversed = Arr.map(fixture.frames, (frame, index) =>
             index >= first && index <= last

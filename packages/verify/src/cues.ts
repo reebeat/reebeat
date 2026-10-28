@@ -18,7 +18,7 @@ import {
 } from "./units.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { withSilentLead, wavSamples } from "./wav.ts";
+import { soundMatchFloor, wavSamples, withSilentLead } from "./wav.ts";
 
 /** How far from the fire frame, in milliseconds, the catalogue sound is looked for. */
 const soundWindowMs = 150;
@@ -82,14 +82,18 @@ const observeSound = (
     soundLeadMs
   );
 
-  const { offsetMs } = audioOffsetMs(
+  const { offsetMs, score } = audioOffsetMs(
     track,
     reference,
     frameStartMs(fireFrame, fps) - soundLeadMs,
     soundWindowMs
   );
 
-  return found(msToFrames(offsetMs, fps));
+  return score < soundMatchFloor
+    ? missing(
+        `the sound is not found within ${soundWindowMs} ms (best match ${score.toFixed(2)}, at least ${soundMatchFloor} needed)`
+      )
+    : found(msToFrames(offsetMs, fps));
 };
 
 const hasSound = (facts: readonly CueFact[]): boolean =>

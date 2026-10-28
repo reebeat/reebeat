@@ -48,14 +48,17 @@ describe("Effect family versions", () => {
       Effect.gen(function* drifted() {
         const lock = yield* readLock;
 
+        const version = /"effect@(?<version>[^"]+)"/u.exec(lock)?.groups
+          ?.version;
+
         const scratch = lock.replace(
-          '"@effect/vitest@4.0.6"',
-          '"@effect/vitest@4.0.5"'
+          /"@effect\/vitest@[^"]+"/u,
+          '"@effect/vitest@0.0.1"'
         );
 
         assert.notStrictEqual(scratch, lock);
         assert.deepStrictEqual(effectFamilyDrift(scratch), [
-          "@effect/vitest is locked at 4.0.5, effect at 4.0.6",
+          `@effect/vitest is locked at 0.0.1, effect at ${version}`,
         ]);
       }).pipe(Effect.provide(NodeServices.layer))
   );

@@ -29,6 +29,18 @@ than 8 grey levels in 200 pixels) follows the Reveal call by:
 
 The commands of one Scene keep their Cue order (a fragment step is the same call for every Cue).
 
+## Settle wait
+
+`CaptureOptions.settleNewAnimations` (the build sets it) waits two real animation frames before the first seek of a
+new animation. Turning it off is a recorded manual measurement, not an automated control, because the outcome is not
+stable: two launches of the 219-frame fixture differed in 2 frames in one run and in none in another, and a reviewer
+saw the raw PNG comparison differ in 3 of 3 runs. No test asserts either outcome.
+
+The automated control of F6 is the clock seam `CaptureOptions.virtualTimeOf`: two captures with a seeded late-running
+clock (a different seed each) differ, and two with the same seed are identical (`test/capture.test.ts`). The clock
+alone does not move a frame, because the seek layer sets every animation to its frame's time; the seam therefore also
+hands the clock's lateness to the seek layer, as a clock that the page's animations follow would.
+
 ## Tests
 
 `bun run test` in this package runs the pure tests and, in `test/capture.test.ts` and `test/mux.test.ts`, a real

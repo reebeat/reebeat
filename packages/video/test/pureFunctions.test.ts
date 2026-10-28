@@ -206,6 +206,21 @@ describe("captureSchedule", () => {
     );
   });
 
+  it("takes the viewport and the frame rate from the Plan's settings", () => {
+    const plan = timed();
+
+    const wide: TimedPlan = {
+      ...plan,
+      settings: { ...plan.settings, height: 720, width: 1280 },
+    };
+
+    const schedule = captureSchedule(wide);
+
+    assert.strictEqual(schedule.width, wide.settings.width);
+    assert.strictEqual(schedule.height, wide.settings.height);
+    assert.strictEqual(schedule.fps, wide.settings.fps);
+  });
+
   it("is sorted, inside the Video, and has no command for the first Scene", () => {
     const schedule = captureSchedule(timed());
     const frames = Arr.map(schedule.commands, (step) => step.frame);

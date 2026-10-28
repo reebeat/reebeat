@@ -9,7 +9,8 @@
 // the wait: the round trip gives the compositor one more real frame):
 //   hasNewAnimations()      whether an animation started that the layer has not seen
 //   twoRealFrames()         resolves after two real animation frames
-//   seek(frame, fps)        pauses every new animation and sets each to `(frame - firstFrame) * 1000 / fps` ms
+//   seek(frame, fps, skewMs) pauses every new animation and sets each to `(frame - firstFrame) * 1000 / fps` ms plus
+//                           the growth of `skewMs` since the animation was first seen (0 when the clock is on time)
 export const pageRuntime = `
 (() => {
   const tracked = new Map();
@@ -19,19 +20,19 @@ export const pageRuntime = `
   window.__reebeatHasNewAnimations = () => document.getAnimations().some((animation) => !tracked.has(animation));
   window.__reebeatTwoRealFrames = () =>
     new Promise((resolve) => realRequestFrame(() => realRequestFrame(() => resolve(0))));
-  window.__reebeatSeek = (frame, fps) => {
+  window.__reebeatSeek = (frame, fps, skewMs) => {
     for (const animation of document.getAnimations()) {
       if (!tracked.has(animation)) {
         animation.pause();
-        tracked.set(animation, frame);
+        tracked.set(animation, { frame, skewMs });
       }
     }
 
-    for (const [animation, firstFrame] of tracked) {
+    for (const [animation, first] of tracked) {
       if (animation.playState === "idle") {
         tracked.delete(animation);
       } else {
-        animation.currentTime = ((frame - firstFrame) * 1000) / fps;
+        animation.currentTime = ((frame - first.frame) * 1000) / fps + (skewMs - first.skewMs);
       }
     }
 

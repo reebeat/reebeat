@@ -32,11 +32,15 @@ export interface DeckPage {
   readonly ready: Effect.Effect<void, BrowserFailed>;
   /** One PNG of the viewport. */
   readonly screenshot: Effect.Effect<Uint8Array, BrowserFailed>;
-  /** Sets every running animation to its time at `frame`; `settle` waits two real frames before a new one. */
+  /**
+   * Sets every running animation to its time at `frame`; `settle` waits two real frames before a new one; `skewMs` is
+   * how far the virtual clock is from its nominal time at `frame` (0 for a clock that is on time).
+   */
   readonly seek: (
     frame: number,
     fps: number,
-    settle: boolean
+    settle: boolean,
+    skewMs: number
   ) => Effect.Effect<void, BrowserFailed>;
 }
 
@@ -65,7 +69,7 @@ const evaluateCommand = (command: CaptureCommand): string =>
 
 // Three round trips, as the seek layer asks (see pageRuntime.ts): look, settle, seek.
 const seekAnimations = (page: Page): DeckPage["seek"] =>
-  Effect.fnUntraced(function* seek(frame, fps, settle) {
+  Effect.fnUntraced(function* seek(frame, fps, settle, skewMs) {
     const fresh = yield* inPage("look for new animations", () =>
       page.evaluate("window.__reebeatHasNewAnimations()")
     );
@@ -77,7 +81,7 @@ const seekAnimations = (page: Page): DeckPage["seek"] =>
     }
 
     yield* inPage("seek", () =>
-      page.evaluate(`window.__reebeatSeek(${frame}, ${fps})`)
+      page.evaluate(`window.__reebeatSeek(${frame}, ${fps}, ${skewMs})`)
     );
   });
 

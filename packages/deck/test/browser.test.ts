@@ -483,17 +483,43 @@ describe("the Deck page", () => {
   );
 });
 
-/** Samples the left edge of `sc4`'s `one` on every animation frame for 1.5 s while the page goes to `sc4`. */
-const sampleTransition = `new Promise((resolve) => {
-  const samples = [];
-  const begin = performance.now();
-  const read = () => ${elementOf("sc4", "one")}.getBoundingClientRect();
-  const tick = () => {
-    samples.push(read().x);
-    if (performance.now() - begin < 1500) { requestAnimationFrame(tick); } else { resolve(samples); }
+/**
+ * Samples the left edge of `sc4`'s `one` at `steps + 1` evenly spaced moments of the Auto-Animate into `sc4`, by seeking
+ * the browser's own animations instead of waiting for frames. The page goes to `sc4`; every CSS transition that starts
+ * is paused in its `transitionrun` event (which fires before the first frame of the transition), and each sample sets
+ * all of them to the same time and reads the box. The numbers do not depend on how fast the machine runs.
+ */
+const sampleTransition = (
+  steps: number
+): string => `new Promise((resolve, reject) => {
+  const paused = [];
+  document.addEventListener("transitionrun", (event) => {
+    for (const animation of event.target.getAnimations()) {
+      if (animation.transitionProperty === event.propertyName && !paused.includes(animation)) {
+        animation.pause();
+        paused.push(animation);
+      }
+    }
+  }, true);
+  const sample = () => {
+    const duration = Math.max(...paused.map((animation) => animation.effect.getComputedTiming().endTime));
+    const samples = [];
+    for (let step = 0; step <= ${steps}; step += 1) {
+      for (const animation of paused) { animation.currentTime = (duration * step) / ${steps}; }
+      samples.push(${elementOf("sc4", "one")}.getBoundingClientRect().x);
+    }
+    resolve(samples);
+  };
+  // Reveal starts the Auto-Animate in a requestAnimationFrame, after the slide's own transitions have started:
+  // wait for the transform transition of the moving Element.
+  const moving = () => paused.some((animation) => animation.transitionProperty === "transform");
+  let frames = 0;
+  const wait = () => {
+    frames += 1;
+    if (moving()) { sample(); } else if (frames > 120) { reject(new Error("no transform transition started")); } else { requestAnimationFrame(wait); }
   };
   ${goTo("sc4")};
-  tick();
+  wait();
 })`;
 
 describe("Auto-Animate between matched scenes", () => {
@@ -524,17 +550,18 @@ describe("Auto-Animate between matched scenes", () => {
 
         assert.isAbove(endBox.x - startBox.x, 100);
 
-        // The animated change of slide, sampled on every animation frame.
-        const xs = yield* evaluate(page, sampleTransition, Samples);
+        // The animated change of slide, sampled at 24 evenly spaced moments of its 0.8 s (the 30 fps frames).
+        const xs = yield* evaluate(page, sampleTransition(24), Samples);
 
         const strictlyBetween = Arr.filter(
           xs,
           (x) => x > startBox.x + 1 && x < endBox.x - 1
         );
 
+        assert.strictEqual(xs.length, 25);
         assert.closeTo(xs[0] ?? Number.NaN, startBox.x, 0.6);
         assert.closeTo(xs.at(-1) ?? Number.NaN, endBox.x, 0.6);
-        assert.isAtLeast(strictlyBetween.length, 10);
+        assert.isAtLeast(strictlyBetween.length, 20);
         assert.deepStrictEqual(xs, Arr.sort(xs, Order.Number));
 
         const end = yield* evaluate(page, rectOf("sc4", "one"), Rect);

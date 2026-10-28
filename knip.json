@@ -4,8 +4,19 @@
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
     "packages/cli": {
-      "entry": ["bin/*.ts", "test/**/*.test.ts"],
-      "project": ["bin/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+      "entry": [
+        "bin/*.ts",
+        "scripts/*.ts",
+        "test/**/*.test.ts",
+        "live/**/*.test.ts"
+      ],
+      "project": [
+        "bin/**/*.ts",
+        "live/**/*.ts",
+        "scripts/**/*.ts",
+        "src/**/*.ts",
+        "test/**/*.ts"
+      ]
     },
     "packages/core": {
       "entry": ["test/**/*.test.ts"],
@@ -20,14 +31,25 @@
         "test/**/*.ts"
       ]
     },
-    "packages/speech": {
-      "entry": ["test/**/*.test.ts", "live/**/*.test.ts", "scripts/*.ts"],
-      "project": [
-        "src/**/*.ts",
-        "test/**/*.ts",
-        "live/**/*.ts",
-        "scripts/**/*.ts"
-      ]
+    "packages/speech-kokoro": {
+      "entry": ["test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "live/**/*.ts"]
+    },
+    "packages/align-whisper": {
+      "entry": ["test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "live/**/*.ts"]
+    },
+    "packages/cache-fs": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/encode-ffmpeg": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/pipeline": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "packages/deck": {
       "entry": ["test/**/*.test.ts"],

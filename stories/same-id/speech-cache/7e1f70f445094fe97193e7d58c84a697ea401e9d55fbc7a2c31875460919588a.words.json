@@ -1,0 +1,46 @@
+{
+  "durationMs": 3575,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 630,
+      "startMs": 280,
+      "w": "Comparing"
+    },
+    {
+      "endMs": 840,
+      "startMs": 630,
+      "w": "two"
+    },
+    {
+      "endMs": 1340,
+      "startMs": 840,
+      "w": "screens"
+    },
+    {
+      "endMs": 1470,
+      "startMs": 1340,
+      "w": "by"
+    },
+    {
+      "endMs": 1750,
+      "startMs": 1470,
+      "w": "name"
+    },
+    {
+      "endMs": 2100,
+      "startMs": 1750,
+      "w": "gives"
+    },
+    {
+      "endMs": 2450,
+      "startMs": 2100,
+      "w": "three"
+    },
+    {
+      "endMs": 3540,
+      "startMs": 2450,
+      "w": "answers."
+    }
+  ]
+}

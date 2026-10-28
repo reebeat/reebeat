@@ -30,7 +30,7 @@ const effectConfig: EffectConfigInput = {
     },
     {
       // The composition roots of the CLI: the executable, the journey script and the layers they share.
-      files: ["packages/cli/bin/**"],
+      files: ["packages/cli/bin/**", "packages/cli/scripts/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",

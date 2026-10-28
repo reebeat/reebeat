@@ -39,14 +39,15 @@ const source = asText([
   "",
 ]);
 
-const audio = (name: string) => ({
-  file: `${name}.flac`,
-  sha256: `hash-${name}`,
+/** The audio of Line `digit`: a cache file name is 64 hexadecimal digits and `.flac`. */
+const audio = (digit: number) => ({
+  file: `${String(digit).repeat(64)}.flac`,
+  sha256: `hash-${digit}`,
 });
 
 const aligned: readonly AlignedLine[] = [
   {
-    audio: audio("l1"),
+    audio: audio(1),
     durationMs: 2000,
     lineId: "sc1.l1",
     words: [
@@ -58,7 +59,7 @@ const aligned: readonly AlignedLine[] = [
     ],
   },
   {
-    audio: audio("l2"),
+    audio: audio(2),
     durationMs: 1500,
     lineId: "sc1.l2",
     words: [
@@ -67,7 +68,7 @@ const aligned: readonly AlignedLine[] = [
     ],
   },
   {
-    audio: audio("l3"),
+    audio: audio(3),
     durationMs: 1000,
     lineId: "sc2.l1",
     words: [
@@ -145,7 +146,7 @@ describe("schedule: the arithmetic, by hand", () => {
             ["five.", 96, 105],
           ]
         );
-        assert.deepStrictEqual(first?.audio, audio("l1"));
+        assert.deepStrictEqual(first?.audio, audio(1));
       })
   );
 

@@ -15,7 +15,7 @@ import {
 } from "./units.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { onsetIndex } from "./wav.ts";
+import { narrationMatchFloor, onsetIndex } from "./wav.ts";
 
 /** How far from its start frame, in milliseconds, a Line is looked for. */
 const windowMs = 150;
@@ -41,41 +41,46 @@ export const narration = (build: Build) =>
 
       const track = yield* decodeMonoPcm(build.mp4);
 
-      const offsets = yield* Effect.forEach(lines, (line) =>
+      const matches = yield* Effect.forEach(lines, (line) =>
         Effect.map(
           decodeMonoPcm(path.join(build.cacheDir, line.audio.file)),
           (reference) => {
             const skipped = onsetIndex(reference, speechThreshold);
 
-            return msToFrames(
-              audioOffsetMs(
-                track,
-                reference.subarray(skipped),
-                frameStartMs(line.startFrame, fps) +
-                  (skipped * 1000) / sampleRate,
-                windowMs
-              ).offsetMs,
-              fps
+            const { offsetMs, score } = audioOffsetMs(
+              track,
+              reference.subarray(skipped),
+              frameStartMs(line.startFrame, fps) +
+                (skipped * 1000) / sampleRate,
+              windowMs
             );
+
+            return { frames: msToFrames(offsetMs, fps), score };
           }
         )
       );
 
-      const rows = Arr.zip(lines, offsets);
+      const rows = Arr.zip(lines, matches);
 
-      const problems = Arr.flatMap(rows, ([line, frames]) =>
-        withinOneFrame(frames)
+      const problems = Arr.flatMap(rows, ([line, match]) => {
+        if (match.score < narrationMatchFloor) {
+          return [
+            `Line ${line.lineId}: its audio is not found within ${windowMs} ms of its scheduled frame ${line.startFrame} (best match ${match.score.toFixed(2)}, at least ${narrationMatchFloor} needed)`,
+          ];
+        }
+
+        return withinOneFrame(match.frames)
           ? []
           : [
-              `Line ${line.lineId} starts ${signedFrames(frames)} frames from its scheduled frame ${line.startFrame}`,
-            ]
-      );
+              `Line ${line.lineId} starts ${signedFrames(match.frames)} frames from its scheduled frame ${line.startFrame}`,
+            ];
+      });
 
       const measured: Measured = [
         ["Lines checked", lines.length],
-        ...Arr.map(rows, ([line, frames]): readonly [string, string] => [
-          `${line.lineId} offset (frames)`,
-          signedFrames(frames),
+        ...Arr.flatMap(rows, ([line, match]): Measured => [
+          [`${line.lineId} offset (frames)`, signedFrames(match.frames)],
+          [`${line.lineId} match score`, match.score.toFixed(3)],
         ]),
       ];
 

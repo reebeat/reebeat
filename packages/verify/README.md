@@ -47,6 +47,13 @@ F5 holds `plan.json` equal to the source's Plan, so all three rest on the one so
   sound **with 10 ms of silence before it**; only its true start has silence before it. Offsets are then 0.00 to 0.01 frames.
 - **F1 steps.** The encoder's noise between two frames of a still slide is up to about 120 pixels above 8 gray levels; the
   first frame of the smallest real step (a `focus` ring) has 349. The threshold is 200 pixels.
+- **F1 looks in the target Element's cell.** The spec says the step is "the first frame where the target Element's
+  pixels differ". The encoder also leaves a flicker on the hard edge of an Element that appeared earlier: on the whole
+  offline build of the committed story one scanline of 288 pixels toggled every frame for 50 frames, then stopped three
+  frames before the next `next` Cue, so the whole frame read the Cue three frames early (F1 failed) and the same video
+  passed once the narration was paced differently. `cueRegion` finds the Element a Cue acts on (the k-th `next` reveals
+  the k-th hidden Element of its Scene; a `focus` names its Element) and F1 counts changed pixels only inside that
+  Element's ninth of the frame. A Cue whose Element cannot be found falls back to the whole frame.
 - **F7 monotonic approach.** The sum of absolute differences to the settled frame is not monotone in a real transition: it
   rises by up to 1.5% of the whole change on the committed story and 5.9% on the test fixture (an Element first moves
   away from its settled place, overlapping another). The check allows a rise of 10% of the whole change; the control that

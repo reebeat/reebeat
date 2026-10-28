@@ -82,6 +82,25 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/verify": {
+      "name": "@reebeat/verify",
+      "version": "0.0.0",
+      "dependencies": {
+        "@reebeat/core": "workspace:*",
+        "@reebeat/deck": "workspace:*",
+        "@reebeat/sfx": "workspace:*",
+        "@reebeat/video": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@effect/platform-node": "catalog:",
+        "@effect/vitest": "catalog:",
+        "@types/node": "catalog:",
+        "oxc-parser": "catalog:",
+        "typescript": "catalog:",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/video": {
       "name": "@reebeat/video",
       "version": "0.0.0",
@@ -511,6 +530,8 @@
     "@reebeat/sfx": ["@reebeat/sfx@workspace:packages/sfx"],
 
     "@reebeat/speech": ["@reebeat/speech@workspace:packages/speech"],
+
+    "@reebeat/verify": ["@reebeat/verify@workspace:packages/verify"],
 
     "@reebeat/video": ["@reebeat/video@workspace:packages/video"],
 

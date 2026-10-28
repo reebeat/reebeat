@@ -74,6 +74,12 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/verify/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -157,6 +163,7 @@ export default defineConfig({
           "packages/deck/src/errors.ts",
           "packages/speech/src/errors.ts",
           "packages/speech/src/services.ts",
+          "packages/verify/src/errors.ts",
           "packages/video/src/errors.ts",
         ],
         rules: {
@@ -211,6 +218,27 @@ export default defineConfig({
                 {
                   message:
                     "packages/deck imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
+                  regex:
+                    "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // The verify package reads the Plan through the core's `buildPlan`: it never imports the parser itself, and it
+        // drives no browser (spec 0001).
+        files: ["packages/verify/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/verify uses the core's buildPlan, never the parser, and drives no browser or ffmpeg wrapper.",
                   regex:
                     "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
                 },

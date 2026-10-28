@@ -3,7 +3,6 @@
 // cache hit, `speechCacheOnly` and every test load no model and no native library. Interruption stops the
 // waiting fiber, not an ONNX run already started (kokoro-js has no cancellation).
 // Retirement: an Effect-native TTS client.
-/* oxlint-disable effecttsgo/async-function -- EX-0001: kokoro-js and dynamic import are Promise APIs; promise-function-async requires async thunks */
 import { Config, Effect, Layer } from "effect";
 
 import { SpeechToolFailed } from "./errors.ts";
@@ -18,12 +17,14 @@ const load = (cacheDir: string) =>
   Effect.gen(function* loadKokoro() {
     const transformers = yield* Effect.tryPromise({
       catch: toolFailure("kokoro", "cannot load @huggingface/transformers"),
-      try: async () => await import("@huggingface/transformers"),
+      // oxlint-disable-next-line typescript/promise-function-async -- EX-0001: kokoro-js and dynamic import return Promises
+      try: () => import("@huggingface/transformers"),
     });
 
     const kokoro = yield* Effect.tryPromise({
       catch: toolFailure("kokoro", "cannot load kokoro-js"),
-      try: async () => await import("kokoro-js"),
+      // oxlint-disable-next-line typescript/promise-function-async -- EX-0001: kokoro-js and dynamic import return Promises
+      try: () => import("kokoro-js"),
     });
 
     yield* Effect.sync(() => {
@@ -32,8 +33,9 @@ const load = (cacheDir: string) =>
 
     return yield* Effect.tryPromise({
       catch: toolFailure("kokoro", `cannot load ${pipeline.ttsModel}`),
-      try: async () =>
-        await kokoro.KokoroTTS.from_pretrained(pipeline.ttsModel, {
+      // oxlint-disable-next-line typescript/promise-function-async -- EX-0001: kokoro-js and dynamic import return Promises
+      try: () =>
+        kokoro.KokoroTTS.from_pretrained(pipeline.ttsModel, {
           device: "cpu",
           dtype: pipeline.dtype,
         }),
@@ -55,8 +57,9 @@ export const ttsKokoro = Layer.effect(
 
         const audio = yield* Effect.tryPromise({
           catch: toolFailure("kokoro", "kokoro-js failed to synthesise a Line"),
-          try: async () =>
-            await tts.generate(request.text, {
+          // oxlint-disable-next-line typescript/promise-function-async -- EX-0001: kokoro-js and dynamic import return Promises
+          try: () =>
+            tts.generate(request.text, {
               speed: request.speed,
               voice: pipeline.voice,
             }),

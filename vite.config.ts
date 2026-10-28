@@ -169,14 +169,18 @@ export default defineConfig({
         rules: { "unicorn/throw-new-error": "off" },
       },
       {
+        // speech's services.ts declares its five capabilities as Context.Service classes, one table of one stage.
+        files: ["packages/speech/src/services.ts"],
+        rules: { "eslint/max-classes-per-file": "off" },
+      },
+      {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        // One file holds every tagged error of a stage (a closed set that reads as one table); speech's services.ts holds its five capabilities.
+        // One file holds every tagged error of a stage (a closed set that reads as one table).
         files: [
           "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
           "packages/deck/src/errors.ts",
           "packages/speech/src/errors.ts",
-          "packages/speech/src/services.ts",
           "packages/verify/src/errors.ts",
           "packages/video/src/errors.ts",
         ],

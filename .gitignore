@@ -1,0 +1,11 @@
+node_modules/
+.devenv/
+.direnv/
+dist/
+coverage/
+*.log
+.DS_Store
+# Rendered media and reference fixtures stay outside the repository (see docs/specs/0001).
+*.mp4
+*.wav
+*.mov

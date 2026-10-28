@@ -1,0 +1,364 @@
+{
+  "author": "Reebeat tests",
+  "chapters": [
+    {
+      "id": "ch1",
+      "line": 7,
+      "sceneIds": [
+        "sc1",
+        "sc2"
+      ],
+      "title": "The same box"
+    },
+    {
+      "id": "ch2",
+      "line": 38,
+      "sceneIds": [
+        "sc3",
+        "sc4"
+      ],
+      "title": "The cut"
+    }
+  ],
+  "scenes": [
+    {
+      "chapterId": "ch1",
+      "elements": [
+        {
+          "cell": "tl",
+          "classes": [
+            "box"
+          ],
+          "hidden": false,
+          "id": "box",
+          "line": 13,
+          "text": "A box"
+        },
+        {
+          "cell": "bc",
+          "classes": [
+            "muted"
+          ],
+          "hidden": true,
+          "id": "cap",
+          "line": 14,
+          "text": "The caption"
+        },
+        {
+          "cell": "mr",
+          "classes": [
+            "label"
+          ],
+          "hidden": false,
+          "id": "old",
+          "line": 15,
+          "text": "Old news"
+        },
+        {
+          "cell": "bl",
+          "classes": [
+            "muted"
+          ],
+          "hidden": false,
+          "id": "foot",
+          "line": 16,
+          "text": "Footer"
+        }
+      ],
+      "heading": "INT. FIRST SCREEN",
+      "id": "sc1",
+      "identity": null,
+      "line": 11,
+      "lines": [
+        {
+          "cues": [
+            {
+              "afterWord": 5,
+              "arg": null,
+              "id": "sc1.l1.c1",
+              "kind": "next",
+              "line": 20
+            }
+          ],
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 0.9
+          },
+          "id": "sc1.l1",
+          "line": 20,
+          "text": "This box sits in the corner. The caption says what it is.",
+          "words": [
+            "This",
+            "box",
+            "sits",
+            "in",
+            "the",
+            "corner.",
+            "The",
+            "caption",
+            "says",
+            "what",
+            "it",
+            "is."
+          ]
+        },
+        {
+          "cues": [
+            {
+              "afterWord": 3,
+              "arg": "box",
+              "id": "sc1.l2.c1",
+              "kind": "focus",
+              "line": 23
+            },
+            {
+              "afterWord": 3,
+              "arg": "pop",
+              "id": "sc1.l2.c2",
+              "kind": "sfx",
+              "line": 23
+            }
+          ],
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1
+          },
+          "id": "sc1.l2",
+          "line": 23,
+          "text": "Look at the box.",
+          "words": [
+            "Look",
+            "at",
+            "the",
+            "box."
+          ]
+        }
+      ],
+      "transition": "default"
+    },
+    {
+      "chapterId": "ch1",
+      "elements": [
+        {
+          "cell": "mc",
+          "classes": [
+            "box",
+            "accent"
+          ],
+          "hidden": false,
+          "id": "box",
+          "line": 29,
+          "text": "A box"
+        },
+        {
+          "cell": "bc",
+          "classes": [
+            "muted"
+          ],
+          "hidden": false,
+          "id": "cap",
+          "line": 30,
+          "text": "The new caption"
+        },
+        {
+          "cell": "tr",
+          "classes": [
+            "title"
+          ],
+          "hidden": true,
+          "id": "new",
+          "line": 31,
+          "text": "New arrival"
+        },
+        {
+          "cell": "bl",
+          "classes": [
+            "muted"
+          ],
+          "hidden": false,
+          "id": "foot",
+          "line": 32,
+          "text": "Footer"
+        }
+      ],
+      "heading": "INT. SECOND SCREEN",
+      "id": "sc2",
+      "identity": {
+        "enter": [
+          "new"
+        ],
+        "exit": [
+          "old"
+        ],
+        "same": [
+          "foot"
+        ],
+        "update": [
+          {
+            "changes": [
+              "cell",
+              "classes"
+            ],
+            "id": "box"
+          },
+          {
+            "changes": [
+              "text"
+            ],
+            "id": "cap"
+          }
+        ]
+      },
+      "line": 27,
+      "lines": [
+        {
+          "cues": [
+            {
+              "afterWord": 3,
+              "arg": "whoosh",
+              "id": "sc2.l1.c1",
+              "kind": "sfx",
+              "line": 36
+            },
+            {
+              "afterWord": 3,
+              "arg": null,
+              "id": "sc2.l1.c2",
+              "kind": "next",
+              "line": 36
+            }
+          ],
+          "hints": {
+            "pauseBefore": 0.5,
+            "speed": 1
+          },
+          "id": "sc2.l1",
+          "line": 36,
+          "text": "Same id, new place. A new element enters.",
+          "words": [
+            "Same",
+            "id,",
+            "new",
+            "place.",
+            "A",
+            "new",
+            "element",
+            "enters."
+          ]
+        }
+      ],
+      "transition": "auto-animate"
+    },
+    {
+      "chapterId": "ch2",
+      "elements": [
+        {
+          "cell": "mc",
+          "classes": [
+            "title"
+          ],
+          "hidden": false,
+          "id": "fresh",
+          "line": 46,
+          "text": "Fresh start"
+        }
+      ],
+      "heading": "INT. THIRD SCREEN",
+      "id": "sc3",
+      "identity": null,
+      "line": 42,
+      "lines": [
+        {
+          "cues": [],
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc3.l1",
+          "line": 50,
+          "text": "Nothing is matched across a cut.",
+          "words": [
+            "Nothing",
+            "is",
+            "matched",
+            "across",
+            "a",
+            "cut."
+          ]
+        }
+      ],
+      "transition": "cut"
+    },
+    {
+      "chapterId": "ch2",
+      "elements": [
+        {
+          "cell": "tc",
+          "classes": [
+            "title"
+          ],
+          "hidden": false,
+          "id": "fresh",
+          "line": 56,
+          "text": "Fresh start"
+        }
+      ],
+      "heading": "INT. FOURTH SCREEN",
+      "id": "sc4",
+      "identity": {
+        "enter": [],
+        "exit": [],
+        "same": [],
+        "update": [
+          {
+            "changes": [
+              "cell"
+            ],
+            "id": "fresh"
+          }
+        ]
+      },
+      "line": 54,
+      "lines": [
+        {
+          "cues": [
+            {
+              "afterWord": 3,
+              "arg": "ding",
+              "id": "sc4.l1.c1",
+              "kind": "sfx",
+              "line": 59
+            }
+          ],
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1
+          },
+          "id": "sc4.l1",
+          "line": 59,
+          "text": "The title moves up.",
+          "words": [
+            "The",
+            "title",
+            "moves",
+            "up."
+          ]
+        }
+      ],
+      "transition": "auto-animate"
+    }
+  ],
+  "schema": 1,
+  "settings": {
+    "fps": 30,
+    "height": 720,
+    "lineGap": 0.5,
+    "sceneLead": 1,
+    "sceneTail": 0.5,
+    "transition": 0.8,
+    "voice": "af_heart",
+    "width": 1280
+  },
+  "sourceSha256": "86e3e057e486c9cbabbac87f2aa501b8d39d411369bc1de1590dc51952410fee",
+  "title": "Boxes and ids"
+}

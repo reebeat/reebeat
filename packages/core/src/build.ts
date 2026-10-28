@@ -12,7 +12,7 @@ import { adaptTokens } from "./story.ts";
 import type { LineDraft, SceneDraft, Story } from "./story.ts";
 
 /** The pacing and canvas defaults of release 1 (spec 0001, "Time"). */
-export const defaultSettings: Settings = {
+const defaultSettings: Settings = {
   fps: 30,
   height: 720,
   lineGap: 0.5,

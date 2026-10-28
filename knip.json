@@ -4,7 +4,7 @@
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
     "packages/core": {
-      "entry": ["src/index.ts", "test/**/*.test.ts"],
+      "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "tools/quality": {

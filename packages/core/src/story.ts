@@ -29,7 +29,7 @@ export interface SceneDraft {
   readonly lines: LineDraft[];
 }
 
-export interface ChapterDraft {
+interface ChapterDraft {
   readonly title: string;
   readonly line: number;
 }

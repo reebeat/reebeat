@@ -71,7 +71,12 @@ export default defineConfig({
   // Prose is written by hand: Oxfmt re-wraps Markdown and joins hard line breaks (GLOSSARY.md entries), which changes meaning.
   fmt: {
     ...ultraciteFmt,
-    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), "**/*.md"],
+    // Golden fixtures are compared byte for byte with generated output; a formatter must not rewrite them.
+    ignorePatterns: [
+      ...(ultraciteFmt.ignorePatterns ?? []),
+      "**/*.md",
+      "packages/*/test/fixtures/**",
+    ],
   },
   lint: {
     extends: [core, antiSlop, strict, effectNative],

@@ -96,7 +96,7 @@ const parseBlock = (block: Block, first: boolean): readonly FountainToken[] => {
   for (const token of first ? parsed : parsed.slice(1)) {
     const text = token.text ?? "";
     const needle = (text.split("\n")[0] ?? "").trim();
-    const index = text === "" ? cursor : locate(block.lines, cursor, needle);
+    const index = text === "" ? 0 : locate(block.lines, cursor, needle);
 
     tokens.push({
       depth: token.depth ?? 0,

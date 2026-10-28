@@ -5,6 +5,13 @@ import { elementClasses } from "@reebeat/core";
 import { Array as Arr, Order, Record } from "effect";
 
 import { classColors, palette, themeCss } from "../src/theme.ts";
+import type { DeckSettings } from "../src/theme.ts";
+
+/** A stylesheet with every pixel length replaced by 0px. */
+const blankLengths = (css: string): string =>
+  css.replaceAll(/\d+(?:\.\d+)?px/gu, "0px");
+
+const standard: DeckSettings = { height: 720, transition: 0.8, width: 1280 };
 
 /** Linear light of one 8-bit sRGB channel (WCAG 2.x relative luminance). */
 const linear = (channel: number): number => {
@@ -52,7 +59,7 @@ describe("theme", () => {
   });
 
   it("writes the palette's colours into the stylesheet", () => {
-    const css = themeCss();
+    const css = themeCss(standard);
 
     for (const color of [
       palette.accent,
@@ -64,6 +71,20 @@ describe("theme", () => {
     ]) {
       assert.include(css, color);
     }
+  });
+
+  it("scales every length with the slide height and changes nothing else", () => {
+    const large = themeCss({ ...standard, height: 1080, width: 1920 });
+    const base = themeCss(standard);
+
+    assert.include(base, "font-size: 46px;");
+    assert.include(large, "font-size: 69px;");
+    assert.include(base, "padding: 36px;");
+    assert.include(large, "padding: 54px;");
+    assert.notInclude(large, "46px");
+
+    // Colours, classes and selectors do not depend on the size: with the lengths blanked the two sheets are equal.
+    assert.strictEqual(blankLengths(large), blankLengths(base));
   });
 
   it("control: the formula rejects a pair below the threshold", () => {

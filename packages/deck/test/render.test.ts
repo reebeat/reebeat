@@ -2,7 +2,7 @@
 // readDeck and with plain string checks, so they need no browser.
 import { assert, describe, it } from "@effect/vitest";
 import type { PlanJson } from "@reebeat/core";
-import { Array as Arr, Effect, Order } from "effect";
+import { Array as Arr, Effect, Option, Order } from "effect";
 
 import { readDeck, renderDeck } from "../src/index.ts";
 import { asText, fixtureSha256, planOf, storyPlan } from "./support.ts";
@@ -51,6 +51,16 @@ const chainSource = asText([
   "NARRATOR",
   "Fifth.",
 ]);
+
+/** The text of `assets/deck.js` that renderDeck generates for a Plan. */
+const deckScript = (plan: PlanJson): string =>
+  Option.match(
+    Arr.findFirst(
+      renderDeck(plan).files,
+      ({ path }) => path === "assets/deck.js"
+    ),
+    { onNone: () => "", onSome: ({ text }) => text }
+  );
 
 describe("renderDeck", () => {
   it.effect("is a pure function: the same Plan gives the same bytes", () =>
@@ -184,6 +194,25 @@ describe("renderDeck", () => {
           Arr.map(slides, (slide) => slide.transition),
           [null, null, null, null, "none"]
         );
+      })
+  );
+
+  it.effect(
+    "takes the Auto-Animate duration and the slide size from plan.settings",
+    () =>
+      Effect.gen(function* settings() {
+        const plan = yield* storyPlan;
+        const standard = deckScript(plan);
+
+        const slower = deckScript({
+          ...plan,
+          settings: { ...plan.settings, transition: 1.2 },
+        });
+
+        assert.include(standard, '"autoAnimateDuration":0.8');
+        assert.include(standard, '"width":1280}');
+        assert.include(slower, '"autoAnimateDuration":1.2');
+        assert.notInclude(slower, '"autoAnimateDuration":0.8');
       })
   );
 

@@ -143,8 +143,8 @@ ${sections}
  */
 export const renderDeck = (plan: PlanJson): DeckBundle => ({
   files: [
-    { path: "assets/theme.css", text: themeCss() },
-    { path: "assets/deck.js", text: runtimeJs },
+    { path: "assets/theme.css", text: themeCss(plan.settings) },
+    { path: "assets/deck.js", text: runtimeJs(plan.settings) },
   ],
   html: pageHtml(plan),
 });

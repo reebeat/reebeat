@@ -6,7 +6,10 @@ import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Order, Schema } from "effect";
 import type { Page } from "playwright-core";
 
-import { revealConfig } from "../src/runtime.ts";
+import { renderDeck } from "../src/index.ts";
+import { runtimeJs } from "../src/runtime.ts";
+import { themeCss } from "../src/theme.ts";
+import type { DeckSettings } from "../src/theme.ts";
 import {
   evaluate,
   evaluateFailure,
@@ -27,7 +30,7 @@ const Rect = Schema.Struct({
 
 const Samples = Schema.Array(Schema.Finite);
 
-/** The keys of `revealConfig`, as `Reveal.getConfig()` reports them. */
+/** The keys of the Deck's reveal.js configuration, as `Reveal.getConfig()` reports them. */
 const RevealSettings = Schema.Struct({
   autoAnimateDuration: Schema.Finite,
   autoAnimateEasing: Schema.String,
@@ -163,9 +166,24 @@ describe("the Deck page", () => {
         const plan = yield* storyPlan;
         const { page } = yield* openDeck(yield* writtenDeck(plan));
 
+        // The contract's configuration for the settings of the Plan (1280x720, 0.8 s).
         assert.deepStrictEqual(
           yield* evaluate(page, "Reveal.getConfig()", RevealSettings),
-          revealConfig
+          {
+            autoAnimateDuration: 0.8,
+            autoAnimateEasing: "ease",
+            controls: false,
+            fragments: true,
+            hash: false,
+            height: 720,
+            margin: 0,
+            maxScale: 1,
+            minScale: 1,
+            progress: false,
+            slideNumber: false,
+            transition: "fade",
+            width: 1280,
+          }
         );
 
         const { width, x } = yield* evaluate(
@@ -175,6 +193,53 @@ describe("the Deck page", () => {
         );
 
         assert.strictEqual(x + width / 2, 640);
+      })
+  );
+
+  it.live(
+    "follows the settings it is given: slide size, type scale and Auto-Animate duration",
+    () =>
+      Effect.gen(function* settings() {
+        const plan = yield* storyPlan;
+
+        const large: DeckSettings = {
+          height: 1080,
+          transition: 1.2,
+          width: 1920,
+        };
+
+        // The Plan contract pins 1280x720 today, so the files are generated from other settings by hand; the page
+        // must still follow them.
+        const { page } = yield* openDeck(
+          yield* writtenDeck(plan, {
+            ...renderDeck(plan),
+            files: [
+              { path: "assets/theme.css", text: themeCss(large) },
+              { path: "assets/deck.js", text: runtimeJs(large) },
+            ],
+          })
+        );
+
+        const config = yield* evaluate(
+          page,
+          "Reveal.getConfig()",
+          RevealSettings
+        );
+
+        assert.deepStrictEqual(
+          [config.width, config.height, config.autoAnimateDuration],
+          [1920, 1080, 1.2]
+        );
+
+        // The type scale follows the height: the title is 46 px on a 720 px slide, so 69 px on a 1080 px slide.
+        assert.strictEqual(
+          yield* evaluate(
+            page,
+            `getComputedStyle(${elementOf("sc1", "title")}).fontSize`,
+            Schema.String
+          ),
+          "69px"
+        );
       })
   );
 
@@ -418,17 +483,43 @@ describe("the Deck page", () => {
   );
 });
 
-/** Samples the left edge of `sc4`'s `one` on every animation frame for 1.5 s while the page goes to `sc4`. */
-const sampleTransition = `new Promise((resolve) => {
-  const samples = [];
-  const begin = performance.now();
-  const read = () => ${elementOf("sc4", "one")}.getBoundingClientRect();
-  const tick = () => {
-    samples.push(read().x);
-    if (performance.now() - begin < 1500) { requestAnimationFrame(tick); } else { resolve(samples); }
+/**
+ * Samples the left edge of `sc4`'s `one` at `steps + 1` evenly spaced moments of the Auto-Animate into `sc4`, by seeking
+ * the browser's own animations instead of waiting for frames. The page goes to `sc4`; every CSS transition that starts
+ * is paused in its `transitionrun` event (which fires before the first frame of the transition), and each sample sets
+ * all of them to the same time and reads the box. The numbers do not depend on how fast the machine runs.
+ */
+const sampleTransition = (
+  steps: number
+): string => `new Promise((resolve, reject) => {
+  const paused = [];
+  document.addEventListener("transitionrun", (event) => {
+    for (const animation of event.target.getAnimations()) {
+      if (animation.transitionProperty === event.propertyName && !paused.includes(animation)) {
+        animation.pause();
+        paused.push(animation);
+      }
+    }
+  }, true);
+  const sample = () => {
+    const duration = Math.max(...paused.map((animation) => animation.effect.getComputedTiming().endTime));
+    const samples = [];
+    for (let step = 0; step <= ${steps}; step += 1) {
+      for (const animation of paused) { animation.currentTime = (duration * step) / ${steps}; }
+      samples.push(${elementOf("sc4", "one")}.getBoundingClientRect().x);
+    }
+    resolve(samples);
+  };
+  // Reveal starts the Auto-Animate in a requestAnimationFrame, after the slide's own transitions have started:
+  // wait for the transform transition of the moving Element.
+  const moving = () => paused.some((animation) => animation.transitionProperty === "transform");
+  let frames = 0;
+  const wait = () => {
+    frames += 1;
+    if (moving()) { sample(); } else if (frames > 120) { reject(new Error("no transform transition started")); } else { requestAnimationFrame(wait); }
   };
   ${goTo("sc4")};
-  tick();
+  wait();
 })`;
 
 describe("Auto-Animate between matched scenes", () => {
@@ -459,17 +550,18 @@ describe("Auto-Animate between matched scenes", () => {
 
         assert.isAbove(endBox.x - startBox.x, 100);
 
-        // The animated change of slide, sampled on every animation frame.
-        const xs = yield* evaluate(page, sampleTransition, Samples);
+        // The animated change of slide, sampled at 24 evenly spaced moments of its 0.8 s (the 30 fps frames).
+        const xs = yield* evaluate(page, sampleTransition(24), Samples);
 
         const strictlyBetween = Arr.filter(
           xs,
           (x) => x > startBox.x + 1 && x < endBox.x - 1
         );
 
+        assert.strictEqual(xs.length, 25);
         assert.closeTo(xs[0] ?? Number.NaN, startBox.x, 0.6);
         assert.closeTo(xs.at(-1) ?? Number.NaN, endBox.x, 0.6);
-        assert.isAtLeast(strictlyBetween.length, 10);
+        assert.isAtLeast(strictlyBetween.length, 20);
         assert.deepStrictEqual(xs, Arr.sort(xs, Order.Number));
 
         const end = yield* evaluate(page, rectOf("sc4", "one"), Rect);

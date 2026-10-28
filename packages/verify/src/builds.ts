@@ -1,13 +1,13 @@
 // F6, determinism: two build directories of the same source and cache decode to the same video frames (the hash of
 // every frame) and the same audio samples. The bytes of the two containers are compared and the result is recorded,
 // not required. The first differing frame is named.
-import { decodeMonoPcm, frameHashes } from "@reebeat/video";
+import { decodeMonoPcm, frameHashes } from "@reebeat/encode-ffmpeg";
+import { sha256Hex } from "@reebeat/pipeline";
 import { Array as Arr, Effect, FileSystem, Option } from "effect";
 
 import type { BuildInvalid } from "./errors.ts";
 import { guarded } from "./guard.ts";
 import type { CheckServices } from "./guard.ts";
-import { sha256Hex } from "./hash.ts";
 import { locateMp4 } from "./load.ts";
 import { verdictOf } from "./verdict.ts";
 import type { Measured, Verdict } from "./verdict.ts";

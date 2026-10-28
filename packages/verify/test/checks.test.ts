@@ -8,10 +8,10 @@
 //   F8  the audio delayed by three frames      F9  a renamed chapter
 import { assert, layer } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
-import { renderDeck } from "@reebeat/deck";
+import { sha256Hex } from "@reebeat/pipeline";
+import { renderDeck } from "@reebeat/render-reveal";
 import { Array as Arr, Effect, FileSystem, Option, Path, Stream } from "effect";
 
-import { sha256Hex } from "../src/hash.ts";
 import {
   BuildInvalid,
   compareBuilds,
@@ -286,11 +286,11 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
           assert.include(
             verdictOf(afterDelete, "F4").detail,
-            "slide sc1, fragment 1"
+            "scene sc1, fragment 1"
           );
           assert.include(
             verdictOf(afterSwap, "F4").detail,
-            "slide sc1, fragment 0"
+            "scene sc1, fragment 0"
           );
         })
     );
@@ -547,7 +547,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             yield* copyBuild("f6-copy")
           );
 
-          assert.isTrue(verdict.ok, verdict.detail);
+          assert.strictEqual(verdict.status, "pass", verdict.detail);
           assert.include(verdict.detail, "container bytes identical");
           yield* Effect.log(renderVerdicts([verdict]));
         })
@@ -573,7 +573,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdict.detail
           );
 
-          assert.isFalse(verdict.ok);
+          assert.strictEqual(verdict.status, "fail");
           assert.isNotNull(named);
           assert.isAtMost(Number(named?.groups?.frame), 40);
           yield* Effect.log(renderVerdicts([verdict]));

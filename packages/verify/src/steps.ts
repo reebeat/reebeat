@@ -1,7 +1,7 @@
 // Where the picture of the written video first changes near a frame: the one observation behind F1's `next` and `focus`
 // Cues and F7's scene changes. The first frame within `reach` frames either side of `center` whose pixels differ from
 // the frame before it.
-import { decodeGrayFrames, firstChangedFrame } from "@reebeat/video";
+import { decodeGrayFrames, firstChangedFrame } from "@reebeat/encode-ffmpeg";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */

@@ -4,8 +4,10 @@
 // revealed Element of a fragment, the Elements, the slide marks, the slide order); its findings go to F4, because
 // they are about what the slides show, not what they say.
 import type { PlanJson, Scene } from "@reebeat/core";
-import { checkDeck, readDeck } from "@reebeat/deck";
-import type { DeckModel, DeckSlide } from "@reebeat/deck";
+import { cueFragmentAgreement, firstDifference } from "@reebeat/lint";
+import type { Fragment } from "@reebeat/lint";
+import { checkDeck, readDeck } from "@reebeat/render-reveal";
+import type { DeckModel, DeckSlide } from "@reebeat/render-reveal";
 import { Array as Arr, Effect, Option, Result } from "effect";
 
 import type { Build } from "./load.ts";
@@ -15,18 +17,6 @@ import type { Verdict } from "./verdict.ts";
 
 const show = (text: string | undefined): string =>
   text === undefined ? "nothing" : `"${text}"`;
-
-/** The position of the first difference between two lists, or undefined when they are equal. */
-const firstDifference = (
-  wanted: readonly string[],
-  found: readonly string[]
-): number | undefined =>
-  Option.getOrUndefined(
-    Arr.findFirstIndex(
-      Arr.range(0, Math.max(wanted.length, found.length) - 1),
-      (index) => wanted[index] !== found[index]
-    )
-  );
 
 const slideOf = (model: DeckModel, scene: Scene): DeckSlide | undefined =>
   Option.getOrUndefined(
@@ -38,7 +28,12 @@ const notesProblem = (
   slide: DeckSlide | undefined
 ): readonly string[] => {
   const wanted = Arr.map(scene.lines, (line) => line.text);
-  const at = firstDifference(wanted, slide?.notes ?? []);
+
+  const at = firstDifference(
+    wanted,
+    slide?.notes ?? [],
+    (want, have) => want === have
+  );
 
   return at === undefined
     ? []
@@ -47,31 +42,16 @@ const notesProblem = (
       ];
 };
 
-/** The Cue of a fragment as `id kind arg`, the same string for a Cue of the Plan and a fragment of the page. */
-const cueKey = (id: string, kind: string, arg: string | null): string =>
-  `${id} ${kind}${arg === null || arg === "" ? "" : `: ${arg}`}`;
-
-const fragmentsProblem = (
-  scene: Scene,
-  slide: DeckSlide | undefined
-): readonly string[] => {
-  const wanted = Arr.map(
-    Arr.flatMap(scene.lines, (line) => line.cues),
-    (cue) => cueKey(cue.id, cue.kind, cue.arg)
+/** The fragments the page shows, each with the scene of the slide it is on, as the lint rule reads them. */
+const fragmentsOf = (model: DeckModel): readonly Fragment[] =>
+  Arr.flatMap(model.slides, (slide) =>
+    Arr.map(slide.fragments, (fragment) => ({
+      arg: fragment.arg,
+      cueId: fragment.cueId,
+      kind: fragment.kind,
+      sceneId: slide.sceneId,
+    }))
   );
-
-  const found = Arr.map(slide?.fragments ?? [], (fragment) =>
-    cueKey(fragment.cueId, fragment.kind, fragment.arg)
-  );
-
-  const at = firstDifference(wanted, found);
-
-  return at === undefined
-    ? []
-    : [
-        `slide ${scene.id}, fragment ${at}: the Plan has ${show(wanted[at])}, the page has ${show(found[at])}`,
-      ];
-};
 
 const missingSlide = (scene: Scene, slide: DeckSlide | undefined) =>
   slide === undefined ? [`the page has no slide for scene ${scene.id}`] : [];
@@ -135,8 +115,9 @@ export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
   ];
 
   const fragments = [
-    ...Arr.flatMap(checked, ({ scene, slide }) =>
-      fragmentsProblem(scene, slide)
+    ...Arr.map(
+      cueFragmentAgreement(plan.success, fragmentsOf(model)),
+      (diagnostic) => diagnostic.message
     ),
     ...(unmatched !== undefined &&
     unmatched.check !== "F3 notes" &&

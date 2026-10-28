@@ -1,16 +1,26 @@
 // What every check reads: the written files of a build directory and the source, loaded once. Nothing here comes
 // from the pipeline that wrote them; the Plan is rebuilt from the source with the core's `buildPlan`.
-import { buildPlan, decodePlan } from "@reebeat/core";
-import type { PlanError, PlanJson } from "@reebeat/core";
-import { requireTimeline } from "@reebeat/video";
-import type { TimedPlan } from "@reebeat/video";
-import { Array as Arr, Effect, FileSystem, Path } from "effect";
+import { buildPlan, decodePlan, requireTimeline } from "@reebeat/core";
+import type { PlanError, PlanJson, TimedPlan } from "@reebeat/core";
+import { decodeBuildManifest, sha256Hex } from "@reebeat/pipeline";
+import type { BuildManifest } from "@reebeat/pipeline";
+import { Array as Arr, Effect, FileSystem, Option, Path } from "effect";
 import type { Crypto, Result } from "effect";
 
 import { BuildInvalid } from "./errors.ts";
-import { sha256Hex } from "./hash.ts";
-import { decodeBuildManifest } from "./manifest.ts";
-import type { BuildManifest } from "./manifest.ts";
+
+/** The narrator the manifest lists, when it is a stand-in. */
+const silentNarratorOf = (manifest: BuildManifest): Option.Option<string> =>
+  Option.filter(
+    Option.map(
+      Arr.findFirst(
+        manifest.adapters,
+        (adapter) => adapter.service === "SpeechSynthesizer"
+      ),
+      (adapter) => adapter.id
+    ),
+    (id) => id.endsWith("-standin")
+  );
 
 interface SourceFile {
   readonly path: string;
@@ -31,6 +41,11 @@ export interface Build {
   readonly plan: TimedPlan;
   /** The Plan the current source builds, or why it does not build. */
   readonly rebuilt: Result.Result<PlanJson, PlanError>;
+  /**
+   * The id of the narrator `build.json` lists when it is a stand-in whose audio is silent by construction (an id
+   * ending `-standin`), else none. The one reason F8 and the sound part of F1 report N/A.
+   */
+  readonly silentNarrator: Option.Option<string>;
   readonly source: SourceFile;
   /** The text of `<name>.vtt`. */
   readonly vtt: string;
@@ -139,10 +154,7 @@ export const loadBuild = Effect.fn("loadBuild")(function* load(
     invalid(sourcePath, "cannot read the source")
   );
 
-  const sha256 = yield* Effect.mapError(
-    sha256Hex(bytes),
-    invalid(sourcePath, "cannot hash the source")
-  );
+  const sha256 = yield* sha256Hex(bytes);
 
   const text = utf8.decode(bytes);
   const rebuilt = yield* Effect.result(buildPlan(text, sha256));
@@ -156,6 +168,7 @@ export const loadBuild = Effect.fn("loadBuild")(function* load(
     mp4,
     plan,
     rebuilt,
+    silentNarrator: silentNarratorOf(manifest),
     source: { path: sourcePath, sha256, text },
     vtt,
   };

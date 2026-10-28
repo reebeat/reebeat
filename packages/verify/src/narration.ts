@@ -1,8 +1,8 @@
 // F8, narration is where the Timeline says: each Line's audio, decoded from its file in the speech cache, is found in
 // the decoded mixed track of the mp4 within one frame of the Line's start frame. The offset of each Line is reported,
 // positive when the narration is late.
-import { audioOffsetMs, decodeMonoPcm } from "@reebeat/video";
-import { Array as Arr, Effect, Path } from "effect";
+import { audioOffsetMs, decodeMonoPcm } from "@reebeat/encode-ffmpeg";
+import { Array as Arr, Effect, Option, Path } from "effect";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
@@ -13,7 +13,7 @@ import {
   signedFrames,
   withinOneFrame,
 } from "./units.ts";
-import { fail, verdictOf } from "./verdict.ts";
+import { fail, notApplicable, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 import { narrationMatchFloor, onsetIndex } from "./wav.ts";
 
@@ -37,6 +37,14 @@ export const narration = (build: Build) =>
 
       if (lines.length === 0) {
         return fail("F8", "the Timeline has no Line to observe");
+      }
+
+      if (Option.isSome(build.silentNarrator)) {
+        return notApplicable(
+          "F8",
+          `N/A (silent stand-in): build.json lists the narrator ${build.silentNarrator.value}, whose audio is silent by construction, so no Line has an onset to find`,
+          [["Lines not observed", lines.length]]
+        );
       }
 
       const track = yield* decodeMonoPcm(build.mp4);

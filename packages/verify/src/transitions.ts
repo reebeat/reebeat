@@ -10,14 +10,14 @@
 //     change commanded 2 frames late and early, a hard cut, a reversed transition), each failing F7 and nothing else;
 //   - run-to-run identity (F6): `test/checks.test.ts` and `test/edges.test.ts` (a copy passes; one frame
 //     replaced, or only the audio changed, fails naming the first differing frame or sample); the clock-jitter control (a seeded jitter of the virtual
-//     clock makes two captures differ, the same jitter makes them equal) is in `packages/video/test/capture.test.ts`;
+//     clock makes two captures differ, the same jitter makes them equal) is in `packages/capture-chromium/test/capture.test.ts`;
 //   - capture with the settle wait off and capture without the virtual clock are recorded manual measurements (spec
 //     0001, Revision "M0 measured: the clock decides the mechanism"), not automated tests.
-import { changedPixels, decodeGrayFrames } from "@reebeat/video";
+import { changedPixels, decodeGrayFrames } from "@reebeat/encode-ffmpeg";
+import { sha256Hex } from "@reebeat/pipeline";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { guarded } from "./guard.ts";
-import { sha256Hex } from "./hash.ts";
 import type { Build } from "./load.ts";
 import { observeSceneChanges } from "./sceneChanges.ts";
 import { stepMinPixels, stepTolerance } from "./steps.ts";

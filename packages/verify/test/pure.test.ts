@@ -1,30 +1,37 @@
-// The pure parts: the table and exit code, the WebVTT reader, the Plan comparison, the signal helpers.
+// The pure parts: the table and exit code, the Plan comparison, the signal helpers.
 import { assert, describe, it } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
-import { sfxWav } from "@reebeat/sfx";
+import { synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect } from "effect";
 
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
-import { parseVtt, vttSourceHash } from "../src/vttParse.ts";
-import { onsetIndex, wavSamples, withSilentLead } from "../src/wav.ts";
+import { onsetIndex, withSilentLead } from "../src/wav.ts";
 import { storyText } from "./support.ts";
 
 const holds: Verdict = {
   detail: "all 2 Cues hold",
   id: "F1",
   measured: [["sc1.l1.c1 next offset (frames)", "0"]],
-  ok: true,
+  status: "pass",
 };
 
 const broken: Verdict = {
   detail: "Line sc1.l1 starts +3 frames from its scheduled frame 30",
   id: "F8",
   measured: [["Lines checked", 2]],
-  ok: false,
+  status: "fail",
+};
+
+const skipped: Verdict = {
+  detail:
+    "N/A (silent stand-in): build.json lists the narrator silent@1-standin",
+  id: "F8",
+  measured: [],
+  status: "na",
 };
 
 describe("renderVerdicts and exitCode", () => {
@@ -49,46 +56,28 @@ describe("renderVerdicts and exitCode", () => {
     );
   });
 
-  it("exits 0 only when there is a verdict and every one holds", () => {
+  it("prints a not-applicable verdict as N/A with its reason, names it in the summary and does not fail", () => {
+    assert.strictEqual(
+      renderVerdicts([holds, skipped]),
+      Arr.join(
+        [
+          "F1  PASS  all 2 Cues hold",
+          "      sc1.l1.c1 next offset (frames): 0",
+          "F8  N/A   N/A (silent stand-in): build.json lists the narrator silent@1-standin",
+          "1 of 2 falsifiers hold; not applicable: F8",
+          "",
+        ],
+        "\n"
+      )
+    );
+    assert.strictEqual(exitCode([holds, skipped]), 0);
+    assert.strictEqual(exitCode([broken, skipped]), 1);
+  });
+
+  it("exits 0 only when there is a verdict and none fails", () => {
     assert.strictEqual(exitCode([holds]), 0);
     assert.strictEqual(exitCode([holds, broken]), 1);
     assert.strictEqual(exitCode([]), 1);
-  });
-});
-
-describe("parseVtt", () => {
-  const text = Arr.join(
-    [
-      "WEBVTT",
-      "",
-      "NOTE source-sha256 abc123",
-      "",
-      "sc1.l1",
-      "00:00:01.000 --> 00:00:02.500",
-      "One & two <three>",
-      "",
-      "00:01:03.100 --> 01:00:04.001",
-      "two &amp; three &lt;four&gt;",
-      "second row",
-      "",
-    ],
-    "\n"
-  );
-
-  it("reads the cues, with or without an identifier, in milliseconds", () => {
-    assert.deepStrictEqual(parseVtt(text), [
-      { endMs: 2500, startMs: 1000, text: "One & two <three>" },
-      {
-        endMs: 3_604_001,
-        startMs: 63_100,
-        text: "two & three <four>\nsecond row",
-      },
-    ]);
-  });
-
-  it("reads the hash of the NOTE row", () => {
-    assert.strictEqual(vttSourceHash(text), "abc123");
-    assert.isUndefined(vttSourceHash("WEBVTT\n"));
   });
 });
 
@@ -146,8 +135,8 @@ describe("withinOneFrame", () => {
 });
 
 describe("the signal helpers", () => {
-  it("reads the samples of a catalogue WAV and finds where a sound starts", () => {
-    const samples = wavSamples(sfxWav("pop"));
+  it("finds where a catalogue sound starts", () => {
+    const { samples } = synthClip("pop");
 
     assert.strictEqual(samples.length, 8640);
     assert.isAtMost(onsetIndex(samples, 0.01), 96);

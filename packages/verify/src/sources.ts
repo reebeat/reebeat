@@ -2,8 +2,10 @@
 // `build.json` carry the SHA-256 of the source file, plan.json equals the Plan the source builds (apart from its
 // Timeline), and every file `build.json` lists exists with the listed hash and size.
 import type { PlanJson } from "@reebeat/core";
-import { readDeck } from "@reebeat/deck";
-import { probeMedia } from "@reebeat/video";
+import { probeMedia } from "@reebeat/encode-ffmpeg";
+import { sha256Hex } from "@reebeat/pipeline";
+import { readDeck } from "@reebeat/render-reveal";
+import { vttSourceHash } from "@reebeat/subtitles";
 import {
   Array as Arr,
   Effect,
@@ -16,13 +18,12 @@ import {
 import type { Crypto, PlatformError } from "effect";
 
 import { guarded } from "./guard.ts";
-import { sha256Hex } from "./hash.ts";
 import type { Build } from "./load.ts";
 import { planDifference } from "./planDiff.ts";
+import { manifestProblems } from "./provenance.ts";
 import { rebuiltPlan } from "./truth.ts";
 import { verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { vttSourceHash } from "./vttParse.ts";
 
 const commentPrefix = "reebeat source-sha256 ";
 
@@ -165,6 +166,8 @@ export const oneSource = (build: Build) =>
           ),
       });
 
+      const provenance = manifestProblems(build.manifest, build.plan);
+
       const measured: Measured = [
         ["source sha256", short(expected)],
         ...Arr.map(places, (place): readonly [string, string] => [
@@ -176,12 +179,20 @@ export const oneSource = (build: Build) =>
           planProblem.length === 0 ? "yes" : "no",
         ],
         ["files verified against build.json", build.manifest.files.length],
+        ["adapters listed with egress", build.manifest.adapters.length],
+        ["assets with provenance", build.manifest.assets.length],
       ];
 
       return verdictOf(
         "F5",
-        `${places.length} written files carry the source hash, plan.json is the Plan of the current source, and ${build.manifest.files.length} files match build.json`,
-        [...hashProblems, ...planProblem, ...unlisted, ...fileProblems],
+        `${places.length} written files carry the source hash, plan.json is the Plan of the current source, ${build.manifest.files.length} files match build.json, and it lists ${build.manifest.adapters.length} adapters and the provenance of ${build.manifest.assets.length} assets`,
+        [
+          ...hashProblems,
+          ...planProblem,
+          ...unlisted,
+          ...fileProblems,
+          ...provenance,
+        ],
         measured
       );
     })

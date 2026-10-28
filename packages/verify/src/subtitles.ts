@@ -2,7 +2,9 @@
 // the cue text is the narration text of the source, and its start and end lie within one frame of the Line's frames
 // in the Timeline.
 import type { TimedLine } from "@reebeat/core";
-import { MediaTools } from "@reebeat/video";
+import { MediaTools } from "@reebeat/encode-ffmpeg";
+import { parseVtt } from "@reebeat/subtitles";
+import type { VttCue } from "@reebeat/subtitles";
 import { Array as Arr, Effect, Option, Result } from "effect";
 
 import { guarded } from "./guard.ts";
@@ -12,8 +14,6 @@ import { rebuiltPlan } from "./truth.ts";
 import { msToFrames, signedFrames, withinOneFrame } from "./units.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { parseVtt } from "./vttParse.ts";
-import type { VttCue } from "./vttParse.ts";
 
 interface ExpectedLine {
   readonly endFrame: number;

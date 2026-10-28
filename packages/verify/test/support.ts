@@ -1,29 +1,41 @@
-// What the integration tests share: a small story built end to end with the real packages (parse, schedule, deck,
-// capture in Chromium, mux with ffmpeg) into a build directory, and the helpers that copy it, change one file of the
-// copy and run the checks. The speech cache holds seeded noise as narration, as in the video package's tests.
+// What the integration tests share: a small story built end to end by the real build program over the real adapters
+// (parse, schedule, reveal.js deck, capture in Chromium, mux with ffmpeg, a filesystem cache) into a build directory,
+// and the helpers that copy it, change one file of the copy and run the checks. The narrator is a test synthesiser
+// whose "speech" is seeded noise, so the narration is audible to the checks (the silent stand-in is not).
 import { NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
-import { buildPlan, encodePlan, schedule } from "@reebeat/core";
-import type { AlignedLine, PlanJson } from "@reebeat/core";
-import { renderDeck, writeDeck } from "@reebeat/deck";
-import { sfxWav } from "@reebeat/sfx";
-import {
-  Browser,
-  MediaTools,
-  captureFrames,
-  captureSchedule,
-  muxVideo,
-  requireTimeline,
-} from "@reebeat/video";
+import { fsAssetCache } from "@reebeat/cache-fs";
+import { chromiumCapturer } from "@reebeat/capture-chromium";
+import { decodePlan, requireTimeline } from "@reebeat/core";
+import type { PlanJson, TimedPlan } from "@reebeat/core";
+import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
 import type {
-  BrowserFailed,
-  CaptureTimeout,
   InvalidOutputName,
   MediaToolFailed,
-  OutputFailed,
-  TimedPlan,
-  UnknownSfx,
-} from "@reebeat/video";
+} from "@reebeat/encode-ffmpeg";
+import {
+  buildProgram,
+  decodeBuildManifest,
+  encodeBuildManifest,
+  muxStage,
+  sha256Hex,
+} from "@reebeat/pipeline";
+import type { BuildOutputFailed, SpeechAssetInvalid } from "@reebeat/pipeline";
+import { revealRenderer } from "@reebeat/render-reveal";
+import {
+  EmptyText,
+  FrameCapturer,
+  SpeechSynthesizer,
+  localEgress,
+} from "@reebeat/services";
+import type {
+  CacheError,
+  CaptureFailure,
+  EncodeError,
+  UnknownSound,
+} from "@reebeat/services";
+import { evenAligner } from "@reebeat/services/standins";
+import { sfxNames, sfxWav, synthSounds } from "@reebeat/sounds-synth";
 import {
   Array as Arr,
   Context,
@@ -33,21 +45,17 @@ import {
   Option,
   Order,
   Path,
-  Result,
+  Ref,
   Stream,
 } from "effect";
 import type { PlatformError } from "effect";
 
-import { sha256Hex } from "../src/hash.ts";
 import { renderVerdicts, runChecks } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
-import { encodeBuildManifest } from "../src/manifest.ts";
 import { timedLines } from "../src/planParts.ts";
 
-/** The services of a real run: ffmpeg, Chromium, the file system and hashing. */
-const services = Layer.mergeAll(MediaTools.layer, Browser.layer).pipe(
-  Layer.provideMerge(NodeServices.layer)
-);
+/** The services the checks and the helpers run on: ffmpeg, the file system and hashing. */
+const services = MediaTools.layer.pipe(Layer.provideMerge(NodeServices.layer));
 
 /**
  * Two Sections, two Scenes, 156 frames: a Line with a `next` and an `sfx`, then an Auto-Animate Scene in which one
@@ -83,56 +91,99 @@ export const buildName = "story";
 
 const wordMs = 300;
 
-const encoder = new TextEncoder();
+const spokenMs = 280;
 
-const linesOf = (plan: PlanJson) =>
-  Arr.flatMap(plan.scenes, (scene) => scene.lines);
+const sampleRate = 24_000;
 
-/** A cache file name of the Plan contract (64 hex digits and `.flac`), unique per Line id: the hex of its characters. */
-const audioFileOf = (lineId: string): string =>
-  `${Arr.join(
-    Arr.map(lineId.split(""), (char) =>
-      (char.codePointAt(0) ?? 0).toString(16)
-    ),
-    ""
-  ).padEnd(64, "0")}.flac`;
+const noiseAmplitude = 0.4;
 
-/** Each word is 300 ms long, spoken in its first 280 ms: the same shape as the video package's fixture. */
-const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
-  Arr.map(linesOf(plan), (line) => ({
-    audio: { file: audioFileOf(line.id), sha256: "00" },
-    durationMs: line.words.length * wordMs,
-    lineId: line.id,
-    words: Arr.map(line.words, (w, index) => ({
-      endMs: index * wordMs + 280,
-      startMs: index * wordMs,
-      w,
-    })),
-  }));
+/** A white-noise sample in `[-amplitude, amplitude]`: a hash of the position and the seed, so equal input is equal output. */
+const noiseAt = (seed: number, index: number): number => {
+  const scrambled = Math.sin(index * 12.9898 + seed * 78.233) * 43_758.5453;
 
-const noiseFlac = Effect.fnUntraced(function* noiseFlac(
-  file: string,
-  seed: number,
-  seconds: number
-) {
-  const tools = yield* MediaTools;
+  return (2 * (scrambled - Math.floor(scrambled)) - 1) * noiseAmplitude;
+};
 
-  yield* tools.run("ffmpeg", [
-    "-hide_banner",
-    "-loglevel",
-    "error",
-    "-y",
-    "-f",
-    "lavfi",
-    "-i",
-    `anoisesrc=color=white:seed=${seed}:amplitude=0.4:duration=${seconds}:sample_rate=24000`,
-    "-ac",
-    "1",
-    "-c:a",
-    "flac",
-    file,
-  ]);
-});
+/** A seed of the text: the sum of its characters modulo a prime, so every Line has its own noise. */
+const seedOf = (text: string): number =>
+  Arr.reduce(
+    text.split(""),
+    17,
+    (sum, char) => (sum * 31 + (char.codePointAt(0) ?? 0)) % 9973
+  );
+
+/**
+ * The test narrator: seeded noise, 300 ms a word, with the word times a real aligner would find (each word spoken in
+ * its first 280 ms). Its id does not end `-standin`, so the checks treat it as audible.
+ */
+const noiseSynthesizer = Layer.succeed(
+  SpeechSynthesizer,
+  SpeechSynthesizer.of({
+    info: {
+      egress: localEgress,
+      id: "test-noise@1",
+      settings: { amplitude: noiseAmplitude, wordMs },
+    },
+    synthesize: Effect.fn("noiseSynthesizer.synthesize")(function* speak({
+      text,
+    }) {
+      const [first, ...rest] = Arr.filter(
+        Arr.fromIterable(text.split(/\s+/u)),
+        (word) => word !== ""
+      );
+
+      if (first === undefined) {
+        return yield* new EmptyText({ message: "there are no words to speak" });
+      }
+
+      const spoken = [first, ...rest];
+      const seed = seedOf(text);
+
+      return {
+        clip: {
+          sampleRate,
+          samples: Float32Array.from(
+            { length: (spoken.length * wordMs * sampleRate) / 1000 },
+            (_, index) => noiseAt(seed, index)
+          ),
+        },
+        words: Arr.map(spoken, (_, index) => ({
+          endMs: index * wordMs + spokenMs,
+          startMs: index * wordMs,
+        })),
+      };
+    }),
+  })
+);
+
+/** Chromium that also keeps every frame it captures in `frames`, so a control can edit the frames of the intact build. */
+const recordingCapturer = (frames: Ref.Ref<readonly Uint8Array[]>) =>
+  Layer.effect(
+    FrameCapturer,
+    Effect.gen(function* recording() {
+      const inner = yield* FrameCapturer;
+
+      return FrameCapturer.of({
+        ...inner,
+        capture: (request) =>
+          Stream.tap(inner.capture(request), (frame) =>
+            Ref.update(frames, (all) => [...all, frame])
+          ),
+      });
+    })
+  ).pipe(Layer.provide(chromiumCapturer));
+
+/** The real adapters of a build over the cache in `cacheDir`; the capturer records into `frames` when it is given. */
+const adapters = (cacheDir: string, frames?: Ref.Ref<readonly Uint8Array[]>) =>
+  Layer.mergeAll(
+    noiseSynthesizer,
+    evenAligner,
+    synthSounds,
+    revealRenderer,
+    frames === undefined ? chromiumCapturer : recordingCapturer(frames),
+    ffmpegEncoder,
+    fsAssetCache(cacheDir)
+  ).pipe(Layer.provide(NodeServices.layer));
 
 /** Every file below `dir`, relative to it, in name order. */
 const filesBelow = Effect.fnUntraced(function* filesBelow(dir: string) {
@@ -153,14 +204,91 @@ const filesBelow = Effect.fnUntraced(function* filesBelow(dir: string) {
   );
 });
 
-/** Writes `build.json` for the files now in `dir`: what `build` does last, and what a mutation must redo to stay consistent. */
+export interface FixtureData {
+  /** The intact build directory. */
+  readonly build: string;
+  readonly cacheDir: string;
+  /** The `file://` URL of the intact build's `deck.html`. */
+  readonly deckUrl: string;
+  /** The captured PNG frames of the intact build. */
+  readonly frames: readonly Uint8Array[];
+  readonly plan: TimedPlan;
+  readonly root: string;
+  readonly sourcePath: string;
+}
+
+const timedOrDie = (plan: PlanJson) => Effect.fromResult(requireTimeline(plan));
+
+const buildFixture = Effect.gen(function* buildFixtureDirectory() {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-verify-" });
+  const sourcePath = path.join(root, "story", "story.fountain");
+  const cacheDir = path.join(root, "story", "speech-cache");
+  const build = path.join(root, "build");
+  const frames = yield* Ref.make<readonly Uint8Array[]>([]);
+
+  yield* fs.makeDirectory(cacheDir, { recursive: true });
+  yield* fs.makeDirectory(path.join(root, "sounds"), { recursive: true });
+  yield* fs.writeFileString(sourcePath, storyText);
+  yield* Effect.forEach(
+    sfxNames,
+    (name) =>
+      fs.writeFile(path.join(root, "sounds", `${name}.wav`), sfxWav(name)),
+    { discard: true }
+  );
+
+  yield* Effect.provide(
+    buildProgram({
+      name: buildName,
+      out: build,
+      refreshSpeech: true,
+      story: sourcePath,
+    }),
+    adapters(cacheDir, frames)
+  );
+
+  const plan = yield* timedOrDie(
+    yield* decodePlan(yield* fs.readFileString(path.join(build, "plan.json")))
+  );
+
+  return {
+    build,
+    cacheDir,
+    deckUrl: (yield* path.toFileUrl(path.join(build, "deck.html"))).href,
+    frames: yield* Ref.get(frames),
+    plan,
+    root,
+    sourcePath,
+  };
+});
+
+/** The small build, made once per test block. */
+export class Fixture extends Context.Service<Fixture, FixtureData>()(
+  "@reebeat/verify/test/Fixture"
+) {
+  static readonly layer = Layer.effect(Fixture, buildFixture).pipe(
+    Layer.provideMerge(services)
+  );
+}
+
+/**
+ * Writes `build.json` for the files now in `dir`: what `build` does last, and what a mutation must redo to stay
+ * consistent. The adapters and the assets are those of the intact build; the files and the source hash are the
+ * directory's and `sourcePath`'s now.
+ */
 export const sealBuild = Effect.fn("sealBuild")(function* seal(
   dir: string,
   sourcePath: string
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const fixture = yield* Fixture;
   const source = yield* fs.readFile(sourcePath);
+
+  const intact = yield* decodeBuildManifest(
+    yield* fs.readFileString(path.join(fixture.build, "build.json"))
+  );
 
   const files = yield* Effect.forEach(
     Arr.filter(yield* filesBelow(dir), (name) => name !== "build.json"),
@@ -179,97 +307,13 @@ export const sealBuild = Effect.fn("sealBuild")(function* seal(
   yield* fs.writeFileString(
     path.join(dir, "build.json"),
     yield* encodeBuildManifest({
+      ...intact,
       files,
-      schema: 1,
       sourcePath: path.basename(sourcePath),
       sourceSha256: yield* sha256Hex(source),
     })
   );
 });
-
-export interface FixtureData {
-  /** The intact build directory. */
-  readonly build: string;
-  readonly cacheDir: string;
-  /** The `file://` URL of the intact build's `deck.html`. */
-  readonly deckUrl: string;
-  /** The captured PNG frames of the intact build. */
-  readonly frames: readonly Uint8Array[];
-  readonly plan: TimedPlan;
-  readonly root: string;
-  readonly sourcePath: string;
-}
-
-const timedOrDie = (plan: PlanJson): TimedPlan =>
-  Result.getOrThrow(requireTimeline(plan));
-
-const buildFixture = Effect.gen(function* buildFixtureDirectory() {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-verify-" });
-  const sourcePath = path.join(root, "story", "story.fountain");
-  const cacheDir = path.join(root, "story", "speech-cache");
-  const build = path.join(root, "build");
-
-  yield* fs.makeDirectory(cacheDir, { recursive: true });
-  yield* fs.makeDirectory(path.join(build, "assets", "sfx"), {
-    recursive: true,
-  });
-  yield* fs.writeFileString(sourcePath, storyText);
-
-  const plan = yield* buildPlan(
-    storyText,
-    yield* sha256Hex(encoder.encode(storyText))
-  );
-
-  const aligned = alignedLines(plan);
-  const scheduled = yield* schedule(plan, aligned);
-  const timed = timedOrDie(scheduled);
-
-  yield* Effect.forEach(aligned, (line, index) =>
-    noiseFlac(
-      path.join(cacheDir, line.audio.file),
-      11 * (index + 1),
-      line.durationMs / 1000
-    )
-  );
-
-  yield* writeDeck(renderDeck(scheduled), build, scheduled);
-  yield* Effect.forEach(["pop", "whoosh", "ding"] as const, (name) =>
-    fs.writeFile(path.join(build, "assets", "sfx", `${name}.wav`), sfxWav(name))
-  );
-
-  const deckUrl = (yield* path.toFileUrl(path.join(build, "deck.html"))).href;
-
-  const frames = yield* Stream.runCollect(
-    captureFrames(captureSchedule(timed), {
-      deckUrl,
-      settleNewAnimations: true,
-    })
-  );
-
-  yield* muxVideo(timed, Stream.fromIterable(frames), {
-    cacheDir,
-    name: buildName,
-    outDir: build,
-  });
-  yield* fs.writeFileString(
-    path.join(build, "plan.json"),
-    yield* encodePlan(scheduled)
-  );
-  yield* sealBuild(build, sourcePath);
-
-  return { build, cacheDir, deckUrl, frames, plan: timed, root, sourcePath };
-});
-
-/** The small build, made once per test block. */
-export class Fixture extends Context.Service<Fixture, FixtureData>()(
-  "@reebeat/verify/test/Fixture"
-) {
-  static readonly layer = Layer.effect(Fixture, buildFixture).pipe(
-    Layer.provideMerge(services)
-  );
-}
 
 /** A copy of the intact build in a new directory of the fixture's root. */
 export const copyBuild = Effect.fn("copyBuild")(function* copy(name: string) {
@@ -293,12 +337,13 @@ export const checkDirectory = (dir: string, sourcePath?: string) =>
     })
   );
 
+/** The verdicts that do not hold. */
+const failing = (verdicts: readonly Verdict[]): readonly Verdict[] =>
+  Arr.filter(verdicts, (verdict) => verdict.status === "fail");
+
 /** The ids of the verdicts that do not hold. */
 export const failedIds = (verdicts: readonly Verdict[]): readonly string[] =>
-  Arr.map(
-    Arr.filter(verdicts, (verdict) => !verdict.ok),
-    (verdict) => verdict.id
-  );
+  Arr.map(failing(verdicts), (verdict) => verdict.id);
 
 /** The verdict of one falsifier. */
 export const verdictOf = (
@@ -424,16 +469,17 @@ export const mapping = (subtitles: string, chapters: string): string[] => [
 
 /** What a mutation of a copied build may fail with, and what it may use. */
 type MutationError =
-  | BrowserFailed
-  | CaptureTimeout
+  | BuildOutputFailed
+  | CacheError
+  | CaptureFailure
+  | EncodeError
   | InvalidOutputName
   | MediaToolFailed
-  | OutputFailed
   | PlatformError.PlatformError
-  | UnknownSfx;
+  | SpeechAssetInvalid
+  | UnknownSound;
 
 type MutationServices =
-  | Browser
   | FileSystem.FileSystem
   | Fixture
   | MediaTools
@@ -479,40 +525,55 @@ export const shiftSlide = (
   },
 });
 
+/** The capturer the controls re-capture with: Chromium over the platform. */
+const capturing = chromiumCapturer.pipe(Layer.provide(NodeServices.layer));
+
 /** A new capture of the intact build's deck, commanded by the schedule of `plan`, as the frames to mux. */
 export const recapture = (plan: TimedPlan) =>
   Stream.unwrap(
     Effect.gen(function* capture() {
       const fixture = yield* Fixture;
 
-      const frames = yield* Stream.runCollect(
-        captureFrames(captureSchedule(plan), {
-          deckUrl: fixture.deckUrl,
-          settleNewAnimations: true,
-        })
+      const frames = yield* Effect.provide(
+        Effect.flatMap(FrameCapturer, (capturer) =>
+          Effect.scoped(
+            Stream.runCollect(
+              capturer.capture({ deckDir: fixture.build, plan })
+            )
+          )
+        ),
+        capturing
       );
 
       return Stream.fromIterable(frames);
     })
   );
 
+/** What muxing frames under the intact build's Plan needs besides the platform: the sounds, ffmpeg and the cache. */
+const muxing = (cacheDir: string) =>
+  Layer.mergeAll(synthSounds, ffmpegEncoder, fsAssetCache(cacheDir)).pipe(
+    Layer.provide(NodeServices.layer)
+  );
+
 /** Muxes `frames` under the intact build's Plan into the mp4 and `.vtt` of `dir`, replacing the video. */
-export const muxFrames = Effect.fn("muxFrames")(function* mux<R>(
+export const muxFrames = Effect.fn("muxFrames")(function* mux(
   dir: string,
-  frames: Stream.Stream<Uint8Array, BrowserFailed | CaptureTimeout, R>
+  frames: Stream.Stream<Uint8Array, CaptureFailure, Fixture>
 ) {
   const fixture = yield* Fixture;
 
-  yield* muxVideo(fixture.plan, frames, {
-    cacheDir: fixture.cacheDir,
-    name: buildName,
-    outDir: dir,
-  });
+  yield* Effect.provide(
+    muxStage(fixture.plan, Stream.provideService(frames, Fixture, fixture), {
+      name: buildName,
+      outDir: dir,
+    }),
+    muxing(fixture.cacheDir)
+  );
 });
 
 /** Logs the verdicts that do not hold, as the table the CLI prints. */
 export const logFailures = (verdicts: readonly Verdict[]) =>
-  Effect.log(renderVerdicts(Arr.filter(verdicts, (verdict) => !verdict.ok)));
+  Effect.log(renderVerdicts(failing(verdicts)));
 
 /** A copy of the intact build with `change` applied to it and `build.json` sealed again, and the checks run on it. */
 export const mutate = Effect.fn("mutate")(function* mutate(
@@ -658,5 +719,6 @@ export const narrationFile = (fixture: FixtureData, lineId: string): string =>
     ).audio.file
   }`;
 
+/** The catalogue sound `name` as a WAV beside the intact build: the build keeps only the sounds its Cues play. */
 export const soundFile = (fixture: FixtureData, name: string): string =>
-  `${fixture.build}/assets/sfx/${name}.wav`;
+  `${fixture.root}/sounds/${name}.wav`;

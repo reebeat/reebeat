@@ -10,14 +10,6 @@ export type { VerifyError } from "./errors.ts";
 
 export type { CheckOptions } from "./load.ts";
 
-export {
-  BuildManifestSchema,
-  decodeBuildManifest,
-  encodeBuildManifest,
-} from "./manifest.ts";
-
-export type { BuildManifest } from "./manifest.ts";
-
 export { exitCode, renderVerdicts } from "./verdict.ts";
 
-export type { FalsifierId, Measured, Verdict } from "./verdict.ts";
+export type { FalsifierId, Measured, Status, Verdict } from "./verdict.ts";

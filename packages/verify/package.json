@@ -12,14 +12,20 @@
   },
   "dependencies": {
     "@reebeat/core": "workspace:*",
-    "@reebeat/deck": "workspace:*",
-    "@reebeat/sfx": "workspace:*",
-    "@reebeat/video": "workspace:*",
+    "@reebeat/encode-ffmpeg": "workspace:*",
+    "@reebeat/lint": "workspace:*",
+    "@reebeat/pipeline": "workspace:*",
+    "@reebeat/render-reveal": "workspace:*",
+    "@reebeat/services": "workspace:*",
+    "@reebeat/sounds-synth": "workspace:*",
+    "@reebeat/subtitles": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
+    "@reebeat/cache-fs": "workspace:*",
+    "@reebeat/capture-chromium": "workspace:*",
     "@types/node": "catalog:",
     "oxc-parser": "catalog:",
     "typescript": "catalog:",

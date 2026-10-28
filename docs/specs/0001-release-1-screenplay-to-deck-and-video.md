@@ -84,6 +84,43 @@ Frame rate 30, canvas 1280x720. Pacing defaults (a Story may override them in it
 
 The capture opens `deck.html` in Chromium (Playwright), installs a virtual clock before the page runs (the prior art: `timeweb`, BSD-3, the clock behind `timesnap` and `timecut`: it overrides `Date`, `performance.now`, `requestAnimationFrame`, timers and, through the Web Animations API, CSS transitions and animations), advances it one frame at a time, calls `Reveal.next()` / `Reveal.nextFragment()` at the scheduled frames, and takes one screenshot per frame. Whether the clock covers reveal.js's CSS transitions is **measured first** (M0) and the result decides the mechanism (below).
 
+## The Plan contract (`plan.json`)
+
+The one input of `packages/deck` and `packages/video`, and what `packages/verify` compares the outputs against. Plain JSON, decoded with a `Schema` in `packages/core` (`src/plan.ts` is the authority; this section is its summary and a change to the file is a dated Revision here). Frames are integers at `settings.fps`.
+
+```ts
+interface PlanJson {
+  schema: 1;
+  sourceSha256: string;                 // SHA-256 of the .fountain bytes; every output embeds it
+  title: string; author?: string;
+  settings: { fps: 30; width: 1280; height: 720; sceneLead: number; lineGap: number; sceneTail: number; transition: number /* s, 0.8 */; voice: "af_heart" };
+  chapters: { id: string; title: string; sceneIds: string[]; line: number }[];        // one per `# Section`
+  scenes: Scene[];
+  timeline?: Timeline;                  // added by `schedule` once speech exists; absent in `plan` output
+}
+interface Scene {
+  id: string; heading: string; line: number; chapterId: string;
+  transition: "auto-animate" | "cut" | "default";                                   // the transition INTO this scene
+  elements: { id: string; text: string; cell: "tl"|"tc"|"tr"|"ml"|"mc"|"mr"|"bl"|"bc"|"br"; classes: string[]; hidden: boolean; line: number }[];
+  lines: Line[];
+  identity: null | { enter: string[]; exit: string[]; update: { id: string; changes: ("cell"|"classes"|"text")[] }[]; same: string[] };   // vs the previous scene, only when transition is auto-animate
+}
+interface Line { id: string; line: number; text: string /* narration text */; words: string[] /* text split on single spaces */;
+  hints: { speed: number; pauseBefore: number }; cues: Cue[] }
+interface Cue { id: string; line: number; kind: "next" | "focus" | "sfx"; arg: string | null;
+  afterWord: number /* index into Line.words of the word it follows; -1 = fires at the start of the Line */ }
+interface Timeline {
+  totalFrames: number;
+  scenes: { sceneId: string; slideFrame: number /* frame at which the slide change is shown */; endFrame: number;
+            lines: { lineId: string; startFrame: number; endFrame: number; audio: { file: string; sha256: string };
+                     words: { w: string; startMs: number; endMs: number; startFrame: number; endFrame: number }[];
+                     cues: { cueId: string; fireFrame: number /* round(fps * aligned word end) */; commandFrame: number /* when the capture calls Reveal, see Revisions: fireFrame minus 2 for auto-animate, minus 1 for fragments */ }[] }[] }[];
+  chapters: { chapterId: string; startFrame: number }[];
+}
+```
+
+Ids are deterministic: scenes `sc<N>`, chapters `ch<N>`, lines `sc<N>.l<M>`, cues `sc<N>.l<M>.c<K>`, numbering from 1 in document order. A Scene's slide change is shown at `slideFrame`; the first Line of a Scene starts `settings.sceneLead` seconds after it.
+
 ## Module layout
 
 ```text

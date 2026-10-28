@@ -1,2 +1,2 @@
-console.log("control");
-export const control = (value: any) => value;
+console.log("control 2");
+export const control2 = (value: any) => value;

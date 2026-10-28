@@ -3,11 +3,13 @@
 //
 //   1. the virtual clock is pre-rolled past `Reveal.initialize` (`goTo` 50 to 300 ms; `goTo(0)` never
 //      initialises Reveal), and frame 0 is the virtual time T0 = 500 ms;
-//   2. each frame f: the virtual clock goes to T0 + f * 1000 / fps, the commands scheduled for f run, every
-//      animation is paused and set to its time at f (the seek layer, with its settle wait), one screenshot.
+//   2. each frame f: the virtual clock goes to T0 + f * 1000 / fps (`virtualTimeOf`), the commands scheduled for f
+//      run, every animation is paused and set to its time at f (the seek layer, with its settle wait), one
+//      screenshot.
 //
-// The commands run after the clock step, as in the measurement: the lag between a Reveal call and its first
-// changed frame (2 frames for Auto-Animate, 1 for a fragment or a fade) was measured in that order.
+// The commands run after the clock step, as in the measurement. The lag between a Reveal call and the first
+// changed frame, measured on the real deck (spec Revision "capture lags re-measured", `captureSchedule.ts`): an
+// Auto-Animate scene change and a cut 0 frames, a default fade 1, `next` and `focus` 1, and `sfx` changes no pixel.
 import { Duration, Effect, Stream } from "effect";
 
 import { Browser } from "./browser.ts";
@@ -22,16 +24,32 @@ export const clockOrigin = 500;
 /** The virtual times of the pre-roll, in milliseconds. */
 const preRoll = [50, 100, 200, 300] as const;
 
-const viewport = { height: 720, width: 1280 } as const;
-
 export interface CaptureOptions {
   /** The `file://` URL of `deck.html`. */
   readonly deckUrl: string;
-  /** Wait two real frames before the first seek of a new animation (F6 needs it; false exists for its control). */
+  /**
+   * Wait two real frames before the first seek of a new animation. The build sets it. `false` is a recorded manual
+   * measurement, not an automated control: without the wait two launches of the same capture sometimes differ
+   * (2 of 219 frames in one run, 0 of 219 in another, all 219 compared as raw PNG in 3 of 3 runs of a reviewer), so
+   * no test can assert either outcome.
+   */
   readonly settleNewAnimations: boolean;
   /** The capture's deadline in seconds; `undefined` is 120 s plus 0.2 s per frame. */
   readonly timeoutSeconds?: number | undefined;
+  /**
+   * The virtual time (ms) the clock is moved to for a frame; `undefined` is `clockOrigin + frame * 1000 / fps`. A
+   * seam for the control of F6: a clock that jitters must make two captures differ. The times must not decrease.
+   * The animations are set to the virtual time that has passed since they started, so a late clock shows in the
+   * pixels; the page's own timers are on that clock too.
+   */
+  readonly virtualTimeOf?: ((frame: number) => number) | undefined;
 }
+
+/** The default virtual time of a frame. */
+const nominalVirtualTime =
+  (fps: number) =>
+  (frame: number): number =>
+    clockOrigin + (frame * 1000) / fps;
 
 /** The deadline of a capture of `frames` frames when the caller gives none. */
 export const defaultTimeoutSeconds = (frames: number): number =>
@@ -53,19 +71,30 @@ const captureFrame = (
   page: DeckPage,
   schedule: CaptureSchedule,
   commands: ReadonlyMap<number, readonly CaptureCommand[]>,
-  settle: boolean
-) =>
-  Effect.fnUntraced(function* frameAt(frame: number) {
-    yield* page.clockGoTo(clockOrigin + (frame * 1000) / schedule.fps);
+  options: CaptureOptions
+) => {
+  const nominal = nominalVirtualTime(schedule.fps);
+  const virtualTimeOf = options.virtualTimeOf ?? nominal;
+
+  return Effect.fnUntraced(function* frameAt(frame: number) {
+    const virtualMs = virtualTimeOf(frame);
+
+    yield* page.clockGoTo(virtualMs);
 
     for (const command of commands.get(frame) ?? []) {
       yield* page.command(command);
     }
 
-    yield* page.seek(frame, schedule.fps, settle);
+    yield* page.seek(
+      frame,
+      schedule.fps,
+      options.settleNewAnimations,
+      virtualMs - nominal(frame)
+    );
 
     return yield* page.screenshot;
   });
+};
 
 /**
  * The PNG frames `0 .. totalFrames - 1` of the deck, one at a time and in order. The browser lives as long as the
@@ -82,7 +111,12 @@ export const captureFrames = (
 
   const frames = Effect.gen(function* open() {
     const browser = yield* Browser;
-    const page = yield* browser.open({ ...viewport, url: options.deckUrl });
+
+    const page = yield* browser.open({
+      height: schedule.height,
+      url: options.deckUrl,
+      width: schedule.width,
+    });
 
     for (const virtualMs of preRoll) {
       yield* page.clockGoTo(virtualMs);
@@ -91,9 +125,7 @@ export const captureFrames = (
     yield* page.ready;
 
     return Stream.range(0, schedule.totalFrames - 1).pipe(
-      Stream.mapEffect(
-        captureFrame(page, schedule, commands, options.settleNewAnimations)
-      )
+      Stream.mapEffect(captureFrame(page, schedule, commands, options))
     );
   });
 

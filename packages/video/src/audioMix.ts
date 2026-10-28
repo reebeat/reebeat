@@ -1,10 +1,11 @@
 import type { TimedCue } from "@reebeat/core";
-import { sfxNames } from "@reebeat/sfx";
+import { sampleRate, sfxNames } from "@reebeat/sfx";
 import type { SfxName } from "@reebeat/sfx";
 // The audio track: every narration FLAC at its Line's start and every `sfx` Cue's sound at its fire frame, mixed
 // without normalisation, padded or cut to the exact length of the Video and encoded as 48 kHz stereo.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, Result } from "effect";
 
+import { UnknownSfx } from "./errors.ts";
 import { frameToMs } from "./time.ts";
 import { cuesById } from "./timedPlan.ts";
 import type { TimedPlan } from "./timedPlan.ts";
@@ -33,8 +34,6 @@ export interface AudioMixPlan {
   readonly durationSeconds: string;
 }
 
-export const sampleRateHz = 48_000;
-
 const sfxNameOf = (arg: string | null): SfxName | undefined =>
   Option.getOrUndefined(Arr.findFirst(sfxNames, (name) => name === arg));
 
@@ -43,47 +42,15 @@ const delayChain = (
   ffmpegIndex: number,
   label: number
 ): string =>
-  `[${ffmpegIndex}:a]aresample=${sampleRateHz},aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${input.startMs}:all=1[a${label}]`;
+  `[${ffmpegIndex}:a]aresample=${sampleRate},aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${input.startMs}:all=1[a${label}]`;
 
-/**
- * The inputs and the filter graph of a scheduled Plan. `firstInputIndex` is the ffmpeg input index of the first
- * audio input (the capture's frames are input 0).
- */
-export const audioMixPlan = (
+/** The filter graph of `inputs`, cut to the length of the Video. */
+const mixOf = (
   plan: TimedPlan,
-  firstInputIndex = 1
+  inputs: readonly AudioInput[],
+  firstInputIndex: number
 ): AudioMixPlan => {
   const { fps } = plan.settings;
-  const cues = cuesById(plan);
-  const timedLines = Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines);
-
-  const narration = Arr.map(timedLines, (line): AudioInput => ({
-    file: line.audio.file,
-    kind: "narration",
-    lineId: line.lineId,
-    startMs: frameToMs(line.startFrame, fps),
-  }));
-
-  const sounds = Arr.flatMap(
-    Arr.flatMap(timedLines, (line) => line.cues),
-    (timed: TimedCue): AudioInput[] => {
-      const cue = cues.get(timed.cueId);
-      const name = sfxNameOf(cue?.arg ?? null);
-
-      return cue?.kind === "sfx" && name !== undefined
-        ? [
-            {
-              cueId: timed.cueId,
-              kind: "sfx",
-              name,
-              startMs: frameToMs(timed.fireFrame, fps),
-            },
-          ]
-        : [];
-    }
-  );
-
-  const inputs = [...narration, ...sounds];
   const durationSeconds = (plan.timeline.totalFrames / fps).toFixed(6);
 
   const delayed = Arr.map(inputs, (input, index) =>
@@ -102,4 +69,62 @@ export const audioMixPlan = (
     filterComplex: Arr.join([...delayed, mix], ";"),
     inputs,
   };
+};
+
+/**
+ * The inputs and the filter graph of a scheduled Plan. `firstInputIndex` is the ffmpeg input index of the first
+ * audio input (the capture's frames are input 0).
+ */
+export const audioMixPlan = (
+  plan: TimedPlan,
+  firstInputIndex = 1
+): Result.Result<AudioMixPlan, UnknownSfx> => {
+  const { fps } = plan.settings;
+  const cues = cuesById(plan);
+  const timedLines = Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines);
+
+  const narration = Arr.map(timedLines, (line): AudioInput => ({
+    file: line.audio.file,
+    kind: "narration",
+    lineId: line.lineId,
+    startMs: frameToMs(line.startFrame, fps),
+  }));
+
+  const sound = (timed: TimedCue): Result.Result<AudioInput[], UnknownSfx> => {
+    const cue = cues.get(timed.cueId);
+
+    if (cue?.kind !== "sfx") {
+      return Result.succeed([]);
+    }
+
+    const name = sfxNameOf(cue.arg);
+
+    return name === undefined
+      ? Result.fail(
+          new UnknownSfx({
+            cueId: timed.cueId,
+            message: `the Cue ${timed.cueId} asks for the sound ${cue.arg ?? "(none)"}, which the catalogue does not have`,
+            sound: cue.arg,
+          })
+        )
+      : Result.succeed([
+          {
+            cueId: timed.cueId,
+            kind: "sfx",
+            name,
+            startMs: frameToMs(timed.fireFrame, fps),
+          },
+        ]);
+  };
+
+  return Result.map(
+    Result.all(
+      Arr.map(
+        Arr.flatMap(timedLines, (line) => line.cues),
+        sound
+      )
+    ),
+    (found) =>
+      mixOf(plan, [...narration, ...Arr.flatten(found)], firstInputIndex)
+  );
 };

@@ -38,7 +38,11 @@ export interface ScheduledCommand {
 export interface CaptureSchedule {
   readonly commands: readonly ScheduledCommand[];
   readonly fps: number;
+  /** The viewport of the capture: the Plan's `settings.height`. */
+  readonly height: number;
   readonly totalFrames: number;
+  /** The viewport of the capture: the Plan's `settings.width`. */
+  readonly width: number;
 }
 
 /** Frames between `Reveal.slide` and the first changed frame of the whole frame, by the transition INTO the Scene. */
@@ -114,6 +118,8 @@ export const captureSchedule = (plan: TimedPlan): CaptureSchedule => {
   return {
     commands: Arr.sort(ordered, byFrame),
     fps: plan.settings.fps,
+    height: plan.settings.height,
     totalFrames: plan.timeline.totalFrames,
+    width: plan.settings.width,
   };
 };

@@ -1,6 +1,6 @@
 // The pure functions of the video stage, against a Plan whose frames were worked out by hand (test/fixturePlan.ts).
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Order, Result } from "effect";
+import { Array as Arr, Order, Predicate, Result } from "effect";
 
 import { audioMixPlan } from "../src/audioMix.ts";
 import { captureSchedule, sceneChangeLag } from "../src/captureSchedule.ts";
@@ -10,7 +10,14 @@ import { frameToMs, vttTimestamp } from "../src/time.ts";
 import { requireTimeline } from "../src/timedPlan.ts";
 import type { TimedPlan } from "../src/timedPlan.ts";
 import { vtt } from "../src/vtt.ts";
-import { fixtureHash, fixturePlan, timedFixture } from "./fixturePlan.ts";
+import {
+  audioFile,
+  fixtureHash,
+  fixturePlan,
+  withLineText,
+  withSfxArg,
+  timedFixture,
+} from "./fixturePlan.ts";
 
 const timed = timedFixture;
 
@@ -28,6 +35,9 @@ const narrationOf = (plan: TimedPlan): string[] =>
 
 const subtitleTextOf = (plan: TimedPlan): string[] =>
   Arr.map(cuesOf(vtt(plan)), (cue) => Arr.join(cue.slice(2), " "));
+
+/** The audio mix of a Plan whose sounds are all in the catalogue. */
+const mixOf = (plan: TimedPlan) => Result.getOrThrow(audioMixPlan(plan));
 
 const firstOf = <A>(items: readonly A[]): A => {
   const [first] = items;
@@ -115,6 +125,36 @@ describe("vtt", () => {
   });
 });
 
+describe("vtt escaping", () => {
+  const spoken = "Five < six and <b>bold</b> & ok.";
+
+  it("writes & < > as entities, & first, so a reader gets the narration back", () => {
+    const text = vtt(withLineText(timed(), "sc2.l1", spoken));
+
+    assert.include(text, "Five &lt; six and &lt;b&gt;bold&lt;/b&gt; &amp; ok.");
+    assert.notInclude(text, "<b>");
+    assert.strictEqual(
+      Arr.join(
+        Arr.map(cuesOf(text), (cue) =>
+          Arr.join(cue.slice(2), " ")
+            .replaceAll("&lt;", "<")
+            .replaceAll("&gt;", ">")
+            .replaceAll("&amp;", "&")
+        ),
+        "|"
+      ),
+      Arr.join(narrationOf(withLineText(timed(), "sc2.l1", spoken)), "|")
+    );
+  });
+
+  it("does not escape an ampersand twice", () => {
+    assert.include(
+      vtt(withLineText(timed(), "sc2.l1", "fish &amp; chips")),
+      "fish &amp;amp; chips"
+    );
+  });
+});
+
 describe("ffmetadata", () => {
   it("writes one chapter per Section in milliseconds, each ending where the next starts", () => {
     assert.strictEqual(
@@ -141,24 +181,39 @@ describe("ffmetadata", () => {
 });
 
 describe("audioMixPlan", () => {
+  it("fails with UnknownSfx for a Cue whose sound the catalogue does not have", () => {
+    const plan = timed();
+
+    const broken = withSfxArg(plan, "gong");
+
+    const failure = Result.getOrThrowWith(
+      Result.flip(audioMixPlan(broken)),
+      () => new Error("expected UnknownSfx")
+    );
+
+    assert.isTrue(Predicate.isTagged(failure, "UnknownSfx"));
+    assert.strictEqual(failure.cueId, "sc1.l1.c2");
+    assert.strictEqual(failure.sound, "gong");
+  });
+
   it("lists the narration FLACs at their Line starts, then the sfx hits at their fire frames", () => {
-    const { inputs } = audioMixPlan(timed());
+    const { inputs } = mixOf(timed());
 
     assert.deepStrictEqual(inputs, [
       {
-        file: "sc1.l1.flac",
+        file: audioFile(1),
         kind: "narration",
         lineId: "sc1.l1",
         startMs: 1000,
       },
       {
-        file: "sc2.l1.flac",
+        file: audioFile(2),
         kind: "narration",
         lineId: "sc2.l1",
         startMs: 3700,
       },
       {
-        file: "sc3.l1.flac",
+        file: audioFile(3),
         kind: "narration",
         lineId: "sc3.l1",
         startMs: 6200,
@@ -168,7 +223,7 @@ describe("audioMixPlan", () => {
   });
 
   it("delays each input, mixes without normalising and cuts the track to the Video length", () => {
-    const { durationSeconds, filterComplex } = audioMixPlan(timed());
+    const { durationSeconds, filterComplex } = mixOf(timed());
 
     const prepare =
       "aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo";
@@ -204,6 +259,21 @@ describe("captureSchedule", () => {
         [156 - sceneChangeLag.cut, "sc3"],
       ]
     );
+  });
+
+  it("takes the viewport and the frame rate from the Plan's settings", () => {
+    const plan = timed();
+
+    const wide: TimedPlan = {
+      ...plan,
+      settings: { ...plan.settings, height: 720, width: 1280 },
+    };
+
+    const schedule = captureSchedule(wide);
+
+    assert.strictEqual(schedule.width, wide.settings.width);
+    assert.strictEqual(schedule.height, wide.settings.height);
+    assert.strictEqual(schedule.fps, wide.settings.fps);
   });
 
   it("is sorted, inside the Video, and has no command for the first Scene", () => {
@@ -305,7 +375,7 @@ describe("captureSchedule", () => {
 describe("muxArgs", () => {
   const plan = timed();
 
-  const args = muxArgs(plan, audioMixPlan(plan), {
+  const args = muxArgs(plan, mixOf(plan), {
     ffmetadata: "/s/chapters.ffmetadata",
     narrationDir: "/cache",
     output: "/s/out.mp4",
@@ -374,11 +444,11 @@ describe("muxArgs", () => {
     assert.isTrue(
       has([
         "-i",
-        "/cache/sc1.l1.flac",
+        `/cache/${audioFile(1)}`,
         "-i",
-        "/cache/sc2.l1.flac",
+        `/cache/${audioFile(2)}`,
         "-i",
-        "/cache/sc3.l1.flac",
+        `/cache/${audioFile(3)}`,
         "-i",
         "/s/sfx/pop.wav",
         "-i",

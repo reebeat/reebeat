@@ -10,6 +10,7 @@ import { Array as Arr, Effect, FileSystem, Layer, Path } from "effect";
 import { Browser } from "../src/browser.ts";
 import { MediaTools } from "../src/mediaTools.ts";
 import { requireTimeline } from "../src/timedPlan.ts";
+import { audioFile } from "./fixturePlan.ts";
 import { locateWorkspace, readLocal, writeNarration } from "./support.ts";
 
 export const realServices = Layer.mergeAll(
@@ -22,9 +23,10 @@ const wordMs = 250;
 const alignedLines = (
   plan: Parameters<typeof schedule>[0]
 ): readonly AlignedLine[] =>
-  Arr.flatMap(plan.scenes, (scene) =>
-    Arr.map(scene.lines, (line) => ({
-      audio: { file: `${line.id}.flac`, sha256: `hash-${line.id}` },
+  Arr.map(
+    Arr.flatMap(plan.scenes, (scene) => scene.lines),
+    (line, lineIndex) => ({
+      audio: { file: audioFile(lineIndex + 1), sha256: `hash-${line.id}` },
       durationMs: line.words.length * wordMs,
       lineId: line.id,
       words: Arr.map(line.words, (w, index) => ({
@@ -32,7 +34,7 @@ const alignedLines = (
         startMs: index * wordMs,
         w,
       })),
-    }))
+    })
   );
 
 /** The scheduled Plan of the fixture story, checked against its Scenes. */

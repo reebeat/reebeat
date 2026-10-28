@@ -111,9 +111,10 @@ export const framesOf = (
 export const buildFixture = (
   workspace: Workspace,
   name: string,
-  options: Partial<CaptureOptions> = {}
+  options: Partial<CaptureOptions> = {},
+  plan: TimedPlan = timedFixture()
 ) =>
-  muxVideo(timedFixture(), framesOf(workspace, undefined, options), {
+  muxVideo(plan, framesOf(workspace, undefined, options), {
     cacheDir: workspace.cacheDir,
     name,
     outDir: workspace.outDir,

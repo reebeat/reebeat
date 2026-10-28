@@ -7,7 +7,7 @@
 // Every frame below was worked out by hand with the core's rules: a Line starts `sceneLead` (1 s) after its slide
 // frame; a Line ends its audio duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; a Cue fires at
 // `Line start + round(30 * word end)`; `commandFrame` is `fireFrame - 1` for next and focus, `fireFrame` for sfx.
-import type { PlanJson } from "@reebeat/core";
+import type { Line, PlanJson } from "@reebeat/core";
 import { Array as Arr, Result } from "effect";
 
 import { requireTimeline } from "../src/timedPlan.ts";
@@ -22,6 +22,10 @@ const words = (texts: readonly string[], lineStartFrame: number) =>
     startMs: index * 300,
     w,
   }));
+
+/** A cache file name of the Plan contract: 64 hex digits and `.flac`; `n` picks the digits. */
+export const audioFile = (n: number): string =>
+  `${n.toString(16).repeat(64)}.flac`;
 
 export const fixtureHash =
   "5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e";
@@ -184,7 +188,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 81,
         lines: [
           {
-            audio: { file: "sc1.l1.flac", sha256: "00" },
+            audio: { file: audioFile(1), sha256: "00" },
             cues: [
               { commandFrame: 46, cueId: "sc1.l1.c1", fireFrame: 47 },
               { commandFrame: 65, cueId: "sc1.l1.c2", fireFrame: 65 },
@@ -202,7 +206,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 156,
         lines: [
           {
-            audio: { file: "sc2.l1.flac", sha256: "01" },
+            audio: { file: audioFile(2), sha256: "01" },
             cues: [{ commandFrame: 118, cueId: "sc2.l1.c1", fireFrame: 119 }],
             endFrame: 141,
             lineId: "sc2.l1",
@@ -217,7 +221,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 219,
         lines: [
           {
-            audio: { file: "sc3.l1.flac", sha256: "02" },
+            audio: { file: audioFile(3), sha256: "02" },
             cues: [],
             endFrame: 204,
             lineId: "sc3.l1",
@@ -252,3 +256,32 @@ export const timedFixture = (): TimedPlan => {
 
   return result.success;
 };
+
+/** The Plan with every Line of every Scene changed by `change`. */
+const mapLines = (
+  plan: TimedPlan,
+  change: (line: Line) => Line
+): TimedPlan => ({
+  ...plan,
+  scenes: Arr.map(plan.scenes, (scene) => ({
+    ...scene,
+    lines: Arr.map(scene.lines, change),
+  })),
+});
+
+/** The Plan with the narration text of one Line replaced. */
+export const withLineText = (
+  plan: TimedPlan,
+  lineId: string,
+  text: string
+): TimedPlan =>
+  mapLines(plan, (line) => (line.id === lineId ? { ...line, text } : line));
+
+/** The Plan with the sound every `sfx` Cue asks for replaced. */
+export const withSfxArg = (plan: TimedPlan, arg: string): TimedPlan =>
+  mapLines(plan, (line) => ({
+    ...line,
+    cues: Arr.map(line.cues, (cue) =>
+      cue.kind === "sfx" ? { ...cue, arg } : cue
+    ),
+  }));

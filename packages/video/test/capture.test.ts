@@ -3,6 +3,7 @@
 import { assert, it } from "@effect/vitest";
 import { Array as Arr, Effect, Stream } from "effect";
 
+import { clockOrigin } from "../src/capture.ts";
 import { captureSchedule } from "../src/captureSchedule.ts";
 import { firstChangedFrame, sliceClip } from "../src/probe.ts";
 import type { Box, GrayClip } from "../src/probe.ts";
@@ -107,5 +108,54 @@ it.live(
 
       assert.strictEqual(first.length, timedFixture().timeline.totalFrames);
       assert.deepStrictEqual(second, first);
+    }).pipe(Effect.provide(services))
+);
+
+/** The seeded fraction in [0, 1) of a (seed, frame) pair: a hash with no state, so a seed always repeats. */
+const unitOf = (seed: number, frame: number): number =>
+  Math.abs(Math.sin(seed * 12.9898 + frame * 78.233) * 43_758.5453) % 1;
+
+/**
+ * A clock that runs late by a seeded amount that grows: frame f is at its nominal time plus the sum of f seeded
+ * delays of 0 to 40 ms. It never runs backwards. This is the control of F6: the page's own timers, which the seek
+ * layer does not set, now fire at other frames.
+ */
+const jitteredClock =
+  (seed: number) =>
+  (frame: number): number =>
+    clockOrigin +
+    (frame * 1000) / 30 +
+    Arr.reduce(
+      Arr.range(1, frame),
+      0,
+      (sum, step) => sum + unitOf(seed, step) * 40
+    );
+
+it.live(
+  "control: a jittered clock makes two captures differ, and the same jitter makes them equal",
+  () =>
+    Effect.gen(function* jitter() {
+      const workspace = yield* makeWorkspace;
+
+      const hashesWith = (seed: number) =>
+        pngFrameHashes(
+          framesOf(workspace, undefined, { virtualTimeOf: jitteredClock(seed) })
+        );
+
+      const [a, b, again] = [
+        yield* hashesWith(1),
+        yield* hashesWith(2),
+        yield* hashesWith(1),
+      ];
+
+      const differing = Arr.length(
+        Arr.filter(Arr.zip(a, b), ([left, right]) => left !== right)
+      );
+
+      yield* Effect.log(
+        `jittered clocks: ${differing} of ${a.length} frames differ`
+      );
+      assert.isAbove(differing, 0);
+      assert.deepStrictEqual(again, a);
     }).pipe(Effect.provide(services))
 );

@@ -156,7 +156,7 @@ describe("reviewText with timing", () => {
 
       const withTimeline = yield* schedule(plan, [
         {
-          audio: { file: "a.flac", sha256: "x" },
+          audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
           durationMs: 1000,
           lineId: "sc1.l1",
           words: words("One", "two."),

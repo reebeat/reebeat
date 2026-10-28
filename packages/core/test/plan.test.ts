@@ -2,10 +2,11 @@
 // is listed once per Scene, the identity diff across `> AUTO-ANIMATE` is derived by #id, and `plan.json`
 // decodes and encodes losslessly with a fixed key order.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Record, Schema } from "effect";
+import { Array as Arr, Effect, Exit, Record, Schema } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
+import type { PlanJson } from "../src/plan.ts";
 import { fixtureSha256, readFixture } from "./support.ts";
 
 const fixturePlan = Effect.gen(function* plan() {
@@ -181,6 +182,74 @@ describe("the identity diff", () => {
         same: [],
         update: [{ changes: ["cell"], id: "fresh" }],
       });
+    })
+  );
+});
+
+const goodAudioFile = `${"0123456789abcdef".repeat(4)}.flac`;
+
+/** The Plan of the fixture with a one-Line timeline whose audio file is `file`, decoded from its JSON text. */
+const decodeWithAudioFile = (file: string) =>
+  Effect.gen(function* decoded() {
+    const plan = yield* fixturePlan;
+
+    const withTimeline: PlanJson = {
+      ...plan,
+      timeline: {
+        chapters: [],
+        scenes: [
+          {
+            endFrame: 1,
+            lines: [
+              {
+                audio: { file: goodAudioFile, sha256: "x" },
+                cues: [],
+                endFrame: 1,
+                lineId: "sc1.l1",
+                startFrame: 0,
+                words: [],
+              },
+            ],
+            sceneId: "sc1",
+            slideFrame: 0,
+          },
+        ],
+        totalFrames: 1,
+      },
+    };
+
+    const text = yield* encodePlan(withTimeline);
+
+    const quoted = yield* Schema.encodeEffect(
+      Schema.fromJsonString(Schema.String)
+    )(file);
+
+    return yield* Effect.exit(
+      decodePlan(text.replace(`"${goodAudioFile}"`, quoted))
+    );
+  });
+
+describe("plan.json audio file names", () => {
+  it.effect("accepts a cache file name: 64 hexadecimal digits and .flac", () =>
+    Effect.gen(function* accepted() {
+      assert.isTrue(Exit.isSuccess(yield* decodeWithAudioFile(goodAudioFile)));
+    })
+  );
+
+  it.effect.each([
+    ["a path separator", `sub/${"a".repeat(64)}.flac`],
+    ["a backslash", `sub\\${"a".repeat(64)}.flac`],
+    ["a parent directory", `../${"a".repeat(64)}.flac`],
+    ["an absolute path", `/${"a".repeat(64)}.flac`],
+    ["a bare parent", ".."],
+    ["upper-case digits", `${"A".repeat(64)}.flac`],
+    ["63 digits", `${"a".repeat(63)}.flac`],
+    ["another extension", `${"a".repeat(64)}.wav`],
+    ["a trailing newline", `${"a".repeat(64)}.flac\n`],
+    ["an empty name", ""],
+  ])("rejects %s", ([, file]) =>
+    Effect.gen(function* rejected() {
+      assert.isTrue(Exit.isFailure(yield* decodeWithAudioFile(file ?? "")));
     })
   );
 });

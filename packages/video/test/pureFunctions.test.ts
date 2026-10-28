@@ -3,11 +3,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Order, Result } from "effect";
 
 import { audioMixPlan } from "../src/audioMix.ts";
-import {
-  autoAnimateLag,
-  captureSchedule,
-  sceneChangeLag,
-} from "../src/captureSchedule.ts";
+import { captureSchedule, sceneChangeLag } from "../src/captureSchedule.ts";
 import { ffmetadata } from "../src/ffmetadata.ts";
 import { muxArgs } from "../src/mux.ts";
 import { frameToMs, vttTimestamp } from "../src/time.ts";
@@ -203,9 +199,9 @@ describe("captureSchedule", () => {
       [
         [46, "sc1.l1.c1"],
         [65, "sc1.l1.c2"],
-        [81 - autoAnimateLag, "sc2"],
+        [81 - sceneChangeLag["auto-animate"], "sc2"],
         [118, "sc2.l1.c1"],
-        [156 - sceneChangeLag, "sc3"],
+        [156 - sceneChangeLag.cut, "sc3"],
       ]
     );
   });
@@ -223,7 +219,7 @@ describe("captureSchedule", () => {
     );
   });
 
-  it("each next or focus command precedes its fire frame by one frame, and each slide change its slide frame by the lag", () => {
+  it("each next or focus command precedes its fire frame by one frame, and each slide change its slide frame by the measured lag (a fade 1 frame, a cut and an Auto-Animate 0)", () => {
     const plan = timed();
     const { commands } = captureSchedule(plan);
 
@@ -258,7 +254,7 @@ describe("captureSchedule", () => {
       } else if (slide !== undefined) {
         assert.strictEqual(
           slide - step.frame,
-          transitions.get(step.source) === "auto-animate" ? 2 : 1
+          transitions.get(step.source) === "default" ? 1 : 0
         );
       }
     }

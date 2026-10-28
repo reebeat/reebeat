@@ -136,7 +136,7 @@ const assertAudio = Effect.fnUntraced(function* audio(
       path.join(workspace.cacheDir, line.audio.file)
     );
 
-    const offset = audioOffsetMs(
+    const { offsetMs: offset } = audioOffsetMs(
       track,
       reference,
       (line.startFrame * 1000) / 30,
@@ -157,7 +157,7 @@ const assertAudio = Effect.fnUntraced(function* audio(
 
   yield* fs.writeFile(pop, sfxWav("pop"));
 
-  const popOffset = audioOffsetMs(
+  const { offsetMs: popOffset } = audioOffsetMs(
     track,
     yield* decodeMonoPcm(pop),
     (65 * 1000) / 30,

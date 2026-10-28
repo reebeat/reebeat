@@ -118,7 +118,7 @@ const observeSound = (
     soundLeadMs
   );
 
-  const offsetMs = audioOffsetMs(
+  const { offsetMs } = audioOffsetMs(
     track,
     reference,
     frameStartMs(fireFrame, fps) - soundLeadMs,

@@ -1,0 +1,58 @@
+Title: Lags
+
+/* The mechanics of the committed story's first scenes (a default fade, a CUT, two AUTO-ANIMATEs; focus, next and
+   sfx Cues) with short narration, so that the capture stays small. */
+
+# One
+
+INT. TITLE CARD - DAY
+
+Same name, new place {#title @mc .title}
+A small idea {#sub @bc .muted}
+
+NARRATOR
+Here is a title.
+
+INT. FIRST SCREEN - DAY
+
+First screen {#tag @tl .label}
+A box {#box @ml .box}
+Another box {#twin @mr .box hidden}
+
+NARRATOR
+Picture a box. [[focus: box]] Then another. [[next]] Done.
+
+# Two
+
+> CUT
+
+INT. THE NAMES - DAY
+
+Box one {#one @ml .box}
+Box two {#two @mr .box}
+Every box has a name {#tag @tc .label}
+
+NARRATOR
+Give every box a name. [[focus: tag]] Fine.
+
+> AUTO-ANIMATE
+
+INT. THE NEXT SCREEN - DAY
+
+Box one {#one @mc .box}
+Every box has a name {#tag @tc .accent}
+Same name, so it moves {#hint @bc .muted}
+
+NARRATOR
+Box one moves. [[sfx: whoosh]] There.
+
+> AUTO-ANIMATE
+
+INT. A NEW NAME - DAY
+
+Box one {#one @mr .box}
+Same name, so it moves {#hint @bc .accent}
+Box three {#three @ml .box}
+
+NARRATOR
+A new box appears. [[sfx: ding]]

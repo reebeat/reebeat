@@ -1,8 +1,13 @@
-import type { Cue, Line, PlanJson, Timeline } from "@reebeat/core";
-// A Plan whose Timeline exists and agrees with its Scenes. The pure functions of this package read only this type.
+// A Plan whose Timeline exists and agrees with its Scenes, and the frame arithmetic that reads it. Every renderer,
+// capturer and encoder starts from `requireTimeline`. Plain functions, integer milliseconds.
 import { Array as Arr, Option, Result } from "effect";
 
 import { PlanNotScheduled } from "./errors.ts";
+import type { Cue, Line, PlanJson, Timeline } from "./plan.ts";
+
+/** The millisecond at which `frame` starts: `round(1000 * frame / fps)`. */
+export const frameToMs = (frame: number, fps: number): number =>
+  Math.round((1000 * frame) / fps);
 
 export type TimedPlan = PlanJson & { readonly timeline: Timeline };
 

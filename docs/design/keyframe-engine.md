@@ -12,6 +12,10 @@ authoritative and line numbers are approximate.
 > in `GLOSSARY.md`); the technical content is unchanged. File and line references such as `src/core/types.ts:57`
 > point into the legacy pipeline of that private repository at the commit above, not into this repository. Edit this
 > copy, never the original. Dated revisions to this design are listed in the section "Revisions" at the end.
+>
+> **Revision R1 (2026-10-28) supersedes every statement below that the core is "plain TypeScript" or "plain-TS".**
+> The core may use Effect v4 for services, errors, resources and the render pipeline; frame math stays plain functions.
+> The core still imports no `react`, `remotion`, `@remotion/*`, DOM global or Node built-in (P10 holds). See "Revisions".
 
 **reebeat** is the working name of the tool this document designs (like "ribbit"; frog mascot). A **Story**, declared as Beats of Keyframes, goes in. A compiler turns it into a **Plan** (what enters, exits, updates or is replaced, per Beat) and then a **Timeline**, and a pure `frameState(story, frame)` plus thin adapters produce **Renderings**: a Video now, a Deck later. The core is plain TypeScript; renderers are adapters (section 3.0).
 
@@ -1161,4 +1165,21 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 ## Revisions
 
-None yet. Each revision is a dated entry: what changed, why, who decided.
+### R1 (2026-10-28): the core may use Effect v4
+
+**Decided by:** the operator, 2026-10-28. **Supersedes:** section 0 row "Where is the core?" and row "What is it?", section 3.0 first paragraph, section 4.1 diagram heading and section 10 items 8 and 12, wherever they say "plain TypeScript". Section 10 items 8 and 12 keep their import prohibitions.
+
+**What changed.** The first design chose a plain-TypeScript core with no runtime library so that the exit to another renderer (HyperFrames, a Deck) stays cheap. The operator's house default is TypeScript 7, Bun and Effect v4, and the machine rule "Effect pushes dependencies to the seams" applies to semantic cores too. The core may therefore depend on `effect`.
+
+**What did not change.**
+
+| Kept | Why |
+|---|---|
+| `frameState(story, frame)` is a pure plain function over plain JSON, returns plain data, imports nothing from `compile/` and nothing from `effect` | it runs once per frame inside Chromium and must not carry a runtime into the render path; "pure stays pure" |
+| Easing, interpolation, identity join (`plan`), sampling, schedule arithmetic, contrast math, geometry stay plain functions | total, deterministic, no dependency or authority to abstract |
+| The core imports no `react`, `remotion`, `@remotion/*`, `playwright`, DOM global or Node built-in (P10) | the exit ramp to HyperFrames or a Deck stays open; enforced by package `dependencies`, lint restriction and a test |
+| `PreparedStory` and `FrameState` are plain JSON | any adapter, in any runtime, can read them |
+
+**Where Effect is used.** `Schema` for every plain-JSON boundary (alignment, style, `PreparedStory`, reference pins, fixture manifest); tagged errors for expected compile and pipeline failures; services for what has a dependency or authority (fixture source, alignment, media tools over `ChildProcess`, frame renderer, reference store); `Layer`s selected in the CLI composition root; `Scope` for temporary files and child processes; the render pipeline as one Effect program.
+
+**Why it is safe.** The exit ramp needs only `FrameState` and `PreparedStory`, both plain data. The compile stages that use Effect run at prepare time under Bun; none runs per frame. Spec 0001 states the split per module and tests it (F9).

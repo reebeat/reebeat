@@ -25,8 +25,10 @@ export const elementClasses = [
   "muted",
 ] as const;
 
-/** The built-in sound catalogue (synthesised by ffmpeg in `packages/video`). */
+/** The built-in sound catalogue (synthesised in TypeScript by `@reebeat/sfx`); the one list of sound names. */
 export const sfxNames = ["pop", "whoosh", "ding"] as const;
+
+export type SfxName = (typeof sfxNames)[number];
 
 const Id = Schema.NonEmptyString;
 
@@ -39,6 +41,14 @@ const Seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 export const CellSchema = Schema.Literals(cells);
 export const ElementClassSchema = Schema.Literals(elementClasses);
 export const SfxNameSchema = Schema.Literals(sfxNames);
+
+/**
+ * The name of a cached narration file: a SHA-256 cache key and `.flac`, as the speech cache writes it. A plain
+ * file name, never a path: no separator, no `..`, nothing absolute, so a Plan cannot point a reader elsewhere.
+ */
+export const AudioFileSchema = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{64}\.flac$/u)
+);
 
 /** The properties an identity diff compares. */
 export const ElementChangeSchema = Schema.Literals(["cell", "classes", "text"]);
@@ -123,7 +133,11 @@ export const TimedWordSchema = Schema.Struct({
 });
 
 export const TimedCueSchema = Schema.Struct({
-  /** When the capture calls Reveal: `fireFrame - 1` for `next` and `focus`, `fireFrame` for `sfx`. */
+  /**
+   * The frame at which the capture issues the cue's command: `fireFrame - 1` for `next` and `focus`, `fireFrame`
+   * for `sfx`. Scene changes are not cues: the video package commands them itself, an Auto-Animate or cut at the
+   * Scene's `slideFrame` (lag 0) and a default fade one frame earlier.
+   */
   commandFrame: Frame,
   cueId: Id,
   /** `round(fps * aligned word end)`; the start of the Line for `afterWord = -1`. */
@@ -131,7 +145,7 @@ export const TimedCueSchema = Schema.Struct({
 });
 
 export const TimedLineSchema = Schema.Struct({
-  audio: Schema.Struct({ file: Schema.String, sha256: Schema.String }),
+  audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   cues: Schema.Array(TimedCueSchema),
   endFrame: Frame,
   lineId: Id,

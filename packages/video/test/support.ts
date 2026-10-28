@@ -10,6 +10,7 @@ import { captureSchedule } from "../src/captureSchedule.ts";
 import type { CaptureSchedule } from "../src/captureSchedule.ts";
 import { MediaTools } from "../src/mediaTools.ts";
 import { muxVideo } from "../src/mux.ts";
+import type { TimedPlan } from "../src/timedPlan.ts";
 import { timedFixture } from "./fixturePlan.ts";
 
 /** The services of a real run: ffmpeg, Chromium, the file system. */
@@ -27,11 +28,47 @@ export interface Workspace {
 // Seeded noise, not a tone: a tone correlates with itself at every whole period, so a shift could not be told.
 const seeds = [11, 22, 33];
 
+/** Writes one mono 24 kHz FLAC of seeded white noise per Line of `plan` into `cacheDir`, as long as the Line. */
+export const writeNarration = Effect.fnUntraced(function* writeNarration(
+  plan: TimedPlan,
+  cacheDir: string
+) {
+  const tools = yield* MediaTools;
+  const path = yield* Path.Path;
+  const lines = Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines);
+
+  for (const [index, line] of lines.entries()) {
+    const seconds = (line.endFrame - line.startFrame) / 30;
+    const source = `anoisesrc=color=white:seed=${seeds[index % seeds.length] ?? 1}:amplitude=0.4:duration=${seconds}:sample_rate=24000`;
+
+    yield* tools.run("ffmpeg", [
+      ...`-hide_banner -loglevel error -y -f lavfi -i ${source} -ac 1 -c:a flac`.split(
+        " "
+      ),
+      path.join(cacheDir, line.audio.file),
+    ]);
+  }
+});
+
+/** The `Workspace` of a root directory holding `deck/deck.html`, with its narration in `cacheDir`. */
+export const locateWorkspace = Effect.fnUntraced(function* locateWorkspace(
+  root: string,
+  cacheDir: string
+) {
+  const path = yield* Path.Path;
+
+  return {
+    cacheDir,
+    deckUrl: (yield* path.toFileUrl(path.join(root, "deck", "deck.html"))).href,
+    outDir: path.join(root, "out"),
+    root,
+  } satisfies Workspace;
+});
+
 /** A temporary directory with the deck page, its assets, the narration FLACs and an output directory. */
 export const makeWorkspace = Effect.gen(function* workspace() {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const tools = yield* MediaTools;
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-video-" });
   const assets = path.join(root, "deck", "assets");
   const cacheDir = path.join(root, "cache");
@@ -53,35 +90,9 @@ export const makeWorkspace = Effect.gen(function* workspace() {
     );
   }
 
-  for (const [index, line] of Arr.flatMap(
-    timedFixture().timeline.scenes,
-    (scene) => scene.lines
-  ).entries()) {
-    const seconds = (line.endFrame - line.startFrame) / 30;
+  yield* writeNarration(timedFixture(), cacheDir);
 
-    yield* tools.run("ffmpeg", [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-y",
-      "-f",
-      "lavfi",
-      "-i",
-      `anoisesrc=color=white:seed=${seeds[index] ?? 1}:amplitude=0.4:duration=${seconds}:sample_rate=24000`,
-      "-ac",
-      "1",
-      "-c:a",
-      "flac",
-      path.join(cacheDir, line.audio.file),
-    ]);
-  }
-
-  return {
-    cacheDir,
-    deckUrl: (yield* path.toFileUrl(path.join(root, "deck", "deck.html"))).href,
-    outDir: path.join(root, "out"),
-    root,
-  } satisfies Workspace;
+  return yield* locateWorkspace(root, cacheDir);
 });
 
 /** The captured frames of the fixture, with a schedule the caller may have changed. */

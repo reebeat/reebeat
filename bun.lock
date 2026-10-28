@@ -136,6 +136,7 @@
       "devDependencies": {
         "@effect/platform-node": "catalog:",
         "@effect/vitest": "catalog:",
+        "@reebeat/deck": "workspace:*",
         "@types/node": "catalog:",
         "oxc-parser": "catalog:",
         "reveal.js": "catalog:",

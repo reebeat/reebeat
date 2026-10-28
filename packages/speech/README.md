@@ -58,7 +58,7 @@ export REEBEAT_KOKORO_CACHE="$M/kokoro" REEBEAT_WHISPER_MODEL="$M/models/ggml-ba
 devenv shell -- bun run refill                      # in packages/speech; fills stories/same-id/speech-cache
 ```
 
-`refill` is the stand-in for `build --refresh-speech` until the CLI exists: it narrates every Line (a hit loads no model), checks that the aligned words schedule, and prints how long the video runs. It checks the whisper version and the model hash against `pipeline.ts` before the first use and fails `SpeechToolFailed` if either differs. To rebuild an entry, delete its two files and run it again.
+Prefer the CLI: `bun run reebeat build stories/same-id/story.fountain --out build/same-id --refresh-speech` (see [`packages/cli`](../cli/README.md)) fills the cache of the story the same way and builds the deck and video from it. `refill` (above) is the package-local path for the one story and needs no browser: it narrates every Line (a hit loads no model), checks that the aligned words schedule, and prints how long the video runs. Both go through `speechLive`, which checks the whisper version and the model hash against `pipeline.ts` before the first use and fails `SpeechToolFailed` if either differs. To rebuild an entry, delete its two files and run it again.
 
 | Model file | SHA-256 |
 | --- | --- |

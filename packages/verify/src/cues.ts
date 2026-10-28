@@ -57,10 +57,19 @@ const cueFacts = (build: Build): readonly CueFact[] => {
 
 /** An observed offset in frames, or why none was observed. */
 type Observation =
-  | { readonly frames: number; readonly tag: "found" }
+  | {
+      readonly frames: number;
+      /** The best match of a sound; undefined for a step of the picture. */
+      readonly score: number | undefined;
+      readonly tag: "found";
+    }
   | { readonly reason: string; readonly tag: "missing" };
 
-const found = (frames: number): Observation => ({ frames, tag: "found" });
+const found = (frames: number, score?: number): Observation => ({
+  frames,
+  score,
+  tag: "found",
+});
 
 const missing = (reason: string): Observation => ({ reason, tag: "missing" });
 
@@ -93,7 +102,7 @@ const observeSound = (
     ? missing(
         `the sound is not found within ${soundWindowMs} ms (best match ${score.toFixed(2)}, at least ${soundMatchFloor} needed)`
       )
-    : found(msToFrames(offsetMs, fps));
+    : found(msToFrames(offsetMs, fps), score);
 };
 
 const hasSound = (facts: readonly CueFact[]): boolean =>
@@ -148,9 +157,16 @@ export const cueTiming = (build: Build) =>
 
       const measured: Measured = [
         ["cues checked", facts.length],
-        ...Arr.map(rows, ([cue, seen]): readonly [string, string] => [
-          `${cue.cueId} ${cue.kind} offset (frames)`,
-          seen.tag === "found" ? signedFrames(seen.frames) : "not observed",
+        ...Arr.flatMap(rows, ([cue, seen]): Measured => [
+          [
+            `${cue.cueId} ${cue.kind} offset (frames)`,
+            seen.tag === "found" ? signedFrames(seen.frames) : "not observed",
+          ],
+          ...(seen.tag === "found" && seen.score !== undefined
+            ? ([
+                [`${cue.cueId} ${cue.kind} match score`, seen.score.toFixed(3)],
+              ] as const)
+            : []),
         ]),
       ];
 

@@ -5,13 +5,13 @@ import { decodeGrayFrames, firstChangedFrame } from "@reebeat/video";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */
-const stepTolerance = 8;
+export const stepTolerance = 8;
 
 /**
  * A frame has a step when at least this many pixels changed by more than the tolerance. Measured: the encoder's noise
  * between two frames of a still slide is at most about 120 such pixels, the first frame of the smallest step 349.
  */
-const stepMinPixels = 200;
+export const stepMinPixels = 200;
 
 /** The offset in frames from `center` of the first changed frame in `[center - reach, center + reach]`, or undefined. */
 export const stepOffset = Effect.fn("stepOffset")(function* step(

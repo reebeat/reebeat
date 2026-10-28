@@ -40,6 +40,7 @@ import { sha256Hex } from "../src/hash.ts";
 import { renderVerdicts, runChecks } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { encodeBuildManifest } from "../src/manifest.ts";
+import { timedLines } from "../src/planParts.ts";
 
 /** The services of a real run: ffmpeg, Chromium, the file system and hashing. */
 const services = Layer.mergeAll(MediaTools.layer, Browser.layer).pipe(
@@ -87,8 +88,11 @@ const linesOf = (plan: PlanJson) =>
 
 /** Each word is 300 ms long, spoken in its first 280 ms: the same shape as the video package's fixture. */
 const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
-  Arr.map(linesOf(plan), (line) => ({
-    audio: { file: `${line.id}.flac`, sha256: "00" },
+  Arr.map(linesOf(plan), (line, lineIndex) => ({
+    audio: {
+      file: `${String(lineIndex + 1).padStart(64, "0")}.flac`,
+      sha256: "00",
+    },
     durationMs: line.words.length * wordMs,
     lineId: line.id,
     words: Arr.map(line.words, (w, index) => ({
@@ -500,14 +504,10 @@ export const muxFrames = Effect.fn("muxFrames")(function* mux<R>(
 export const logFailures = (verdicts: readonly Verdict[]) =>
   Effect.log(renderVerdicts(Arr.filter(verdicts, (verdict) => !verdict.ok)));
 
-/**
- * One negative control: a copy of the intact build, `change` applied to it, `build.json` sealed again, the checks run.
- * The falsifiers that fail are exactly `expected`; the failing verdicts are logged. Returns every verdict.
- */
-export const control = Effect.fn("control")(function* control(
+/** A copy of the intact build with `change` applied to it and `build.json` sealed again, and the checks run on it. */
+export const mutate = Effect.fn("mutate")(function* mutate(
   name: string,
-  change: (dir: string) => Effect.Effect<void, MutationError, MutationServices>,
-  expected: readonly string[]
+  change: (dir: string) => Effect.Effect<void, MutationError, MutationServices>
 ) {
   const fixture = yield* Fixture;
   const dir = yield* copyBuild(name);
@@ -518,6 +518,20 @@ export const control = Effect.fn("control")(function* control(
   const verdicts = yield* checkDirectory(dir);
 
   yield* logFailures(verdicts);
+
+  return verdicts;
+});
+
+/**
+ * One negative control: `mutate`, and the falsifiers that fail are exactly `expected`. Returns every verdict.
+ */
+export const control = Effect.fn("control")(function* control(
+  name: string,
+  change: (dir: string) => Effect.Effect<void, MutationError, MutationServices>,
+  expected: readonly string[]
+) {
+  const verdicts = yield* mutate(name, change);
+
   assert.deepStrictEqual(failedIds(verdicts), expected);
 
   return verdicts;
@@ -546,3 +560,93 @@ export const audioFilter = (filter: string) => (dir: string) =>
       filter,
     ]
   );
+
+/** One input of a rebuilt audio track: a file, the millisecond it starts at and its gain. */
+export interface Part {
+  readonly file: string;
+  readonly gain?: number;
+  readonly startMs: number;
+}
+
+/** The millisecond at which a frame of the fixture starts (30 fps, rounded as the mix rounds). */
+export const frameMs = (frame: number): number =>
+  Math.round((frame * 1000) / 30);
+
+/**
+ * A mutation that replaces the audio of the mp4 by the mix of `parts`, built as the video package builds its own
+ * mix (48 kHz stereo, no normalisation, padded to the length of the video), and copies everything else.
+ */
+export const remix = (parts: readonly Part[]) => (dir: string) =>
+  Effect.gen(function* rebuildAudio() {
+    const fixture = yield* Fixture;
+
+    const seconds = (
+      fixture.plan.timeline.totalFrames / fixture.plan.settings.fps
+    ).toFixed(6);
+
+    const delayed = Arr.map(
+      parts,
+      (part, index) =>
+        `[${index + 1}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,volume=${part.gain ?? 1},adelay=${part.startMs}:all=1[a${index}]`
+    );
+
+    const labels = Arr.join(
+      Arr.map(parts, (_, index) => `[a${index}]`),
+      ""
+    );
+
+    const graph = Arr.join(
+      [
+        ...delayed,
+        `${labels}amix=inputs=${parts.length}:normalize=0:duration=longest:dropout_transition=0,apad=whole_dur=${seconds},atrim=end=${seconds}[aout]`,
+      ],
+      ";"
+    );
+
+    yield* rewriteMp4(
+      dir,
+      Arr.map(parts, (part) => part.file),
+      [
+        "-filter_complex",
+        graph,
+        "-map",
+        "0:v",
+        "-map",
+        "[aout]",
+        "-map",
+        "0:s",
+        "-map_chapters",
+        "0",
+        "-map_metadata",
+        "0",
+        "-c:v",
+        "copy",
+        "-c:s",
+        "copy",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "160k",
+        "-ar",
+        "48000",
+        "-ac",
+        "2",
+        "-movflags",
+        "+faststart",
+      ]
+    );
+  });
+
+/** The narration FLAC of a Line and the catalogue sound of a name, as inputs of a rebuilt track. */
+export const narrationFile = (fixture: FixtureData, lineId: string): string =>
+  `${fixture.cacheDir}/${
+    Option.getOrThrow(
+      Arr.findFirst(
+        timedLines(fixture.plan.timeline),
+        (line) => line.lineId === lineId
+      )
+    ).audio.file
+  }`;
+
+export const soundFile = (fixture: FixtureData, name: string): string =>
+  `${fixture.build}/assets/sfx/${name}.wav`;

@@ -63,5 +63,17 @@ changes one thing and seals `build.json` again, so only the falsifier under test
 | File | Proves |
 | --- | --- |
 | `checks.test.ts` | every falsifier holds on the intact build; each negative control fails its falsifier, names the item and leaves the others holding (F1 a Cue commanded 2 frames late, re-rendered; F2 one character of the `.vtt` and of the `mov_text` stream; F3 a note; F4 a deleted and a swapped fragment; F5 one hash, a source edited after the build, a deck rebuilt alone; F6 a frame replaced in one of two builds; F7 a hard cut and a transition played backwards; F8 the audio delayed by 3 frames, which also delays the sfx and so fails F1, and audio delayed beyond the search window or silent, which are not found; F7 also a scene change commanded 2 frames late and early; F9 a renamed chapter); a directory without `build.json` is `BuildInvalid` |
-| `pure.test.ts` | the table and exit code, the WebVTT reader, the Plan comparison, the signal helpers |
+| `edges.test.ts` | the thresholds pinned from both sides (a subtitle 0.99 frame off passes, 1.02 frames off fails; narration under a louder sound scores 0.46 and fails the floor of 0.8, a quieter one passes; a wrong sound scores below 0.2, one under a louder sound fails the floor of 0.5, one under a quieter sound passes); F6 fails on builds that differ only in their audio; a Line's audio file that is absolute or leaves the speech cache is refused (the Plan schema of `@reebeat/core` only admits a 64-hex `.flac` name, so `plan.json` does not decode) |
+| `pure.test.ts` | the table and exit code, the WebVTT reader, the Plan comparison, `withinOneFrame` at 1, 1.0000005, 1.01, 1.5 and 1.9, the signal helpers |
 | `boundaries.test.ts` | F11: the manifest and an import scan of `src` (no `fountain-js`, no Playwright, no Node built-in) |
+
+## What covers what, for F6 and F7
+
+F7 observes **one** written video: scene-change timing, intermediate frames, a monotone approach. It does not check that two runs give the same frames; that is F6 (`compareBuilds`, on two builds). The controls:
+
+| Control | Where | Automated |
+| --- | --- | --- |
+| scene change commanded 2 frames late and early; hard cut; reversed transition (F7) | `checks.test.ts` | yes |
+| a copy passes; one frame replaced; only the audio changed (F6) | `checks.test.ts`, `edges.test.ts` | yes |
+| a seeded jitter of the virtual clock makes two captures differ, the same jitter makes them equal | `packages/video/test/capture.test.ts` | yes |
+| capture with the settle wait off; capture without the virtual clock | spec 0001, Revision "M0 measured: the clock decides the mechanism", and `packages/video/README.md` | no: recorded manual measurements |

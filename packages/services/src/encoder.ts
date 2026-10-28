@@ -3,7 +3,7 @@
 import { Context } from "effect";
 import type { Effect, Scope, Stream } from "effect";
 
-import type { CaptureError, EncodeError } from "./errors.ts";
+import type { CaptureFailure, EncodeError } from "./errors.ts";
 import type { AdapterInfo, AudioClip } from "./types.ts";
 
 export interface MuxRequest {
@@ -14,7 +14,7 @@ export interface MuxRequest {
   }[];
   readonly fps: number;
   /** PNG frames in order, as `FrameCapturer.capture` emits them; consumed once. */
-  readonly frames: Stream.Stream<Uint8Array, CaptureError, Scope.Scope>;
+  readonly frames: Stream.Stream<Uint8Array, CaptureFailure, Scope.Scope>;
   readonly height: number;
   readonly metadata: { readonly comment: string; readonly title: string };
   readonly outPath: string;
@@ -52,6 +52,6 @@ export class Encoder extends Context.Service<
     readonly info: AdapterInfo;
     readonly mux: (
       request: MuxRequest
-    ) => Effect.Effect<MuxResult, CaptureError | EncodeError>;
+    ) => Effect.Effect<MuxResult, CaptureFailure | EncodeError>;
   }
 >()("@reebeat/services/Encoder") {}

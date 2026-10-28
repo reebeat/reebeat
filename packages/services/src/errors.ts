@@ -2,8 +2,9 @@ import { Schema } from "effect";
 
 // The expected failures of the seven services (spec 0001, design R3). One file holds the closed set. Each error
 // names the adapter or the input it concerns; a foreign cause goes in `cause` for the human, never for branching.
-// `AdapterUnavailable` is the error of a Layer: an adapter checks its requirement when it is built, so a missing
-// model, binary or credential stops the composition root and no operation runs on a half-available adapter.
+// `AdapterUnavailable` is raised when an operation first needs the missing model, binary or credential, never when
+// the Layer is built: a cache hit must work with the models absent. Selecting an adapter whose requirement is
+// missing therefore stops the run at its first use, with a clear error, and never falls back to another adapter.
 
 /** The names of the seven services, as errors report them. */
 export const serviceNames = [
@@ -129,16 +130,19 @@ export class SecretLikeSetting extends Schema.TaggedError<
 }) {}
 
 /** Everything `SpeechSynthesizer.synthesize` can fail with. */
-export type SpeechError = EmptyText | SynthesisFailed;
+export type SpeechError = EmptyText | SynthesisFailed | AdapterUnavailable;
 
 /** Everything `WordAligner.align` can fail with. */
-export type AlignError = AlignmentFailed;
+export type AlignError = AlignmentFailed | AdapterUnavailable;
 
 /** Everything `Renderer.render` can fail with. */
-export type RenderError = RenderFailed;
+export type RenderError = RenderFailed | AdapterUnavailable;
 
-/** Everything `Encoder` operations can fail with; `mux` also carries the frame stream's `CaptureError`. */
-export type EncodeError = EncodeFailed;
+/** Everything a `FrameCapturer.capture` stream can fail with; `Encoder.mux` carries it too. */
+export type CaptureFailure = CaptureError | AdapterUnavailable;
+
+/** Everything `Encoder` operations can fail with; `mux` also carries the frame stream's `CaptureFailure`. */
+export type EncodeError = EncodeFailed | AdapterUnavailable;
 
 /** Everything `AssetCache.key` can fail with. */
 export type KeyError = SecretLikeSetting;

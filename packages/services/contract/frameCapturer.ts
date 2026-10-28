@@ -12,7 +12,7 @@ import {
 } from "effect";
 import type { Layer, PlatformError } from "effect";
 
-import type { CaptureError, RenderFailed } from "../src/errors.ts";
+import type { CaptureFailure, RenderError } from "../src/errors.ts";
 import { FrameCapturer } from "../src/frameCapturer.ts";
 import { Renderer } from "../src/renderer.ts";
 import { registerClauses } from "./clause.ts";
@@ -80,7 +80,7 @@ const captureAll = Effect.fnUntraced(function* captureAll(plan: PlanJson) {
 export const frameCapturerClauses = (
   options: FrameCapturerOptions = {}
 ): readonly Clause<
-  CaptureError | FixtureError | PlatformError.PlatformError | RenderFailed,
+  CaptureFailure | FixtureError | PlatformError.PlatformError | RenderError,
   Services
 >[] => {
   const plan =

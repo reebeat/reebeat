@@ -141,6 +141,93 @@ const cases: readonly Case[] = [
     source: "Title: Nothing\n",
     tag: "EmptyStory",
   },
+  {
+    name: "an unknown Element class",
+    needle: ".huge",
+    source: change("Box {#a @tl .box}", "Box {#a @tl .huge}"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "an unknown cell",
+    needle: "@zz",
+    source: change("Box {#a @tl .box}", "Box {#a @zz .box}"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a Cue written inside an Element",
+    needle: "[[next]] inside",
+    source: change("Box {#a @tl .box}", "Box [[next]] inside {#a @tl .box}"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a title page key other than Title and Author",
+    needle: "Date:",
+    source: change("Title: Errors", "Title: Errors\nDate: today"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a [[note]] outside dialogue",
+    needle: "[[remember this]]",
+    source: change("INT. ONE\n", "INT. ONE\n\n[[remember this]]\n"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a scene number",
+    needle: "#1#",
+    source: change("INT. ONE", "INT. ONE #1#"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a Scene with no NARRATOR Line",
+    needle: "INT. TWO",
+    source: `${base}\nINT. TWO\n\nBox {#b}\n`,
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a Section with no Scene",
+    needle: "# Empty",
+    source: `${base}\n# Empty\n`,
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "an Element before the first Scene",
+    needle: "Orphan",
+    source: change("INT. ONE\n\n", "Orphan {#o}\n\nINT. ONE\n\n"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a cue kind with a missing argument",
+    needle: "[[focus]]",
+    source: change("[[focus: a]]", "[[focus]]"),
+    tag: "UnknownCue",
+  },
+  {
+    name: "a cue on the second line of a dialogue paragraph",
+    needle: "[[wave]]",
+    source: change(
+      "Goodbye. [[focus: a]]",
+      "Goodbye.\nStill speaking. [[wave]]"
+    ),
+    tag: "UnknownCue",
+  },
+  {
+    name: "an unbalanced [[",
+    needle: "[[focus: a",
+    source: change("[[focus: a]]", "[[focus: a"),
+    tag: "UnknownCue",
+  },
+  {
+    name: "two parentheticals of one kind before a Line",
+    needle: "(quickly)",
+    source: change("NARRATOR", "NARRATOR\n(slowly)\n(quickly)"),
+    tag: "BadParenthetical",
+  },
+  {
+    name: "two transitions in a row",
+    needle: "> CUT",
+    source: `${base}\n> AUTO-ANIMATE\n\n> CUT\n\nINT. TWO\n\nNARRATOR\nBye.\n`,
+    tag: "BadTransition",
+  },
 ];
 
 describe("F10: every error is raised for its mutation, with its line", () => {

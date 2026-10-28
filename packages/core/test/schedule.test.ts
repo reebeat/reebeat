@@ -8,6 +8,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
 import type { AlignedLine } from "../src/schedule.ts";
@@ -167,6 +168,19 @@ describe("schedule: the arithmetic, by hand", () => {
           { commandFrame: 210, cueId: "sc2.l1.c1", fireFrame: 210 },
         ]);
       })
+  );
+
+  it.effect("round-trips through plan.json with its timeline", () =>
+    Effect.gen(function* roundTrip() {
+      const withTimeline = yield* scheduled;
+
+      const decoded = yield* Effect.flatMap(
+        encodePlan(withTimeline),
+        decodePlan
+      );
+
+      assert.deepStrictEqual(decoded, withTimeline);
+    })
   );
 
   it.effect("keeps the Plan and adds only the timeline", () =>

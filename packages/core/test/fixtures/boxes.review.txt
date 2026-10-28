@@ -4,10 +4,10 @@ Source: sha256 86e3e057e486c9cbabbac87f2aa501b8d39d411369bc1de1590dc51952410fee
 Chapter ch1  The same box  (line 7)
   Scene sc1  INT. FIRST SCREEN  (line 11, transition: default)
     Elements
-        box   show    @tl .box "A box"
-        cap   show    @bc .muted hidden "The caption"
-        old   show    @mr .label "Old news"
-        foot  show    @bl .muted "Footer"
+        box           show    @tl .box "A box"
+        cap           show    @bc .muted hidden "The caption"
+        old           show    @mr .label "Old news"
+        foot          show    @bl .muted "Footer"
     Lines
       sc1.l1  (speed 0.9)
         "This box sits in the corner. [[next]] The caption says what it is."
@@ -15,11 +15,11 @@ Chapter ch1  The same box  (line 7)
         "Look at the box. [[focus: box]] [[sfx: pop]]"
   Scene sc2  INT. SECOND SCREEN  (line 27, transition: auto-animate from sc1)
     Elements
-      - old   exit    @mr .label "Old news"
-      ~ box   update  cell tl→mc, classes box→box accent
-      ~ cap   update  text "The caption"→"The new caption"
-        foot  same    @bl .muted "Footer"
-      + new   enter   @tr .title hidden "New arrival"
+      - old           exit    @mr .label "Old news"
+      ~ box           update  cell tl→mc, classes box→box accent
+      ~ cap           update  text "The caption"→"The new caption"
+        foot          same    @bl .muted "Footer"
+      + new           enter   @tr .title hidden "New arrival"
     Lines
       sc2.l1  (pause 0.5 s)
         "Same id, new place. [[sfx: whoosh]] [[next]] A new element enters."
@@ -27,13 +27,13 @@ Chapter ch1  The same box  (line 7)
 Chapter ch2  The cut  (line 38)
   Scene sc3  INT. THIRD SCREEN  (line 42, transition: cut)
     Elements
-        fresh  show    @mc .title "Fresh start"
+        fresh         show    @mc .title "Fresh start"
     Lines
       sc3.l1  (speed 1.1)
         "Nothing is matched across a cut."
   Scene sc4  INT. FOURTH SCREEN  (line 54, transition: auto-animate from sc3)
     Elements
-      ~ fresh  update  cell mc→tc
+      ~ fresh         update  cell mc→tc
     Lines
       sc4.l1
         "The title moves up. [[sfx: ding]]"

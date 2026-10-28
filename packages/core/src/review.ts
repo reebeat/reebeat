@@ -21,6 +21,9 @@ export interface ReviewOptions {
 
 const verbWidth = "update".length;
 
+// A minimum id column, so adding an Element with a short id re-aligns no other row of the golden text.
+const minimumIdWidth = 12;
+
 const quote = (text: string): string => JSON.stringify(text);
 
 const describe = (element: Element): string =>
@@ -63,7 +66,7 @@ const elementRow = (
   `      ${mark} ${id.padEnd(idWidth)}  ${verb.padEnd(verbWidth)}  ${rest}`;
 
 const widest = (ids: readonly string[]): number =>
-  Arr.reduce(ids, 0, (width, id) => Math.max(width, id.length));
+  Arr.reduce(ids, minimumIdWidth, (width, id) => Math.max(width, id.length));
 
 const byId = (elements: readonly Element[]): ReadonlyMap<string, Element> =>
   new Map(Arr.map(elements, (element) => [element.id, element]));

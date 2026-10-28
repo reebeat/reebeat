@@ -108,6 +108,15 @@ describe("parseFountain: token fidelity", () => {
     ]);
   });
 
+  it("ignores a byte order mark and CRLF line ends", () => {
+    const source = "\uFEFFTitle: One\r\n\r\nINT. A\r\n";
+
+    assert.deepStrictEqual(summary(parseFountain(source)), [
+      ["title", "One", 1],
+      ["scene_heading", "INT. A", 3],
+    ]);
+  });
+
   it("does not let dual dialogue leak into the block after it", () => {
     const source = asText(["NARRATOR ^", "Right.", "", "NARRATOR", "Plain."]);
 

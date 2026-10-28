@@ -36,7 +36,9 @@ const isBlank = (line: string): boolean => line !== "  " && line.trim() === "";
 
 const toBlocks = (source: string): readonly Block[] => {
   const blocks: Block[] = [];
-  const lines = maskBoneyards(source.replaceAll(/\r\n?/gu, "\n")).split("\n");
+  // A byte order mark is not text; `sourceSha256` still covers it, because the hash is of the source as given.
+  const text = source.replace(/^\uFEFF/u, "").replaceAll(/\r\n?/gu, "\n");
+  const lines = maskBoneyards(text).split("\n");
   let start = 0;
   let current: string[] = [];
 

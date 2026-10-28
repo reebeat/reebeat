@@ -30,7 +30,7 @@ const effectConfig: EffectConfigInput = {
     },
     {
       // The composition roots of the CLI: the executable, the journey script and the layers they share.
-      files: ["packages/cli/bin/**"],
+      files: ["packages/cli/bin/**", "packages/cli/scripts/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",
@@ -42,20 +42,33 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
-      files: ["packages/speech/src/**"],
-      platform: "node",
-      role: "service",
-      strictness: "strict",
-    },
-    {
-      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
-      files: ["packages/speech/src/kokoro.ts"],
+      // Adapters (design R3): a Layer over a service, on an outside runtime. Each is its own package.
+      files: [
+        "packages/cache-fs/src/**",
+        "packages/align-whisper/src/**",
+        "packages/encode-ffmpeg/src/**",
+      ],
       platform: "node",
       role: "runtime-adapter",
       strictness: "strict",
     },
     {
-      files: ["packages/speech/scripts/**"],
+      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
+      adapterDependencies: ["@huggingface/transformers", "kokoro-js"],
+      files: ["packages/speech-kokoro/src/**"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      // The build program over services only: no outside runtime.
+      files: ["packages/pipeline/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/pipeline/scripts/**"],
       platform: "node",
       role: "composition-root",
       strictness: "strict",
@@ -169,7 +182,7 @@ export default defineConfig({
       ...(ultraciteFmt.ignorePatterns ?? []),
       "**/*.md",
       "packages/*/test/fixtures/**",
-      // The speech cache is written by `@reebeat/speech` in its own JSON layout.
+      // The speech cache is written by `@reebeat/cache-fs` in its own JSON layout.
       "stories/*/speech-cache/**",
     ],
   },
@@ -201,19 +214,15 @@ export default defineConfig({
         rules: { "unicorn/throw-new-error": "off" },
       },
       {
-        // speech's services.ts declares its five capabilities as Context.Service classes, one table of one stage.
-        files: ["packages/speech/src/services.ts"],
-        rules: { "eslint/max-classes-per-file": "off" },
-      },
-      {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         // One file holds every tagged error of a stage (a closed set that reads as one table).
         files: [
           "packages/cli/src/errors.ts",
           "packages/core/src/errors.ts",
           "packages/capture-chromium/src/errors.ts",
+          "packages/encode-ffmpeg/src/errors.ts",
+          "packages/pipeline/src/errors.ts",
           "packages/render-reveal/src/errors.ts",
-          "packages/speech/src/errors.ts",
           "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
           "packages/video/src/errors.ts",

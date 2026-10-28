@@ -1,0 +1,66 @@
+{
+  "durationMs": 4025,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 310,
+      "startMs": 90,
+      "w": "A"
+    },
+    {
+      "endMs": 360,
+      "startMs": 310,
+      "w": "new"
+    },
+    {
+      "endMs": 720,
+      "startMs": 360,
+      "w": "name"
+    },
+    {
+      "endMs": 1160,
+      "startMs": 720,
+      "w": "means"
+    },
+    {
+      "endMs": 1350,
+      "startMs": 1160,
+      "w": "it"
+    },
+    {
+      "endMs": 2160,
+      "startMs": 1350,
+      "w": "appears."
+    },
+    {
+      "endMs": 2210,
+      "startMs": 2160,
+      "w": "A"
+    },
+    {
+      "endMs": 2580,
+      "startMs": 2210,
+      "w": "missing"
+    },
+    {
+      "endMs": 2790,
+      "startMs": 2580,
+      "w": "name"
+    },
+    {
+      "endMs": 3060,
+      "startMs": 2790,
+      "w": "means"
+    },
+    {
+      "endMs": 3160,
+      "startMs": 3060,
+      "w": "it"
+    },
+    {
+      "endMs": 3680,
+      "startMs": 3160,
+      "w": "leaves."
+    }
+  ]
+}

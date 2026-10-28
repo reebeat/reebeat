@@ -8,14 +8,21 @@
   "type": "module",
   "scripts": {
     "test": "bunx vp test",
-    "check": "vp check"
+    "check": "vp check",
+    "refill:speech": "bun scripts/refillSpeech.ts",
+    "test:live": "REEBEAT_LIVE=1 bunx vp test --config vite.live.config.ts"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
+    "@reebeat/align-whisper": "workspace:*",
+    "@reebeat/cache-fs": "workspace:*",
     "@reebeat/core": "workspace:*",
     "@reebeat/deck": "workspace:*",
+    "@reebeat/encode-ffmpeg": "workspace:*",
+    "@reebeat/pipeline": "workspace:*",
+    "@reebeat/services": "workspace:*",
     "@reebeat/sfx": "workspace:*",
-    "@reebeat/speech": "workspace:*",
+    "@reebeat/speech-kokoro": "workspace:*",
     "@reebeat/verify": "workspace:*",
     "@reebeat/video": "workspace:*",
     "effect": "catalog:"

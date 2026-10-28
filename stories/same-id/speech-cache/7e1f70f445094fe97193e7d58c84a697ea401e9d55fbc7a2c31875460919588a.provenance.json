@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 91334,
+      "name": "flac",
+      "sha256": "d6eb88b656c9f10ff5404aa2a4a608acaa92adc4dd85f64f442fffbe7f350a38"
+    },
+    {
+      "bytes": 661,
+      "name": "words.json",
+      "sha256": "c35b49e0729f92b9b7a0cd82725216bd28140b11c460cc52bb98a31b83c861da"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1,
+        "voice": "af_heart"
+      },
+      "input": "Comparing two screens by name gives three answers.",
+      "key": "7e1f70f445094fe97193e7d58c84a697ea401e9d55fbc7a2c31875460919588a"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

@@ -4,10 +4,10 @@
     {
       "id": "EX-0001",
       "scope": {
-        "files": ["packages/speech/src/kokoro.ts"],
+        "files": ["packages/speech-kokoro/src/kokoroSynthesizer.ts"],
         "directives": ["oxlint-disable-next-line"]
       },
-      "reason": "kokoro-js (from_pretrained, generate) and the dynamic imports that keep onnxruntime-node unloaded on a cache hit return Promises. Each is wrapped once as Effect.tryPromise with a non-async thunk, as EX-0030 and EX-0040 do; typescript/promise-function-async wants those thunks async and its autofix then trips eslint/require-await and effecttsgo/async-function, so the rule is disabled on the four thunk lines only. The file is the speech package's only Promise boundary.",
+      "reason": "kokoro-js (from_pretrained, generate) and the dynamic imports that keep onnxruntime-node unloaded on a cache hit return Promises. Each is wrapped once as Effect.tryPromise with a non-async thunk, as EX-0030 and EX-0040 do; typescript/promise-function-async wants those thunks async and its autofix then trips eslint/require-await and effecttsgo/async-function, so the rule is disabled on the four thunk lines only. The file is the speech-kokoro package's only Promise boundary.",
       "nativeAlternativesExamined": [
         "Effect.tryPromise with an async thunk: effecttsgo/async-function (Effect diagnostic, error) rejects it and eslint/require-await rejects an async function that only returns the Promise",
         "Effect.promise and Effect.callback: the same Promise-returning thunk, so the same conflict",
@@ -15,7 +15,7 @@
         "Stream.fromAsyncIterable over KokoroTTS.stream: streams sentence chunks, no cancellation, and would still need the dynamic imports and from_pretrained Promises",
         "a child process running kokoro: no CLI ships with kokoro-js, and the 311 MiB model would load once per Line"
       ],
-      "owner": "packages/speech",
+      "owner": "packages/speech-kokoro",
       "versions": {
         "effect": "4.0.6",
         "kokoro-js": "1.2.1",

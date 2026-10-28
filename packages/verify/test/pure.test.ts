@@ -8,6 +8,7 @@ import { Array as Arr, Effect } from "effect";
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
+import { withinOneFrame } from "../src/units.ts";
 import { parseVtt, vttSourceHash } from "../src/vttParse.ts";
 import { onsetIndex, wavSamples, withSilentLead } from "../src/wav.ts";
 import { storyText } from "./support.ts";
@@ -130,6 +131,18 @@ describe("planDifference", () => {
         );
       })
   );
+});
+
+describe("withinOneFrame", () => {
+  it("holds at exactly one frame and a float's margin, and not beyond", () => {
+    for (const frames of [0, 0.99, 1, -1, 1.0000005, -1.0000005]) {
+      assert.isTrue(withinOneFrame(frames), String(frames));
+    }
+
+    for (const frames of [1.01, -1.01, 1.5, 1.9, 2]) {
+      assert.isFalse(withinOneFrame(frames), String(frames));
+    }
+  });
 });
 
 describe("the signal helpers", () => {

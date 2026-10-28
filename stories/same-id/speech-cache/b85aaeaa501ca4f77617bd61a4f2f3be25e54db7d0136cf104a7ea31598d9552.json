@@ -1,0 +1,100 @@
+{
+  "audioSha256": "db678d4e5bff1a86e6f27b1164c37b3f901217fa9347f0449d977601f73aa969",
+  "durationMs": 5700,
+  "key": "b85aaeaa501ca4f77617bd61a4f2f3be25e54db7d0136cf104a7ea31598d9552",
+  "match": 1,
+  "params": {
+    "dtype": "fp32",
+    "ffmpegFlags": "flac: -sample_fmt s16 -c:a flac -compression_level 8 -fflags +bitexact -flags:a +bitexact | resample: -ar 16000 -ac 1 -c:a pcm_s16le",
+    "kokoroJs": "1.2.1",
+    "pipelineVersion": 1,
+    "speed": 1,
+    "text": "On the next screen, box one sits somewhere else. Its name matches, so it slides there.",
+    "ttsModel": "onnx-community/Kokoro-82M-v1.0-ONNX",
+    "voice": "af_heart",
+    "whisperCpp": "1.9.5-dev",
+    "whisperModelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "words": [
+    {
+      "endMs": 310,
+      "startMs": 120,
+      "w": "On"
+    },
+    {
+      "endMs": 330,
+      "startMs": 310,
+      "w": "the"
+    },
+    {
+      "endMs": 560,
+      "startMs": 330,
+      "w": "next"
+    },
+    {
+      "endMs": 1060,
+      "startMs": 560,
+      "w": "screen,"
+    },
+    {
+      "endMs": 1250,
+      "startMs": 1060,
+      "w": "box"
+    },
+    {
+      "endMs": 1460,
+      "startMs": 1250,
+      "w": "one"
+    },
+    {
+      "endMs": 1690,
+      "startMs": 1460,
+      "w": "sits"
+    },
+    {
+      "endMs": 2270,
+      "startMs": 1690,
+      "w": "somewhere"
+    },
+    {
+      "endMs": 2780,
+      "startMs": 2270,
+      "w": "else."
+    },
+    {
+      "endMs": 3110,
+      "startMs": 2780,
+      "w": "Its"
+    },
+    {
+      "endMs": 3290,
+      "startMs": 3110,
+      "w": "name"
+    },
+    {
+      "endMs": 3940,
+      "startMs": 3290,
+      "w": "matches,"
+    },
+    {
+      "endMs": 4080,
+      "startMs": 3940,
+      "w": "so"
+    },
+    {
+      "endMs": 4240,
+      "startMs": 4080,
+      "w": "it"
+    },
+    {
+      "endMs": 4660,
+      "startMs": 4240,
+      "w": "slides"
+    },
+    {
+      "endMs": 5280,
+      "startMs": 4660,
+      "w": "there."
+    }
+  ]
+}

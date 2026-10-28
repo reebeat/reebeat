@@ -1,0 +1,80 @@
+{
+  "audioSha256": "c476ccce4c3da5efac7341b269bc9d32de8bd7a2c781ba88055bf4dd3cdedb90",
+  "durationMs": 3700,
+  "key": "82f9e7d80a73ff91098b63e1626e68ff1426d469bddc211de450bb039730a3be",
+  "match": 0.9166666666666666,
+  "params": {
+    "dtype": "fp32",
+    "ffmpegFlags": "flac: -sample_fmt s16 -c:a flac -compression_level 8 -fflags +bitexact -flags:a +bitexact | resample: -ar 16000 -ac 1 -c:a pcm_s16le",
+    "kokoroJs": "1.2.1",
+    "pipelineVersion": 1,
+    "speed": 1,
+    "text": "Give every box a name. Here the names are one and two.",
+    "ttsModel": "onnx-community/Kokoro-82M-v1.0-ONNX",
+    "voice": "af_heart",
+    "whisperCpp": "1.9.5-dev",
+    "whisperModelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "words": [
+    {
+      "endMs": 370,
+      "startMs": 310,
+      "w": "Give"
+    },
+    {
+      "endMs": 870,
+      "startMs": 370,
+      "w": "every"
+    },
+    {
+      "endMs": 1100,
+      "startMs": 870,
+      "w": "box"
+    },
+    {
+      "endMs": 1190,
+      "startMs": 1100,
+      "w": "a"
+    },
+    {
+      "endMs": 1880,
+      "startMs": 1190,
+      "w": "name."
+    },
+    {
+      "endMs": 2040,
+      "startMs": 1880,
+      "w": "Here"
+    },
+    {
+      "endMs": 2250,
+      "startMs": 2040,
+      "w": "the"
+    },
+    {
+      "endMs": 2610,
+      "startMs": 2250,
+      "w": "names"
+    },
+    {
+      "endMs": 2820,
+      "startMs": 2610,
+      "w": "are"
+    },
+    {
+      "endMs": 3030,
+      "startMs": 2820,
+      "w": "one"
+    },
+    {
+      "endMs": 3500,
+      "startMs": 3030,
+      "w": "and"
+    },
+    {
+      "endMs": 3500,
+      "startMs": 3500,
+      "w": "two."
+    }
+  ]
+}

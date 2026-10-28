@@ -1,0 +1,90 @@
+{
+  "audioSha256": "32104a893441115da1e67c2ee7a951885ac9ce295ac7b55a87dbcb8f425e94d3",
+  "durationMs": 3925,
+  "key": "f7ecec64f9edbb6c5da886266b97c7e87aa76f846210bd1f4592356be64897f1",
+  "match": 1,
+  "params": {
+    "dtype": "fp32",
+    "ffmpegFlags": "flac: -sample_fmt s16 -c:a flac -compression_level 8 -fflags +bitexact -flags:a +bitexact | resample: -ar 16000 -ac 1 -c:a pcm_s16le",
+    "kokoroJs": "1.2.1",
+    "pipelineVersion": 1,
+    "speed": 1,
+    "text": "A name we have not seen before is a new box, so it appears.",
+    "ttsModel": "onnx-community/Kokoro-82M-v1.0-ONNX",
+    "voice": "af_heart",
+    "whisperCpp": "1.9.5-dev",
+    "whisperModelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002"
+  },
+  "words": [
+    {
+      "endMs": 310,
+      "startMs": 0,
+      "w": "A"
+    },
+    {
+      "endMs": 370,
+      "startMs": 310,
+      "w": "name"
+    },
+    {
+      "endMs": 520,
+      "startMs": 370,
+      "w": "we"
+    },
+    {
+      "endMs": 850,
+      "startMs": 520,
+      "w": "have"
+    },
+    {
+      "endMs": 1140,
+      "startMs": 850,
+      "w": "not"
+    },
+    {
+      "endMs": 1340,
+      "startMs": 1140,
+      "w": "seen"
+    },
+    {
+      "endMs": 1790,
+      "startMs": 1340,
+      "w": "before"
+    },
+    {
+      "endMs": 1940,
+      "startMs": 1790,
+      "w": "is"
+    },
+    {
+      "endMs": 2010,
+      "startMs": 1940,
+      "w": "a"
+    },
+    {
+      "endMs": 2230,
+      "startMs": 2010,
+      "w": "new"
+    },
+    {
+      "endMs": 2750,
+      "startMs": 2230,
+      "w": "box,"
+    },
+    {
+      "endMs": 2790,
+      "startMs": 2750,
+      "w": "so"
+    },
+    {
+      "endMs": 2900,
+      "startMs": 2790,
+      "w": "it"
+    },
+    {
+      "endMs": 3560,
+      "startMs": 2900,
+      "w": "appears."
+    }
+  ]
+}

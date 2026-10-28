@@ -11,6 +11,15 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/services": {
+      "entry": ["test/**/*.test.ts"],
+      "project": [
+        "src/**/*.ts",
+        "contract/**/*.ts",
+        "standins/**/*.ts",
+        "test/**/*.ts"
+      ]
+    },
     "packages/speech": {
       "entry": ["test/**/*.test.ts", "live/**/*.test.ts", "scripts/*.ts"],
       "project": [

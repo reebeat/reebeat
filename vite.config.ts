@@ -93,6 +93,19 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/services/src/**", "packages/services/standins/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The contract suites register vitest tests; every adapter package imports them.
+      files: ["packages/services/contract/**"],
+      platform: "node",
+      role: "test",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -181,6 +194,7 @@ export default defineConfig({
           "packages/core/src/errors.ts",
           "packages/deck/src/errors.ts",
           "packages/speech/src/errors.ts",
+          "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
           "packages/video/src/errors.ts",
         ],
@@ -191,7 +205,11 @@ export default defineConfig({
       },
       {
         // The public entry of a package re-exports its modules; that is the file's only job.
-        files: ["packages/*/src/index.ts"],
+        files: [
+          "packages/*/src/index.ts",
+          "packages/services/contract/index.ts",
+          "packages/services/standins/index.ts",
+        ],
         rules: { "oxc/no-barrel-file": "off" },
       },
       {
@@ -209,6 +227,30 @@ export default defineConfig({
                     "packages/core is pure (spec 0001, F11): no browser, Playwright, ffmpeg, reveal.js, React, Remotion or Node built-in.",
                   regex:
                     "^(?:node:|playwright|reveal\\.js|react(?:-dom)?(?:/|$)|remotion|@remotion/|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // Tier rule (design R3): a service imports libraries only, never an adapter or another tier.
+        files: [
+          "packages/services/src/**",
+          "packages/services/contract/**",
+          "packages/services/standins/**",
+        ],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/services imports libraries only (design R3): core, subtitles and lint.",
+                  regex:
+                    "^@reebeat/(?!(?:core|subtitles|lint|services)(?:/|$))",
                 },
               ],
             },

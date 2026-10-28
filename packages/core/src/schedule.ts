@@ -19,6 +19,7 @@ import {
   SceneLeadTooShort,
 } from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
+import { AudioFileSchema } from "./plan.ts";
 import type {
   Line,
   PlanJson,
@@ -34,7 +35,7 @@ const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
 /** What speech provides for one Line: its audio and its words with aligned times; words align 1:1 to `Line.words`. */
 export const AlignedLineSchema = Schema.Struct({
-  audio: Schema.Struct({ file: Schema.String, sha256: Schema.String }),
+  audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   durationMs: Milliseconds,
   lineId: Schema.NonEmptyString,
   words: Schema.Array(

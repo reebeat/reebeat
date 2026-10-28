@@ -74,7 +74,7 @@ describe("checkDeck", () => {
   it.effect("F3 control: a dropped note paragraph fails", () =>
     Effect.gen(function* notes() {
       const error = yield* afterReplace(
-        "<p>Box two has no match, so it leaves.</p>",
+        "<p>Box two has no match, so it leaves the screen.</p>",
         ""
       );
 

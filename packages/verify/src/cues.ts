@@ -2,7 +2,8 @@
 // fire frame. A `next` or `focus` step is the first frame in a window of three frames either side of the fire frame
 // whose pixels differ from the frame before it, inside the grid cell of the Element the Cue acts on (`cueRegion`); an
 // `sfx` is the start of the catalogue sound found in the decoded audio track near the fire frame. The offset of each
-// Cue is reported, positive when the step is late.
+// Cue is reported, positive when the step is late. An `sfx` the Plan anchors to a transition start must also sound
+// within one frame of the first changed frame of that scene change (`motionSounds.ts`); both offsets are reported.
 import { audioOffsetMs, decodeMonoPcm } from "@reebeat/encode-ffmpeg";
 import type { Box } from "@reebeat/encode-ffmpeg";
 import { sfxNames, synthClip } from "@reebeat/sounds-synth";
@@ -11,6 +12,8 @@ import { Array as Arr, Effect, Option } from "effect";
 import { cueRegion } from "./cueRegion.ts";
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
+import { motionAnchorOf, motionChecks } from "./motionSounds.ts";
+import type { MotionAnchor } from "./motionSounds.ts";
 import { planCues, timedLines } from "./planParts.ts";
 import { stepOffset } from "./steps.ts";
 import {
@@ -37,6 +40,8 @@ interface CueFact {
   readonly cueId: string;
   readonly fireFrame: number;
   readonly kind: "focus" | "next" | "sfx";
+  /** The scene change an `sfx` is anchored to; none for any other Cue. */
+  readonly motion: MotionAnchor | undefined;
   /** Where a step of the picture shows (the target Element's cell); none: the whole frame. */
   readonly region: Box | undefined;
 }
@@ -54,6 +59,7 @@ const cueFacts = (build: Build): readonly CueFact[] => {
           cueId: cue.id,
           fireFrame: timed.fireFrame,
           kind: cue.kind,
+          motion: Option.getOrUndefined(motionAnchorOf(build.plan, cue.id)),
           region: Option.getOrUndefined(cueRegion(build.plan, cue.id)),
         })
       )
@@ -157,17 +163,37 @@ export const cueTiming = (build: Build) =>
 
       const rows = Arr.zip(facts, observations);
 
-      const problems = Arr.flatMap(rows, ([cue, seen]) => {
-        if (seen.tag === "missing") {
-          return [`${label(cue)}: ${seen.reason}`];
-        }
+      const motion = yield* motionChecks(
+        build,
+        Arr.flatMap(rows, ([cue, seen]) =>
+          cue.motion === undefined
+            ? []
+            : [
+                {
+                  anchor: cue.motion,
+                  cueId: cue.cueId,
+                  fireFrame: cue.fireFrame,
+                  label: label(cue),
+                  soundFrames: seen.tag === "found" ? seen.frames : undefined,
+                },
+              ]
+        )
+      );
 
-        return withinOneFrame(seen.frames)
-          ? []
-          : [
-              `${label(cue)}: the step is observed ${signedFrames(seen.frames)} frames from its fire frame`,
-            ];
-      });
+      const problems = [
+        ...Arr.flatMap(rows, ([cue, seen]) => {
+          if (seen.tag === "missing") {
+            return [`${label(cue)}: ${seen.reason}`];
+          }
+
+          return withinOneFrame(seen.frames)
+            ? []
+            : [
+                `${label(cue)}: the step is observed ${signedFrames(seen.frames)} frames from its fire frame`,
+              ];
+        }),
+        ...motion.problems,
+      ];
 
       const measured: Measured = [
         ["cues checked", facts.length],
@@ -190,6 +216,7 @@ export const cueTiming = (build: Build) =>
               ] as const)
             : []),
         ]),
+        ...motion.measured,
       ];
 
       if (facts.length === 0) {

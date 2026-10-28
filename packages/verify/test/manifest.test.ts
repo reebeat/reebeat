@@ -190,7 +190,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.strictEqual(f1.status, "pass", f1.detail);
           assert.include(
             measuredOf(f1),
-            "sfx cues: N/A (silent stand-in): 1 not observed"
+            "sfx cues: N/A (silent stand-in): 2 not observed"
           );
           assert.deepStrictEqual(failedIds(verdicts), []);
           assert.strictEqual(exitCode(verdicts), 0);

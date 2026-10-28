@@ -28,6 +28,30 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
   (a `# Section` or `= synopsis` may stand between). A Scene needs a Section before it and at least one `NARRATOR` Line.
 - `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
 - No title: the Plan title is `Untitled`.
+- The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).
+
+## Speech rate
+
+- `Speed: <number>` on the title page is the story's default speech rate, a multiple of the voice's natural speed from
+  0.5 to 2.0. **Absent, it is 1.1.** It is written to `settings.speed` in `plan.json`.
+- `(speed <number>)` before a Line sets that Line's rate absolutely (same range). `(slowly)` and `(quickly)` are
+  presets relative to the story default (x 0.9 and x 1.1, rounded to four decimals, clamped to 0.5 to 2.0). `(pause N)`
+  is unchanged. A Line takes one speed hint and one pause.
+- The resolved rate of every Line is `Line.hints.speed` in `plan.json`; `reebeat plan` prints it only for a Line that
+  differs from the default. The rate is part of the speech cache key, so changing it re-synthesises a Line and never
+  reuses audio made at another rate.
+- Errors name their line: `BadSpeed` (a `Speed:` or `(speed N)` that is not a number from 0.5 to 2, or a second
+  `Speed:`), `BadParenthetical` (two speed hints before one Line, or `(speed)` without a value).
+
+## Sounds that go with a transition
+
+An `sfx` Cue written **before the first word of the first Line of a Scene** is anchored to that Scene's slide change
+(`Cue.anchor` is `"transition-start"` in `plan.json`; every other Cue is `"word"`). It fires at the Scene's
+`slideFrame`, the first frame of the transition, so `[[sfx: whoosh]] On the next screen, ...` sounds when the box starts
+to move, although the narration starts `sceneLead` later. A `(pause N)` before that Line does not move it. A Cue of
+another kind, or a Cue after a word, or before the first word of a later Line, keeps its meaning: the end of the word
+before it, or the start of its Line. `reebeat plan` shows the anchor (`sfx whoosh  transition.start -> frame 729`
+with `--timing`).
 
 ## Schedule arithmetic
 

@@ -1,0 +1,86 @@
+{
+  "durationMs": 4600,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 290,
+      "startMs": 0,
+      "w": "A"
+    },
+    {
+      "endMs": 320,
+      "startMs": 290,
+      "w": "box"
+    },
+    {
+      "endMs": 560,
+      "startMs": 320,
+      "w": "can"
+    },
+    {
+      "endMs": 950,
+      "startMs": 560,
+      "w": "glide"
+    },
+    {
+      "endMs": 1420,
+      "startMs": 950,
+      "w": "across"
+    },
+    {
+      "endMs": 1510,
+      "startMs": 1420,
+      "w": "a"
+    },
+    {
+      "endMs": 2300,
+      "startMs": 1510,
+      "w": "screen"
+    },
+    {
+      "endMs": 2330,
+      "startMs": 2300,
+      "w": "only"
+    },
+    {
+      "endMs": 2490,
+      "startMs": 2330,
+      "w": "if"
+    },
+    {
+      "endMs": 2650,
+      "startMs": 2490,
+      "w": "we"
+    },
+    {
+      "endMs": 2980,
+      "startMs": 2650,
+      "w": "know"
+    },
+    {
+      "endMs": 3160,
+      "startMs": 2980,
+      "w": "it"
+    },
+    {
+      "endMs": 3370,
+      "startMs": 3160,
+      "w": "is"
+    },
+    {
+      "endMs": 3510,
+      "startMs": 3370,
+      "w": "the"
+    },
+    {
+      "endMs": 3790,
+      "startMs": 3510,
+      "w": "same"
+    },
+    {
+      "endMs": 4240,
+      "startMs": 3790,
+      "w": "box."
+    }
+  ]
+}

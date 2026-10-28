@@ -1,0 +1,46 @@
+{
+  "durationMs": 3025,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 370,
+      "startMs": 290,
+      "w": "Here"
+    },
+    {
+      "endMs": 430,
+      "startMs": 370,
+      "w": "is"
+    },
+    {
+      "endMs": 500,
+      "startMs": 430,
+      "w": "a"
+    },
+    {
+      "endMs": 860,
+      "startMs": 500,
+      "w": "small"
+    },
+    {
+      "endMs": 1150,
+      "startMs": 860,
+      "w": "idea"
+    },
+    {
+      "endMs": 1510,
+      "startMs": 1150,
+      "w": "about"
+    },
+    {
+      "endMs": 1940,
+      "startMs": 1510,
+      "w": "moving"
+    },
+    {
+      "endMs": 3025,
+      "startMs": 1940,
+      "w": "things."
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "durationMs": 5425,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 300,
+      "startMs": 120,
+      "w": "On"
+    },
+    {
+      "endMs": 310,
+      "startMs": 300,
+      "w": "the"
+    },
+    {
+      "endMs": 540,
+      "startMs": 310,
+      "w": "next"
+    },
+    {
+      "endMs": 1020,
+      "startMs": 540,
+      "w": "screen,"
+    },
+    {
+      "endMs": 1230,
+      "startMs": 1020,
+      "w": "box"
+    },
+    {
+      "endMs": 1380,
+      "startMs": 1230,
+      "w": "one"
+    },
+    {
+      "endMs": 1620,
+      "startMs": 1380,
+      "w": "sits"
+    },
+    {
+      "endMs": 2170,
+      "startMs": 1620,
+      "w": "somewhere"
+    },
+    {
+      "endMs": 2640,
+      "startMs": 2170,
+      "w": "else."
+    },
+    {
+      "endMs": 2950,
+      "startMs": 2640,
+      "w": "Its"
+    },
+    {
+      "endMs": 3210,
+      "startMs": 2950,
+      "w": "name"
+    },
+    {
+      "endMs": 3940,
+      "startMs": 3210,
+      "w": "matches,"
+    },
+    {
+      "endMs": 4100,
+      "startMs": 3940,
+      "w": "so"
+    },
+    {
+      "endMs": 4260,
+      "startMs": 4100,
+      "w": "it"
+    },
+    {
+      "endMs": 4750,
+      "startMs": 4260,
+      "w": "slides"
+    },
+    {
+      "endMs": 5280,
+      "startMs": 4750,
+      "w": "there."
+    }
+  ]
+}

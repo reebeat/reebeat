@@ -5,10 +5,9 @@
 //   - F6 sees the audio: two builds that differ only in their audio fail;
 //   - a Line's audio file is read only from inside the speech cache.
 import { assert, layer } from "@effect/vitest";
-import { Array as Arr, Effect, Option, Path } from "effect";
+import { Effect, Path } from "effect";
 
 import { BuildInvalid, compareBuilds } from "../src/index.ts";
-import type { Verdict } from "../src/index.ts";
 import {
   Fixture,
   audioFilter,
@@ -21,17 +20,11 @@ import {
   narrationFile,
   remix,
   replaceInFile,
+  reportedScore,
+  slideFrameOf,
   soundFile,
   verdictOf,
 } from "./support.ts";
-
-/** The best-match score a verdict reports for `name` (`sc1.l1 match score`), from its measured values. */
-const reportedScore = (verdict: Verdict, name: string): number =>
-  Number(
-    Option.getOrThrow(
-      Arr.findFirst(verdict.measured, ([key]) => key === name)
-    )[1]
-  );
 
 /** The best match that a failure sentence reports: `(best match 0.04, at least 0.8 needed)`. */
 const reportedMatch = (detail: string): number =>
@@ -184,6 +177,11 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             { file: narrationFile(fixture, "sc2.l1"), startMs: frameMs(111) },
             { file: soundFile(fixture, "pop"), gain: pop, startMs: at },
             { file: soundFile(fixture, "whoosh"), gain: whoosh, startMs: at },
+            // The whoosh of sc2 sounds at the scene change, where its Cue is anchored.
+            {
+              file: soundFile(fixture, "whoosh"),
+              startMs: frameMs(slideFrameOf(fixture.plan, "sc2")),
+            },
           ];
 
           const wrong = yield* mutate("f1-wrong", remix(parts(0, 1)));

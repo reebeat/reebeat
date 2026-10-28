@@ -1,0 +1,66 @@
+{
+  "durationMs": 3450,
+  "match": 0.9166666666666666,
+  "words": [
+    {
+      "endMs": 330,
+      "startMs": 290,
+      "w": "Give"
+    },
+    {
+      "endMs": 740,
+      "startMs": 330,
+      "w": "every"
+    },
+    {
+      "endMs": 980,
+      "startMs": 740,
+      "w": "box"
+    },
+    {
+      "endMs": 1060,
+      "startMs": 980,
+      "w": "a"
+    },
+    {
+      "endMs": 1800,
+      "startMs": 1060,
+      "w": "name."
+    },
+    {
+      "endMs": 1880,
+      "startMs": 1800,
+      "w": "Here"
+    },
+    {
+      "endMs": 2040,
+      "startMs": 1880,
+      "w": "the"
+    },
+    {
+      "endMs": 2310,
+      "startMs": 2040,
+      "w": "names"
+    },
+    {
+      "endMs": 2470,
+      "startMs": 2310,
+      "w": "are"
+    },
+    {
+      "endMs": 2630,
+      "startMs": 2470,
+      "w": "one"
+    },
+    {
+      "endMs": 2770,
+      "startMs": 2630,
+      "w": "and"
+    },
+    {
+      "endMs": 3000,
+      "startMs": 2770,
+      "w": "two."
+    }
+  ]
+}

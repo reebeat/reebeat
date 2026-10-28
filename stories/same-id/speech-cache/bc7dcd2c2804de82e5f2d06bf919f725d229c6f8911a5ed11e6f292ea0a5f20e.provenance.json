@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 140393,
+      "name": "flac",
+      "sha256": "c2ed49ca70d3e1701174a32666c72a74e7913dd0469cf715e03a576aa67afb7b"
+    },
+    {
+      "bytes": 1255,
+      "name": "words.json",
+      "sha256": "7683bb6060331eaffefcfd85e2ba236ecf6ee16c82e2ce62c9d7f1f046c12254"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1.1,
+        "voice": "af_heart"
+      },
+      "input": "On the next screen, box one sits somewhere else. Its name matches, so it slides there.",
+      "key": "bc7dcd2c2804de82e5f2d06bf919f725d229c6f8911a5ed11e6f292ea0a5f20e"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

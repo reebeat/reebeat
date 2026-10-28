@@ -80,6 +80,12 @@ const aligned: readonly AlignedLine[] = [
 
 const plan = buildPlan(source, fixtureSha256);
 
+/** Every timed Cue of a Timeline, in order. */
+const timedCues = (timeline: PlanJson["timeline"]) =>
+  Arr.flatMap(timeline?.scenes ?? [], (scene) =>
+    Arr.flatMap(scene.lines, (line) => line.cues)
+  );
+
 const scheduled = Effect.flatMap(plan, (built) => schedule(built, aligned));
 
 describe("schedule: the arithmetic, by hand", () => {
@@ -156,18 +162,68 @@ describe("schedule: the arithmetic, by hand", () => {
       Effect.gen(function* cues() {
         const { timeline } = yield* scheduled;
 
-        const cueFrames = Arr.flatMap(timeline?.scenes ?? [], (scene) =>
-          Arr.flatMap(scene.lines, (line) => line.cues)
-        );
+        const cueFrames = timedCues(timeline);
 
         // sc1.l1.c1: [[next]] after "three." ends at 1200 ms: 45 + 36 = 81, command 80.
         // sc1.l2.c1: [[sfx: pop]] after "seven." ends at 1500 ms: 120 + 45 = 165, command 165.
-        // sc2.l1.c1: [[sfx: whoosh]] before the first word fires at the line start 210, command 210.
+        // sc2.l1.c1: [[sfx: whoosh]] before the first word of the FIRST Line of sc2 is anchored to the transition
+        // start: it fires at the slide frame 180 (the Line itself starts at 210), command 180.
         assert.deepStrictEqual(cueFrames, [
           { commandFrame: 80, cueId: "sc1.l1.c1", fireFrame: 81 },
           { commandFrame: 165, cueId: "sc1.l2.c1", fireFrame: 165 },
-          { commandFrame: 210, cueId: "sc2.l1.c1", fireFrame: 210 },
+          { commandFrame: 180, cueId: "sc2.l1.c1", fireFrame: 180 },
         ]);
+      })
+  );
+
+  it.effect(
+    "a cue before the first word of a Line that is not the first of its Scene, or of another kind, fires at the Line start",
+    () =>
+      Effect.gen(function* wordAnchored() {
+        const moved = yield* buildPlan(
+          source
+            .replace(
+              "One two three. [[next]] Four five.",
+              "[[next]] One two three. Four five."
+            )
+            .replace("Six seven. [[sfx: pop]]", "[[sfx: pop]] Six seven."),
+          fixtureSha256
+        );
+
+        const { timeline } = yield* schedule(moved, aligned);
+
+        const cueFrames = timedCues(timeline);
+
+        // sc1.l1.c1: [[next]] before the first word of sc1.l1 fires at the line start 45, command 44 (a `next` is
+        // never anchored to the transition). sc1.l2.c1: [[sfx: pop]] before the first word of the SECOND Line of
+        // sc1 fires at that Line's start 120. The whoosh of sc2 stays at its slide frame 180.
+        assert.deepStrictEqual(cueFrames, [
+          { commandFrame: 44, cueId: "sc1.l1.c1", fireFrame: 45 },
+          { commandFrame: 120, cueId: "sc1.l2.c1", fireFrame: 120 },
+          { commandFrame: 180, cueId: "sc2.l1.c1", fireFrame: 180 },
+        ]);
+      })
+  );
+
+  it.effect(
+    "the transition-start anchor ignores the Line's pause and leaves every Line frame unchanged",
+    () =>
+      Effect.gen(function* paused() {
+        const moved = yield* buildPlan(
+          source.replace(
+            "INT. TWO\n\nNARRATOR\n",
+            "INT. TWO\n\nNARRATOR\n(pause 0.5)\n"
+          ),
+          fixtureSha256
+        );
+
+        const { timeline } = yield* schedule(moved, aligned);
+        const second = timeline?.scenes[1];
+
+        // The Line starts at 180 + 30 + 15 = 225; the whoosh still fires at the slide frame 180.
+        assert.strictEqual(second?.lines[0]?.startFrame, 225);
+        assert.strictEqual(second?.lines[0]?.cues[0]?.fireFrame, 180);
+        assert.strictEqual(second?.lines[0]?.cues[0]?.commandFrame, 180);
       })
   );
 

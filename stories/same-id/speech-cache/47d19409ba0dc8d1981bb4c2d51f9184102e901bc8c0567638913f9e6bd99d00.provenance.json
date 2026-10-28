@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 80938,
+      "name": "flac",
+      "sha256": "e5b2fb8e1f35de9aaffe12aee1e48647682db0abe8693b889d419b80f3dacbc5"
+    },
+    {
+      "bytes": 793,
+      "name": "words.json",
+      "sha256": "aac8908cb3d2e2e71cc9478944b06bb2143e91d86c8601cdd7b043145469a981"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1.1,
+        "voice": "af_heart"
+      },
+      "input": "Box two has no match, so it leaves the screen.",
+      "key": "47d19409ba0dc8d1981bb4c2d51f9184102e901bc8c0567638913f9e6bd99d00"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

@@ -1,5 +1,6 @@
 Title: Same name, new place
 Author: reebeat
+Speed: 1.1
 
 /* Original text written for reebeat release 1. The narration is read by a synthetic voice. */
 
@@ -55,10 +56,10 @@ Every box has a name {#tag @tc .accent}
 Same name, so it moves {#hint @bc .muted}
 
 NARRATOR
-On the next screen, box one sits somewhere else. [[sfx: whoosh]] Its name matches, so it slides there.
+[[sfx: whoosh]] On the next screen, box one sits somewhere else. Its name matches, so it slides there.
 
 NARRATOR
-Box two has no match, so it leaves.
+Box two has no match, so it leaves the screen.
 
 > AUTO-ANIMATE
 
@@ -69,7 +70,7 @@ Same name, so it moves {#hint @bc .accent}
 Box three {#three @ml .box}
 
 NARRATOR
-A name we have not seen before is a new box, so it appears. [[sfx: ding]]
+[[sfx: ding]] A name we have not seen before is a new box, so it appears.
 
 INT. THREE ANSWERS - DAY
 

@@ -67,7 +67,7 @@ layer(platform)("the committed speech cache", (it) => {
   );
 
   it.effect(
-    "schedules: the story runs 1680 frames, and each asset says what made it",
+    "schedules: the story runs 1664 frames, and each asset says what made it",
     () =>
       Effect.gen(function* schedules() {
         const { cache, plan } = yield* story;
@@ -83,7 +83,7 @@ layer(platform)("the committed speech cache", (it) => {
         const scheduled = yield* schedule(plan, aligned);
 
         assert.strictEqual(aligned.length, 12);
-        assert.strictEqual(scheduled.timeline?.totalFrames, 1680);
+        assert.strictEqual(scheduled.timeline?.totalFrames, 1664);
         assert.deepStrictEqual(
           Arr.dedupe(Arr.map(provenance, (entry) => entry.adapter)),
           ["kokoro@1.2.1"]

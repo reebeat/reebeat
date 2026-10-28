@@ -58,8 +58,10 @@ Same name, so it moves {#hint @bc .muted}
 NARRATOR
 [[sfx: whoosh]] On the next screen, box one sits somewhere else. Its name matches, so it slides there.
 
+/* At the story rate (1.1) whisper hears "has" as "is" in the next Line and the alignment falls below 0.9; 1.05 is heard correctly. */
 NARRATOR
-Box two has no match, so it leaves the screen.
+(speed 1.05)
+Box two has no match, so it leaves.
 
 > AUTO-ANIMATE
 

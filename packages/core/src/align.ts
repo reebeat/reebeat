@@ -77,11 +77,29 @@ const numerals = new Map<string, string>(
   })
 );
 
-/** The comparison form of a word: lower case, letters and digits only, US spelling, numerals as words. */
+// Ordinals the same way: whisper writes "1st", the script says "first", and each compares as the word.
+const ordinals = new Map<string, string>(
+  Record.toEntries({
+    "10th": "tenth",
+    "1st": "first",
+    "2nd": "second",
+    "3rd": "third",
+    "4th": "fourth",
+    "5th": "fifth",
+    "6th": "sixth",
+    "7th": "seventh",
+    "8th": "eighth",
+    "9th": "ninth",
+  })
+);
+
+/** The comparison form of a word: lower case, letters and digits only, US spelling, numerals and ordinals as words. */
 export const normaliseWord = (word: string): string => {
   const plain = word.toLowerCase().replaceAll(/[^a-z0-9]/gu, "");
 
-  return numerals.get(plain) ?? spelling.get(plain) ?? plain;
+  return (
+    numerals.get(plain) ?? ordinals.get(plain) ?? spelling.get(plain) ?? plain
+  );
 };
 
 /** The longest-common-subsequence lengths of every pair of prefixes, row by row. */

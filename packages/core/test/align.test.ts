@@ -19,6 +19,43 @@ describe("normaliseWord", () => {
     assert.strictEqual(normaliseWord("moves."), "moves");
     assert.strictEqual(normaliseWord("2024"), "2024");
   });
+
+  it("compares numerals and ordinals as words, from either side", () => {
+    assert.strictEqual(normaliseWord("2"), normaliseWord("two"));
+    assert.strictEqual(normaliseWord("Two."), normaliseWord("2"));
+    assert.strictEqual(normaliseWord("1st"), normaliseWord("first"));
+    assert.strictEqual(normaliseWord("Third,"), normaliseWord("3rd"));
+  });
+});
+
+/** What whisper.cpp wrote for the Kokoro audio of "Box two has no match, so it leaves." at speed 1.1. */
+const whisper = (second: string, third: string) =>
+  heard(
+    ["Box", 240, 310],
+    [second, 310, 510],
+    [third, 510, 640],
+    ["no", 640, 800],
+    ["match", 800, 1190],
+    ["so", 1190, 1350],
+    ["it", 1350, 1510],
+    ["leaves.", 1510, 2000]
+  );
+
+describe("alignWords on the story Line that whisper mishears at speed 1.1", () => {
+  const shortLine = "Box two has no match, so it leaves.".split(" ");
+
+  it("a heard digit for a spoken number word is no miss: 2 matches two", () => {
+    const result = alignWords(shortLine, whisper("2", "has"), 2000);
+
+    assert.strictEqual(result.match, 1);
+  });
+
+  it("control: a different word ('is' for 'has') is a miss that no normalisation repairs, below the threshold", () => {
+    const result = alignWords(shortLine, whisper("2", "is"), 2000);
+
+    assert.strictEqual(result.match, (2 * 7) / 16);
+    assert.isBelow(result.match, matchThreshold);
+  });
 });
 
 describe("alignWords", () => {

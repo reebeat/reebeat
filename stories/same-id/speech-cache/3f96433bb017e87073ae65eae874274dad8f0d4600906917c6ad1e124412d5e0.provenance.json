@@ -1,14 +1,14 @@
 {
   "files": [
     {
-      "bytes": 80938,
+      "bytes": 66727,
       "name": "flac",
-      "sha256": "e5b2fb8e1f35de9aaffe12aee1e48647682db0abe8693b889d419b80f3dacbc5"
+      "sha256": "dc29892343751b17edce19a69f0447095c920b39286b635d2faca99ef5f0b4c9"
     },
     {
-      "bytes": 793,
+      "bytes": 642,
       "name": "words.json",
-      "sha256": "aac8908cb3d2e2e71cc9478944b06bb2143e91d86c8601cdd7b043145469a981"
+      "sha256": "b95ac1939d141e2e46920bcda5548b868e319e0f46e0d47d65088a5f80ca3c5f"
     }
   ],
   "provenance": {
@@ -34,11 +34,11 @@
           }
         },
         "pipeline": "speech-v2",
-        "speed": 1.1,
+        "speed": 1.05,
         "voice": "af_heart"
       },
-      "input": "Box two has no match, so it leaves the screen.",
-      "key": "47d19409ba0dc8d1981bb4c2d51f9184102e901bc8c0567638913f9e6bd99d00"
+      "input": "Box two has no match, so it leaves.",
+      "key": "3f96433bb017e87073ae65eae874274dad8f0d4600906917c6ad1e124412d5e0"
     },
     "settings": {
       "dtype": "fp32",

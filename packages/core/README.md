@@ -45,6 +45,8 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 ## Sounds that go with a transition
 
+**Interim.** The positional rule below is release 1's stopgap: spec 0002 replaces it with an explicit `transition.start` anchor written in the screenplay, and the Plan's `anchor` field then comes from that syntax.
+
 An `sfx` Cue written **before the first word of the first Line of a Scene** is anchored to that Scene's slide change
 (`Cue.anchor` is `"transition-start"` in `plan.json`; every other Cue is `"word"`). It fires at the Scene's
 `slideFrame`, the first frame of the transition, so `[[sfx: whoosh]] On the next screen, ...` sounds when the box starts

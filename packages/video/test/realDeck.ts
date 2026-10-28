@@ -10,7 +10,7 @@ import { Array as Arr, Effect, FileSystem, Layer, Path } from "effect";
 import { Browser } from "../src/browser.ts";
 import { MediaTools } from "../src/mediaTools.ts";
 import { requireTimeline } from "../src/timedPlan.ts";
-import { readLocal } from "./support.ts";
+import { locateWorkspace, readLocal, writeNarration } from "./support.ts";
 
 export const realServices = Layer.mergeAll(
   MediaTools.layer,
@@ -48,7 +48,6 @@ const realPlan = Effect.gen(function* realPlan() {
 export const makeRealWorkspace = Effect.gen(function* makeRealWorkspace() {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const tools = yield* MediaTools;
   const plan = yield* realPlan;
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-lags-" });
   const cacheDir = path.join(root, "cache");
@@ -66,32 +65,7 @@ export const makeRealWorkspace = Effect.gen(function* makeRealWorkspace() {
     );
   }
 
-  for (const line of Arr.flatMap(
-    plan.timeline.scenes,
-    (scene) => scene.lines
-  )) {
-    yield* tools.run("ffmpeg", [
-      "-hide_banner",
-      "-loglevel",
-      "error",
-      "-y",
-      "-f",
-      "lavfi",
-      "-i",
-      `anoisesrc=color=white:seed=7:amplitude=0.4:duration=${(line.endFrame - line.startFrame) / 30}:sample_rate=24000`,
-      "-ac",
-      "1",
-      "-c:a",
-      "flac",
-      path.join(cacheDir, line.audio.file),
-    ]);
-  }
+  yield* writeNarration(plan, cacheDir);
 
-  return {
-    cacheDir,
-    deckUrl: (yield* path.toFileUrl(path.join(root, "deck", "deck.html"))).href,
-    outDir: path.join(root, "out"),
-    plan,
-    root,
-  };
+  return { ...(yield* locateWorkspace(root, cacheDir)), plan };
 });

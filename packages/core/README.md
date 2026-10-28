@@ -11,7 +11,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 | Export | What it is |
 | --- | --- |
-| `buildPlan(source)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order |
+| `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Crypto` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
 | `schedule(plan, aligned)` | `Effect<PlanJson, ScheduleError>`; adds `timeline` |
 | `reviewText(plan, { timing })` | the review text, deterministic |
@@ -26,6 +26,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
   Action (`!BOX {#a}`).
 - A transition (`> AUTO-ANIMATE`, `> CUT`) stands alone, between blank lines, right before the scene heading it leads into
   (a `# Section` or `= synopsis` may stand between). A Scene needs a Section before it and at least one `NARRATOR` Line.
+- `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
 - No title: the Plan title is `Untitled`.
 
 ## Schedule arithmetic

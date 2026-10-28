@@ -1,25 +1,4 @@
 {
   "description": "Registered suppressions. Every live suppression directive (oxlint, eslint, ts-expect-error, ts-ignore, ts-nocheck) must match an entry by file and directive, and every entry needs a live suppression. An entry names its scope, reason, native alternatives examined, owner, versions and retirement trigger.",
-  "exceptions": [
-    {
-      "id": "EX-0110",
-      "nativeAlternativesExamined": [
-        "effect/Crypto (Crypto.Crypto.digest): asynchronous and a service, so buildPlan would gain a requirement and an error that spec 0001 does not give it; platform implementations live in runtime packages, not in the pure core.",
-        "Web Crypto crypto.subtle.digest through Effect.promise: needs an async arrow (promise-function-async autofix) that effecttsgo/async-function and eslint/require-await then reject, and reads ambient crypto authority (effect/no-ambient-authority).",
-        "node:crypto: a Node built-in, forbidden in packages/core (F11).",
-        "effect/Hash: a 32-bit non-cryptographic hash, not SHA-256."
-      ],
-      "owner": "packages/core",
-      "reason": "sourceSha256 is the SHA-256 of the .fountain bytes and must be computed by a total, synchronous, pure function so buildPlan keeps an empty requirement channel. SHA-256 is defined by 32-bit rotations, shifts and xor, so eslint/no-bitwise fires on every line of the compression function.",
-      "retirementTrigger": "spec 0001 (or a successor) gives the Plan stage a Crypto requirement, or Effect ships a synchronous pure digest; then src/sha256.ts is deleted and the digest comes from the Crypto service.",
-      "scope": {
-        "directives": ["oxlint-disable"],
-        "files": ["packages/core/src/sha256.ts"]
-      },
-      "versions": {
-        "effect": "4.0.6",
-        "vite-plus": "1.2.0"
-      }
-    }
-  ]
+  "exceptions": []
 }

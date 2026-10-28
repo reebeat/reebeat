@@ -1,7 +1,8 @@
 Story: Boxes and ids (Reebeat tests)
-Source: sha256 86e3e057e486c9cbabbac87f2aa501b8d39d411369bc1de1590dc51952410fee
+Source: sha256 5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e
 
 Chapter ch1  The same box  (line 7)
+  Synopsis: One box, two screens.
   Scene sc1  INT. FIRST SCREEN  (line 11, transition: default)
     Elements
         box           show    @tl .box "A box"

@@ -12,7 +12,7 @@ import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
 import type { AlignedLine } from "../src/schedule.ts";
-import { asText } from "./support.ts";
+import { asText, fixtureSha256 } from "./support.ts";
 
 const source = asText([
   "Title: Clock",
@@ -77,7 +77,7 @@ const aligned: readonly AlignedLine[] = [
   },
 ];
 
-const plan = buildPlan(source);
+const plan = buildPlan(source, fixtureSha256);
 
 const scheduled = Effect.flatMap(plan, (built) => schedule(built, aligned));
 

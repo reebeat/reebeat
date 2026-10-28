@@ -8,9 +8,11 @@ import { buildPlan } from "../src/build.ts";
 import { reviewText } from "../src/review.ts";
 import { schedule } from "../src/schedule.ts";
 import type { AlignedLine } from "../src/schedule.ts";
-import { asText, readFixture } from "./support.ts";
+import { asText, fixtureSha256, readFixture } from "./support.ts";
 
-const fixturePlan = Effect.flatMap(readFixture("boxes.fountain"), buildPlan);
+const fixturePlan = Effect.flatMap(readFixture("boxes.fountain"), (source) =>
+  buildPlan(source, fixtureSha256)
+);
 
 describe("reviewText", () => {
   it.effect("is the same text on two calls and equals the golden text", () =>
@@ -99,6 +101,15 @@ describe("reviewText", () => {
       })
   );
 
+  it.effect("shows the synopsis under its Chapter", () =>
+    Effect.gen(function* synopsis() {
+      assert.include(
+        reviewText(yield* fixturePlan),
+        "Chapter ch1  The same box  (line 7)\n  Synopsis: One box, two screens.\n"
+      );
+    })
+  );
+
   it.effect("ends with the summary line", () =>
     Effect.gen(function* summary() {
       assert.include(
@@ -139,7 +150,8 @@ describe("reviewText with timing", () => {
           "NARRATOR",
           "One two. [[sfx: pop]]",
           "",
-        ])
+        ]),
+        fixtureSha256
       );
 
       const withTimeline = yield* schedule(plan, [

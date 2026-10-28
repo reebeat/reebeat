@@ -4,6 +4,10 @@ import { NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
+/** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
+export const fixtureSha256 =
+  "5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e";
+
 /** Joins rows of a source text with newlines. */
 export const asText = (rows: readonly string[]): string => Arr.join(rows, "\n");
 

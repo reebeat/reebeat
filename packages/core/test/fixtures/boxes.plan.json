@@ -8,6 +8,7 @@
         "sc1",
         "sc2"
       ],
+      "synopsis": "One box, two screens.",
       "title": "The same box"
     },
     {
@@ -359,6 +360,6 @@
     "voice": "af_heart",
     "width": 1280
   },
-  "sourceSha256": "86e3e057e486c9cbabbac87f2aa501b8d39d411369bc1de1590dc51952410fee",
+  "sourceSha256": "5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e",
   "title": "Boxes and ids"
 }

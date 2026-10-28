@@ -6,19 +6,26 @@ import { Array as Arr, Effect, Record, Schema } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
-import { sha256OfText } from "../src/sha256.ts";
-import { readFixture } from "./support.ts";
+import { fixtureSha256, readFixture } from "./support.ts";
 
 const fixturePlan = Effect.gen(function* plan() {
-  return yield* buildPlan(yield* readFixture("boxes.fountain"));
+  return yield* buildPlan(yield* readFixture("boxes.fountain"), fixtureSha256);
 });
 
 describe("buildPlan of the fixture", () => {
   it.effect("is byte-identical on two runs", () =>
     Effect.gen(function* twice() {
       const source = yield* readFixture("boxes.fountain");
-      const first = yield* Effect.flatMap(buildPlan(source), encodePlan);
-      const second = yield* Effect.flatMap(buildPlan(source), encodePlan);
+
+      const first = yield* Effect.flatMap(
+        buildPlan(source, fixtureSha256),
+        encodePlan
+      );
+
+      const second = yield* Effect.flatMap(
+        buildPlan(source, fixtureSha256),
+        encodePlan
+      );
 
       assert.strictEqual(first, second);
     })
@@ -32,12 +39,12 @@ describe("buildPlan of the fixture", () => {
     })
   );
 
-  it.effect("carries the SHA-256 of the source and no timeline", () =>
+  it.effect("copies the given hash verbatim and has no timeline", () =>
     Effect.gen(function* header() {
       const source = yield* readFixture("boxes.fountain");
-      const plan = yield* buildPlan(source);
+      const plan = yield* buildPlan(source, "any caller-computed string");
 
-      assert.strictEqual(plan.sourceSha256, sha256OfText(source));
+      assert.strictEqual(plan.sourceSha256, "any caller-computed string");
       assert.strictEqual(plan.schema, 1);
       assert.strictEqual(plan.title, "Boxes and ids");
       assert.strictEqual(plan.author, "Reebeat tests");
@@ -79,6 +86,20 @@ describe("buildPlan of the fixture", () => {
             "sc4.l1.c1",
           ]
         );
+      })
+  );
+
+  it.effect(
+    "keeps the synopsis of a Section on its Chapter, and only there",
+    () =>
+      Effect.gen(function* synopsis() {
+        const plan = yield* fixturePlan;
+
+        assert.deepStrictEqual(
+          Arr.map(plan.chapters, (chapter) => chapter.synopsis),
+          ["One box, two screens.", undefined]
+        );
+        assert.isFalse("synopsis" in (plan.chapters[1] ?? {}));
       })
   );
 

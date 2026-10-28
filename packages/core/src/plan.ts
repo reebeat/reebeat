@@ -58,6 +58,8 @@ export const ChapterSchema = Schema.Struct({
   id: Id,
   line: SourceLine,
   sceneIds: Schema.Array(Id),
+  /** The text of the `= synopsis` lines under the Section, joined by a space; only `plan` shows it. */
+  synopsis: Schema.optionalKey(Schema.String),
   title: Schema.String,
 });
 

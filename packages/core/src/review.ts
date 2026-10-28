@@ -283,6 +283,9 @@ const chapterRows = (
 ): readonly string[] => [
   "",
   `Chapter ${chapter.id}  ${chapter.title}  (line ${chapter.line})`,
+  ...(chapter.synopsis === undefined
+    ? []
+    : [`  Synopsis: ${chapter.synopsis}`]),
   ...Arr.flatMap(plan.scenes, (scene, index) =>
     scene.chapterId === chapter.id
       ? sceneRows(

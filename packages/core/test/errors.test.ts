@@ -6,7 +6,7 @@ import { Array as Arr, Effect } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
-import { asText, lineOf } from "./support.ts";
+import { asText, fixtureSha256, lineOf } from "./support.ts";
 
 const base = asText([
   "Title: Errors",
@@ -34,7 +34,8 @@ const change = (from: string, to: string): string => {
   return base.replace(from, to);
 };
 
-const firstError = (source: string) => Effect.flip(buildPlan(source));
+const firstError = (source: string) =>
+  Effect.flip(buildPlan(source, fixtureSha256));
 
 /** What a mutation must produce: the tag, and the needle of the line that carries the mistake. */
 interface Case {
@@ -193,6 +194,12 @@ const cases: readonly Case[] = [
     name: "an Element before the first Scene",
     needle: "Orphan",
     source: change("INT. ONE\n\n", "Orphan {#o}\n\nINT. ONE\n\n"),
+    tag: "UnsupportedElement",
+  },
+  {
+    name: "a synopsis before any Section",
+    needle: "= orphan outline",
+    source: change("# Section\n\n", "= orphan outline\n\n# Section\n\n"),
     tag: "UnsupportedElement",
   },
   {

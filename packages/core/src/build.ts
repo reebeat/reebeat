@@ -7,7 +7,6 @@ import type { PlanError } from "./errors.ts";
 import { identityDiff } from "./identity.ts";
 import { parseFountain } from "./parse.ts";
 import type { Chapter, Cue, Line, PlanJson, Scene, Settings } from "./plan.ts";
-import { sha256OfText } from "./sha256.ts";
 import { adaptTokens } from "./story.ts";
 import type { LineDraft, SceneDraft, Story } from "./story.ts";
 
@@ -67,14 +66,20 @@ const buildScenes = (story: Story): readonly Scene[] =>
   });
 
 const buildChapters = (story: Story): readonly Chapter[] =>
-  Arr.map(story.chapters, (chapter, index) => ({
-    id: `ch${index + 1}`,
-    line: chapter.line,
-    sceneIds: Arr.flatMap(story.scenes, (scene, sceneIndex) =>
-      scene.chapterIndex === index ? [`sc${sceneIndex + 1}`] : []
-    ),
-    title: chapter.title,
-  }));
+  Arr.map(story.chapters, (draft, index): Chapter => {
+    const chapter: Chapter = {
+      id: `ch${index + 1}`,
+      line: draft.line,
+      sceneIds: Arr.flatMap(story.scenes, (scene, sceneIndex) =>
+        scene.chapterIndex === index ? [`sc${sceneIndex + 1}`] : []
+      ),
+      title: draft.title,
+    };
+
+    return draft.synopsis.length === 0
+      ? chapter
+      : { ...chapter, synopsis: Arr.join(draft.synopsis, " ") };
+  });
 
 const byLine = Order.mapInput(Order.Number, (found: PlanError) => found.line);
 
@@ -134,13 +139,15 @@ export const collectErrors = (source: string): readonly PlanError[] =>
 
 /**
  * Builds the Plan of a Fountain source, or fails with the first error in document order. Deterministic: the
- * same source gives the same Plan. `sourceSha256` is the SHA-256 of the UTF-8 encoding of `source`.
+ * same source and hash give the same Plan. `sourceSha256` is the SHA-256 of the `.fountain` bytes, computed by the
+ * caller (the CLI, with Effect's Crypto service) and copied verbatim into `plan.sourceSha256`: the core stays pure.
  */
-export const buildPlan = Effect.fn("buildPlan")((source: string) =>
-  Effect.fromResult(
-    Result.map(
-      Result.mapError(analyzeSource(source), Arr.headNonEmpty),
-      (story) => assemblePlan(story, sha256OfText(source))
+export const buildPlan = Effect.fn("buildPlan")(
+  (source: string, sourceSha256: string) =>
+    Effect.fromResult(
+      Result.map(
+        Result.mapError(analyzeSource(source), Arr.headNonEmpty),
+        (story) => assemblePlan(story, sourceSha256)
+      )
     )
-  )
 );

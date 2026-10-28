@@ -30,8 +30,10 @@ export interface SceneDraft {
 }
 
 interface ChapterDraft {
-  readonly title: string;
   readonly line: number;
+  /** The `= synopsis` lines under the Section, in order. */
+  readonly synopsis: string[];
+  readonly title: string;
 }
 
 export interface Story {
@@ -117,13 +119,32 @@ const titlePageToken = (state: State, token: FountainToken): void => {
 
 const sectionToken = (state: State, token: FountainToken): void => {
   if (token.depth === 1) {
-    state.chapters.push({ line: token.line, title: token.text.trim() });
+    state.chapters.push({
+      line: token.line,
+      synopsis: [],
+      title: token.text.trim(),
+    });
   } else {
     unsupported(
       state,
       token.line,
       "only a single-# Section is supported (one level of chapters)"
     );
+  }
+};
+
+const synopsisToken = (state: State, token: FountainToken): void => {
+  const chapter = state.chapters.at(-1);
+  const text = token.text.trim();
+
+  if (chapter === undefined) {
+    unsupported(
+      state,
+      token.line,
+      "a synopsis outlines a Section: put it under a # Section"
+    );
+  } else if (text !== "") {
+    chapter.synopsis.push(text);
   }
 };
 
@@ -451,8 +472,12 @@ const dispatch = (state: State, token: FountainToken): void => {
       break;
     }
 
-    case "spaces":
     case "synopsis": {
+      synopsisToken(state, token);
+      break;
+    }
+
+    case "spaces": {
       break;
     }
 

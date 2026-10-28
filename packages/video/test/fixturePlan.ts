@@ -23,6 +23,10 @@ const words = (texts: readonly string[], lineStartFrame: number) =>
     w,
   }));
 
+/** A cache file name of the Plan contract: 64 hex digits and `.flac`; `n` picks the digits. */
+export const audioFile = (n: number): string =>
+  `${n.toString(16).repeat(64)}.flac`;
+
 export const fixtureHash =
   "5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e";
 
@@ -184,7 +188,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 81,
         lines: [
           {
-            audio: { file: "sc1.l1.flac", sha256: "00" },
+            audio: { file: audioFile(1), sha256: "00" },
             cues: [
               { commandFrame: 46, cueId: "sc1.l1.c1", fireFrame: 47 },
               { commandFrame: 65, cueId: "sc1.l1.c2", fireFrame: 65 },
@@ -202,7 +206,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 156,
         lines: [
           {
-            audio: { file: "sc2.l1.flac", sha256: "01" },
+            audio: { file: audioFile(2), sha256: "01" },
             cues: [{ commandFrame: 118, cueId: "sc2.l1.c1", fireFrame: 119 }],
             endFrame: 141,
             lineId: "sc2.l1",
@@ -217,7 +221,7 @@ export const fixturePlan: PlanJson = {
         endFrame: 219,
         lines: [
           {
-            audio: { file: "sc3.l1.flac", sha256: "02" },
+            audio: { file: audioFile(3), sha256: "02" },
             cues: [],
             endFrame: 204,
             lineId: "sc3.l1",

@@ -10,7 +10,12 @@ import { frameToMs, vttTimestamp } from "../src/time.ts";
 import { requireTimeline } from "../src/timedPlan.ts";
 import type { TimedPlan } from "../src/timedPlan.ts";
 import { vtt } from "../src/vtt.ts";
-import { fixtureHash, fixturePlan, timedFixture } from "./fixturePlan.ts";
+import {
+  audioFile,
+  fixtureHash,
+  fixturePlan,
+  timedFixture,
+} from "./fixturePlan.ts";
 
 const timed = timedFixture;
 
@@ -146,19 +151,19 @@ describe("audioMixPlan", () => {
 
     assert.deepStrictEqual(inputs, [
       {
-        file: "sc1.l1.flac",
+        file: audioFile(1),
         kind: "narration",
         lineId: "sc1.l1",
         startMs: 1000,
       },
       {
-        file: "sc2.l1.flac",
+        file: audioFile(2),
         kind: "narration",
         lineId: "sc2.l1",
         startMs: 3700,
       },
       {
-        file: "sc3.l1.flac",
+        file: audioFile(3),
         kind: "narration",
         lineId: "sc3.l1",
         startMs: 6200,
@@ -389,11 +394,11 @@ describe("muxArgs", () => {
     assert.isTrue(
       has([
         "-i",
-        "/cache/sc1.l1.flac",
+        `/cache/${audioFile(1)}`,
         "-i",
-        "/cache/sc2.l1.flac",
+        `/cache/${audioFile(2)}`,
         "-i",
-        "/cache/sc3.l1.flac",
+        `/cache/${audioFile(3)}`,
         "-i",
         "/s/sfx/pop.wav",
         "-i",

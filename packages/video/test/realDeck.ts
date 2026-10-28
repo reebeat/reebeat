@@ -19,12 +19,21 @@ export const realServices = Layer.mergeAll(
 
 const wordMs = 250;
 
+/** A cache file name of the Plan contract that is unique per Line id: the hex of its characters, padded. */
+const audioFileOf = (lineId: string): string =>
+  `${Arr.join(
+    Arr.map(lineId.split(""), (char) =>
+      (char.codePointAt(0) ?? 0).toString(16)
+    ),
+    ""
+  ).padEnd(64, "0")}.flac`;
+
 const alignedLines = (
   plan: Parameters<typeof schedule>[0]
 ): readonly AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.map(scene.lines, (line) => ({
-      audio: { file: `${line.id}.flac`, sha256: `hash-${line.id}` },
+      audio: { file: audioFileOf(line.id), sha256: `hash-${line.id}` },
       durationMs: line.words.length * wordMs,
       lineId: line.id,
       words: Arr.map(line.words, (w, index) => ({

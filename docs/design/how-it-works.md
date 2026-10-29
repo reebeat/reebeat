@@ -12,7 +12,7 @@ In one sentence for a reader who does not write code: you declare the story's be
 
 | Quality | Mechanism | Status |
 | --- | --- | --- |
-| Declarative scenes and transitions | A statechart: scenes and states are the nodes, beats are the transitions. The motion between two states comes from matching the same element id in both (the identity diff) | Scenes, ids and the identity diff are real ([spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), [0002](../specs/0002-explicit-anchors-and-syntax.md)). The declared machines are built in [spec 0004](https://github.com/reebeat/reebeat/pull/17) (PR #17, open). reebeat's own transition generation is spec 0005 (being planned) |
+| Declarative scenes and transitions | A statechart: scenes and states are the nodes, and the transitions between them are generated. The motion between two states comes from matching the same element id in both (the identity diff) | Scenes, ids and the identity diff are real ([spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), [0002](../specs/0002-explicit-anchors-and-syntax.md)). The declared machines are being built in [spec 0004](https://github.com/reebeat/reebeat/pull/17) (PR #17, open). reebeat's own transition generation is being planned (spec 0005, not written yet) |
 | Accessibility | One source with meaning in it. Each artifact is a derived view of the model, so a caption track, an audio description or a reduced-motion variant is another derived view | Subtitles, speaker notes and chapters are real. The rest is roadmap ([#12](https://github.com/reebeat/reebeat/issues/12)) |
 | Reproducibility | Time is a pure function of the frame. Inputs are content-addressed. Nothing reads a wall clock | Real, measured on one machine: F6 of spec 0001 |
 | Fast, incremental rebuilds | An incremental build graph that reuses a result when its inputs have not changed, and stops early when a recomputed result is the same | Roadmap ([#9](https://github.com/reebeat/reebeat/issues/9)). Today only speech is cached |
@@ -25,7 +25,7 @@ flowchart LR
   subgraph L1["1. Model"]
     M["Statechart: scenes, states, beats<br/>FRP and SMIL time<br/>cycles are allowed"]
   end
-  subgraph L2["2. Plan, one per artifact"]
+  subgraph L2["2. Plan (one today; one per artifact is the design)"]
     P1["Video: a linear timeline"]
     P2["Deck: steps"]
     P3["Website: a navigable graph"]
@@ -48,21 +48,21 @@ Each layer has one job.
 
 The Model says what the story is. It has two parts.
 
-**Structure is a statechart.** Harel's statecharts add nesting and parallel regions to state machines ([Harel, 1987](https://doi.org/10.1016/0167-6423(87)90035-9)). A parent state holds child states, and only one child is active at a time ([XState: parent states](https://stately.ai/docs/parent-states)). A parallel state has regions that are all active at once ([XState: parallel states](https://stately.ai/docs/parallel-states)). reebeat uses both: a Scene is a parent state, and each Element has parallel regions for its presence, its position and its style ([design R5](keyframe-engine.md), spec 0004). The Model may contain cycles, for example an interactive loop or a repeat. This is why the Model is not called a DAG.
+**Structure is a statechart.** Harel's statecharts add nesting and parallel regions to state machines ([Harel, 1987](https://doi.org/10.1016/0167-6423(87)90035-9)). A parent state holds child states, and only one child is active at a time ([XState: parent states](https://stately.ai/docs/parent-states)). A parallel state has regions that are all active at once ([XState: parallel states](https://stately.ai/docs/parallel-states)). reebeat uses both: a Scene is a parent state, and each Element has parallel regions for its presence, its position and its style. This is the design of [spec 0004](https://github.com/reebeat/reebeat/pull/17), which is in review and not yet on `main`. A statechart may contain cycles, for example an interactive loop or a repeat. This is why only the build graph is called a DAG.
 
-**Time is functional reactive.** Two ideas come from functional reactive animation: behaviours are time-varying values, and events are sets of conditions ([Elliott and Hudak, 1997](https://conal.net/papers/icfp97/)). The paper gives both a denotational semantics, with a proper treatment of real time (same source). SMIL 3.0 gives the timing vocabulary. Its `par`, `seq` and `excl` containers play children in parallel, in order, or one at a time. Its `begin` and `dur` attributes, and events such as a mouse click, decide when things start. Its `endsync="last"` lets a container last as long as its last child ([SMIL 3.0 timing](https://www.w3.org/TR/SMIL3/smil-timing.html)). reebeat's `last`, `first`, `each` and `until` follow these meanings, and the progress of a transition is a behaviour ([design R5](keyframe-engine.md)).
+**Time is functional reactive.** Two ideas come from functional reactive animation: behaviours are time-varying values, and events are sets of conditions ([Elliott and Hudak, 1997](https://conal.net/papers/icfp97/)). The paper gives both a denotational semantics, with a proper treatment of real time (same source). SMIL 3.0 gives the timing vocabulary. Its `par`, `seq` and `excl` containers play children in parallel, in order, or one at a time. Its `begin` and `dur` attributes, and events such as a mouse click, decide when things start. Its `endsync="last"` lets a container last as long as its last child ([SMIL 3.0 timing](https://www.w3.org/TR/SMIL3/smil-timing.html)). In [spec 0004](https://github.com/reebeat/reebeat/pull/17), reebeat's `last`, `first`, `each` and `until` follow these meanings, and the progress of a transition is a behaviour.
 
 reebeat owns its schema: a JSON format, defined with Effect Schema, that holds a chosen subset of the SMIL, SCXML and FRP constructs. [Spec 0007](../specs/0007-scxml-persistent-ir-spike.md) records the choice. SCXML stays an artifact format and is not the stored form.
 
-### 2. The Plan: one unrolling per artifact
+### 2. The Plan
 
-A Plan is what a reviewer reads before anything is rendered (`reebeat plan`). The Plan unrolls the Model for one artifact:
+A Plan is what a reviewer reads before anything is rendered (`reebeat plan`). The design is that the Plan unrolls the Model for one artifact:
 
 - For a **Video** the Plan is a linear timeline. Every effect has a frame.
 - For a **Deck** the Plan is a list of steps, one per slide or fragment.
 - For a **website** the Plan is a graph that the viewer navigates. This artifact is roadmap ([#19](https://github.com/reebeat/reebeat/issues/19)).
 
-The first two exist today. The third needs the cycles that the Model allows, which is why it comes after the work on the Model.
+**Today there is one Plan.** The build program derives one Plan from the story and schedules it into one Timeline. The Deck and the Video are both rendered from that result (`packages/pipeline/src/buildProgram.ts`). A Plan that differs per artifact is roadmap, and it comes with the website, because a viewer-driven graph needs the cycles that the Model allows.
 
 ### 3. The Build: an incremental DAG
 
@@ -101,7 +101,7 @@ An interaction is another element that can trigger events. What differs is when 
 
 This is the direction decided by the operator on 2026-10-29. Only the Video and the Deck exist. The website is roadmap ([#19](https://github.com/reebeat/reebeat/issues/19)).
 
-## Prior art, and what is new
+## Prior art, and the novelty claim
 
 | Idea | Source | What reebeat takes |
 | --- | --- | --- |
@@ -114,7 +114,7 @@ This is the direction decided by the operator on 2026-10-29. Only the Video and 
 | Typed services and schemas | [Effect](https://effect.website/docs/v4/onboarding) | The program language |
 | Matching by identity | [Keynote, PowerPoint, reveal.js](positioning.md#prior-art-for-the-identity-diff) | Motion from the same element in two states |
 
-**The novelty claim is small and exact.** Each part is prior art. The combination, applied to multimedia, is new. The build engine may be designed in a generic way, but reebeat claims it only for multimedia, until it is proven elsewhere.
+**The novelty claim is small and exact.** Each part is prior art. The combination, applied to multimedia, is new among the tools compared in [positioning.md](positioning.md). No wider search was made. The build engine may be designed in a generic way, but reebeat claims it only for multimedia, until it is proven elsewhere.
 
 ## Considered and rejected: React's core as the compiler
 
@@ -143,7 +143,7 @@ React's reconciler and scheduler were considered as the core of the compiler. Th
 | Seven services with contracts and offline stand-ins; Effect Schema for the manifest | Real | [AGENTS.md](../../AGENTS.md) |
 | Declared machines, the IR, the timing combinators | Built on a branch, in review | [spec 0004](https://github.com/reebeat/reebeat/pull/17) (PR #17) |
 | Verdict on the persistent format, and the construct catalogue | Written | [spec 0007](../specs/0007-scxml-persistent-ir-spike.md) |
-| reebeat's own transitions, curves, a closed expression language | Being planned | spec 0005 |
+| reebeat's own transitions, curves, a closed expression language | Being planned (not written yet) | spec 0005 |
 | XState as the build-time interpreter | Recommended, not a dependency | spec 0007 |
 | Extension architecture (adapters and plugins) | Being written | spec 0012 (in progress) |
 | Incremental build graph with early cutoff and persistent traces | Roadmap | [#9](https://github.com/reebeat/reebeat/issues/9) |
@@ -162,7 +162,7 @@ All were read on 2026-10-29.
 - [SMIL 3.0 Timing and Synchronization](https://www.w3.org/TR/SMIL3/smil-timing.html), W3C.
 - Elliott, C. and Hudak, P. (1997). Functional reactive animation. ICFP. [Author's page](https://conal.net/papers/icfp97/); [ACM](https://dl.acm.org/doi/10.1145/258948.258973).
 - Mokhov, A., Mitchell, N. and Peyton Jones, S. (2018). Build Systems à la Carte. *Proc. ACM Program. Lang.* 2 (ICFP), article 79. DOI [10.1145/3236774](https://doi.org/10.1145/3236774); [PDF](https://www.microsoft.com/en-us/research/wp-content/uploads/2018/03/build-systems.pdf).
-- Salsa: [overview](https://salsa-rs.github.io/salsa/overview.html), [algorithm](https://salsa-rs.github.io/salsa/reference/algorithm.html).
+- Salsa: [home](https://salsa-rs.github.io/salsa/), [overview](https://salsa-rs.github.io/salsa/overview.html), [algorithm](https://salsa-rs.github.io/salsa/reference/algorithm.html).
 - XState: [docs](https://stately.ai/docs), [machines](https://stately.ai/docs/machines), [parent states](https://stately.ai/docs/parent-states), [parallel states](https://stately.ai/docs/parallel-states).
 - Effect: [onboarding](https://effect.website/docs/v4/onboarding), [services](https://effect.website/docs/v4/requirements-management/services), [scope](https://effect.website/docs/v3/resource-management/scope), [Schema](https://effect.website/docs/v4/schema/introduction).
 - React: [rendering lists](https://react.dev/learn/rendering-lists), [keeping components pure](https://react.dev/learn/keeping-components-pure), [react-reconciler](https://github.com/facebook/react/tree/main/packages/react-reconciler), [scheduler](https://github.com/facebook/react/tree/main/packages/scheduler).

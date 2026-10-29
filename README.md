@@ -15,7 +15,7 @@ That is the goal. The code does not do all of it yet. This table says what is re
 | One source gives a Video and a Deck | Real today ([spec 0001](docs/specs/0001-release-1-screenplay-to-deck-and-video.md)) |
 | Byte-identical builds | Real today, measured on one machine (F6 of spec 0001) |
 | Declared scenes, ids and effects with explicit anchors | Real today ([spec 0002](docs/specs/0002-explicit-anchors-and-syntax.md)) |
-| Transitions between scenes | Today reveal.js Auto-Animate draws them, matched by Element id. reebeat's own generation is being built (specs 0004 and 0005) |
+| Transitions between scenes | Real today with reveal.js Auto-Animate, matched by Element id. reebeat's own generation is being planned (spec 0005) |
 | Timing as events and behaviours (the FRP part) | Being built ([spec 0004](https://github.com/reebeat/reebeat/pull/17)) |
 | An edit rebuilds only what changed | Roadmap ([#9](https://github.com/reebeat/reebeat/issues/9)); today only speech is cached |
 | Captions with sound descriptions, audio description, reduced motion | Roadmap ([#12](https://github.com/reebeat/reebeat/issues/12)); today subtitles, speaker notes and chapter marks |

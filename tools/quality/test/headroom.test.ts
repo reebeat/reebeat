@@ -43,14 +43,18 @@ const headroom = Effect.fn("headroom")(function* headroom(
   return yield* spawner.string(
     ChildProcess.make(
       "bash",
-      ["-c", 'out=$("$0" 2>&1); printf "%s\\n%s" "$?" "$out"', script],
+      [
+        "-c",
+        'if [ -n "$AFTER_VMSTAT" ]; then (sleep 0.3; printf "%s\\n" "$AFTER_VMSTAT" >"$REEBEAT_VERIFY_PROC_ROOT/vmstat") & fi; out=$("$0" 2>&1); code=$?; wait; printf "%s\\n%s" "$code" "$out"',
+        script,
+      ],
       {
         env: {
           REEBEAT_VERIFY_DEMAND_MIB: "1024",
           REEBEAT_VERIFY_NPROC: "8",
           REEBEAT_VERIFY_PROC_ROOT: path.join(dir, "proc"),
           REEBEAT_VERIFY_ROOT: path.join(dir, "evidence"),
-          REEBEAT_VERIFY_SAMPLE_SECONDS: "0",
+          REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.1",
           ...env,
         },
         extendEnv: true,
@@ -162,6 +166,87 @@ describe("headroom.sh reads before it admits", () => {
           short.length === 1 &&
             Str.includes("CPU thread count is unreadable")(short[0] ?? "")
         );
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+  );
+
+  it.effect(
+    "negative control: swap-in over its limit, backwards, or unreadable at the end of the sample is SHORT",
+    () =>
+      Effect.gen(function* swapIn() {
+        // The fake vmstat reads `pswpin 100` at the start; the injected file replaces it 0.3 s into a 0.6 s sample.
+        const cases: readonly (readonly [string, string, string])[] = [
+          [
+            "over the limit",
+            "pswpin 1300",
+            "swap-in is 2000 pages/s, not under 1,000",
+          ],
+          [
+            "backwards",
+            "pswpin 50",
+            "swap-in counter went backwards (100 to 50)",
+          ],
+          [
+            "empty at the end",
+            "pswpin",
+            'swap-in sample (pswpin) after is unreadable (got "")',
+          ],
+        ];
+
+        for (const [name, after, reason] of cases) {
+          const { code, short } = verdict(
+            yield* headroom(
+              {},
+              { AFTER_VMSTAT: after, REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.6" }
+            )
+          );
+
+          assert.deepStrictEqual(
+            [name, code, short],
+            [name, "1", [`headroom SHORT: ${reason}`]]
+          );
+        }
+
+        const under = verdict(
+          yield* headroom(
+            {},
+            {
+              AFTER_VMSTAT: "pswpin 400",
+              REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.6",
+            }
+          )
+        );
+
+        assert.deepStrictEqual([under.code, under.short], ["0", []]);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    20_000
+  );
+
+  it.effect(
+    "negative control: a sample window outside 10 to 30 s is refused, not admitted",
+    () =>
+      Effect.gen(function* window() {
+        for (const seconds of ["0", "5", "31", "abc"]) {
+          const { code, short } = verdict(
+            yield* headroom(
+              {},
+              {
+                REEBEAT_VERIFY_SAMPLE_SECONDS: seconds,
+                REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "",
+              }
+            )
+          );
+
+          assert.deepStrictEqual(
+            [seconds, code, short],
+            [
+              seconds,
+              "1",
+              [
+                `headroom SHORT: the swap-in sample window is "${seconds}" s, not a whole number from 10 to 30`,
+              ],
+            ]
+          );
+        }
       }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 

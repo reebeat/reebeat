@@ -42,10 +42,17 @@ speech=($flags)
 build=$run/build/$name
 steps=()
 
+# Every step runs in its own session (setsid) so that its pid is also its process group, and `<run>/pids.txt` records
+# "<pid> <start time>" for it: cleanup.sh stops exactly those groups (Chromium included) and nothing it merely finds by name.
 step() { # step <name> <command...>: writes <run>/<name>.txt, "$ command" first, then the raw output
   local n=$1; shift
   local started; started=$(date +%s)
-  { echo "\$ $*"; "$@"; } >"$run/$n.txt" 2>&1 && code=0 || code=$?
+  echo "\$ $*" >"$run/$n.txt"
+  setsid "$@" >>"$run/$n.txt" 2>&1 &
+  local pid=$! begun
+  begun=$(awk '{ print $22 }' "/proc/$pid/stat" 2>/dev/null || true)
+  [ -z "$begun" ] || echo "$pid $begun" >>"$run/pids.txt"
+  wait "$pid" && code=0 || code=$?
   steps+=("$n|$code|$(( $(date +%s) - started ))|$*")
   echo "step $n: exit $code ($(( $(date +%s) - started )) s) -> $run/$n.txt"
 }

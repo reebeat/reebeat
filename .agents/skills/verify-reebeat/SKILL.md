@@ -80,7 +80,7 @@ The run directory is `~/.local/state/reebeat-verify/<date>-<label>/` (`REEBEAT_V
 .agents/skills/verify-reebeat/scripts/cleanup.sh ~/.local/state/reebeat-verify/<date>-<label> [--worktree <path>]
 ```
 
-It stops Chromium processes started on the run directory, removes `*.partial` builds, and with `--worktree` removes the detached review worktree if it is clean. The run directory and its REPORT.md stay; it prints what is kept. Safe to run twice. Delete a run directory only after its numbers are in the PR or the review record.
+It stops only the process groups that `run.sh` started: each step runs in its own session and `<run>/pids.txt` records its pid and start time (a live process with another start time is a reused pid and is left alone). Chromium belongs to those groups. It never searches for processes by name or pattern (`pgrep -f`, `pkill`, `killall`): it once would have killed unrelated shells, and `tools/quality/test/cleanup.test.ts` shows an unrelated lookalike surviving. It also removes `*.partial` builds, and with `--worktree` removes the detached review worktree if it is clean. The run directory and its REPORT.md stay; it prints what is kept. Safe to run twice. Delete a run directory only after its numbers are in the PR or the review record.
 
 ## Keep this skill true
 

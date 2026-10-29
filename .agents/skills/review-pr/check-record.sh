@@ -29,8 +29,9 @@ done
 
 if [ "$verdict" = pass ]; then
   for part in plan implementation agreement; do
-    norm "$checked" | grep -qx "$part" || refuse "a pass must check $part"
+    norm "$checked" | grep -qxF -e "$part" || refuse "a pass must check $part"
   done
-  norm "$reviewers" | grep -qx "$(norm "$author")" && refuse "the author ($author) is among the reviewers: not independent"
+  # Names are compared literally (-F): a name such as claude[bot] or a.b is text, never a pattern.
+  norm "$reviewers" | grep -qxF -e "$(norm "$author")" && refuse "the author ($author) is among the reviewers: not independent"
 fi
 exit 0

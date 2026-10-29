@@ -2,13 +2,13 @@
 # headroom.sh: read the machine before a heavy job (a build captures 1,664 frames in Chromium and runs ffmpeg).
 # Launch only if all four hold (operator limits of 2026-10-29), else exit 1 and say which is short:
 #   1. MemAvailable after the job's expected demand is at least 20% of total RAM;
-#   2. swap-in (pswpin change in /proc/vmstat over a sample, 10 s) is under 1,000 pages per second;
+#   2. swap-in (pswpin change in /proc/vmstat over a 10 to 30 s sample) is under 1,000 pages per second;
 #   3. memory PSI `full` avg60 is under 10% (never gated on avg10);
 #   4. the load average (1 minute) is under the number of CPU threads.
 # A reading that is missing or not a number is SHORT, with the reason: a gate never passes on a sample it could not read.
 # Knobs: REEBEAT_VERIFY_DEMAND_MIB (default 4096: an assumption, set it from a measured run), REEBEAT_VERIFY_FORCE=1 (print the
-# shortage and continue), and for tests REEBEAT_VERIFY_PROC_ROOT (default /proc), REEBEAT_VERIFY_SAMPLE_SECONDS (default 10),
-# REEBEAT_VERIFY_NPROC. I/O pressure is printed, never gated.
+# shortage and continue), and for tests REEBEAT_VERIFY_PROC_ROOT (default /proc), REEBEAT_VERIFY_SAMPLE_SECONDS (10 to 30, default 10),
+# REEBEAT_VERIFY_NPROC, REEBEAT_VERIFY_TEST_SAMPLE_SECONDS. I/O pressure is printed, never gated.
 set -euo pipefail
 
 proc=${REEBEAT_VERIFY_PROC_ROOT:-/proc}
@@ -31,9 +31,21 @@ meminfo() { awk -v k="$1:" '$1 == k { print $2 }' "$proc/meminfo" 2>/dev/null ||
 firstfield() { cut -d' ' -f1 "$proc/loadavg" 2>/dev/null || true; }
 freedisk() { df --output=avail -BM "$root" 2>/dev/null | tail -1 | tr -dc '0-9' || true; }
 
-b=$(pswpin); sleep "$sample"; a=$(pswpin)
-take before "$b" "swap-in sample (pswpin) before"
-take after "$a" "swap-in sample (pswpin) after"
+# The swap-in sample is a 10 to 30 s window (a shorter one is noise, a longer one stalls the job). Anything else is SHORT, not
+# admitted. REEBEAT_VERIFY_TEST_SAMPLE_SECONDS is for the tests only: any positive number replaces the window.
+if [ -n "${REEBEAT_VERIFY_TEST_SAMPLE_SECONDS:-}" ]; then
+  if [[ "$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS" =~ $number ]] && awk -v s="$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS" 'BEGIN { exit !(s > 0) }'; then sample=$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS; else short+=("the test sample window \"$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS\" is not a positive number"); sample=""; fi
+elif ! [[ "$sample" =~ ^[0-9]+$ ]] || [ "$sample" -lt 10 ] || [ "$sample" -gt 30 ]; then
+  short+=("the swap-in sample window is \"$sample\" s, not a whole number from 10 to 30")
+  sample=""
+fi
+if [ -n "$sample" ]; then b=$(pswpin); sleep "$sample"; a=$(pswpin); else b=""; a=""; fi
+if [ -n "$sample" ]; then
+  take before "$b" "swap-in sample (pswpin) before"
+  take after "$a" "swap-in sample (pswpin) after"
+else
+  before=""; after=""
+fi
 take full60 "$(psi full avg60 memory)" "memory PSI full avg60"
 take total_kib "$(meminfo MemTotal)" "MemTotal"
 take avail_kib "$(meminfo MemAvailable)" "MemAvailable"
@@ -44,14 +56,14 @@ some10=$(psi some avg10 memory); io10=$(psi some avg10 io)
 
 echo "headroom: memory PSI full avg60=${full60:-?}; load1=${load1:-?} on ${cpus:-?} CPU threads; (memory some avg10=${some10:-?}, io some avg10=${io10:-?}: printed, not gated)"
 
-if [ -n "$before" ] && [ -n "$after" ]; then
+if [ -n "$before" ] && [ -n "$after" ] && [ -n "$sample" ]; then
   # A counter that goes backwards is a different machine state, not a negative rate: refuse it.
   if [ "${after%.*}" -lt "${before%.*}" ]; then
     short+=("swap-in counter went backwards ($before to $after)")
   else
-    swapin_rate=$(( (${after%.*} - ${before%.*}) / (sample > 0 ? sample : 1) ))
+    swapin_rate=$(awk -v d="$(( ${after%.*} - ${before%.*} ))" -v s="$sample" 'BEGIN { printf "%.0f", d / s }')
     echo "headroom: swap-in ${swapin_rate} pages/s over ${sample} s"
-    [ "$swapin_rate" -lt 1000 ] || short+=("swap-in is $swapin_rate pages/s, not under 1,000")
+    if awk -v r="$swapin_rate" 'BEGIN { exit !(r >= 1000) }'; then short+=("swap-in is $swapin_rate pages/s, not under 1,000"); fi
   fi
 fi
 if [ -n "$total_kib" ] && [ -n "$avail_kib" ]; then

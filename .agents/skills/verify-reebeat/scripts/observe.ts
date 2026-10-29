@@ -269,7 +269,7 @@ const onsets = async (): Promise<void> => {
     )[0];
 
     const delta = nearest === undefined ? Number.NaN : nearest - want.frame;
-    const ok = Math.abs(delta) <= 2;
+    const ok = Math.abs(delta) <= 1; // the map's "broken" threshold: an offset above 1 frame
     say(
       `${ok ? "ok  " : "FAIL"} ${want.what} ${want.label}: expected ${want.frame.toFixed(2)}, nearest onset ${nearest?.toFixed(2) ?? "none"} (${delta.toFixed(2)})`
     );

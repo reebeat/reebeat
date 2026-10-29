@@ -63,6 +63,25 @@ describe("the header of a review record", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 
+  it.effect(
+    "names are compared literally: claude[bot] reviewing its own pass is refused; a.b and axb are two people",
+    () =>
+      Effect.gen(function* literal() {
+        assert.strictEqual(
+          yield* outcome(
+            "pass",
+            body(["Author: claude[bot]", "Reviewers: claude[bot]", all])
+          ),
+          `${refused}the author (claude[bot]) is among the reviewers: not independent`
+        );
+
+        assert.strictEqual(
+          yield* outcome("pass", body(["Author: a.b", "Reviewers: axb", all])),
+          "0:"
+        );
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+  );
+
   it.effect("a record that asks for changes may come from anyone", () =>
     Effect.gen(function* changes() {
       assert.strictEqual(

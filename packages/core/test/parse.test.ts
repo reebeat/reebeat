@@ -130,7 +130,15 @@ describe("parseFountain: token fidelity", () => {
 });
 
 describe("the five unsupported constructs are flagged on their line", () => {
-  const head = ["# Part", "", "INT. ROOM", "", "Box {#a}", ""];
+  const head = [
+    "# Part",
+    "",
+    "INT. ROOM #room#",
+    "",
+    "Box {id=a cell=mc class=box}",
+    "",
+  ];
+
   const tail = ["", "NARRATOR", "Hello."];
 
   it.each([
@@ -172,8 +180,17 @@ const chunks: readonly Chunk[] = [
   { lines: ["= An outline"], tokens: [["synopsis", "An outline", 0]] },
   { lines: ["INT. ROOM"], tokens: [["scene_heading", "INT. ROOM", 0]] },
   {
-    lines: ["Box {#a @tl .box}", "Other {#b hidden}"],
-    tokens: [["action", "Box {#a @tl .box}\nOther {#b hidden}", 0]],
+    lines: [
+      "Box {id=a cell=tl class=box}",
+      "Other {id=b cell=mc class=box visible=false}",
+    ],
+    tokens: [
+      [
+        "action",
+        "Box {id=a cell=tl class=box}\nOther {id=b cell=mc class=box visible=false}",
+        0,
+      ],
+    ],
   },
   {
     lines: ["NARRATOR", "(slowly)", "Hello [[next]] there.", "Second line."],

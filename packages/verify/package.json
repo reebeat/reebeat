@@ -1,0 +1,34 @@
+{
+  "name": "@reebeat/verify",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bunx vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@reebeat/core": "workspace:*",
+    "@reebeat/encode-ffmpeg": "workspace:*",
+    "@reebeat/lint": "workspace:*",
+    "@reebeat/pipeline": "workspace:*",
+    "@reebeat/render-reveal": "workspace:*",
+    "@reebeat/services": "workspace:*",
+    "@reebeat/sounds-synth": "workspace:*",
+    "@reebeat/subtitles": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@reebeat/cache-fs": "workspace:*",
+    "@reebeat/capture-chromium": "workspace:*",
+    "@types/node": "catalog:",
+    "oxc-parser": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

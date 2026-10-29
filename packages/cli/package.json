@@ -1,0 +1,35 @@
+{
+  "name": "@reebeat/cli",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "reebeat": "./bin/reebeat.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "bunx vp test",
+    "check": "vp check",
+    "test:live": "REEBEAT_LIVE=1 bunx vp test --config vite.live.config.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@reebeat/align-whisper": "workspace:*",
+    "@reebeat/cache-fs": "workspace:*",
+    "@reebeat/capture-chromium": "workspace:*",
+    "@reebeat/core": "workspace:*",
+    "@reebeat/encode-ffmpeg": "workspace:*",
+    "@reebeat/pipeline": "workspace:*",
+    "@reebeat/render-reveal": "workspace:*",
+    "@reebeat/services": "workspace:*",
+    "@reebeat/sounds-synth": "workspace:*",
+    "@reebeat/speech-kokoro": "workspace:*",
+    "@reebeat/verify": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

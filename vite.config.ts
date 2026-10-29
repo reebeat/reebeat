@@ -23,6 +23,106 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      files: ["packages/cli/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The composition root of the CLI: the executable, which provides the platform and runs the commands.
+      files: ["packages/cli/bin/**"],
+      platform: "node",
+      role: "composition-root",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/core/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // Adapters (design R3): a Layer over a service, on an outside runtime. Each is its own package.
+      files: [
+        "packages/cache-fs/src/**",
+        "packages/align-whisper/src/**",
+        "packages/encode-ffmpeg/src/**",
+      ],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      // The one module that imports kokoro-js: a Promise-returning foreign ABI (see its header).
+      adapterDependencies: ["@huggingface/transformers", "kokoro-js"],
+      files: ["packages/speech-kokoro/src/**"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      // The build program over services only: no outside runtime.
+      files: ["packages/pipeline/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The reveal.js Renderer reads the installed packages' files, so its platform is node.
+      files: ["packages/render-reveal/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The synthesised SoundLibrary: pure waveforms behind one Layer.
+      files: ["packages/sounds-synth/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // Libraries (design R3): pure functions over the Plan, no service and no runtime.
+      files: ["packages/subtitles/src/**", "packages/lint/src/**"],
+      platform: "portable",
+      role: "pure-library",
+      strictness: "strict",
+    },
+    {
+      // The Chromium FrameCapturer: the Layer, the capture and the schedule; the one Playwright module is below.
+      files: ["packages/capture-chromium/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The one module that imports Playwright (spec 0001, "The controlled clock").
+      adapterDependencies: ["playwright-core"],
+      files: ["packages/capture-chromium/src/browser.ts"],
+      platform: "node",
+      role: "runtime-adapter",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/verify/src/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      files: ["packages/services/src/**", "packages/services/standins/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The contract suites register vitest tests; every adapter package imports them.
+      files: ["packages/services/contract/**"],
+      platform: "node",
+      role: "test",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -65,7 +165,14 @@ export default defineConfig({
   // Prose is written by hand: Oxfmt re-wraps Markdown and joins hard line breaks (GLOSSARY.md entries), which changes meaning.
   fmt: {
     ...ultraciteFmt,
-    ignorePatterns: [...(ultraciteFmt.ignorePatterns ?? []), "**/*.md"],
+    // Golden fixtures are compared byte for byte with generated output; a formatter must not rewrite them.
+    ignorePatterns: [
+      ...(ultraciteFmt.ignorePatterns ?? []),
+      "**/*.md",
+      "packages/*/test/fixtures/**",
+      // The speech cache is written by `@reebeat/cache-fs` in its own JSON layout.
+      "stories/*/speech-cache/**",
+    ],
   },
   lint: {
     extends: [core, antiSlop, strict, effectNative],
@@ -88,8 +195,133 @@ export default defineConfig({
       ...effectConfigResult.overrides,
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
-        files: ["tools/quality/effectExceptions.ts"],
+        files: [
+          "tools/quality/checkTiers.ts",
+          "tools/quality/effectExceptions.ts",
+        ],
         rules: { "unicorn/throw-new-error": "off" },
+      },
+      {
+        // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
+        // One file holds every tagged error of a stage (a closed set that reads as one table).
+        files: [
+          "packages/cli/src/errors.ts",
+          "packages/core/src/errors.ts",
+          "packages/capture-chromium/src/errors.ts",
+          "packages/encode-ffmpeg/src/errors.ts",
+          "packages/pipeline/src/errors.ts",
+          "packages/render-reveal/src/errors.ts",
+          "packages/services/src/errors.ts",
+          "packages/verify/src/errors.ts",
+        ],
+        rules: {
+          "eslint/max-classes-per-file": "off",
+          "unicorn/throw-new-error": "off",
+        },
+      },
+      {
+        // The public entry of a package re-exports its modules; that is the file's only job.
+        files: [
+          "packages/*/src/index.ts",
+          "packages/services/contract/index.ts",
+          "packages/services/standins/index.ts",
+        ],
+        rules: { "oxc/no-barrel-file": "off" },
+      },
+      {
+        // F11 (spec 0001): the core is pure. It imports no browser, Playwright, ffmpeg, reveal.js, UI runtime or Node
+        // built-in. Bare Node built-ins are flagged by effecttsgo/node-builtin-import; `node:` specifiers are here.
+        files: ["packages/core/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/core is pure (spec 0001, F11): no browser, Playwright, ffmpeg, reveal.js, React, Remotion or Node built-in.",
+                  regex:
+                    "^(?:node:|playwright|reveal\\.js|react(?:-dom)?(?:/|$)|remotion|@remotion/|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // Tier rule (design R3): a service imports libraries only, never an adapter or another tier.
+        files: [
+          "packages/services/src/**",
+          "packages/services/contract/**",
+          "packages/services/standins/**",
+        ],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/services imports libraries only (design R3): core, subtitles and lint.",
+                  regex:
+                    "^@reebeat/(?!(?:core|subtitles|lint|services)(?:/|$))",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // F11 (spec 0001): the Deck reads the Plan, never the screenplay. It takes the core's types only and imports
+        // no parser, Playwright or ffmpeg wrapper.
+        files: ["packages/render-reveal/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              paths: [
+                {
+                  allowTypeImports: true,
+                  message:
+                    "packages/render-reveal takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
+                  name: "@reebeat/core",
+                },
+              ],
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/render-reveal imports no parser, Playwright or ffmpeg wrapper (spec 0001, F11).",
+                  regex:
+                    "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // The verify package reads the Plan through the core's `buildPlan`: it never imports the parser itself, and it
+        // drives no browser (spec 0001).
+        files: ["packages/verify/src/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/verify uses the core's buildPlan, never the parser, and drives no browser or ffmpeg wrapper.",
+                  regex:
+                    "^(?:node:|fountain-js|playwright|fluent-ffmpeg|@ffmpeg/)",
+                },
+              ],
+            },
+          ],
+        },
       },
     ],
     rules: {

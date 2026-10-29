@@ -1,0 +1,56 @@
+{
+  "durationMs": 3175,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 270,
+      "startMs": 160,
+      "w": "So"
+    },
+    {
+      "endMs": 520,
+      "startMs": 270,
+      "w": "keep"
+    },
+    {
+      "endMs": 720,
+      "startMs": 520,
+      "w": "the"
+    },
+    {
+      "endMs": 1040,
+      "startMs": 720,
+      "w": "name,"
+    },
+    {
+      "endMs": 1330,
+      "startMs": 1040,
+      "w": "and"
+    },
+    {
+      "endMs": 1520,
+      "startMs": 1330,
+      "w": "the"
+    },
+    {
+      "endMs": 1990,
+      "startMs": 1520,
+      "w": "motion"
+    },
+    {
+      "endMs": 2490,
+      "startMs": 1990,
+      "w": "comes"
+    },
+    {
+      "endMs": 2640,
+      "startMs": 2490,
+      "w": "for"
+    },
+    {
+      "endMs": 3000,
+      "startMs": 2640,
+      "w": "free."
+    }
+  ]
+}

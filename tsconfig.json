@@ -8,10 +8,15 @@
           "@effect/platform-node/NodeRuntime",
           "@effect/platform-node/NodeServices",
           "@effect/vitest",
+          "effect/Crypto",
+          "effect/cli",
           "effect/FileSystem",
+          "effect/PlatformError",
           "effect/Path",
           "effect/process/ChildProcess",
-          "effect/process/ChildProcessSpawner"
+          "effect/process/ChildProcessSpawner",
+          "effect/Stdio",
+          "effect/testing/TestConsole"
         ],
         "diagnosticSeverity": {
           "abortControllerInEffect": "error",

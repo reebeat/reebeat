@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 95149,
+      "name": "flac",
+      "sha256": "9ec5df4ccbe996d7866cd99dd180dc7c9a449d59af0422070597f9206f0f27c2"
+    },
+    {
+      "bytes": 1084,
+      "name": "words.json",
+      "sha256": "32008bdeba94be385c299b01115b503182a3748350bc11c80e993490efaba6cb"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1.1,
+        "voice": "af_heart"
+      },
+      "input": "A name we have not seen before is a new box, so it appears.",
+      "key": "46128c54de1e6589697732f71d033ff9a8f57c0a59197a5bfa4b2e23b0b42687"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

@@ -12,6 +12,10 @@ authoritative and line numbers are approximate.
 > in `GLOSSARY.md`); the technical content is unchanged. File and line references such as `src/core/types.ts:57`
 > point into the legacy pipeline of that private repository at the commit above, not into this repository. Edit this
 > copy, never the original. Dated revisions to this design are listed in the section "Revisions" at the end.
+>
+> **Revision R1 (2026-10-28) supersedes every statement below that the core is "plain TypeScript" or "plain-TS".**
+> The core may use Effect v4 for services, errors, resources and the render pipeline; frame math stays plain functions.
+> The core still imports no `react`, `remotion`, `@remotion/*`, DOM global or Node built-in (P10 holds). See "Revisions".
 
 **reebeat** is the working name of the tool this document designs (like "ribbit"; frog mascot). A **Story**, declared as Beats of Keyframes, goes in. A compiler turns it into a **Plan** (what enters, exits, updates or is replaced, per Beat) and then a **Timeline**, and a pure `frameState(story, frame)` plus thin adapters produce **Renderings**: a Video now, a Deck later. The core is plain TypeScript; renderers are adapters (section 3.0).
 
@@ -1161,4 +1165,79 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 ## Revisions
 
-None yet. Each revision is a dated entry: what changed, why, who decided.
+### R1 (2026-10-28): the core may use Effect v4
+
+**Decided by:** the operator, 2026-10-28. **Supersedes:** section 0 row "Where is the core?" and row "What is it?", section 3.0 first paragraph, section 4.1 diagram heading and section 10 items 8 and 12, wherever they say "plain TypeScript". Section 10 items 8 and 12 keep their import prohibitions.
+
+**What changed.** The first design chose a plain-TypeScript core with no runtime library so that the exit to another renderer (HyperFrames, a Deck) stays cheap. The operator's house default is TypeScript 7, Bun and Effect v4, and the machine rule "Effect pushes dependencies to the seams" applies to semantic cores too. The core may therefore depend on `effect`.
+
+**What did not change.**
+
+| Kept | Why |
+|---|---|
+| `frameState(story, frame)` is a pure plain function over plain JSON, returns plain data, imports nothing from `compile/` and nothing from `effect` | it runs once per frame inside Chromium and must not carry a runtime into the render path; "pure stays pure" |
+| Easing, interpolation, identity join (`plan`), sampling, schedule arithmetic, contrast math, geometry stay plain functions | total, deterministic, no dependency or authority to abstract |
+| The core imports no `react`, `remotion`, `@remotion/*`, `playwright`, DOM global or Node built-in (P10) | the exit ramp to HyperFrames or a Deck stays open; enforced by package `dependencies`, lint restriction and a test |
+| `PreparedStory` and `FrameState` are plain JSON | any adapter, in any runtime, can read them |
+
+**Where Effect is used.** `Schema` for every plain-JSON boundary (alignment, style, `PreparedStory`, reference pins, fixture manifest); tagged errors for expected compile and pipeline failures; services for what has a dependency or authority (fixture source, alignment, media tools over `ChildProcess`, frame renderer, reference store); `Layer`s selected in the CLI composition root; `Scope` for temporary files and child processes; the render pipeline as one Effect program.
+
+**Why it is safe.** The exit ramp needs only `FrameState` and `PreparedStory`, both plain data. The compile stages that use Effect run at prepare time under Bun; none runs per frame. Spec 0001 states the split per module and tests it (F9).
+
+### R2 (2026-10-28): screenplay-first, Fountain to Deck and Video
+
+**Decided by:** the operator, 2026-10-28. **Supersedes** for release 1: section 0 rows "Build on Remotion or adopt Reframe?" and "Use reveal.js Auto-Animate itself?", "Which Renderings?" and decision 7 ("Video first, Deck later"), decision 2 (own engine, R0+R3, no reveal.js animator), and every statement that Remotion is the first Video adapter. **Keeps:** the vocabulary, the Plan stage and `reebeat plan`, anchoring to spoken words, determinism as a requirement, R1 (Effect in the core).
+
+**What changed.** reebeat is **screenplay-first**. One [Fountain](https://fountain.io/syntax) file is the source. `reebeat plan` shows the Plan. Two Renderings are generated from the same Plan and cannot disagree:
+
+- a **Deck**: reveal.js slides, the narration as speaker notes, the Cues as fragments, Auto-Animate (`data-id`) as the identity diff;
+- a **Video**: the same reveal.js page captured frame by frame on a controlled clock (prior art: `timeweb`, the clock behind `timesnap` and `timecut`), stepped through slides and fragments at the aligned time of each Cue, muxed with narration (Kokoro), sound effects, WebVTT subtitles and chapter marks (ffmpeg). Word timing comes from whisper.cpp alignment, as in the first prototype, with the idea of anchoring to a spoken word taken from manim-voiceover's bookmarks.
+
+**Mapping** (also in `GLOSSARY.md`, "Screenplay mapping"):
+
+| Fountain | reebeat |
+|---|---|
+| `# Section`, `= synopsis` | Story and Chapter outline: slide groups, chapter marks |
+| scene heading | Scene (identity boundary): one slide |
+| Action | Keyframe: what is on screen |
+| `NARRATOR` dialogue | Line: speaker notes, narration, subtitles |
+| Parenthetical | delivery hint (speech settings) |
+| `[[note]]` inline | Cue (`next`, `sfx: name`, `focus: id`), anchored to the spoken word before it |
+| Transition | Hint: `> AUTO-ANIMATE` matches Elements by id with the previous Scene; `> CUT` does not |
+
+**Why.** A screenplay is the form writers already use for "what is seen, what is said, when", it has maintained editors and parsers, and one file produces a Deck for the room and a Video for sharing without a second copy to keep. reveal.js already supplies identity matching (`data-id`), fragments, speaker notes and PDF export, which the design had listed as the reasons for a Deck Rendering (2.5). The first prototype's motion-graphic engine is larger than the story needs to start.
+
+**What this reopens.** Section 2.5 rejected reveal.js as the animator because Auto-Animate has no exit, no spring, no path morph, and because a seek of the Chromium animation clock can only be falsified, not proved deterministic. Both remain true. Release 1 accepts them: it **measures** whether the controlled clock drives reveal's CSS transitions and whether two builds are frame-identical (spec 0001, F6 and F7), and records the outcome. If the clock does not cover them, the recorded fallback order is a per-frame seek of `document.getAnimations()`, then JS-driven transitions.
+
+**Roadmap (recorded, not built).** (1) reebeat's own motion engine (path morphs, springs, exits, layout, the per-frame contrast gate; sections 3 to 6) as a renderer plug-in behind the same Plan. (2) The pixel-identical port of the existing 4EM explainer as that engine's regression test; what was measured for it is in [`4em-regression-baseline.md`](4em-regression-baseline.md). (3) Cue offsets and further cue kinds, more than one voice, richer Element vocabulary, a theme system.
+
+**Consequences for earlier sections.** The Remotion licence question (section 9, question 4) no longer blocks release 1: Remotion is not a dependency of it. The `PreparedStory` and `frameState` of section 4 are not built in release 1; reveal.js plus the controlled clock take their place, and the Plan and Timeline stages stay. Property P10 now reads: the core imports no browser, Playwright, ffmpeg, reveal.js or Node built-in.
+
+### R3 (2026-10-28): composable pieces: libraries, services, integrations
+
+**Decided by:** the operator, 2026-10-28. **Supersedes** the module layouts of section 3.0 and of spec 0001 "Module layout" (the dependency rule of R1 stays and is made structural).
+
+reebeat is built from pieces that can be replaced one by one. Three categories, with one dependency direction (library, then service, then integration; never back):
+
+| Category | What it is | Release 1 |
+|---|---|---|
+| **Library** | Pure functions and types, no runtime, no service. | Fountain to Story (parser adapter), Story to Plan (identity diff, timeline, cue anchoring), subtitle writers (WebVTT, SRT), lint rules (cue and fragment agreement; contrast; "absolute times need a reason" when absolute times exist) |
+| **Service** | An Effect service: an interface plus a contract. Each has at least one adapter and **one contract suite that every adapter must pass**. A service may ship stand-ins for offline tests. | `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`; `Layouter` (ELK at build time) only when diagrams need it |
+| **Integration / platform adapter** | `Layer`s that implement a service and depend on an outside runtime or provider. | Kokoro (local), whisper.cpp (local), synthesised sounds, reveal.js deck, headless Chromium with a controlled clock, ffmpeg, filesystem cache. First future integration: ElevenLabs for `SpeechSynthesizer`, once the operator provides a key |
+
+Service sketches (release 1 builds the interfaces, the local adapters and the stand-ins):
+
+- `SpeechSynthesizer`: text, voice, speed to audio, optionally the provider's own word timings. Adapters: Kokoro (local); a **silent stand-in** that returns silence with synthetic word timings. Later: ElevenLabs (credential-gated; it may return its own timings).
+- `WordAligner`: audio and the expected words to word times and a match ratio. Adapters: whisper.cpp (local); later "provider timings" when the synthesiser supplies them; the stand-in spreads the words evenly.
+- `SoundLibrary`: a sound name to audio. Release 1: sounds synthesised in TypeScript; later local files or generated or third-party sounds.
+- `Renderer`: Plan to a Deck (reveal.js in release 1; reebeat's own motion engine later).
+- `FrameCapturer`: Deck, schedule and a controlled clock to a stream of frames (headless Chromium).
+- `Encoder`: frames, audio mix, subtitles, chapters to a media file, plus lossless audio encode and decode (ffmpeg, local).
+- `AssetCache`: content-addressed; **key = adapter and model or voice and settings and input text**, so re-renders reuse paid or slow outputs and stay deterministic; the output manifest records the provenance of every asset.
+
+Rules:
+
+1. **Selection is explicit configuration at the composition root** (for example `speech: kokoro | silent`, later `elevenlabs`). A selected adapter whose requirement is missing (a credential, a model, a binary) **fails with a clear error**; there is never a silent fallback to another adapter.
+2. **Every integration has a test stand-in** so the whole pipeline runs offline in tests, and **declares what it sends out** (for a speech provider: the script text). The build manifest lists each adapter's declaration.
+3. **Secrets only through the environment or the secret store**: never in a config file or the repository, never printed, never part of a cache key or manifest.
+4. **The dependency direction is enforced by the linter** (restricted imports per category), not by review.

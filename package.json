@@ -9,14 +9,17 @@
   "type": "module",
   "scripts": {
     "prepare": "vp config --no-agent && effect-tsgo patch --typescript --oxlint",
-    "ready": "bun run check && bun run check:exceptions && bun run test && bun run knip && bun run cpd && bun run secrets",
+    "ready": "bun run check && bun run check:exceptions && bun run check:tiers && bun run test && bun run knip && bun run cpd && bun run secrets && bun run journey",
     "check": "vp check",
     "test": "vp run -r --no-cache test",
     "check:exceptions": "bun tools/quality/checkEffectExceptions.ts",
+    "check:tiers": "bun tools/quality/checkTiers.ts",
     "knip": "knip",
     "cpd": "jscpd --config .jscpd.json .",
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
-    "commitlint": "commitlint"
+    "commitlint": "commitlint",
+    "reebeat": "bun packages/cli/bin/reebeat.ts",
+    "journey": "bun packages/cli/bin/reebeat.ts journey stories/same-id/story.fountain"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
@@ -54,6 +57,14 @@
     "effect": "4.0.6",
     "@effect/platform-node": "4.0.6",
     "@effect/vitest": "4.0.6",
-    "oxc-parser": "0.153.0"
+    "oxc-parser": "0.153.0",
+    "fountain-js": "1.2.4",
+    "kokoro-js": "1.2.1",
+    "@huggingface/transformers": "3.8.1",
+    "@fontsource/inter": "5.3.0",
+    "parse5": "8.0.1",
+    "playwright-core": "1.64.1",
+    "reveal.js": "6.0.2",
+    "timeweb": "0.3.2"
   }
 }

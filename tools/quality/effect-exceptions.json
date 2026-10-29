@@ -1,4 +1,70 @@
 {
   "description": "Registered suppressions. Every live suppression directive (oxlint, eslint, ts-expect-error, ts-ignore, ts-nocheck) must match an entry by file and directive, and every entry needs a live suppression. An entry names its scope, reason, native alternatives examined, owner, versions and retirement trigger.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "id": "EX-0001",
+      "scope": {
+        "files": ["packages/speech-kokoro/src/kokoroSynthesizer.ts"],
+        "directives": ["oxlint-disable-next-line"]
+      },
+      "reason": "kokoro-js (from_pretrained, generate) and the dynamic imports that keep onnxruntime-node unloaded on a cache hit return Promises. Each is wrapped once as Effect.tryPromise with a non-async thunk, as EX-0030 and EX-0040 do; typescript/promise-function-async wants those thunks async and its autofix then trips eslint/require-await and effecttsgo/async-function, so the rule is disabled on the four thunk lines only. The file is the speech-kokoro package's only Promise boundary.",
+      "nativeAlternativesExamined": [
+        "Effect.tryPromise with an async thunk: effecttsgo/async-function (Effect diagnostic, error) rejects it and eslint/require-await rejects an async function that only returns the Promise",
+        "Effect.promise and Effect.callback: the same Promise-returning thunk, so the same conflict",
+        "One helper `promised(run)` with a single directive: the arrow at each call site is itself a function that returns a Promise, so the rule still fires there",
+        "Stream.fromAsyncIterable over KokoroTTS.stream: streams sentence chunks, no cancellation, and would still need the dynamic imports and from_pretrained Promises",
+        "a child process running kokoro: no CLI ships with kokoro-js, and the 311 MiB model would load once per Line"
+      ],
+      "owner": "packages/speech-kokoro",
+      "versions": {
+        "effect": "4.0.6",
+        "kokoro-js": "1.2.1",
+        "@effect/tsgo": "0.53.1",
+        "typescript": "7.0.2"
+      },
+      "retirementTrigger": "typescript/promise-function-async stops flagging thunks passed to Effect.tryPromise, or kokoro-js is replaced by an Effect-native text-to-speech client"
+    },
+    {
+      "id": "EX-0030",
+      "scope": {
+        "files": ["packages/render-reveal/test/browser.ts"],
+        "directives": ["oxlint-disable"]
+      },
+      "reason": "The deck tests' browser adapter drives Playwright, whose API returns Promises. Every call is wrapped once, as Effect.promise or Effect.tryPromise with a thunk; typescript/promise-function-async wants those thunks to be async, and its autofix then adds await and trips eslint/require-await and effecttsgo/async-function.",
+      "nativeAlternativesExamined": [
+        "Effect.promise and Effect.tryPromise take a thunk that returns the Promise; they have no overload that takes a method and its arguments.",
+        "Making the thunks async: effecttsgo/async-function is an Effect diagnostic at error severity and eslint/require-await rejects an async function that only returns the Promise.",
+        "An Effect-native browser driver: none in the installed effect 4.0.6 or @effect/platform-node 4.0.6."
+      ],
+      "owner": "packages/render-reveal",
+      "versions": {
+        "effect": "4.0.6",
+        "playwright-core": "1.64.1",
+        "@effect/tsgo": "0.53.1",
+        "typescript": "7.0.2"
+      },
+      "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.promise and Effect.tryPromise."
+    },
+    {
+      "id": "EX-0040",
+      "scope": {
+        "files": ["packages/capture-chromium/src/browser.ts"],
+        "directives": ["oxlint-disable"]
+      },
+      "reason": "The Browser service adapts Playwright, whose API returns Promises. Each call is wrapped once, in `inPage`, as `Effect.tryPromise({ try: () => page.method(...) })`; typescript/promise-function-async wants those arrow functions to be `async`, and its autofix then adds `await` and trips eslint/require-await and effecttsgo/async-function.",
+      "nativeAlternativesExamined": [
+        "Effect.tryPromise and Effect.promise take a thunk that returns the Promise; they have no overload that takes a method and its arguments.",
+        "Making the thunks async: async-function is an Effect diagnostic at error severity and require-await rejects an async function that only returns the Promise.",
+        "An Effect-native browser driver: none in the installed effect 4.0.6 or @effect/platform-node 4.0.6."
+      ],
+      "owner": "packages/capture-chromium",
+      "versions": {
+        "effect": "4.0.6",
+        "playwright-core": "1.64.1",
+        "@effect/tsgo": "0.53.1",
+        "typescript": "7.0.2"
+      },
+      "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.tryPromise."
+    }
+  ]
 }

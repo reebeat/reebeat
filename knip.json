@@ -3,8 +3,71 @@
   "ignore": ["tools/oxlint/anti-slop/**"],
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
+    "packages/cli": {
+      "entry": ["bin/*.ts", "test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["bin/**/*.ts", "live/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/core": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/services": {
+      "entry": ["test/**/*.test.ts"],
+      "project": [
+        "src/**/*.ts",
+        "contract/**/*.ts",
+        "standins/**/*.ts",
+        "test/**/*.ts"
+      ]
+    },
+    "packages/speech-kokoro": {
+      "entry": ["test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "live/**/*.ts"]
+    },
+    "packages/align-whisper": {
+      "entry": ["test/**/*.test.ts", "live/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts", "live/**/*.ts"]
+    },
+    "packages/cache-fs": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/encode-ffmpeg": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/pipeline": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/render-reveal": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"],
+      "ignoreDependencies": ["@fontsource/inter", "reveal.js"]
+    },
+    "packages/sounds-synth": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/subtitles": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/lint": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/capture-chromium": {
+      "entry": ["test/**/*.test.ts"],
+      "ignoreDependencies": ["reveal.js"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
+    "packages/verify": {
+      "entry": ["test/**/*.test.ts"],
+      "project": ["src/**/*.ts", "test/**/*.ts"]
+    },
     "tools/quality": {
-      "entry": ["checkEffectExceptions.ts"],
+      "entry": ["checkEffectExceptions.ts", "checkTiers.ts"],
       "project": ["*.ts", "test/**/*.ts"]
     }
   },

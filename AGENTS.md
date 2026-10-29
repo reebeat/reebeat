@@ -30,10 +30,12 @@ Every gate is a root script in `package.json`; `bun run ready` runs them in this
 | Tests | `bun run test` (`.vite-hooks/pre-push`) | every push, `ready`, CI | a failing test, including the family check and the exception check's tests | break an assertion in `tools/quality/test` |
 | Format, lint, types | `bun run check` (`vp check`) | `ready`, CI | Oxfmt drift; Oxlint with Ultracite, the Effect plugin and diagnostics, anti-slop rules, cognitive complexity above 15; type errors (type-aware via tsgolint) | a function with complexity 16; a statement `Effect.succeed(1);` |
 | Exception registry | `bun run check:exceptions` | `ready`, CI | a suppression directive without a registry entry; a registry entry without a live suppression | add `// oxlint-disable-next-line <rule>` with no entry |
+| Package tiers | `bun run check:tiers` | `ready`, CI | a package that depends, in its manifest or an import, on a tier it may not use; a directory under `packages/` in no tier | make `core` import `@reebeat/services`; add a directory under `packages/` |
 | Effect family | `bun run test` (`tools/quality/test/effectFamily.test.ts`) | `ready`, CI | `effect` locked at two versions, or an `@effect/*` package at another version than `effect` in `bun.lock` | change one `@effect/*` entry of `bun.lock` |
 | Dead code | `bun run knip` | `ready`, CI | unused files, exports and dependencies | export a symbol nothing imports |
 | Duplication | `bun run cpd` | `ready`, CI | copy-paste (threshold 0) | paste a 40-token block twice |
 | Secrets, history | `bun run secrets` | `ready`, CI | a secret anywhere in the git history | commit a fake key on a scratch branch |
+| Journey | `bun run journey` (`reebeat journey stories/same-id/story.fountain`: build, check, build again, F6 compare) | last step of `ready`, CI | any falsifier F1 to F9 of spec 0001 failing on the written Deck and Video of `stories/same-id`: cue timing, subtitles, notes, fragments, source hash, transitions, narration timing, chapters, two-build determinism | edit one word of the story after a build and run `reebeat check`; change a lag in `packages/capture-chromium/src/captureSchedule.ts` |
 
 ## Exceptions
 
@@ -48,6 +50,15 @@ Every agent that writes TypeScript here writes native Effect (v4, pinned in the 
 - **Pure stays pure.** A total deterministic transformation stays a plain function: no service, error channel or Effect wrapper for uniformity. Frame math (the Rendering as a pure function of the frame number) stays plain functions.
 - The core MAY use Effect v4 for services, errors, resources and the pipeline; concrete runtimes and vendors belong in Layer implementations chosen at a composition root.
 - `effect` and every `@effect/*` runtime package are one version (`tools/quality/effectFamily.ts`); `@effect/tsgo` is its own release line. An upgrade is its own spec.
+
+## Architecture
+
+Three tiers, one dependency direction (design R3, spec 0001): **library** (pure, no runtime) < **service** (an Effect service: interface plus contract) < **integration** (Layers that implement a service on an outside runtime). `bun run check:tiers` reads every `package.json` and every import of a package's sources; the table and the allowed edges are `tools/quality/tiers.ts`.
+
+- **Map.** libraries: `core`, `subtitles`, `lint` (import libraries only). service: `services` (`@reebeat/services`: the seven tags `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`, the errors, `assetKey`, the selection; imports libraries only). program: `pipeline` (`buildProgram` over the services, the manifest schema; services and libraries only). adapters: `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg`, `cache-fs` (services and libraries, never another adapter). tools: `verify`, `cli` (anything; `cli` is the only composition root).
+- **Selection** is explicit configuration at the composition root, one registry in `packages/services/src/selection.ts`: `speech: kokoro | silent`, `aligner: whisper | even`, `sounds: synth`, `renderer: reveal`, `capturer: chromium`, `encoder: ffmpeg`, `cache: fs`; defaults are the local adapters. `packages/cli` reads `reebeat.config.json` beside the story, then the flags `--speech`, `--aligner`, `--sounds`, `--renderer`, `--capturer`, `--encoder`, `--cache` (and `--cache-dir`, the directory of the `fs` cache); the flags win. An unknown key or value fails `UnknownSelection`, a missing model, binary or credential fails `AdapterUnavailable` on first use, and nothing falls back to another adapter. A stand-in narrator (`--speech silent`) always fills a missing speech asset; Kokoro needs `--refresh-speech`.
+- **Stand-ins and egress.** Every integration that needs a model, a credential or a store has an offline stand-in (`@reebeat/services/standins`: `silentSynthesizer`, `evenAligner`, `toneSounds`, `memoryCache`; ids end `-standin`) and declares in `info.egress` what it sends out (`[]` for every local adapter). The build prints each adapter with its egress and writes them to `build.json` (schema 2: `adapters`, and the provenance of every cache asset used). A build whose manifest lists a stand-in narrator is narration-silent, not sound-silent (the sounds are real and audible): `reebeat check` prints `N/A (silent stand-in)` for F8 (the narration onsets) and for nothing else; F1 still observes every `sfx` Cue and the sound anchored to its motion. The cache key is `assetKey` (adapter id, settings, input, extra: SHA-256); `info.settings` holds everything that changes the output and never a secret (a name matching `key|token|secret|password|credential` is rejected). Secrets come from the environment only: never printed, cached, keyed or written to the manifest.
+- **Add an adapter.** (1) Add the directory to its tier row in `tools/quality/tiers.ts` (a directory in no tier fails the gate). (2) Implement the service's `Layer` with an `AdapterInfo`; raise `AdapterUnavailable` when a requirement is missing. (3) Run `xContract(label, layer)` from `@reebeat/services/contract` in its tests; live adapters run it where the model, browser or binary exists. (4) Add its name to `choices` in `selection.ts` and to the table of its key in `packages/cli/src/adapters.ts` (each table is typed over the choices, so it does not compile until it is wired). (5) Add the package to the `vite.config.ts` Effect groups and to `knip.json`.
 
 ## Conventions
 
@@ -68,3 +79,12 @@ gh api -X DELETE repos/reebeat/reebeat/branches/main/protection
 ```
 
 Restore it afterwards as spec 0000 describes it.
+
+## Environment
+
+`devenv shell` provides the tools release 1 (spec 0001) needs; every one is substitutable from cache.nixos.org, nothing builds locally.
+
+- **Chromium** (`pkgs.chromium`, `chromium` on `PATH`, Linux only). `REEBEAT_CHROMIUM` is its absolute path: pass it to Playwright as `executablePath` (`playwright-core` and the browser versions are independent). On other systems set `REEBEAT_CHROMIUM` yourself.
+- **ffmpeg and ffprobe** (`pkgs.ffmpeg-headless`): libx264, AAC, FLAC, the `mp4` muxer and the `mov_text` subtitle encoder.
+- **`whisper-cli`** (`pkgs.whisper-cpp`): word timestamps; the model file (`ggml-base.en.bin`) is not in the closure.
+- No `PLAYWRIGHT_BROWSERS_PATH` is set and no Playwright browser download runs (`playwright-driver.browsers` was measured and rejected: older Chromium, 954 MiB).

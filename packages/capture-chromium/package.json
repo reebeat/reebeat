@@ -1,0 +1,29 @@
+{
+  "name": "@reebeat/capture-chromium",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "bunx vp test",
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@reebeat/core": "workspace:*",
+    "@reebeat/services": "workspace:*",
+    "effect": "catalog:",
+    "playwright-core": "catalog:",
+    "timeweb": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "oxc-parser": "catalog:",
+    "reveal.js": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

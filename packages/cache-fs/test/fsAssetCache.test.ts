@@ -3,10 +3,18 @@
 import { assert, layer } from "@effect/vitest";
 import { localEgress, AssetCache } from "@reebeat/services";
 import type { Asset } from "@reebeat/services";
-import { Array as Arr, Effect, FileSystem, Option, Order, Path } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Order,
+  Path,
+} from "effect";
 
 import { fsAssetCache } from "../src/fsAssetCache.ts";
-import { platform } from "./support.ts";
+import { failingFileSystem, platform } from "./support.ts";
 
 const adapter = { egress: localEgress, id: "test@1", settings: { voice: "v" } };
 
@@ -26,7 +34,10 @@ const asset = (key: string, text: string): Asset => ({
 
 const key = "ab".repeat(32);
 
-const inTemp = <A, E>(use: Use<A, E>) =>
+const inTemp = <A, E>(
+  use: Use<A, E>,
+  failing?: Layer.Layer<FileSystem.FileSystem>
+) =>
   Effect.gen(function* run() {
     const fs = yield* FileSystem.FileSystem;
     const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-cache-" });
@@ -35,7 +46,9 @@ const inTemp = <A, E>(use: Use<A, E>) =>
       Effect.gen(function* inCache() {
         return yield* use(dir, yield* AssetCache);
       }),
-      fsAssetCache(dir)
+      failing === undefined
+        ? fsAssetCache(dir)
+        : Layer.provide(fsAssetCache(dir), failing)
     );
   });
 
@@ -136,6 +149,37 @@ layer(platform)("fsAssetCache layout", (it) => {
           );
           assert.strictEqual((yield* cache.list).length, 1);
         })
+      )
+  );
+});
+
+layer(platform)("fsAssetCache atomicity", (it) => {
+  it.effect.each([
+    { method: "rename", nth: 1, when: "the provenance is renamed into place" },
+    { method: "writeFile", nth: 2, when: "the second file is written" },
+    { method: "writeFile", nth: 1, when: "the first file is written" },
+    { method: "writeFileString", nth: 1, when: "the provenance is written" },
+  ] as const)(
+    "a put that fails when $when leaves nothing a reader can see",
+    ({ method, nth }) =>
+      inTemp(
+        (dir, cache) =>
+          Effect.gen(function* halfWritten() {
+            const fs = yield* FileSystem.FileSystem;
+            const path = yield* Path.Path;
+
+            const failure = yield* Effect.flip(
+              cache.put(key, asset(key, "hello"))
+            );
+
+            assert.strictEqual(failure._tag, "CacheFailed");
+            assert.isTrue(Option.isNone(yield* cache.get(key)));
+            assert.deepStrictEqual(yield* cache.list, []);
+            assert.isFalse(
+              yield* fs.exists(path.join(dir, `${key}.provenance.json`))
+            );
+          }),
+        failingFileSystem(method, nth)
       )
   );
 });

@@ -12,13 +12,20 @@ import { registerClauses } from "./clause.ts";
 import type { Clause } from "./clause.ts";
 import { assertInfoDeclared, failureOf, sameBytes } from "./support.ts";
 
+/** A build of the cache whose `put` fails at one step; `when` names the step, for the name of the test. */
+interface FailingWriter {
+  readonly layer: Layer.Layer<AssetCache>;
+  readonly when: string;
+}
+
 export interface AssetCacheOptions {
   /**
-   * A second build of the cache whose `put` fails after it wrote the asset's files and before its metadata. The
-   * clause reads the failed asset back: a store that wrote its metadata first, or in no safe order, shows it.
-   * When absent the atomicity clause is reported as skipped.
+   * Builds of the cache whose `put` fails half way, each at a different step (after the files and before the
+   * metadata; at the second file; at the metadata itself). The clause reads the failed asset back: a store that
+   * wrote its metadata first, or in no safe order, shows it. Clause C3 requires at least one: without any, the
+   * contract registers a FAILING test, never a skipped one.
    */
-  readonly failingWriter?: Layer.Layer<AssetCache>;
+  readonly failingWriters?: readonly FailingWriter[];
 }
 
 type Failure = CacheError | KeyError;
@@ -251,12 +258,21 @@ export const assetCacheContract = <LE>(
   registerClauses(label, layer, assetCacheClauses);
 
   describe(`${label}: atomic write`, () => {
-    if (options.failingWriter === undefined) {
-      it.todo(
-        "C3: put is atomic (skipped: the adapter supplied no failing writer)"
-      );
-    } else {
-      registerClauses(label, options.failingWriter, [atomicWriteClause]);
+    const writers = options.failingWriters ?? [];
+
+    if (writers.length === 0) {
+      // C3 cannot be checked without a store that fails half way: a missing writer is a failing test, not a skip.
+      it("C3: put is atomic (FAILS: the adapter supplied no failing writer)", () => {
+        assert.fail(
+          `${label} supplied no failing writer, so C3 (put is atomic) is not checked`
+        );
+      });
+    }
+
+    for (const writer of writers) {
+      registerClauses(`${label}, put fails when ${writer.when}`, writer.layer, [
+        atomicWriteClause,
+      ]);
     }
   });
 };

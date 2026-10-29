@@ -19,6 +19,8 @@ export interface Vocabulary {
   readonly sets: readonly (readonly string[])[];
   /** A fragment of the id rule that a regular expression must not repeat. */
   readonly idRule: string;
+  /** Words `machines.ts` defines once: a constant or a self-spelled property that repeats one is a second definition. */
+  readonly singular: readonly string[];
 }
 
 export interface Copy {
@@ -172,6 +174,33 @@ const arrayCopies = (node: Node, vocabulary: Vocabulary): readonly string[] => {
   );
 };
 
+const ConstantDefinition = Schema.Struct({
+  id: Schema.Struct({
+    name: Schema.String,
+    type: Schema.Literal("Identifier"),
+  }),
+  init: StringLiteral,
+  start: Schema.Finite,
+  type: Schema.Literal("VariableDeclarator"),
+});
+
+const isConstantDefinition = Schema.is(ConstantDefinition);
+
+/**
+ * A second DEFINITION of a word the machines define once (`progress`, the heads `scene`, `state`, `beat`,
+ * `transition`): a constant that is that word (`const progressWord = "progress"`). A typed use of the word
+ * (`kind: "progress"`, `{ transition: "transition" }` of an anchor) is not a definition: the type checker holds it to
+ * the closed set.
+ */
+const redefinitions = (
+  node: Node,
+  vocabulary: Vocabulary
+): readonly string[] =>
+  isConstantDefinition(node) &&
+  Arr.contains(vocabulary.singular, node.init.value)
+    ? [`a second definition of "${node.init.value}"`]
+    : [];
+
 /** Every copy of the grammar in one file's text. */
 export const copiesIn = (
   text: string,
@@ -191,6 +220,7 @@ export const copiesIn = (
         : []),
       ...(literal === undefined ? [] : alternationCopies(literal, vocabulary)),
       ...arrayCopies(node, vocabulary),
+      ...redefinitions(node, vocabulary),
     ];
 
     for (const reason of reasons) {

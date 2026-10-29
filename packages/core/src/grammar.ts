@@ -8,8 +8,10 @@ import { Array as Arr, Record, Schema, String as Str } from "effect";
 import {
   aliases,
   headPlaceholder,
+  machineWords,
   machines,
   percentToken,
+  progressToken,
   spelled,
   subjectKinds,
   vocabulary,
@@ -29,10 +31,10 @@ import { flicksPerSecond } from "./time.ts";
 
 /** The words an anchor starts with (`word("x").end`, `state(2).enter`, `beat(1).start`, `scene.start`, `transition.50%`). */
 export const anchorWords = {
-  beat: "beat",
-  scene: "scene",
-  state: "state",
-  transition: "transition",
+  beat: machineWords.beat,
+  scene: machineWords.scene,
+  state: machineWords.state,
+  transition: machineWords.transition,
   word: "word",
 } as const;
 
@@ -50,9 +52,6 @@ export const optionWords = {
   stagger: "stagger",
   throttle: "throttle",
 } as const;
-
-/** The last token of a path that names the behaviour of a transition, read only inside `when(... >= N%)`. */
-export const progressWord = "progress";
 
 /** The words the grammar uses as its first word; no Element, Scene, effect or derived event may carry one of these ids. */
 export const reservedIds = [
@@ -349,7 +348,7 @@ const progressSpelling = (
   edge: Form,
   transition: Transition
 ): AnchorSpelling => ({
-  form: `${combinatorWords.when}(${Arr.join([head, ...Arr.dropRight(edge.tail, 1), progressWord], ".")} >= ${percentToken})`,
+  form: `${combinatorWords.when}(${Arr.join([head, ...Arr.dropRight(edge.tail, 1), progressToken], ".")} >= ${percentToken})`,
   meaning: `the first frame the progress of the transition reaches N percent (${transition.progress === "eased" ? "by the renderer's declared easing" : "linear in time"}); the sugar \`${Arr.join([head, ...Arr.dropRight(edge.tail, 1), percentToken], ".")}\` means the same`,
 });
 

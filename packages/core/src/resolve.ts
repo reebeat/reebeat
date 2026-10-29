@@ -15,10 +15,12 @@
 //                        its end; the slide change at L leaves every state
 //   state n            = the dwell: from the end of Beat n-1 (s for State 1) to the start of Beat n (L for the last State)
 //   beat n             = the n-th Beat the engine generates: from a distinct fire frame of the steps (show, focus) after s to
-//                        the end of the slowest of them (a show fades, a focus is an instant), so a step cannot be timed by a State or a Beat
+//                        the end of the slowest of them (a show fades, a focus is an instant). Only fire frames make a Beat,
+//                        so a step cannot be timed by a State or a Beat of its own Scene; an `until` is a window end and may
+//                        name them
 //   until              = the first occurrence after the fire frame, else L (the slide change interrupts the effect)
-//   offset             = ms: round(fps * ms / 1000); f: frames; %: round(N/100 * window width) (needs a window)
-//   absolute           = s + round(fps * ms / 1000)
+//   offset             = flicks: framesOfFlicks at the Plan's rate; f: output frames; %: round(N/100 * window width) (needs a window)
+//   absolute           = s + framesOfFlicks(absoluteFlicks)
 //   fire frame         = the event's frame; command frame = fire - 1 for show and focus, fire for sound
 //
 // Plain functions over `Result`; no Effect, no service.
@@ -37,7 +39,7 @@ import { verbArguments } from "./grammar.ts";
 import { effectOf } from "./lookup.ts";
 import { elementMachineOf, machines } from "./machines.ts";
 import type { Machine } from "./machines.ts";
-import { occupancies, reaches, stateEvent } from "./occupancy.ts";
+import { occupancies, reaches, stateEvent, stateStart } from "./occupancy.ts";
 import type {
   Anchor,
   Effect,
@@ -76,6 +78,10 @@ interface Context {
   readonly active: Set<string>;
   /** The effect or derived event being resolved, for the error messages. */
   current: { readonly id: string; readonly line: number };
+  /** The effects whose fire frames are being resolved (a cycle guard apart from `active`). */
+  readonly firing: Set<string>;
+  /** The checked fire frames of each effect resolved so far. */
+  readonly fires: Map<string, readonly number[]>;
   readonly lifecycle: RendererLifecycle;
   readonly runs: Map<string, readonly Run[]>;
   readonly scene: Scene;
@@ -86,10 +92,20 @@ interface Context {
 /** What the helpers need besides the Scene: to evaluate an event, and to resolve another effect of the Scene. */
 interface Tools {
   readonly evaluate: Evaluate<ScheduleError>;
+  readonly fires: (
+    effect: Effect
+  ) => Result.Result<readonly number[], ScheduleError>;
   readonly runs: (
     effect: Effect
   ) => Result.Result<readonly Run[], ScheduleError>;
 }
+
+/** The frames a `show` fades for: the renderer's declared time at the Plan's rate. */
+const showFrames = (context: Context): number =>
+  framesOfFlicks(
+    rateOf(context.settings),
+    flicksOfMilliseconds(context.lifecycle.showMs)
+  );
 
 /** Exact time as frames at the Plan's rate: the nearest frame, a half to the later one (`time.ts`). */
 const frames = (context: Context, flicks: number): number =>
@@ -524,10 +540,10 @@ const beatWindows = (
   Result.map(
     Result.all(
       Arr.map(Arr.filter(context.scene.effects, isStep), (step) =>
-        Result.map(tools.runs(step), (runs) =>
-          Arr.map(runs, (run): StepRun => ({
-            end: step.verb === "show" ? run.end : run.fire,
-            fire: run.fire,
+        Result.map(tools.fires(step), (fires) =>
+          Arr.map(fires, (fire): StepRun => ({
+            end: step.verb === "show" ? fire + showFrames(context) : fire,
+            fire,
           }))
         )
       )
@@ -592,10 +608,10 @@ const stateWindow = (
       );
     }
 
-    const first = Arr.reduce(
-      Arr.take(beats, n - 1),
+    const first = stateStart(
       context.timing.slideFrame,
-      (earliest, beat) => Math.max(earliest, beat.end)
+      Arr.map(beats, (beat) => beat.end),
+      n
     );
 
     return Result.succeed({
@@ -747,8 +763,7 @@ const endOf = (
 
   if (effect.verb === "show") {
     return Result.succeed({
-      end:
-        fire + frames(context, flicksOfMilliseconds(context.lifecycle.showMs)),
+      end: fire + showFrames(context),
       endedBy: "window",
       fire,
     });
@@ -825,13 +840,19 @@ const checked = (
   });
 };
 
-/** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
-const runsOf = (
+/**
+ * Resolves `effect` once: the memoised answer if there is one, an `UnresolvedAnchor` when the effect is already being
+ * resolved (it waits for itself), else `compute`, which is memoised when it succeeds. `active` is the cycle guard of
+ * this kind of answer.
+ */
+const memoised = <A>(
   context: Context,
   effect: Effect,
-  tools: Tools
-): Result.Result<readonly Run[], ScheduleError> => {
-  const known = context.runs.get(effect.id);
+  memo: Map<string, A>,
+  active: Set<string>,
+  compute: () => Result.Result<A, ScheduleError>
+): Result.Result<A, ScheduleError> => {
+  const known = memo.get(effect.id);
 
   if (known !== undefined) {
     return Result.succeed(known);
@@ -841,7 +862,7 @@ const runsOf = (
 
   context.current = { id: effect.id, line: effect.line };
 
-  if (context.active.has(effect.id)) {
+  if (active.has(effect.id)) {
     context.current = before;
 
     return Result.fail(
@@ -849,25 +870,47 @@ const runsOf = (
     );
   }
 
-  context.active.add(effect.id);
+  active.add(effect.id);
 
-  const resolved = Result.flatMap(
-    Result.flatMap(firesOf(context, effect, tools), (fires) =>
-      checked(context, effect, fires)
-    ),
-    (fires) =>
-      Result.all(Arr.map(fires, (fire) => endOf(context, effect, fire, tools)))
-  );
+  const resolved = compute();
 
-  context.active.delete(effect.id);
+  active.delete(effect.id);
   context.current = before;
 
   if (Result.isSuccess(resolved)) {
-    context.runs.set(effect.id, resolved.success);
+    memo.set(effect.id, resolved.success);
   }
 
   return resolved;
 };
+
+/**
+ * The fire frames of an effect, checked against its Scene and memoised. A fire frame never needs the effect's `until`
+ * (a window end), so the Beats of the Scene, which only need where the steps fire, are built from these and an `until`
+ * that names a State or a Beat is not a cycle.
+ */
+const firesResolved = (
+  context: Context,
+  effect: Effect,
+  tools: Tools
+): Result.Result<readonly number[], ScheduleError> =>
+  memoised(context, effect, context.fires, context.firing, () =>
+    Result.flatMap(firesOf(context, effect, tools), (fires) =>
+      checked(context, effect, fires)
+    )
+  );
+
+/** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
+const runsOf = (
+  context: Context,
+  effect: Effect,
+  tools: Tools
+): Result.Result<readonly Run[], ScheduleError> =>
+  memoised(context, effect, context.runs, context.active, () =>
+    Result.flatMap(firesResolved(context, effect, tools), (fires) =>
+      Result.all(Arr.map(fires, (fire) => endOf(context, effect, fire, tools)))
+    )
+  );
 
 /** The helpers' tools: evaluating an event of the Scene, and resolving another effect (memoised, cycle-checked). */
 const toolsOf = (
@@ -876,6 +919,7 @@ const toolsOf = (
 ): Tools => {
   const tools: Tools = {
     evaluate,
+    fires: (effect) => firesResolved(context, effect, tools),
     runs: (effect) => runsOf(context, effect, tools),
   };
 
@@ -935,6 +979,8 @@ export const resolveEffects = (
   const context: Context = {
     active: new Set(),
     current: { id: "", line: 0 },
+    fires: new Map(),
+    firing: new Set(),
     lifecycle,
     runs: new Map(),
     scene,

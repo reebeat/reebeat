@@ -591,3 +591,97 @@ describe("what the Effect Schema of the IR says and does not say", () => {
     }
   });
 });
+
+const sound = (event: string) =>
+  change(
+    "  s1: sound pop at settled\n",
+    `  s1: sound pop at settled\n  s2: sound pop at ${event}\n`
+  );
+
+/** The base IR with an effect `s2` timed at a State or a Beat `subject` of Scene two. */
+const withSecond = (subject: {
+  readonly kind: "beat" | "state";
+  readonly n: number;
+}) =>
+  withScene(1, (found) => ({
+    ...found,
+    effects: [
+      ...found.effects,
+      {
+        ...effectOne,
+        id: "s2",
+        line: 27,
+        when: {
+          event: {
+            anchor:
+              subject.kind === "state"
+                ? {
+                    event: "enter",
+                    kind: "occupancy",
+                    state: "dwell",
+                    subject: { kind: "state", n: subject.n },
+                  }
+                : {
+                    at: "start",
+                    kind: "edge",
+                    subject: { kind: "beat", n: subject.n },
+                    transition: "change",
+                  },
+            kind: "anchor",
+          },
+        },
+      },
+    ],
+  }));
+
+const message = (what: string, most: number): string =>
+  `${what} in Scene two, which has at most ${most} (one State, and one more State and one Beat for each show or focus); expected a number from 1 to ${most}`;
+
+describe("a State or a Beat is counted from 1: number 0 is refused by the same rule from both ways in", () => {
+  it("refuses state(0) and beat(0) in a screenplay, with the message of the rule", () => {
+    assert.deepStrictEqual(full(errorsOf(sound("state(0).enter"))), [
+      ["UnknownReference", 27, message("state(0)", 1)],
+    ]);
+    assert.deepStrictEqual(full(errorsOf(sound("beat(0).start"))), [
+      ["UnknownReference", 27, message("beat(0)", 0)],
+    ]);
+  });
+
+  it("refuses the same State and Beat in an IR, with the same tag and message", () => {
+    assert.deepStrictEqual(
+      withoutLine(validateGraph(withSecond({ kind: "state", n: 0 }))),
+      withoutLine(errorsOf(sound("state(0).enter")))
+    );
+    assert.deepStrictEqual(
+      withoutLine(validateGraph(withSecond({ kind: "beat", n: 0 }))),
+      withoutLine(errorsOf(sound("beat(0).start")))
+    );
+  });
+
+  it("refuses to write and to read an IR with state(0), and takes state(1) as the control", () => {
+    const control = withSecond({ kind: "state", n: 1 });
+
+    assert.deepStrictEqual(validateGraph(control), []);
+
+    const written = jsonCodec.encode(control);
+
+    assert.isTrue(Result.isSuccess(written));
+    assert.isTrue(
+      Result.isFailure(jsonCodec.encode(withSecond({ kind: "state", n: 0 })))
+    );
+
+    if (Result.isSuccess(written)) {
+      assert.include(written.success, '"n": 1');
+      assert.isTrue(Result.isSuccess(jsonCodec.decode(written.success)));
+      assert.isTrue(
+        Result.isFailure(
+          jsonCodec.decode(Str.replace('"n": 1', '"n": 0')(written.success))
+        )
+      );
+    }
+  });
+
+  it("takes state(1) in a screenplay: the first State exists in every Scene", () => {
+    assert.deepStrictEqual(errorsOf(sound("state(1).enter")), []);
+  });
+});

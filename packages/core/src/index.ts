@@ -47,6 +47,7 @@ export type { Event, Occurrence, Window } from "./combinators.ts";
 export { formatEvent } from "./expr.ts";
 
 export {
+  machineWords,
   machines,
   progressKinds,
   stateEventNames,
@@ -60,7 +61,7 @@ export type { Form, Machine } from "./machines.ts";
 
 export { initialState } from "./events.ts";
 
-export { occupancies, stateEvent } from "./occupancy.ts";
+export { occupancies, stateEvent, stateStart } from "./occupancy.ts";
 
 export {
   flicksOfFrames,

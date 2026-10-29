@@ -19,8 +19,9 @@ import {
   progressToken,
   spelled,
   vocabulary,
+  vocabularyOf,
 } from "../src/machines.ts";
-import type { Form, SubjectKind } from "../src/machines.ts";
+import type { Form, Machine, SubjectKind } from "../src/machines.ts";
 
 /** The heads the paths are tried with: an id (an Element or an effect), the Scene, a State, a Beat, and an alias head. */
 const heads: readonly {
@@ -265,5 +266,70 @@ describe("the grammar document prints the vocabulary", () => {
         Arr.join(alias.spelled, ".")
       );
     }
+  });
+});
+
+const textOf = (list: readonly Form[]) =>
+  Arr.map(list, (form) => spelled(headPlaceholder[form.machine.subject], form));
+
+// F2 of spec 0004, "add a transition to a copy of a machine": `vocabularyOf` is the generator and `vocabulary` is its
+// value for the real `machines`; a COPY of the machines with one more transition (and one more state) yields the extra
+// spellings and nothing else changes. The parser (`anchors.ts`), the grammar document and `anchorFormsText` read the ONE
+// real list, by design (no seam in them for a test), so what is tested here is the generator they all read.
+describe("the vocabulary is generated from a list of machines", () => {
+  const position = Option.getOrUndefined(
+    Arr.findFirst(machines, ({ id }) => id === "position")
+  );
+
+  if (position === undefined) {
+    assert.fail("the machines have a position machine");
+  }
+
+  const grown: Machine = {
+    ...position,
+    states: [
+      ...position.states,
+      { means: "the Element hovers", name: "hovering" },
+    ],
+    transitions: [
+      ...position.transitions,
+      {
+        during: "hovering",
+        from: "still",
+        means: "the Element hovers",
+        name: "hover",
+        progress: "time",
+        to: "still",
+      },
+    ],
+  };
+
+  const copy = Arr.map(machines, (machine) =>
+    machine === position ? grown : machine
+  );
+
+  it("is `vocabularyOf` of the real machines", () => {
+    assert.deepStrictEqual(textOf(vocabularyOf(machines)), textOf(vocabulary));
+  });
+
+  it("grows by the spellings of the new transition and the new state, and by nothing else", () => {
+    const added = Arr.filter(
+      textOf(vocabularyOf(copy)),
+      (text) => !Arr.contains(textOf(vocabulary), text)
+    );
+
+    assert.deepStrictEqual(added, [
+      "<id>.hover.start",
+      "<id>.hover.end",
+      "<id>.hover.<N>%",
+      "<id>.hover.progress",
+      "<id>.hovering.enter",
+      "<id>.hovering.leave",
+    ]);
+    assert.strictEqual(vocabularyOf(copy).length, vocabulary.length + 4 + 2);
+  });
+
+  it("is not read by the parser: the parser reads the real list, so the new spelling is refused there", () => {
+    assert.isTrue(Result.isFailure(readAnchorPath("box.hover.start", 1)));
   });
 });

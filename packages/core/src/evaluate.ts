@@ -35,8 +35,8 @@ export interface Sources<E> {
   ) => Result.Result<Window, E>;
   /** A percent offset of an occurrence whose window is an instant. */
   readonly emptyWindow: (what: string) => E;
-  /** Milliseconds as frames. */
-  readonly frames: (ms: number) => number;
+  /** Exact time (flicks) as frames at the Plan's rate: the nearest frame, a half to the later one. */
+  readonly frames: (flicks: number) => number;
   /** A `let` name that is not declared, or that waits for itself. */
   readonly unresolved: (message: string) => E;
 }

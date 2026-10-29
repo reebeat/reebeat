@@ -319,7 +319,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "two effects that wait for each other",
     needle: "s1: sound pop at s2.start",
     source: change(
@@ -341,7 +341,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "a show that waits for its own Element to enter",
     needle: "r1: show h at h.enter.end",
     source: change(
@@ -374,7 +374,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "two derived events that wait for each other",
     needle: "let a = b",
     source: change(
@@ -385,7 +385,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "a focus whose until is its own end",
     needle: 'f1: focus a at word("goodbye").start until f1.end',
     source: change(
@@ -396,7 +396,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "a step timed by the Beat it opens",
     needle: "r1: show h at beat(1).start",
     source: change(
@@ -407,7 +407,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)",
+      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "a step timed by a State it opens",
     needle: "f1: focus a at state(2).enter",
     source: change(

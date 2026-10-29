@@ -8,6 +8,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect, Result } from "effect";
 
+import { collectErrors } from "../src/build.ts";
 import { parseEffectLine } from "../src/effects.ts";
 import { stepsOf } from "../src/steps.ts";
 import {
@@ -551,4 +552,51 @@ describe("simultaneous events: one moment is one occurrence", () => {
         assert.deepStrictEqual(firesOf(plan, "b2"), [124]);
       })
   );
+});
+
+describe("an until may name a State or a Beat: it is a window end and never changes a Beat", () => {
+  it.effect(
+    "ends a focus at a Beat of its own Scene, and at a State, with no cycle",
+    () =>
+      Effect.gen(function* untilBeat() {
+        const rows = [
+          ...stepRows,
+          'u9: focus tag at word("alpha").start until beat(2).start',
+          'u8: focus fresh at word("alpha").start +1f until state(2).enter',
+        ];
+
+        assert.deepStrictEqual(collectErrors(statesSource(rows)), []);
+
+        const plan = yield* scheduledAt(statesSource(rows));
+
+        // u9 and u8 fire at 93 and 94, so the Beats are 93, 94, 120 (r1) and 138 (f1): beat(2) starts at 94, state(2)
+        // is entered at the end of Beat 1 (93, an instant).
+        assert.deepStrictEqual(
+          Arr.map(instancesOf(plan, "u9"), (timed) => [
+            timed.endFrame,
+            timed.endedBy,
+          ]),
+          [[94, "until"]]
+        );
+        assert.deepStrictEqual(
+          Arr.map(instancesOf(plan, "u8"), (timed) => [
+            timed.endFrame,
+            timed.endedBy,
+          ]),
+          [[179, "slide-change"]]
+        );
+      })
+  );
+
+  it("still refuses a step that is timed by a State or a Beat of its own Scene", () => {
+    assert.deepStrictEqual(
+      Arr.map(
+        collectErrors(
+          statesSource([...stepRows, "f2: focus tag at beat(1).end"])
+        ),
+        ({ _tag }) => _tag
+      ),
+      ["EffectCycle"]
+    );
+  });
 });

@@ -431,7 +431,7 @@ NARRATOR
 Hello there.
 ```
 
-> line 10, EffectCycle: effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)
+> line 10, EffectCycle: effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)
 
 ### The release-1 forms
 

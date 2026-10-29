@@ -8,6 +8,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import {
   Array as Arr,
+  Match,
   Option,
   Order,
   Record,
@@ -25,10 +26,11 @@ import {
   throttle,
   within,
 } from "../src/combinators.ts";
-import type { Event, Occurrence } from "../src/combinators.ts";
+import type { Event, Occurrence, Window } from "../src/combinators.ts";
 import { evaluator } from "../src/evaluate.ts";
 import type { Sources } from "../src/evaluate.ts";
-import type { Duration, EventExpr } from "../src/plan.ts";
+import type { Duration, EventExpr, RendererLifecycle } from "../src/plan.ts";
+import { timeOfProgress } from "../src/resolve.ts";
 
 /** An event from a marble: a column for each frame, every character but `-` and `|` an occurrence. */
 const marble = (drawing: string): Event =>
@@ -542,4 +544,264 @@ describe("simultaneous events are one occurrence; an until ignores the fire fram
       Result.succeed(frames(marble("----a")))
     );
   });
+});
+
+// F3, the other half: a mutant of EACH remaining function fails exactly its own row. `within` (a window with both ends
+// included), `throttle`, `stagger`, an offset, `let` (one evaluation, shared) and the threshold of `when(... >= N%)`
+// (the declared easing, not time). A mutant is the function written wrong; a row is a literal expectation worked out
+// by hand: `frame` for each occurrence, or the frame a percent lands on in a window.
+type Windowed = (event: Event, window: Window) => Event;
+
+type Gap = (event: Event, gap: number) => Event;
+
+type Evaluated = (
+  expr: EventExpr,
+  letLines: ReadonlyMap<string, EventExpr>,
+  from: Sources<string>
+) => Result.Result<Event, string>;
+
+type Progress = (
+  easing: RendererLifecycle["matched"]["easing"],
+  progress: number
+) => number;
+
+interface Functions {
+  readonly evaluate: Evaluated;
+  readonly progressTime: Progress;
+  readonly stagger: Gap;
+  readonly throttle: Gap;
+  readonly within: Windowed;
+}
+
+const realFunctions: Functions = {
+  evaluate: (expr, letLines, from) => evaluator(from, letLines)(expr),
+  progressTime: timeOfProgress,
+  stagger,
+  throttle,
+  within,
+};
+
+/** `expr` with every `let` name replaced by its body: the same program with no sharing (a name evaluated at each use). */
+const inlined = (
+  expr: EventExpr,
+  letLines: ReadonlyMap<string, EventExpr>
+): EventExpr =>
+  Match.value(expr).pipe(
+    Match.discriminatorsExhaustive("kind")({
+      anchor: (found) => found,
+      each: (found) => ({
+        ...found,
+        of: Arr.map(found.of, (operand) => inlined(operand, letLines)),
+      }),
+      first: (found) => ({
+        ...found,
+        of: Arr.map(found.of, (operand) => inlined(operand, letLines)),
+      }),
+      last: (found) => ({
+        ...found,
+        of: Arr.map(found.of, (operand) => inlined(operand, letLines)),
+      }),
+      ref: (found) => {
+        const body = letLines.get(found.name);
+
+        return body === undefined ? found : inlined(body, letLines);
+      },
+      shift: (found) => ({ ...found, of: inlined(found.of, letLines) }),
+      within: (found) => ({ ...found, of: inlined(found.of, letLines) }),
+    })
+  );
+
+const functionMutants: Readonly<Record<string, Functions>> = {
+  // `let` evaluated again at each use instead of once.
+  letEvaluatedTwice: {
+    ...realFunctions,
+    evaluate: (expr, letLines, from) =>
+      evaluator(from, new Map())(inlined(expr, letLines)),
+  },
+  // an offset that loses its sign: the time of a frame is read as its size.
+  offsetLosesItsSign: {
+    ...realFunctions,
+    evaluate: (expr, letLines, from) =>
+      evaluator(
+        { ...from, frames: (flicks) => Math.abs(from.frames(flicks)) },
+        letLines
+      )(expr),
+  },
+  // `throttle` written as `stagger`.
+  staggerForThrottle: { ...realFunctions, throttle: stagger },
+  // the threshold of a progress taken in time, as if the renderer had no easing.
+  thresholdInTime: {
+    ...realFunctions,
+    progressTime: (_easing, progress) => progress,
+  },
+  // `stagger` written as `throttle`.
+  throttleForStagger: { ...realFunctions, stagger: throttle },
+  // `within` that leaves out the frames on the edge of the window.
+  withinExclusive: {
+    ...realFunctions,
+    within: (event, window) =>
+      Arr.filter(
+        event,
+        ({ frame }) => frame > window.start && frame < window.end
+      ),
+  },
+};
+
+const framesOf = (event: Event): string =>
+  Arr.join(Arr.map(frames(event), String), " ");
+
+const ease = [0.25, 0.1, 0.25, 1] as const;
+
+const four = once(4);
+const eight = once(8);
+const fourteen = once(14);
+const spread = each([four, eight, fourteen]);
+
+/** Sources where a word asked for again answers later: the first answer is frame 4, the second frame 6, and so on. */
+const drifting = (): Sources<string> => {
+  const asked = { count: 0 };
+
+  return {
+    ...sources([]),
+    anchor: () => {
+      asked.count += 1;
+
+      return Result.succeed(once(2 + 2 * asked.count));
+    },
+  };
+};
+
+interface FunctionRow {
+  readonly expected: string;
+  readonly failsFor: readonly string[];
+  readonly name: string;
+  readonly run: (functions: Functions) => string;
+}
+
+const evaluated = (
+  functions: Functions,
+  expr: EventExpr,
+  letLines: ReadonlyMap<string, EventExpr> = lets,
+  from: Sources<string> = sources([])
+): string =>
+  Result.match(functions.evaluate(expr, letLines, from), {
+    onFailure: (message) => `fails: ${message}`,
+    onSuccess: framesOf,
+  });
+
+const functionRows: readonly FunctionRow[] = [
+  {
+    expected: "4 8",
+    failsFor: ["withinExclusive"],
+    name: "within keeps the occurrences on the edges of the window",
+    run: (functions) =>
+      framesOf(functions.within(spread, { end: 8, start: 4 })),
+  },
+  {
+    expected: "",
+    failsFor: [],
+    name: "within keeps nothing outside the window",
+    run: (functions) =>
+      framesOf(functions.within(spread, { end: 7, start: 5 })),
+  },
+  {
+    expected: "4 14",
+    failsFor: ["staggerForThrottle"],
+    name: "throttle drops an occurrence closer than the gap to the one kept, and moves none",
+    run: (functions) => framesOf(functions.throttle(spread, 5)),
+  },
+  {
+    expected: "4 10 16",
+    failsFor: ["throttleForStagger"],
+    name: "stagger moves an occurrence to one gap after the one before it, and drops none",
+    run: (functions) => framesOf(functions.stagger(spread, 6)),
+  },
+  {
+    expected: "5",
+    failsFor: ["offsetLosesItsSign"],
+    name: "an offset of minus three frames (in flicks) moves an occurrence earlier",
+    run: (functions) =>
+      evaluated(functions, {
+        kind: "shift",
+        of: word("b"),
+        offset: { unit: "flicks", value: -70_560_000 },
+      }),
+  },
+  {
+    expected: "11",
+    failsFor: [],
+    name: "an offset of plus three frames moves it later",
+    run: (functions) =>
+      evaluated(functions, {
+        kind: "shift",
+        of: word("b"),
+        offset: { unit: "flicks", value: 70_560_000 },
+      }),
+  },
+  {
+    expected: "4 7",
+    failsFor: ["letEvaluatedTwice"],
+    name: "a let is evaluated once: both uses see the same frames, though a second evaluation would see others",
+    run: (functions) =>
+      evaluated(
+        functions,
+        group([
+          { kind: "ref", name: "x" },
+          {
+            kind: "shift",
+            of: { kind: "ref", name: "x" },
+            offset: { unit: "f", value: 3 },
+          },
+        ]),
+        new Map<string, EventExpr>([["x", word("a")]]),
+        drifting()
+      ),
+  },
+  {
+    expected: "71",
+    failsFor: ["thresholdInTime"],
+    name: "50 percent of the progress of a move over frames 65 to 87 is 29.33 percent of the time, by the declared ease",
+    run: (functions) =>
+      String(65 + Math.round(functions.progressTime(ease, 0.5) * 22)),
+  },
+  {
+    expected: "65 87",
+    failsFor: [],
+    name: "0 and 100 percent of the progress are the first and the last frame, whatever the ease",
+    run: (functions) =>
+      Arr.join(
+        Arr.map([0, 1], (progress) =>
+          String(65 + Math.round(functions.progressTime(ease, progress) * 22))
+        ),
+        " "
+      ),
+  },
+];
+
+describe("a mutant of each function fails exactly its own row", () => {
+  for (const { expected, name, run } of functionRows) {
+    it(name, () => {
+      assert.strictEqual(run(realFunctions), expected);
+    });
+  }
+
+  for (const [mutant, functions] of Record.toEntries(functionMutants)) {
+    it(`negative control: ${mutant} fails exactly the rows that defend its function`, () => {
+      assert.deepStrictEqual(
+        Arr.map(
+          Arr.filter(
+            functionRows,
+            ({ expected, run }) => run(functions) !== expected
+          ),
+          ({ name }) => name
+        ),
+        Arr.map(
+          Arr.filter(functionRows, ({ failsFor }) =>
+            Arr.contains(failsFor, mutant)
+          ),
+          ({ name }) => name
+        )
+      );
+    });
+  }
 });

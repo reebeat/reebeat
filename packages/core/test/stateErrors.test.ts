@@ -19,7 +19,7 @@ interface Case {
 }
 
 const cycleHint =
-  "expected a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)";
+  "expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)";
 
 const percentHint =
   "expected start or end, or a percent of a move, an update, a show, a focus, or the transition of a Scene that is not > CUT";
@@ -254,6 +254,28 @@ const cases: readonly Case[] = [
     ],
     name: "a State beyond what the Scene can have",
     rows: ["x1: sound pop at state(9).enter"],
+  },
+  {
+    errors: [
+      [
+        "UnknownReference",
+        "x1: sound pop at state(0).enter",
+        stateHint(3, "state(0)"),
+      ],
+    ],
+    name: "State 0 (States are counted from 1)",
+    rows: ["x1: sound pop at state(0).enter"],
+  },
+  {
+    errors: [
+      [
+        "UnknownReference",
+        "x1: sound pop at beat(0).start",
+        stateHint(2, "beat(0)"),
+      ],
+    ],
+    name: "Beat 0 (Beats are counted from 1)",
+    rows: ["x1: sound pop at beat(0).start"],
   },
   {
     errors: [

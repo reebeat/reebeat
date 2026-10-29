@@ -9,6 +9,7 @@
 // units come from `grammar.ts`, the anchors from `anchors.ts`. Plain functions over `Result`.
 import {
   Array as Arr,
+  Match,
   Option,
   Record,
   Result,
@@ -30,15 +31,15 @@ import {
   optionWords,
   percentUnit,
   problem,
-  progressWord,
   sourceUnits,
   offsetExamples,
   offsetPattern,
   keywords,
   reservedIds,
 } from "./grammar.ts";
+import { progressToken } from "./machines.ts";
 import { EdgeSchema, edges, idPattern } from "./plan.ts";
-import type { Duration, EventExpr, Offset } from "./plan.ts";
+import type { Anchor, Duration, EventExpr, Offset } from "./plan.ts";
 import { flicksPerSecond } from "./time.ts";
 
 const bad = (line: number, message: string): PlanError =>
@@ -584,13 +585,13 @@ const readWhen = (
   const path = found?.groups?.path ?? "";
   const value = Number(found?.groups?.value ?? "NaN");
 
-  if (found === null || !Str.endsWith(`.${progressWord}`)(path)) {
+  if (found === null || !Str.endsWith(`.${progressToken}`)(path)) {
     return Result.fail(
       bad(
         line,
         problem(
           `"${pipe(text, Str.slice(at), Str.split(")"))[0] ?? ""})" is not a progress threshold`,
-          `${combinatorWords.when}(<subject>.<transition>.${progressWord} >= <N>${percentUnit.token})`
+          `${combinatorWords.when}(<subject>.<transition>.${progressToken} >= <N>${percentUnit.token})`
         )
       )
     );
@@ -740,58 +741,50 @@ const formatOffset = (offset: Offset): string => {
 const formatDuration = (duration: Duration): string =>
   duration.unit === "f" ? `${duration.value}f` : formatFlicks(duration.value);
 
+const formatAnchorEvent = (anchor: Anchor): string => {
+  if (anchor.kind === "edge" && !isEdgePoint(anchor.at)) {
+    const base = formatAnchor({ ...anchor, at: edges[0] });
+
+    return `${combinatorWords.when}(${Str.slice(0, base.length - edges[0].length)(base)}${progressToken} >= ${anchor.at.percent}${percentUnit.token})`;
+  }
+
+  return formatAnchor(anchor);
+};
+
+const formatGroup = (
+  name: string,
+  of: readonly EventExpr[],
+  format: (expr: EventExpr) => string
+): string => `${name}(${Arr.join(Arr.map(of, format), ", ")})`;
+
 /**
  * The event in its canonical form: a percent of a transition is the threshold `when(<path>.progress >= N%)`, every
  * combinator is written as a call, an offset follows its event.
  */
-export const formatEvent = (expr: EventExpr): string => {
-  switch (expr.kind) {
-    case "anchor": {
-      const { anchor } = expr;
-
-      if (anchor.kind === "edge" && !isEdgePoint(anchor.at)) {
-        const base = formatAnchor({ ...anchor, at: edges[0] });
-
-        return `${combinatorWords.when}(${Str.slice(0, base.length - edges[0].length)(base)}${progressWord} >= ${anchor.at.percent}${percentUnit.token})`;
-      }
-
-      return formatAnchor(anchor);
-    }
-
-    case "ref": {
-      return expr.name;
-    }
-
-    case "last":
-    case "first": {
-      return `${expr.kind}(${Arr.join(Arr.map(expr.of, formatEvent), ", ")})`;
-    }
-
-    case "each": {
-      return `${combinatorWords.each}(${Arr.join(
-        [
-          ...Arr.map(expr.of, formatEvent),
-          ...(expr.throttle === null
-            ? []
-            : [`${optionWords.throttle}=${formatDuration(expr.throttle)}`]),
-          ...(expr.stagger === null
-            ? []
-            : [`${optionWords.stagger}=${formatDuration(expr.stagger)}`]),
-        ],
-        ", "
-      )})`;
-    }
-
-    case "within": {
-      return `${combinatorWords.within}(${formatEvent(expr.of)}, ${anchorWords.state}(${expr.state}))`;
-    }
-
-    case "shift": {
-      return `${formatEvent(expr.of)} ${formatOffset(expr.offset)}`;
-    }
-
-    default: {
-      return "";
-    }
-  }
-};
+export const formatEvent = (expr: EventExpr): string =>
+  Match.value(expr).pipe(
+    Match.discriminatorsExhaustive("kind")({
+      anchor: (found) => formatAnchorEvent(found.anchor),
+      each: (found) =>
+        `${combinatorWords.each}(${Arr.join(
+          [
+            ...Arr.map(found.of, formatEvent),
+            ...(found.throttle === null
+              ? []
+              : [`${optionWords.throttle}=${formatDuration(found.throttle)}`]),
+            ...(found.stagger === null
+              ? []
+              : [`${optionWords.stagger}=${formatDuration(found.stagger)}`]),
+          ],
+          ", "
+        )})`,
+      first: (found) =>
+        formatGroup(combinatorWords.first, found.of, formatEvent),
+      last: (found) => formatGroup(combinatorWords.last, found.of, formatEvent),
+      ref: (found) => found.name,
+      shift: (found) =>
+        `${formatEvent(found.of)} ${formatOffset(found.offset)}`,
+      within: (found) =>
+        `${combinatorWords.within}(${formatEvent(found.of)}, ${anchorWords.state}(${found.state}))`,
+    })
+  );

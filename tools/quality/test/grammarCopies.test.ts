@@ -13,7 +13,7 @@ import {
   keywords,
   offsetUnits,
   optionWords,
-  progressWord,
+  machineWords,
   sfxNames,
   sourceUnits,
   stateEventNames,
@@ -50,6 +50,7 @@ const vocabulary: Vocabulary = {
     offsetUnits,
     Arr.map(sourceUnits, ({ token }) => token),
   ],
+  singular: Record.values(machineWords),
   words: [
     ...verbs,
     ...edges,
@@ -64,7 +65,7 @@ const vocabulary: Vocabulary = {
     ...Record.values(combinatorWords),
     ...Record.values(optionWords),
     ...Record.values(anchorWords),
-    progressWord,
+    machineWords.progress,
   ],
 };
 
@@ -124,6 +125,26 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
         "a string lists sound|show|focus as an alternation",
         "a string lists ms|s|f|% as an alternation",
       ]
+    );
+  });
+
+  it("negative control: a second definition of a word the machines define once", () => {
+    assert.deepStrictEqual(
+      reasonsOf('export const progressWord = "progress";'),
+      ['a second definition of "progress"']
+    );
+    assert.deepStrictEqual(
+      reasonsOf('const name = "scene"; const path = name;'),
+      ['a second definition of "scene"']
+    );
+  });
+
+  it("control: a typed use of a word of the machines is not a definition", () => {
+    assert.deepStrictEqual(
+      reasonsOf(
+        'const form = { kind: "progress", subject: "scene" }; const same = form.kind === "progress";'
+      ),
+      []
     );
   });
 

@@ -385,7 +385,7 @@ const numberedError = (
   n: number,
   most: number
 ): readonly PlanError[] =>
-  n > most
+  n < 1 || n > most
     ? [
         planError(
           "UnknownReference",
@@ -647,8 +647,17 @@ const anchorsEnter = (
 const stepIds = (scene: Scene): readonly string[] =>
   Arr.map(Arr.filter(scene.effects, isStep), (effect) => effect.id);
 
-/** What an effect or a derived event waits for: other effects, derived events, and the steps a State or Beat is made of. */
-const dependencies = (scene: Scene, expr: EventExpr): readonly string[] => {
+/**
+ * What an effect or a derived event waits for: other effects, derived events, and, for a moment that fires a step, the
+ * steps a State or Beat is made of (conservative: which step opens which Beat is not known before the Scene is
+ * resolved, so any step timed by any State or Beat is a cycle). An `until` (`ends`) never changes a Beat (it is a window
+ * end, and a `focus` is an instant), so a State or Beat it names depends on nothing.
+ */
+const dependencies = (
+  scene: Scene,
+  expr: EventExpr,
+  ends = false
+): readonly string[] => {
   const effects = Arr.flatMap(anchorsOf(expr), (anchor): readonly string[] => {
     if (anchor.kind === "word") {
       return [];
@@ -664,13 +673,13 @@ const dependencies = (scene: Scene, expr: EventExpr): readonly string[] => {
       return shown !== undefined && anchorsEnter(anchor) ? [shown.id] : [];
     }
 
-    return anchor.subject.kind === "scene" ? [] : stepIds(scene);
+    return anchor.subject.kind === "scene" || ends ? [] : stepIds(scene);
   });
 
   return [
     ...effects,
     ...refsOf(expr),
-    ...(statesOf(expr).length > 0 ? stepIds(scene) : []),
+    ...(statesOf(expr).length > 0 && !ends ? stepIds(scene) : []),
   ];
 };
 
@@ -691,7 +700,7 @@ const nodesOf = (scene: Scene): readonly Node[] => [
         : dependencies(scene, effect.when.event)),
       ...(effect.until === undefined
         ? []
-        : dependencies(scene, effect.until.event)),
+        : dependencies(scene, effect.until.event, true)),
     ],
   })),
   ...Arr.map(scene.events, (derived): Node => ({
@@ -728,7 +737,7 @@ const cycleErrors = (scene: Scene): readonly PlanError[] => {
           line,
           problem(
             `effects and derived events wait for each other: ${Arr.join(cycle, " -> ")}`,
-            "a chain that ends at a word, the scene, the transition or an Element event (a step cannot be timed by a State or a Beat it opens)"
+            "a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)"
           )
         )
       );

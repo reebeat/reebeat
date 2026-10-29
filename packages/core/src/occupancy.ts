@@ -106,3 +106,17 @@ export const reaches = (
   intervals: readonly Interval[],
   state: string
 ): boolean => Arr.some(intervals, (interval) => interval.state === state);
+
+/**
+ * The first frame of State `n` (1-based): the later of the Scene's slide frame and the ends of Beats 1 to n-1, so a
+ * State is never entered before the one it follows even when Beats overlap. `beatEnds` are the ends of the Beats in
+ * time order. The one definition the schedule and the verifier share.
+ */
+export const stateStart = (
+  slideFrame: number,
+  beatEnds: readonly number[],
+  n: number
+): number =>
+  Arr.reduce(Arr.take(beatEnds, n - 1), slideFrame, (earliest, end) =>
+    Math.max(earliest, end)
+  );

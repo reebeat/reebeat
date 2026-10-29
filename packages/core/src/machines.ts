@@ -8,6 +8,20 @@
 // Plain data and plain functions.
 import { Array as Arr, Option } from "effect";
 
+/**
+ * The words a path of the machines is made of that no machine declares as a state or a transition: the head of a
+ * Scene, a State or a Beat (`scene.start`, `state(2).enter`, `beat(1).end`), the alias `transition`, and the
+ * behaviour of a transition (`one.move.progress`). Defined here once; `grammar.ts`, the parser and the messages read
+ * them from here.
+ */
+export const machineWords = {
+  beat: "beat",
+  progress: "progress",
+  scene: "scene",
+  state: "state",
+  transition: "transition",
+} as const;
+
 /** What has a machine: an Element, an effect, the Scene (its slide change), a State of a Scene, a Beat between States. */
 export const subjectKinds = [
   "element",
@@ -188,9 +202,18 @@ const effect: Machine = {
  */
 const slide: Machine = {
   aliases: [
-    { for: ["scene", "transition"], spelled: ["transition"] },
-    { for: ["scene", "before", "leave"], spelled: ["scene", "start"] },
-    { for: ["scene", "shown", "leave"], spelled: ["scene", "end"] },
+    {
+      for: [machineWords.scene, machineWords.transition],
+      spelled: [machineWords.transition],
+    },
+    {
+      for: [machineWords.scene, "before", "leave"],
+      spelled: [machineWords.scene, "start"],
+    },
+    {
+      for: [machineWords.scene, "shown", "leave"],
+      spelled: [machineWords.scene, "end"],
+    },
   ],
   id: "slide",
   initial: "before",
@@ -317,7 +340,7 @@ export type Form =
 export const percentToken = "<N>%";
 
 /** The token of the behaviour of a transition, read only inside `when(... >= N%)`. */
-export const progressToken = "progress";
+export const progressToken = machineWords.progress;
 
 const edgeForms = (machine: Machine, transition: Transition): readonly Form[] =>
   Arr.map(
@@ -357,30 +380,34 @@ const stateForms = (machine: Machine, state: State): readonly Form[] =>
  * its progress behaviour; for each state its enter and leave. This is the whole vocabulary of anchors that name a
  * machine (a word of the narration is the one source that is not).
  */
-export const vocabulary: readonly Form[] = Arr.flatMap(machines, (machine) => [
-  ...Arr.flatMap(machine.transitions, (transition) => [
-    ...edgeForms(machine, transition),
-    {
-      kind: "progress",
-      machine,
-      means: `the progress of the transition, from 0 to 1: ${transition.means}`,
-      tail: [
-        ...(transition.elide === true ? [] : [transition.name]),
-        progressToken,
-      ],
-      transition,
-    } satisfies Form,
-  ]),
-  ...Arr.flatMap(machine.states, (state) => stateForms(machine, state)),
-]);
+export const vocabularyOf = (list: readonly Machine[]): readonly Form[] =>
+  Arr.flatMap(list, (machine) => [
+    ...Arr.flatMap(machine.transitions, (transition) => [
+      ...edgeForms(machine, transition),
+      {
+        kind: "progress",
+        machine,
+        means: `the progress of the transition, from 0 to 1: ${transition.means}`,
+        tail: [
+          ...(transition.elide === true ? [] : [transition.name]),
+          progressToken,
+        ],
+        transition,
+      } satisfies Form,
+    ]),
+    ...Arr.flatMap(machine.states, (state) => stateForms(machine, state)),
+  ]);
+
+/** Every spelling the declarations of the machines generate (`vocabularyOf(machines)`). */
+export const vocabulary: readonly Form[] = vocabularyOf(machines);
 
 /** The head of a spelling for a subject: the placeholder the document prints (`<id>`, `scene`, `beat(<n>)`). */
 export const headPlaceholder: Readonly<Record<SubjectKind, string>> = {
-  beat: "beat(<n>)",
+  beat: `${machineWords.beat}(<n>)`,
   effect: "<id>",
   element: "<id>",
-  scene: "scene",
-  state: "state(<n>)",
+  scene: machineWords.scene,
+  state: `${machineWords.state}(<n>)`,
 };
 
 /** The spelling of a form with `head` in front: `one.move.start`. */

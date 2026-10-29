@@ -62,6 +62,7 @@ The silent narrator makes the narration check (F8) meaningless: it prints `N/A (
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).
 - [`docs/design/third-party.md`](docs/design/third-party.md) and [`docs/design/open-core-boundary.md`](docs/design/open-core-boundary.md): the licences of everything reebeat depends on, and what is open and closed.
 - Packages, in three tiers with one dependency direction (library, then service, then adapter; [design R3](docs/design/keyframe-engine.md)): libraries `core` (screenplay to Plan, schedule), `subtitles` and `lint`; the service package `services` (the seven service interfaces, their contract suites and offline stand-ins); the build program `pipeline`; adapters `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg` and `cache-fs`; and the tools `verify` (the checks) and `cli` (the `reebeat` command, the only place adapters are chosen and composed).
+- npm: `core`, `subtitles`, `lint`, `services`, `pipeline`, `sounds-synth` and `render-reveal` are released to npm as pre-releases under the `alpha` tag by the Release workflow (`npm i @reebeat/core@alpha`; `effect` is a peer dependency). How, and why only these: [spec 0009](docs/specs/0009-npm-prereleases.md).
 
 The name `reebeat` is working; the GitHub org `reebeat` and the npm org `reebeat` are reserved.
 

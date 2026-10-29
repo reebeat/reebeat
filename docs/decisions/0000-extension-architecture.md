@@ -27,6 +27,7 @@
 | Plugin peer ranges: a plugin that uses an unstable contract caps its range below the next minor. | Decided (the agreed rule, relayed by the lead, 2026-10-29) |
 | **Interactions are elements.** An interaction declares the event it raises, with a Schema-typed payload, a label and a description; each artifact renderer realises it by its capabilities. Artifact renderers are **static** (video, VTT, Fountain, PDF: build-time realisation only) or **dynamic** (website, Deck runtime: realised at view time). *Authoring tools* act on creational formats (the story IR and its codecs); *interaction tools* act on produced artifacts. See [issue #19](https://github.com/reebeat/reebeat/issues/19). | Decided (operator, 2026-10-29) |
 | The interactive website artifact (issue #19) and viewer input events (issue #20) are later, not v1; #20 waits for an investigation. | Decided (operator, 2026-10-29) |
+| React's core (reconciler and scheduler) is **not** reebeat's engine core; React stays possible as one render engine under the SDK and JSX as an authoring importer. The layering is statechart, per-artifact plan, build DAG. | Decided (operator, 2026-10-29) |
 
 ### The four aims every decision serves
 
@@ -574,6 +575,39 @@ Rules:
 | **Compare PNG bytes** | Equal pictures can have different PNG bytes. The check would punish a library choice, not a behaviour. |
 | **Trust the declaration** | A `deterministic` claim that is false is the failure that costs most. E3 runs twice and compares; `check` runs F6 on the real build. |
 
+## Considered alternative: React's core as reebeat's engine
+
+**Decided (operator, 2026-10-29): rejected as the core.** The idea is to adopt React's reconciler and scheduler as reebeat's engine, the way React Native uses them for native trees and Remotion uses them for video. React is a good tool for a different problem: it renders the present state of a tree into one host. reebeat builds timelines of many artifacts.
+
+| React's design | Why it does not fit reebeat | Evidence |
+| --- | --- | --- |
+| It renders the present only; there is no pass that plans the whole timeline. | Narration durations, lead and follow, and anchors resolve only when the whole timeline is planned, before any frame is made. | reebeat's `schedule` stage and 0004's resolution order ([PR #17](https://github.com/reebeat/reebeat/pull/17)). |
+| Reconciliation makes the fewest mutations to a host tree. | reebeat needs *meaningful, timed transitions* derived from the identity diff (enter, exit, move, update with windows and easing), not the smallest edit. | GLOSSARY, "Identity diff" and "Lifecycle event". |
+| A key is scoped to its siblings. | Identity is story-wide: one id is one entity across parents and Scenes (decided). | React documents it: "Keys must be unique among siblings" ([Rendering lists](https://react.dev/learn/rendering-lists)). |
+| The scheduler depends on wall-clock time and on priorities. | Builds must be deterministic (F6). | The scheduler reads `performance.now()` and runs tasks by priority level ([`Scheduler.js`](https://github.com/facebook/react/blob/main/packages/scheduler/src/forks/Scheduler.js)). |
+| It targets one host tree. | One IR compiles to many artifacts (Video, Deck, VTT, Fountain, SCXML, and later a website). | Decision 2, rows 10a, 10b, 19. |
+| Incrementality lives in one process. | reebeat needs a persistent build graph: segments cached across runs under digests. | Decision 3 (brief digests) and the layering below. |
+| It has no audio model. | Narration, sounds and their sample-accurate onsets are half of the product. | Spec 0001, F1 and F8. |
+
+Remotion is not a candidate engine either: its licence has a company tier (free only for individuals, for-profit organisations of up to 3 employees and non-profits; [Remotion licence](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)), so building reebeat's core on it would put a licence condition on an Apache-2.0 compiler and on the products above it. That last step is **[INFERENCE]**; it has not been put to a lawyer.
+
+**Kept as options**, both inside this architecture:
+
+- **React as one render engine** under the engine SDK: a frame-in, pixels-out engine of reebeat's own (not Remotion), declared with its own capabilities (row 8). It is the natural first engine for authors who already write React.
+- **JSX as an authoring importer** (row 12): a front end that compiles JSX to the story IR, never a runtime dependency of the build.
+
+## Layering: the story, the plans and the build graph
+
+"DAG" is the right word for exactly one of these layers.
+
+| Layer | Shape | Why |
+| --- | --- | --- |
+| **The story** (the IR) | A **statechart**. It may contain cycles: interactive loops, repeats, going back. | The model (decided). |
+| **The plan of one artifact** | The statechart **unrolled** for that artifact: a linear timeline for a video, a navigable graph for a website. | The artifact's interface decides (static or dynamic, Decision 4). |
+| **The build graph** | A **DAG** with **dynamic dependencies** and **early cutoff**. | Build Systems à la Carte (Mokhov, Mitchell and Peyton Jones, ICFP 2018, [DOI 10.1145/3236774](https://doi.org/10.1145/3236774); the publisher answers non-browser clients with 403, and the title, authors and venue were checked in the Crossref record). |
+
+How the build graph meets this record: a brief digest is the key of a segment; a task may discover its dependencies while it runs (a `windowed` engine's lifecycle decides which effect times resolve); and **early cutoff** stops at the first unchanged value. `run/render` returns the SHA-256 of every decoded frame, so an edit that re-renders a segment but leaves its pixels equal stops there: the Encoder's input is keyed by the frame digests, not by the brief, and nothing downstream runs.
+
 ## Consequences
 
 **Easier**
@@ -680,3 +714,7 @@ The second pass verified all fourteen resolutions in the text and found two bloc
 | 8 | major | Interactions overlapped the deferred `InputSource`; `cap/static-live-tool` duplicated `cap/interaction-unrealisable`; `cap/interaction-inaccessible` was missing from the table. | **Accepted.** An interaction may fire only a transition the story already declares; payload-dependent or branching behaviour is row 20; the duplicate rule is folded into `cap/interaction-unrealisable`; `cap/interaction-inaccessible` added; the Agents surface is a tool endpoint. |
 | 9 | minor | Decision 2 had no provenance line; operator directions on interactions sat only in body text. | **Accepted.** Decision 2 carries **Decision (Proposed).**; the Context table has rows for interactions, artifact kinds and the roadmap items, marked Decided (operator, 2026-10-29). |
 | 10 | minor | Residual mismatches: the 25 fps reason, how relative frames are computed, `cache-pinned` in the engine `determinism` row, row 21's openness, PATH-resolved executables, the npm entry's package, glossary terms, the manifest key `run`, link texts. | **Accepted.** 25 fps is "refused until 0005 rounds once"; frames are `framesOfFlicks(t) - framesOfFlicks(runStart)`; the engine `determinism` row lists two values; row 21 is "never as a plugin"; executables come from the pinned artifact; npm entries name `package`; the manifest key is `launch`; the glossary gains Run and Brief; links read "issue #N". |
+
+### 2026-10-29, operator direction: React's core and the layering
+
+After the two review rounds the operator decided that React's core is rejected as reebeat's engine core, with seven reasons, and that React as one engine and JSX as an importer stay open. The ADR gained the section "Considered alternative: React's core as reebeat's engine" and the section "Layering: the story, the plans and the build graph" (the story is a statechart that may cycle; each artifact's plan unrolls it; "DAG" applies only to the build graph, which has dynamic dependencies and early cutoff, after Build Systems à la Carte). The Remotion licence point is marked as an inference.

@@ -114,10 +114,21 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=mc class=box}"?',
-    name: "an Element without an id",
-    needle: "Box {cell=tl class=box}",
-    source: change("Box {id=a cell=tl class=box}", "Box {cell=tl class=box}"),
+      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=tl class=label}"?',
+    name: "an Element without an id keeps its own cell and class",
+    needle: "Box {cell=tl class=label}",
+    source: change("Box {id=a cell=tl class=box}", "Box {cell=tl class=label}"),
+    tag: "MissingId",
+  },
+  {
+    message:
+      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=tl visible=false class=box}"?',
+    name: "an Element without an id and without a class gets an example class only",
+    needle: "Box {cell=tl visible=false}",
+    source: change(
+      "Box {id=a cell=tl class=box}",
+      "Box {cell=tl visible=false}"
+    ),
     tag: "MissingId",
   },
   {

@@ -39,6 +39,8 @@ export type PropertyKey = keyof typeof propertySchemas;
 /** One row of the Element property table of the document. */
 export interface PropertySpec {
   readonly default: string | undefined;
+  /** A valid value, for the message that suggests a whole line (the Element's own id is taken from its text). */
+  readonly example: string;
   /** What an open set looks like (a property with no closed set of `values`). */
   readonly form: string;
   readonly key: PropertyKey;
@@ -52,6 +54,7 @@ export interface PropertySpec {
 export const elementProperties: readonly PropertySpec[] = [
   {
     default: undefined,
+    example: "one",
     form: "an identifier: a letter, then letters, digits, `_` and `-`",
     key: "id",
     required: true,
@@ -61,6 +64,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: undefined,
+    example: "mc",
     form: "",
     key: "cell",
     required: true,
@@ -69,6 +73,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: undefined,
+    example: "box",
     form: "",
     key: "class",
     required: true,
@@ -77,6 +82,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: "true",
+    example: "false",
     form: "",
     key: "visible",
     required: false,

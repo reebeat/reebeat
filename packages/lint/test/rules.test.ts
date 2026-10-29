@@ -1,26 +1,59 @@
 // The lint rules, each with a control that shows the rule fails when the thing it guards is broken.
 import { assert, describe, it } from "@effect/vitest";
+import { buildPlan } from "@reebeat/core";
 import type { Effect as PlanEffect, PlanJson } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import {
   absoluteTimesNeedReason,
   contrast,
   contrastRatio,
+  derivedEventsNeverUsed,
   effectFragmentAgreement,
   lintPlan,
+  untilsOfTheirOwnFire,
 } from "../src/index.ts";
 import type { Fragment } from "../src/index.ts";
 import { plan } from "./support.ts";
 
 /** The fragments a faithful Rendering of the Plan in `support.ts` shows, written out: one per show and focus. */
 const faithful = (): readonly Fragment[] => [
-  { effectId: "r1", sceneId: "one", target: "b", verb: "show" },
-  { effectId: "f1", sceneId: "two", target: "a", verb: "focus" },
+  { edge: "start", effectId: "r1", sceneId: "one", target: "b", verb: "show" },
+  { edge: "start", effectId: "f1", sceneId: "two", target: "a", verb: "focus" },
 ];
 
 const places = (diagnostics: ReturnType<typeof effectFragmentAgreement>) =>
   Arr.map(diagnostics, ({ index, sceneId }) => [sceneId, index]);
+
+/** The Plan with a Timeline in which the focus `f1` of Scene `two` ends by its own `until`: it has an end step. */
+const ringed = (given: PlanJson): PlanJson => ({
+  ...given,
+  timeline: {
+    chapters: [],
+    scenes: [
+      {
+        effects: [
+          {
+            commandFrame: 9,
+            effectId: "f1",
+            endCommandFrame: 19,
+            endFrame: 20,
+            endedBy: "until",
+            fireFrame: 10,
+            instance: 1,
+            intent: 'word("six").end',
+          },
+        ],
+        endFrame: 60,
+        events: [],
+        lines: [],
+        sceneId: "two",
+        slideFrame: 0,
+      },
+    ],
+    totalFrames: 60,
+  },
+});
 
 describe("effectFragmentAgreement", () => {
   it.effect(
@@ -41,7 +74,13 @@ describe("effectFragmentAgreement", () => {
         const given = yield* plan;
 
         const diagnostics = effectFragmentAgreement(given, [
-          { effectId: "r1", sceneId: "one", target: "b", verb: "show" },
+          {
+            edge: "start",
+            effectId: "r1",
+            sceneId: "one",
+            target: "b",
+            verb: "show",
+          },
         ]);
 
         assert.deepStrictEqual(places(diagnostics), [["two", 0]]);
@@ -64,10 +103,16 @@ describe("effectFragmentAgreement", () => {
         assert.isDefined(first);
         assert.isDefined(second);
 
-        const extra = [
+        const extra: readonly Fragment[] = [
           first,
           second,
-          { effectId: "x", sceneId: "three", target: "c", verb: "show" },
+          {
+            edge: "start",
+            effectId: "x",
+            sceneId: "three",
+            target: "c",
+            verb: "show",
+          },
         ];
 
         const reverbed = [first, { ...second, verb: "show" }];
@@ -96,6 +141,43 @@ describe("effectFragmentAgreement", () => {
         ["two", 0],
       ]);
     })
+  );
+
+  it.effect(
+    "control: a ring whose end step is missing, or an end without a ring, fails at the end",
+    () =>
+      Effect.gen(function* rings() {
+        const given = ringed(yield* plan);
+        const [first, second] = faithful();
+
+        assert.isDefined(first);
+        assert.isDefined(second);
+
+        const withEnd: readonly Fragment[] = [
+          first,
+          second,
+          { ...second, edge: "end" },
+        ];
+
+        assert.deepStrictEqual(effectFragmentAgreement(given, withEnd), []);
+
+        const missing = effectFragmentAgreement(given, [first, second]);
+
+        assert.deepStrictEqual(places(missing), [["two", 1]]);
+        assert.include(
+          missing[0]?.message ?? "",
+          "scene two, fragment 1: the Plan says f1 end (focus a), the fragments have no fragment"
+        );
+
+        // The Deck shows an end step the Plan does not have (its ring has no `until`).
+        const extra = effectFragmentAgreement(yield* plan, withEnd);
+
+        assert.deepStrictEqual(places(extra), [["two", 1]]);
+        assert.include(
+          extra[0]?.message ?? "",
+          "the Plan says no fragment, the fragments have f1 end (focus a)"
+        );
+      })
   );
 });
 
@@ -188,7 +270,7 @@ describe("absoluteTimesNeedReason", () => {
   it.effect("control: an absolute time whose reason is blank is an error", () =>
     Effect.gen(function* blank() {
       const broken = withEffect(yield* plan, "three", "a1", (effect) =>
-        "absoluteMs" in effect.when
+        "absoluteFlicks" in effect.when
           ? { ...effect, when: { ...effect.when, reason: "  " } }
           : effect
       );
@@ -203,6 +285,129 @@ describe("absoluteTimesNeedReason", () => {
   );
 });
 
+/** The plan of one Scene whose effects block is `lines`, built by the real importer (`b` is hidden: `r1` shows it). */
+const withEffects = (lines: readonly string[]) =>
+  buildPlan(
+    Arr.join(
+      [
+        "Title: Events",
+        "",
+        "# Part",
+        "",
+        "INT. ONE #one#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "Later {id=b cell=br class=label visible=false}",
+        "",
+        "[[effects",
+        ...lines,
+        "]]",
+        "",
+        "NARRATOR",
+        "One two three four.",
+        "",
+      ],
+      "\n"
+    ),
+    Str.repeat(32)("5a")
+  );
+
+const linesOf = (diagnostics: readonly { readonly line?: number }[]) =>
+  Arr.map(diagnostics, ({ line }) => line);
+
+describe("derivedEventsNeverUsed", () => {
+  it.effect(
+    "holds when every let is used by an effect, directly or through another let",
+    () =>
+      Effect.gen(function* used() {
+        const given = yield* withEffects([
+          '  let inner = word("two").end',
+          "  let outer = inner +0.1s",
+          "  r1: show b at outer",
+        ]);
+
+        assert.deepStrictEqual(derivedEventsNeverUsed(given), []);
+      })
+  );
+
+  it.effect(
+    "control: a let no effect uses is an error at its line, and so is a let only another unused let uses",
+    () =>
+      Effect.gen(function* unused() {
+        const given = yield* withEffects([
+          '  let spare = word("one").end',
+          '  let inner = word("two").end',
+          "  let outer = inner +0.1s",
+          '  r1: show b at word("three").end',
+        ]);
+
+        const found = derivedEventsNeverUsed(given);
+
+        assert.deepStrictEqual(linesOf(found), [11, 12, 13]);
+        assert.deepStrictEqual(
+          Arr.map(found, ({ rule }) => rule),
+          Arr.replicate("derived-event-never-used", 3)
+        );
+        assert.include(
+          found[0]?.message ?? "",
+          'scene one: the derived event spare (word("one").end) is never used'
+        );
+      })
+  );
+
+  it.effect("control: a let used only in an until counts as used", () =>
+    Effect.gen(function* untilUse() {
+      const given = yield* withEffects([
+        '  let done = word("three").end',
+        '  f1: focus a at word("one").end until done',
+        '  r1: show b at word("two").end',
+      ]);
+
+      assert.deepStrictEqual(derivedEventsNeverUsed(given), []);
+    })
+  );
+});
+
+describe("untilsOfTheirOwnFire", () => {
+  it.effect(
+    "holds for an until that comes after the event the effect fires at",
+    () =>
+      Effect.gen(function* later() {
+        const given = yield* withEffects([
+          '  f1: focus a at word("one").end until word("three").end',
+          '  r1: show b at word("two").end',
+        ]);
+
+        assert.deepStrictEqual(untilsOfTheirOwnFire(given), []);
+      })
+  );
+
+  it.effect(
+    "control: an until that is the event the effect fires at is an error at the effect's line, also through a let",
+    () =>
+      Effect.gen(function* same() {
+        const given = yield* withEffects([
+          '  let t = word("one").end',
+          '  f1: focus a at word("one").end until word("one").end',
+          "  f2: focus a at t until t",
+          '  r1: show b at word("two").end',
+        ]);
+
+        const found = untilsOfTheirOwnFire(given);
+
+        assert.deepStrictEqual(linesOf(found), [12, 13]);
+        assert.deepStrictEqual(
+          Arr.map(found, ({ rule }) => rule),
+          Arr.replicate("until-is-its-own-fire", 2)
+        );
+        assert.include(
+          found[0]?.message ?? "",
+          'scene one, effect f1: until word("one").end is the event it fires at'
+        );
+      })
+  );
+});
+
 describe("lintPlan", () => {
   it.effect(
     "runs the Plan rules: the information of a valid Plan is its absolute times",
@@ -211,6 +416,23 @@ describe("lintPlan", () => {
         assert.deepStrictEqual(
           Arr.map(lintPlan(yield* plan), ({ rule }) => rule),
           ["absolute-time"]
+        );
+      })
+  );
+
+  it.effect(
+    "control: lintPlan runs the event rules too, with the absolute times",
+    () =>
+      Effect.gen(function* events() {
+        const given = yield* withEffects([
+          '  let spare = word("one").end',
+          '  f1: focus a at word("one").end until word("one").end',
+          '  r1: show b at word("two").end',
+        ]);
+
+        assert.deepStrictEqual(
+          Arr.map(lintPlan(given), ({ rule }) => rule),
+          ["derived-event-never-used", "until-is-its-own-fire"]
         );
       })
   );

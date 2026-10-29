@@ -67,7 +67,12 @@
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
     "tools/quality": {
-      "entry": ["checkEffectExceptions.ts", "checkTiers.ts", "genGrammar.ts"],
+      "entry": [
+        "checkEffectExceptions.ts",
+        "checkTiers.ts",
+        "genGrammar.ts",
+        "genJsonSchema.ts"
+      ],
       "project": ["*.ts", "test/**/*.ts"]
     }
   },

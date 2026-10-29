@@ -21,11 +21,35 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 
 | Command | What it does |
 | --- | --- |
-| `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan against the `lifecycle` the selected Renderer declares, so it shows each effect's intent and resolved frame |
+| `plan` | `readSource` then `buildPlan` (the Fountain importer reads the story into the IR; the Plan is a function of it); prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan against the `lifecycle` the selected Renderer declares, so it shows each effect's intent and resolved frames (see "`plan --timing`" below) |
 | `build` | `buildProgram` on the selected adapters, then the summary: files, frames, sizes, and every adapter with its egress |
 | `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@reebeat/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
 | `journey` | build, `check`, build again, F6 compare; the first failure stops it |
-| `lint` | `collectErrors` (every problem of the screenplay, in document order, each `file:line: error Tag: message` with what was found, what was expected and the nearest valid form), then `lintPlan` (the absolute times, listed with their reasons as `info`). When the story's speech cache exists under the selected adapters (`--cache-dir` and the selection flags say which) it also schedules the Plan, so an effect outside its Scene is an error with its line; without the cache that is **not checked**: `plan --timing` or `build` finds it, not `lint`, and the last output line says which happened. Needs no browser; exits 1 when anything is an error |
+| `lint` | `fountainImporter` (every problem of the screenplay, in document order, each `file:line: error Tag: message` with what was found, what was expected and the nearest valid form; the importer is one way and the Plan is built from the IR it returns), then `lintPlan` (the absolute times, listed with their reasons as `info`; a derived event no effect uses and an `until` that is its own fire, as errors). When the story's speech cache exists under the selected adapters (`--cache-dir` and the selection flags say which) it also schedules the Plan, so an effect outside its Scene is an error with its line; without the cache that is **not checked**: `plan --timing` or `build` finds it, not `lint`, and the last output line says which happened. Needs no browser; exits 1 when anything is an error |
+
+## `plan --timing`
+
+`reebeat plan <story> --timing` answers "when does each thing happen?" before any video exists. It needs the speech of the story: the speech stage runs **read-only** on the cache the selection names (`--cache-dir`, `--speech`, `--aligner`), so a Line without a cached asset fails `SpeechCacheMiss` naming the Line and the key, and nothing is synthesised or written. The Plan is then scheduled against the `lifecycle` the selected Renderer declares (when its slide change and its motion happen), at the Plan's frame rate (30 fps unless the Plan says otherwise).
+
+It prints the review text of `plan` with, for each effect, its **intent** (the event as the author wrote it, and its canonical form beside it when they differ: `one.move.50%` is `when(one.move.progress >= 50%)`) and the frame it resolved to, with seconds. An effect whose event has several occurrences (`each(...)`) runs once for each, so it has one row for each **instance**, labelled `<id>#<n>`. Under `Events` each derived event (`let`) shows what it is and the frames it resolved to (`no occurrence` when it never happens), and under an effect with a duration a row says when it ended and what ended it: `by until`, `interrupted by the slide change` (the slide change interrupts every running effect) or `by its window` (a `show`'s fade). Without `--timing` the review shows the intent only and no frame. With `--json` the Plan carries its `timeline` (`TimedEffect` per instance, `TimedScene.events` per `let`).
+
+```text
+    Events
+      settled  all(word("two").end, word("four").end)  ->  frame 66 (2.20 s)
+    Effects
+      r1    show b     word("three").end  ->  frame 57 (1.90 s)
+        ends frame 61 (2.03 s), by its window
+      p1    sound pop  settled +0.1s (canonical: settled +100ms)  ->  frame 69 (2.30 s)  (rides step r1)
+      p2#1  sound pop  each(word("one").end, word("five").end)  ->  frame 39 (1.30 s)  (plays alone)
+      p2#2  sound pop  each(word("one").end, word("five").end)  ->  frame 75 (2.50 s)  (rides step r1)
+```
+
+```sh
+reebeat plan stories/same-id/story.fountain --timing
+reebeat plan stories/same-id/story.fountain --timing --speech silent --aligner even --cache-dir /tmp/standin
+```
+
+The frames are the Timeline's: the same ones `build` captures and `check` then looks for in the written video and audio. A scheduling error (an effect outside its Scene, an anchor that does not resolve) fails with its tag and the effect's line, as in `build`.
 
 ## Selection
 
@@ -90,7 +114,8 @@ and a real ffmpeg, with the offline stand-ins for narration; Chromium and the ve
 
 | File | Proves |
 | --- | --- |
-| `plan.test.ts` | the review text and JSON, determinism, the hash of a file with a byte-order mark, `--timing` read-only, one mutation per Plan error class stops with its tag and line (F10, F12) |
+| `plan.test.ts` | the review text and JSON (its summary counts what `plan.json` holds), determinism, the hash of a file with a byte-order mark, `--timing` read-only, `--timing` on a story with a derived event, an `each` and an `until` (the intent and the frames of each instance, F9), one mutation per Plan error class stops with its tag and line (F10, F12) |
+| `lint.test.ts` | each error with file, line, tag and message; an anchor that names no edge of a machine; the derived-event and `until` rules at their lines; the absolute times; the timing lines with and without the speech cache |
 | `build.test.ts` | the files, the manifest (adapters, egress, provenance) and the frame count of a finished build; the cache directory; the config file and a flag over it; the F12 controls (a miss, a failing capture, a refused output directory): no `<out>` and no `<out>.partial` |
 | `selection.test.ts` | F14: an unknown value or key is `UnknownSelection` naming the choices, from a flag or the file, in every command; a missing model or credential is `AdapterUnavailable` or `SpeechCacheMiss` and no stand-in output replaces it |
 | `provider.test.ts` | F16: a test-only hosted adapter that needs `FAKE_PROVIDER_KEY`: without it nothing is written; with a canary as the key the build succeeds, lists the egress, and the canary is in no file, key, manifest, plan or output; controls that the search finds a leak and that a secret-named setting is refused |

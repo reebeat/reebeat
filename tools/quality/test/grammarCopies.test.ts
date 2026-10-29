@@ -1,16 +1,24 @@
 // The one-grammar gate on text with a negative control for each kind of copy, and on every package of this repository:
-// nothing outside `packages/core/src/grammar.ts` and `plan.ts` spells a verb, edge, event, unit, keyword or anchor word
-// in a regular expression, repeats the id rule, or lists the members of a closed set as an alternation.
+// nothing outside `packages/core/src/grammar.ts`, `plan.ts` and `machines.ts` spells a verb, edge, transition or state
+// name, combinator, option, unit, keyword or anchor word in a regular expression, repeats the id rule, or lists the
+// members of a closed set as an alternation or an array. The words and the sets are read from the modules that define
+// them (the machines generate the anchor spellings, so their transition and state names are part of the grammar).
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import {
   absoluteUnit,
   anchorWords,
+  combinatorWords,
   edges,
-  elementEvents,
   keywords,
+  offsetUnits,
+  optionWords,
+  progressWord,
   sfxNames,
   sourceUnits,
+  stateEventNames,
+  stateNames,
+  transitionNames,
   verbs,
 } from "@reebeat/core";
 import {
@@ -32,20 +40,31 @@ const vocabulary: Vocabulary = {
   sets: [
     verbs,
     edges,
-    elementEvents,
+    transitionNames,
+    stateNames,
+    stateEventNames,
     sfxNames,
+    Record.values(combinatorWords),
+    Record.values(optionWords),
+    Record.values(anchorWords),
+    offsetUnits,
     Arr.map(sourceUnits, ({ token }) => token),
   ],
   words: [
     ...verbs,
     ...edges,
-    ...elementEvents,
+    ...transitionNames,
+    ...stateNames,
+    ...stateEventNames,
     ...Arr.filter(
-      Arr.map(sourceUnits, ({ token }) => token),
+      [...Arr.map(sourceUnits, ({ token }) => token), ...offsetUnits],
       (token) => /^[a-z]{2,}$/u.test(token)
     ),
     ...Record.values(keywords),
+    ...Record.values(combinatorWords),
+    ...Record.values(optionWords),
     ...Record.values(anchorWords),
+    progressWord,
   ],
 };
 
@@ -117,7 +136,63 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
   it("negative control: Schema.Literals over a copy of a closed set", () => {
     assert.deepStrictEqual(
       reasonsOf('const E = Schema.Literals(["enter", "exit", "move"]);'),
-      ["an array lists enter, exit, move, update of a closed set"]
+      [`an array lists ${Arr.join(transitionNames, ", ")} of a closed set`]
+    );
+  });
+
+  it("negative control: a regular expression that spells the combinators and their options", () => {
+    assert.deepStrictEqual(
+      reasonsOf(
+        String.raw`const event = /^(?:all|first)\(.*throttle=(?<n>\d+)/u; const rule = /^let\s+(?<name>\w+)\s+until/u;`
+      ),
+      [
+        'a regular expression spells "all"',
+        'a regular expression spells "first"',
+        'a regular expression spells "throttle"',
+        'a regular expression spells "let"',
+        'a regular expression spells "until"',
+      ]
+    );
+  });
+
+  it("negative control: a regular expression that spells a state, a transition and an anchor word of the machines", () => {
+    assert.deepStrictEqual(
+      reasonsOf(
+        String.raw`const path = /^state\((?<n>\d+)\)\.(?:leave|enter)$/u; const run = /^r1\.run\.done$/u;`
+      ),
+      [
+        'a regular expression spells "state"',
+        'a regular expression spells "leave"',
+        'a regular expression spells "enter"',
+        'a regular expression spells "run"',
+        'a regular expression spells "done"',
+      ]
+    );
+  });
+
+  it("negative control: the states of the machines and the words of the combinators listed again", () => {
+    assert.deepStrictEqual(
+      reasonsOf(
+        'const s = ["idle", "active", "done"]; const c = ["all", "first", "each"]; const o = ["throttle", "stagger"];'
+      ),
+      [
+        `an array lists ${Arr.join(stateNames, ", ")} of a closed set`,
+        `an array lists ${Arr.join(Record.values(combinatorWords), ", ")} of a closed set`,
+        `an array lists ${Arr.join(Record.values(optionWords), ", ")} of a closed set`,
+      ]
+    );
+  });
+
+  it("negative control: the units of an offset and of a duration, stored and written", () => {
+    assert.deepStrictEqual(
+      reasonsOf(
+        'const stored = ["flicks", "f", "percent"]; const re = /(?:flicks|ms)$/u;'
+      ),
+      [
+        `an array lists ${Arr.join(offsetUnits, ", ")} of a closed set`,
+        'a regular expression spells "flicks"',
+        'a regular expression spells "ms"',
+      ]
     );
   });
 
@@ -204,30 +279,36 @@ const sources: Effect.Effect<
 });
 
 describe("this repository", () => {
-  it.effect("spells the effects syntax in grammar.ts and plan.ts only", () =>
-    Effect.gen(function* repository() {
-      const files = yield* sources;
+  it.effect(
+    "spells the effects syntax in grammar.ts, plan.ts and machines.ts only",
+    () =>
+      Effect.gen(function* repository() {
+        const files = yield* sources;
 
-      assert.isAbove(files.length, 100, "the scan reads the packages");
-      assert.isTrue(
-        Arr.some(files, ({ name }) => name === "core/src/grammar.ts"),
-        "and finds the grammar"
-      );
+        assert.isAbove(files.length, 100, "the scan reads the packages");
+        assert.isTrue(
+          Arr.some(files, ({ name }) => name === "core/src/grammar.ts"),
+          "and finds the grammar"
+        );
 
-      const own = new Set(["core/src/grammar.ts", "core/src/plan.ts"]);
+        const own = new Set([
+          "core/src/grammar.ts",
+          "core/src/machines.ts",
+          "core/src/plan.ts",
+        ]);
 
-      const copies = Arr.flatMap(
-        Arr.filter(files, (source: Source) => !own.has(source.name)),
-        (source: Source) =>
-          Arr.map(
-            copiesIn(source.text, vocabulary),
-            (copy) =>
-              `${source.name}:${copy.line}: ${copy.reason}: ${copy.text}`
-          )
-      );
+        const copies = Arr.flatMap(
+          Arr.filter(files, (source: Source) => !own.has(source.name)),
+          (source: Source) =>
+            Arr.map(
+              copiesIn(source.text, vocabulary),
+              (copy) =>
+                `${source.name}:${copy.line}: ${copy.reason}: ${copy.text}`
+            )
+        );
 
-      assert.deepStrictEqual(copies, []);
-    }).pipe(Effect.provide(NodeServices.layer))
+        assert.deepStrictEqual(copies, []);
+      }).pipe(Effect.provide(NodeServices.layer))
   );
 
   it("knows the absolute unit and the keywords it scans for", () => {

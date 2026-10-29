@@ -1,11 +1,13 @@
-// The one-grammar gate (spec 0002, F3): `packages/core/src/grammar.ts` is the only place that spells the effects
-// syntax. This scan reads the source of every package and reports a copy of it: a regular expression that names a verb,
-// edge, event, unit, keyword or anchor word, a regular expression that repeats the id rule, or a string that lists
-// two members of one closed set as an alternation (`start|end`), or an array literal that lists two members of one
-// closed set (`["sound", "show"]`, `Schema.Literals([...])`, `[...].join("|")`: one array node). A typed use of a single
-// member (`effect.verb === "sound"`, an object `{ edge: "end" }`) is not a copy: the type checker holds it to the
-// closed set. The closed sets are DEFINED in `packages/core/src/plan.ts` (cells, classes, sounds, verbs, edges, events)
-// and `grammar.ts` (keywords, anchor words, units), the two files the scan skips. Pure functions over one file's text.
+// The one-grammar gate (spec 0002, F3; spec 0004): the effects syntax is spelled in `packages/core/src/grammar.ts`,
+// `plan.ts` and `machines.ts` only. This scan reads the source of every package and reports a copy of it: a regular
+// expression that names a verb, edge, transition or state name, combinator, option, unit, keyword or anchor word, a
+// regular expression that repeats the id rule, or a string that lists two members of one closed set as an alternation
+// (`start|end`), or an array literal that lists two members of one closed set (`["sound", "show"]`,
+// `Schema.Literals([...])`, `[...].join("|")`: one array node). A typed use of a single member
+// (`effect.verb === "sound"`, an object `{ edge: "end" }`) is not a copy: the type checker holds it to the closed set.
+// The closed sets are DEFINED in `plan.ts` (cells, classes, sounds, verbs, edges, units), `machines.ts` (the
+// transitions, states and subjects of the machines, which generate the anchor spellings) and `grammar.ts` (keywords,
+// anchor words, combinators, options, units), the three files the scan skips. Pure functions over one file's text.
 import { Array as Arr, Record, Schema, String as Str, pipe } from "effect";
 import { parseSync } from "oxc-parser";
 

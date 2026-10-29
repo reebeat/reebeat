@@ -355,7 +355,7 @@ const splitAnchor = (
 };
 
 /** What follows `at`: an absolute time with its reason, or an anchor and an optional offset. */
-export const parseWhen = (
+const parseWhen = (
   text: string,
   line: number
 ): Result.Result<When, PlanError> => {

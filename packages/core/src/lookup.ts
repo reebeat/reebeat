@@ -14,3 +14,12 @@ export const effectOf = (scene: Scene, id: string): Effect | undefined =>
   Option.getOrUndefined(
     Arr.findFirst(scene.effects, (effect) => effect.id === id)
   );
+
+/** The ids of the Scenes of a Chapter, in the story's order: derived from `Scene.chapterId`, never stored on the Chapter. */
+export const sceneIdsOfChapter = (
+  plan: { readonly scenes: readonly Pick<Scene, "chapterId" | "id">[] },
+  chapterId: string
+): readonly string[] =>
+  Arr.flatMap(plan.scenes, (scene) =>
+    scene.chapterId === chapterId ? [scene.id] : []
+  );

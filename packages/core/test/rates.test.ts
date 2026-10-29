@@ -133,7 +133,7 @@ describe("flicks are exact", () => {
 const story = statesSource([
   'r1: show note at word("charlie").end +0.1s',
   'f1: focus box at word("foxtrot").start until word("hotel").start',
-  "let settled = all(box.move.end, fresh.enter.end)",
+  "let settled = last(box.move.end, fresh.enter.end)",
   'let words = each(word("alpha").start, word("echo").start, word("hotel").start)',
   "x1: sound pop at transition.start",
   "x2: sound pop at box.move.50%",

@@ -1,15 +1,15 @@
 // Evaluating an event expression (spec 0004): the algebra of `combinators.ts` applied to an `EventExpr`, with the
 // SOURCES left to the caller. `schedule` supplies the frames the Timeline resolves; the verifier supplies the frames it
 // observed in the written video and audio, so the same expression is checked against the picture with one definition
-// of `all`, `first`, `each`, `within`, offsets, `throttle` and `stagger`. A `let` name is evaluated once and shared.
+// of `last`, `first`, `each`, `within`, offsets, `throttle` and `stagger`. A `let` name is evaluated once and shared.
 // A source may need another event (an effect's start is the event of its own timing), so it receives the evaluator.
 // Plain functions over `Result`.
 import { Array as Arr, Match, Result } from "effect";
 
 import {
-  all,
   each,
   first,
+  last,
   normalise,
   stagger,
   throttle,
@@ -123,10 +123,10 @@ export const evaluator = <E>(
   const event = (expr: EventExpr): Result.Result<Event, E> =>
     Match.value(expr).pipe(
       Match.discriminatorsExhaustive("kind")({
-        all: (found) => Result.map(operandsOf(event, found.of), all),
         anchor: (found) => sources.anchor(found.anchor, event),
         each: (found) => grouped(sources, event, found),
         first: (found) => Result.map(operandsOf(event, found.of), first),
+        last: (found) => Result.map(operandsOf(event, found.of), last),
         ref: (found) => {
           const cached = known.get(found.name);
           const body = lets.get(found.name);
@@ -182,12 +182,12 @@ const fold = <A>(
 ): readonly A[] =>
   Match.value(expr).pipe(
     Match.discriminatorsExhaustive("kind")({
-      all: (found) =>
-        Arr.flatMap(found.of, (operand) => fold(operand, leaf, extra)),
       anchor: leaf,
       each: (found) =>
         Arr.flatMap(found.of, (operand) => fold(operand, leaf, extra)),
       first: (found) =>
+        Arr.flatMap(found.of, (operand) => fold(operand, leaf, extra)),
+      last: (found) =>
         Arr.flatMap(found.of, (operand) => fold(operand, leaf, extra)),
       ref: leaf,
       shift: (found) => fold(found.of, leaf, extra),

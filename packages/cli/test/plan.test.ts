@@ -40,7 +40,7 @@ const combinatorStory = Str.replace(
     '  p1: sound pop at word("five").end',
     Arr.join(
       [
-        '  let settled = all(word("two").end, word("four").end)',
+        '  let settled = last(word("two").end, word("four").end)',
         "  p1: sound pop at settled +0.1s",
         '  p2: sound pop at each(word("one").end, word("five").end)',
       ],
@@ -181,11 +181,11 @@ layer(platform)("reebeat plan", (it) => {
         assert.isTrue(Exit.isSuccess(timed.exit));
         assert.match(
           timed.stdout,
-          /settled\s+all\(word\("two"\)\.end, word\("four"\)\.end\)\s+->\s+frame \d+/u
+          /settled\s+last\(word\("two"\)\.end, word\("four"\)\.end\)\s+->\s+frame \d+/u
         );
         assert.match(
           timed.stdout,
-          /p1\s+sound pop\s+settled \+0\.1s[^\n]*->\s+frame \d+/u
+          /p1\s+sound pop\s+settled \+100ms\s+->\s+frame \d+/u
         );
         assert.lengthOf(
           Arr.filter(

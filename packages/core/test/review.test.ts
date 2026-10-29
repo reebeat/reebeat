@@ -112,7 +112,7 @@ describe("reviewText", () => {
         assert.include(text, '      r1  show cap   word("corner").end\n');
         assert.include(
           text,
-          "      s2  sound ding    box.move.50% (canonical: when(box.move.progress >= 50%))\n"
+          "      s2  sound ding    when(box.move.progress >= 50%)\n"
         );
         assert.include(text, "      f1  focus new     r1.end +3f\n");
       })
@@ -319,7 +319,7 @@ const timingStory = (fourth: string) =>
     "Note {id=note cell=br class=label visible=false}",
     "",
     "[[effects",
-    "  let settled = all(one.move.end, tag.update.end)",
+    "  let settled = last(one.move.end, tag.update.end)",
     "  s1: sound whoosh at transition.start",
     "  s2: sound ding at one.move.50%",
     "  s3: sound pop at settled +0.1s",
@@ -345,7 +345,7 @@ const sceneBEffects = (text: string): readonly string[] => {
 
 describe("reviewText of the timing of a story (F9)", () => {
   it.effect(
-    "prints each instance's intent, its frame and its time, the canonical form beside the written one, what ended a window, and the derived events with their frames",
+    "prints each instance's frame and its time, the effect's timing in its canonical form (derived: a sugar is read and never kept), what ended a window, and the derived events with their frames",
     () =>
       Effect.gen(function* golden() {
         const plan = yield* buildPlan(timingStory("four"), fixtureSha256);
@@ -357,11 +357,11 @@ describe("reviewText of the timing of a story (F9)", () => {
           sceneBEffects(reviewText(timed, { timing: true })),
           [
             "    Events",
-            "      settled  all(one.move.end, tag.update.end)  ->  frame 87 (2.90 s)",
+            "      settled  last(one.move.end, tag.update.end)  ->  frame 87 (2.90 s)",
             "    Effects",
             "      s1    sound whoosh  transition.start  ->  frame 63 (2.10 s)  (rides the slide)",
-            "      s2    sound ding    one.move.50% (canonical: when(one.move.progress >= 50%))  ->  frame 71 (2.37 s)  (rides the slide)",
-            "      s3    sound pop     settled +0.1s (canonical: settled +100ms)  ->  frame 90 (3.00 s)  (rides the slide)",
+            "      s2    sound ding    when(one.move.progress >= 50%)  ->  frame 71 (2.37 s)  (rides the slide)",
+            "      s3    sound pop     settled +100ms  ->  frame 90 (3.00 s)  (rides the slide)",
             '      s4#1  sound pop     each(word("two").end, word("four").end)  ->  frame 111 (3.70 s)  (rides step f1)',
             '      s4#2  sound pop     each(word("two").end, word("four").end)  ->  frame 129 (4.30 s)  (rides step r1)',
             '      r1    show note     word("three").end  ->  frame 120 (4.00 s)',
@@ -390,11 +390,11 @@ describe("reviewText of the timing of a story (F9)", () => {
 
         assert.deepStrictEqual(sceneBEffects(reviewText(plan)), [
           "    Events",
-          "      settled  all(one.move.end, tag.update.end)",
+          "      settled  last(one.move.end, tag.update.end)",
           "    Effects",
           "      s1  sound whoosh  transition.start",
-          "      s2  sound ding    one.move.50% (canonical: when(one.move.progress >= 50%))",
-          "      s3  sound pop     settled +0.1s (canonical: settled +100ms)",
+          "      s2  sound ding    when(one.move.progress >= 50%)",
+          "      s3  sound pop     settled +100ms",
           '      s4  sound pop     each(word("two").end, word("four").end)',
           '      r1  show note     word("three").end',
           '      f1  focus hint    word("one").start until word("four").start',

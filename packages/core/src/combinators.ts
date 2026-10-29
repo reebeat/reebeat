@@ -2,9 +2,11 @@
 // increasing frame order, each with the window of the thing it came from (an instant when start equals end). Every
 // combinator is a total function from such lists to such a list, so an author's expression resolves at plan time and
 // cannot fail inside the algebra; whether an empty result is an error is the caller's business. Names follow SMIL 3.0
-// timing for what happens and the reactive vocabulary for what it is:
+// timing for what happens and the reactive vocabulary for what it is. Occurrences at the SAME frame are ONE occurrence:
+// an effect fires once for a moment (SMIL: equal times in a begin-value list are one begin; a reactive `merge` would
+// keep both, this algebra does not), and the first operand's window is the one kept.
 //
-//   all       SMIL `endsync="all"`, `forkJoin`   the last occurrence of every operand, when every operand has one
+//   last      SMIL `endsync="last"`, `forkJoin`   the last occurrence of every operand, when every operand has one
 //   first     SMIL `endsync="first"`, `race`      the earliest occurrence of any operand
 //   each      a begin-value list, `merge`         every occurrence of every operand
 //   within    scoping                             the occurrences inside a window (a Beat)
@@ -47,8 +49,11 @@ export const once = (frame: number, window?: Window): Event => [
   { frame, window: window ?? { end: frame, start: frame } },
 ];
 
-/** `all`: the latest of the last occurrences of the operands, when each has one; otherwise never. */
-export const all = (operands: readonly Event[]): Event => {
+/**
+ * `last`: the latest of the last occurrences of the operands, when each has one; otherwise never. Operands that end at
+ * the same frame give that frame once (equal frames are one moment).
+ */
+export const last = (operands: readonly Event[]): Event => {
   const lasts = Arr.flatMap(operands, (operand) => Arr.takeRight(operand, 1));
 
   return operands.length > 0 && lasts.length === operands.length
@@ -82,8 +87,8 @@ export const throttle = (event: Event, gap: number): Event =>
   Arr.reduce(event, none, (kept, occurrence) =>
     Option.match(Arr.last(kept), {
       onNone: () => [occurrence],
-      onSome: (last) =>
-        occurrence.frame - last.frame < gap ? kept : [...kept, occurrence],
+      onSome: (previous) =>
+        occurrence.frame - previous.frame < gap ? kept : [...kept, occurrence],
     })
   );
 
@@ -94,7 +99,7 @@ export const stagger = (event: Event, gap: number): Event =>
     {
       frame: Option.match(Arr.last(placed), {
         onNone: () => occurrence.frame,
-        onSome: (last) => Math.max(occurrence.frame, last.frame + gap),
+        onSome: (previous) => Math.max(occurrence.frame, previous.frame + gap),
       }),
       window: occurrence.window,
     },

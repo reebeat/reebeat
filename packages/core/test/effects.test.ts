@@ -1,14 +1,7 @@
 // The effects line (spec 0002, spec 0004): each form reads into the Plan's types, and what is written back reads into
 // the same effect (the law: `parseEffectLine(formatEffect(effect))` is `effect`, with seconds stored as exact flicks).
 import { assert, describe, it } from "@effect/vitest";
-import {
-  Array as Arr,
-  Effect,
-  Order,
-  Result,
-  String as Str,
-  pipe,
-} from "effect";
+import { Array as Arr, Effect, Result } from "effect";
 
 import { formatAnchor } from "../src/anchors.ts";
 import { buildPlan } from "../src/build.ts";
@@ -91,7 +84,6 @@ describe("reading an effect line", () => {
             offset: { unit: "flicks", value: 70_560_000 },
           },
         },
-        written: 'word("big idea", 2).end +0.1s',
       }
     );
   });
@@ -237,7 +229,6 @@ describe("reading an effect line", () => {
               }),
             ],
           },
-          written: 'first(word("b").start, scene.end)',
         },
         verb: "focus",
         when: {
@@ -257,21 +248,20 @@ describe("reading an effect line", () => {
             throttle: { unit: "f", value: 5 },
           },
         },
-        written: 'each(word("a").end, settled, stagger=0.3s, throttle=5f)',
       }
     );
   });
 
-  it("reads within as the occurrences of an event inside a State, and all as the last of its operands", () => {
+  it("reads within as the occurrences of an event inside a State, and last as the last of its operands", () => {
     assert.deepStrictEqual(
       Arr.map(
         [
           'a: sound pop at within(word("x").end, state(2))',
-          "a: sound pop at all(box.move.end, tag.update.end)",
+          "a: sound pop at last(box.move.end, tag.update.end)",
         ],
         (text) => eventOf(text)?.kind
       ),
-      ["within", "all"]
+      ["within", "last"]
     );
   });
 
@@ -282,18 +272,22 @@ describe("reading an effect line", () => {
     );
   });
 
-  it("reads a let line as a derived event with the text it was written as", () => {
-    assert.isTrue(isLetLine("  let settled   = all(a.end, b.end)"));
+  it("reads a let line as a derived event: the name, the line and the expression, with no text of its own", () => {
+    assert.isTrue(isLetLine("  let settled   = last(a.end, b.end)"));
     assert.isFalse(isLetLine("s1: sound pop at a.end"));
 
-    const parsed = parseLetLine("let settled   = all(a.end,  b.end)", 4);
+    const parsed = parseLetLine("let settled   = last(a.end,  b.end)", 4);
 
     assert.isTrue(Result.isSuccess(parsed));
     assert.deepStrictEqual(
       Result.isSuccess(parsed)
-        ? [parsed.success.name, parsed.success.line, parsed.success.written]
+        ? [
+            parsed.success.name,
+            parsed.success.line,
+            formatEvent(parsed.success.event),
+          ]
         : [],
-      ["settled", 4, "all(a.end, b.end)"]
+      ["settled", 4, "last(a.end, b.end)"]
     );
   });
 
@@ -339,45 +333,79 @@ describe("reading an effect line", () => {
 });
 
 describe("writing an effect line", () => {
+  /** Lines in the canonical form: writing them back changes nothing. */
   const lines = [
     's1: sound whoosh at word("matches").end +100ms',
-    's5: sound whoosh at word("matches", 1).end +0.1s',
-    "s2: sound ding at one.move.50%",
+    's5: sound whoosh at word("matches", 1).end +100ms',
     "s6: sound ding at when(one.move.progress >= 50%)",
     'f1: focus hint at word("slides", 2).start -200ms',
-    'f2: focus hint at word("slides", 2).start -0.2s',
-    'f3: focus hint at word("slides").start -0.2s until first(word("leaves").start, scene.end)',
+    'f3: focus hint at word("slides").start -200ms until first(word("leaves").start, scene.end)',
     "r1: show note at transition.end -3f",
     "s3: sound pop at r1.end +50%",
     'a1: sound pop at 12.5s because "a reason"',
     "s4: sound pop at scene.end",
-    "s7: sound pop at all(one.move.end, tag.update.end) +0.1s",
-    'f4: focus hint at each(word("a").end, word("b").end, throttle=5f, stagger=0.3s)',
+    "s7: sound pop at last(one.move.end, tag.update.end) +100ms",
+    'f4: focus hint at each(word("a").end, word("b").end, throttle=5f, stagger=300ms)',
     'f5: focus hint at within(word("a").end, state(2))',
     "s8: sound pop at settled",
     "s9: sound pop at one.moving.leave",
     "s10: sound pop at beat(2).start",
   ];
 
-  it("reads back what it writes, effect for effect", () => {
-    for (const line of lines) {
+  /** Spellings that are read and never kept: each is written back as the canonical form on the right. */
+  const sugar: readonly (readonly [string, string])[] = [
+    [
+      's5: sound whoosh at word("matches", 1).end +0.1s',
+      's5: sound whoosh at word("matches", 1).end +100ms',
+    ],
+    [
+      "s2: sound ding at one.move.50%",
+      "s2: sound ding at when(one.move.progress >= 50%)",
+    ],
+    [
+      'f2: focus hint at word("slides", 2).start -0.2s',
+      'f2: focus hint at word("slides", 2).start -200ms',
+    ],
+    [
+      "s7: sound pop at last(one.move.end, tag.update.end) +0.1s",
+      "s7: sound pop at last(one.move.end, tag.update.end) +100ms",
+    ],
+    [
+      "s9: sound pop at one.move.50% +1f",
+      "s9: sound pop at when(one.move.progress >= 50%) +1f",
+    ],
+    [
+      'f4: focus hint at each(word("a").end, word("b").end, stagger=0.3s)',
+      'f4: focus hint at each(word("a").end, word("b").end, stagger=300ms)',
+    ],
+  ];
+
+  it("reads back what it writes, effect for effect (the law: parse(format(effect)) is the effect)", () => {
+    for (const line of [...lines, ...Arr.map(sugar, ([written]) => written)]) {
       const effect = read(line);
 
       assert.deepStrictEqual(read(formatEffect(effect)), effect, line);
     }
   });
 
-  it("writes the author's own form: the occurrence, the unit and the spelling stay as written", () => {
+  it("writes the canonical form, which is a fixed point: the occurrence and the unit of the canonical form stay", () => {
     assert.deepStrictEqual(
       Arr.map(lines, (line) => formatEffect(read(line))),
       lines
     );
   });
 
-  it("keeps the `when` as written, whitespace collapsed", () => {
+  it("reads a sugar and keeps none of it: the effect has no text of its own", () => {
+    for (const [written, canonicalLine] of sugar) {
+      assert.strictEqual(formatEffect(read(written)), canonicalLine, written);
+      assert.deepStrictEqual(read(written), read(canonicalLine), written);
+    }
+  });
+
+  it("collapses whitespace: what the effect says is its expression, not its spaces", () => {
     assert.strictEqual(
-      read('a: sound pop at   word("x  y", 2).end   -3f').written,
-      'word("x y", 2).end -3f'
+      formatEffect(read('a: sound pop at   word("x  y", 2).end   -3f')),
+      'a: sound pop at word("x y", 2).end -3f'
     );
   });
 
@@ -408,18 +436,18 @@ describe("writing an effect line", () => {
       "when(one.move.progress >= 50%) +2f"
     );
     assert.strictEqual(
-      canonical("a: sound pop at all(one.move.50%, tag.update.end)"),
-      "all(when(one.move.progress >= 50%), tag.update.end)"
+      canonical("a: sound pop at last(one.move.50%, tag.update.end)"),
+      "last(when(one.move.progress >= 50%), tag.update.end)"
     );
     assert.strictEqual(canonical("a: sound pop at scene.end"), "scene.end");
   });
 
-  it("writes a let line back", () => {
-    const parsed = parseLetLine("let settled = all(a.end, b.end)", 4);
+  it("writes a let line back in the canonical form", () => {
+    const parsed = parseLetLine("let settled   = last(a.end,  b.end)", 4);
 
     assert.strictEqual(
       Result.isSuccess(parsed) ? formatLet(parsed.success) : "",
-      "let settled = all(a.end, b.end)"
+      "let settled = last(a.end, b.end)"
     );
   });
 });
@@ -453,8 +481,19 @@ describe("an effect line through a whole story", () => {
     '  s6: sound pop at 0.5s because "a beat"',
   ];
 
+  /** What writing each effect back gives: the canonical form, derived from the expression (`+0.1s` is `+100ms`). */
+  const canonicalRows = [
+    '  r1: show note at word("box", 1).end +100ms',
+    '  s1: sound pop at word("box", 1).end +100ms',
+    '  s2: sound pop at word("box", 1).end +3f',
+    '  s3: sound pop at word("box", 1).end -50ms',
+    '  s4: sound pop at word("box", 1).end +50%',
+    "  s5: sound pop at r1.start -10%",
+    '  s6: sound pop at 0.5s because "a beat"',
+  ];
+
   it.effect(
-    "writing every effect back gives the same Plan, the same intent and the same review text",
+    "writing every effect back gives the canonical rows, the same Plan and the same review text",
     () =>
       Effect.gen(function* storyLevel() {
         const first = yield* buildPlan(storyOf(effects), fixtureSha256);
@@ -464,12 +503,16 @@ describe("an effect line through a whole story", () => {
           (effect) => `  ${formatEffect(effect)}`
         );
 
-        assert.deepStrictEqual(rewritten, effects);
+        assert.deepStrictEqual(rewritten, canonicalRows);
 
         const second = yield* buildPlan(storyOf(rewritten), fixtureSha256);
 
         assert.deepStrictEqual(second, first);
         assert.strictEqual(reviewText(second), reviewText(first));
+
+        // The review text and the Timeline carry no text of their own: the canonical form is derived from the effect.
+        assert.include(reviewText(first), 'word("box", 1).end +100ms');
+        assert.notInclude(reviewText(first), "+0.1s");
 
         const timed = yield* schedule(
           first,
@@ -477,25 +520,10 @@ describe("an effect line through a whole story", () => {
           lifecycle
         );
 
-        // The Timeline's intent is what was written: the explicit occurrence 1, `+0.1s` and `+100ms` as they stand.
-        assert.deepStrictEqual(
-          Arr.sort(
-            Arr.map(
-              timed.timeline?.scenes[0]?.effects ?? [],
-              (timedEffect) => timedEffect.intent
-            ),
-            Order.String
-          ),
-          Arr.sort(
-            Arr.map(
-              effects,
-              (row) => pipe(row, Str.trim, Str.split(" at "))[1] ?? ""
-            ),
-            Order.String
-          )
+        assert.include(
+          reviewText(timed, { timing: true }),
+          'word("box", 1).end +100ms  ->  frame'
         );
-        assert.include(reviewText(first), 'word("box", 1).end +0.1s');
-        assert.include(reviewText(first), 'word("box", 1).end +100ms');
       })
   );
 });

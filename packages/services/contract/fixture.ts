@@ -1,7 +1,12 @@
 // The Plan the Renderer and FrameCapturer contracts use unless an adapter supplies its own: one Scene, two Elements,
 // one Line, with a Timeline so that a capturer knows its frame count. Built by the core's own `buildPlan` and
 // `schedule`, so it is a valid Plan by construction.
-import { buildPlan, referenceLifecycle, schedule } from "@reebeat/core";
+import {
+  buildPlan,
+  referenceLifecycle,
+  schedule,
+  wordsOf,
+} from "@reebeat/core";
 import type {
   AlignedLine,
   PlanError,
@@ -39,9 +44,9 @@ export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.map(scene.lines, (line) => ({
       audio: { file: `${digest}.flac`, sha256: digest },
-      durationMs: wordMs * line.words.length,
+      durationMs: wordMs * wordsOf(line.text).length,
       lineId: line.id,
-      words: Arr.map(line.words, (w, index) => ({
+      words: Arr.map(wordsOf(line.text), (w, index) => ({
         endMs: (index + 1) * wordMs - 50,
         startMs: index * wordMs,
         w,

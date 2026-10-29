@@ -149,7 +149,7 @@ layer(platform)("reebeat lint", (it) => {
         );
         assert.include(
           stdout,
-          `${file}:11: error until-is-its-own-fire: scene one, effect f1: until word("two").end is the event it fires at (word("two").end)`
+          `${file}:11: error until-is-its-own-fire: scene one, effect f1: until word("two").end is the event it fires at, and until takes`
         );
         assert.deepStrictEqual(
           Result.isFailure(exit) ? exit.failure.message : "",

@@ -25,7 +25,6 @@ import {
 export interface LineDraft {
   readonly line: number;
   readonly text: string;
-  readonly words: readonly string[];
   readonly hints: Line["hints"];
 }
 
@@ -695,7 +694,6 @@ const dialogueToken = (state: State, token: FountainToken): void => {
     hints,
     line: token.line,
     text: narration.text,
-    words: narration.words,
   });
 };
 

@@ -9,7 +9,7 @@
 //   miss, refresh        -> synthesize -> encodeAudio -> decodeAudio -> align -> put
 //
 // The aligner hears what the cache stores (the decoded FLAC), as the first release's whisper did.
-import { matchThreshold } from "@reebeat/core";
+import { matchThreshold, wordsOf } from "@reebeat/core";
 import type { Line, PlanJson } from "@reebeat/core";
 import {
   AssetCache,
@@ -136,7 +136,8 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
 
   const audio = yield* encoder.encodeAudio(clip);
 
-  const heard = { clip: yield* encoder.decodeAudio(audio), words: line.words };
+  const spoken = wordsOf(line.text);
+  const heard = { clip: yield* encoder.decodeAudio(audio), words: spoken };
 
   const { match, spans } = yield* aligner.align(
     hint === undefined ? heard : { ...heard, hint }
@@ -157,7 +158,7 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
     words: Arr.map(spans, (span, index) => ({
       endMs: span.endMs,
       startMs: span.startMs,
-      w: line.words[index] ?? "",
+      w: spoken[index] ?? "",
     })),
   };
 

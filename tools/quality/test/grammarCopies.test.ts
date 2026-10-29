@@ -143,10 +143,10 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
   it("negative control: a regular expression that spells the combinators and their options", () => {
     assert.deepStrictEqual(
       reasonsOf(
-        String.raw`const event = /^(?:all|first)\(.*throttle=(?<n>\d+)/u; const rule = /^let\s+(?<name>\w+)\s+until/u;`
+        String.raw`const event = /^(?:last|first)\(.*throttle=(?<n>\d+)/u; const rule = /^let\s+(?<name>\w+)\s+until/u;`
       ),
       [
-        'a regular expression spells "all"',
+        'a regular expression spells "last"',
         'a regular expression spells "first"',
         'a regular expression spells "throttle"',
         'a regular expression spells "let"',
@@ -173,7 +173,7 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
   it("negative control: the states of the machines and the words of the combinators listed again", () => {
     assert.deepStrictEqual(
       reasonsOf(
-        'const s = ["idle", "active", "done"]; const c = ["all", "first", "each"]; const o = ["throttle", "stagger"];'
+        'const s = ["idle", "active", "done"]; const c = ["last", "first", "each"]; const o = ["throttle", "stagger"];'
       ),
       [
         `an array lists ${Arr.join(stateNames, ", ")} of a closed set`,

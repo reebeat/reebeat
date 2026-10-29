@@ -31,15 +31,15 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 
 `reebeat plan <story> --timing` answers "when does each thing happen?" before any video exists. It needs the speech of the story: the speech stage runs **read-only** on the cache the selection names (`--cache-dir`, `--speech`, `--aligner`), so a Line without a cached asset fails `SpeechCacheMiss` naming the Line and the key, and nothing is synthesised or written. The Plan is then scheduled against the `lifecycle` the selected Renderer declares (when its slide change and its motion happen), at the Plan's frame rate (30 fps unless the Plan says otherwise).
 
-It prints the review text of `plan` with, for each effect, its **intent** (the event as the author wrote it, and its canonical form beside it when they differ: `one.move.50%` is `when(one.move.progress >= 50%)`) and the frame it resolved to, with seconds. An effect whose event has several occurrences (`each(...)`) runs once for each, so it has one row for each **instance**, labelled `<id>#<n>`. Under `Events` each derived event (`let`) shows what it is and the frames it resolved to (`no occurrence` when it never happens), and under an effect with a duration a row says when it ended and what ended it: `by until`, `interrupted by the slide change` (the slide change interrupts every running effect) or `by its window` (a `show`'s fade). Without `--timing` the review shows the intent only and no frame. With `--json` the Plan carries its `timeline` (`TimedEffect` per instance, `TimedScene.events` per `let`).
+It prints the review text of `plan` with, for each effect, its **intent** (the event in its canonical form, which is all the Plan keeps of what was written: `one.move.50%` prints as `when(one.move.progress >= 50%)`, `+0.1s` as `+100ms`) and the frame it resolved to, with seconds. An effect whose event has several occurrences (`each(...)`) runs once for each, so it has one row for each **instance**, labelled `<id>#<n>`. Under `Events` each derived event (`let`) shows what it is and the frames it resolved to (`no occurrence` when it never happens), and under an effect with a duration a row says when it ended and what ended it: `by until`, `interrupted by the slide change` (the slide change interrupts every running effect) or `by its window` (a `show`'s fade). Without `--timing` the review shows the intent only and no frame. With `--json` the Plan carries its `timeline` (`TimedEffect` per instance, `TimedScene.events` per `let`).
 
 ```text
     Events
-      settled  all(word("two").end, word("four").end)  ->  frame 66 (2.20 s)
+      settled  last(word("two").end, word("four").end)  ->  frame 66 (2.20 s)
     Effects
       r1    show b     word("three").end  ->  frame 57 (1.90 s)
         ends frame 61 (2.03 s), by its window
-      p1    sound pop  settled +0.1s (canonical: settled +100ms)  ->  frame 69 (2.30 s)  (rides step r1)
+      p1    sound pop  settled +100ms  ->  frame 69 (2.30 s)  (rides step r1)
       p2#1  sound pop  each(word("one").end, word("five").end)  ->  frame 39 (1.30 s)  (plays alone)
       p2#2  sound pop  each(word("one").end, word("five").end)  ->  frame 75 (2.50 s)  (rides step r1)
 ```

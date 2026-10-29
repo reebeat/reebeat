@@ -5,11 +5,11 @@
 // A plain function.
 import { Array as Arr, Match, Option, String as Str } from "effect";
 
+import { formatTiming } from "./effects.ts";
 import { formatEvent } from "./expr.ts";
 import type {
   Effect,
   Element,
-  EventExpr,
   Identity,
   Line,
   PlanJson,
@@ -229,28 +229,6 @@ const framesText = (plan: PlanJson, frames: readonly number[]): string => {
       )} s)`;
 };
 
-/** The event as written, and its canonical form beside it when they differ (`one.move.50%` is a progress threshold). */
-const withCanonical = (written: string, expr: EventExpr): string => {
-  const canonical = formatEvent(expr);
-
-  return canonical === written
-    ? written
-    : `${written} (canonical: ${canonical})`;
-};
-
-/** The timing of an effect as the row prints it: its event, and a `focus`'s `until` event, each with its canonical form. */
-const timingText = (effect: Effect): string => {
-  if ("absoluteFlicks" in effect.when) {
-    return effect.written;
-  }
-
-  const when = withCanonical(effect.written, effect.when.event);
-
-  return effect.until === undefined
-    ? when
-    : `${when} until ${withCanonical(effect.until.written, effect.until.event)}`;
-};
-
 /** One row of the Effects list: an effect, or one instance of it (an `each` makes several). */
 interface EffectRow {
   readonly effect: Effect;
@@ -333,7 +311,7 @@ const effectRows = (
 
   return Arr.flatMap(rows, ({ effect, instance, label }) => {
     const carrier = carriers.get(instanceKey(effect.id, instance));
-    const when = `${Str.padEnd(doingWidth)(doing(effect))}  ${timingText(effect)}`;
+    const when = `${Str.padEnd(doingWidth)(doing(effect))}  ${formatTiming(effect)}`;
 
     const frame =
       instance === undefined
@@ -368,7 +346,7 @@ const eventRows = (
     const frames =
       found === undefined ? "" : `  ->  ${framesText(plan, found.frames)}`;
 
-    return `      ${Str.padEnd(width)(derived.name)}  ${withCanonical(derived.written, derived.event)}${frames}`;
+    return `      ${Str.padEnd(width)(derived.name)}  ${formatEvent(derived.event)}${frames}`;
   });
 };
 
@@ -420,7 +398,7 @@ const absoluteRows = (plan: PlanJson): readonly string[] =>
     Arr.flatMap(scene.effects, (effect) =>
       "absoluteFlicks" in effect.when
         ? [
-            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${effect.written}`,
+            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${formatTiming(effect)}`,
           ]
         : []
     )

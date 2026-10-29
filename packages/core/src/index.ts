@@ -25,7 +25,12 @@ export type {
 
 export { formatAnchor } from "./anchors.ts";
 
-export { formatEffect, formatLet, parseEffectLine } from "./effects.ts";
+export {
+  formatEffect,
+  formatLet,
+  formatTiming,
+  parseEffectLine,
+} from "./effects.ts";
 
 export { anchorsOf, evaluator, refsOf, statesOf } from "./evaluate.ts";
 
@@ -95,6 +100,8 @@ export { soundsOf, stepsOf } from "./steps.ts";
 
 export type { CarriedSound, Carrier, Step } from "./steps.ts";
 
-export { findPhrase } from "./words.ts";
+export { findPhrase, wordsOf } from "./words.ts";
+
+export { sceneIdsOfChapter } from "./lookup.ts";
 
 export { grammarDocument } from "./grammarDoc.ts";

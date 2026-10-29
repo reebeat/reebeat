@@ -41,7 +41,6 @@ const ringed = (given: PlanJson): PlanJson => ({
             endedBy: "until",
             fireFrame: 10,
             instance: 1,
-            intent: 'word("six").end',
           },
         ],
         endFrame: 60,

@@ -1,5 +1,5 @@
 // An event expression over the frames that were OBSERVED (spec 0004, F1). `core` defines the algebra once
-// (`evaluator`: all, first, each, within, offsets, throttle, stagger, `let`) and leaves the SOURCES to the caller;
+// (`evaluator`: last, first, each, within, offsets, throttle, stagger, `let`) and leaves the SOURCES to the caller;
 // `schedule` supplies the frames the Timeline resolves, and this module supplies the frames the written video and mix
 // show. Evaluating an effect's own `at` expression here and comparing it with the frame the effect was observed at
 // checks a combinator against the picture with the same definition of it the Timeline used.

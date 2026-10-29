@@ -143,7 +143,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Element id "scene" is reserved by the anchor grammar; expected an identifier that is not beat, scene, state, transition, word, all, each, first, when, within or let',
+      'Element id "scene" is reserved by the anchor grammar; expected an identifier that is not beat, scene, state, transition, word, each, first, last, when, within or let',
     name: "an Element id the anchor grammar reserves",
     needle: "id=scene",
     source: change(
@@ -232,7 +232,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'effect id "scene" is not usable; expected an identifier that is not beat, scene, state, transition, word, all, each, first, when, within or let',
+      'effect id "scene" is not usable; expected an identifier that is not beat, scene, state, transition, word, each, first, last, when, within or let',
     name: "an effect id the anchor grammar reserves",
     needle: "scene: focus",
     source: change("f1: focus", "scene: focus"),
@@ -425,7 +425,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'r1: each(word("hello").end, word("goodbye").end) can happen 2 times, but a show happens once; expected first(...) or all(...) to pick one moment (only a sound runs once for each occurrence)',
+      'r1: each(word("hello").end, word("goodbye").end) can happen 2 times, but a show happens once; expected first(...) or last(...) to pick one moment (only a sound runs once for each occurrence)',
     name: "a show that fires more than once",
     needle: "r1: show h at each",
     source: change(
@@ -716,7 +716,7 @@ describe("what is valid stays valid", () => {
   it("a sound may be timed by a Beat or a State that a step opens, and by a derived event, once for each occurrence", () => {
     const source = change(
       "s1: sound pop at r1.end +100ms",
-      'let both = all(r1.end, word("goodbye").end)\n  s1: sound pop at beat(1).end\n  s2: sound ding at state(2).enter\n  s3: sound pop at each(both, scene.end)'
+      'let both = last(r1.end, word("goodbye").end)\n  s1: sound pop at beat(1).end\n  s2: sound ding at state(2).enter\n  s3: sound pop at each(both, scene.end)'
     );
 
     assert.deepStrictEqual(collectErrors(source), []);

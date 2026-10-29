@@ -5,6 +5,7 @@ import {
   referenceLifecycle,
   requireTimeline,
   schedule,
+  wordsOf,
 } from "@reebeat/core";
 import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
 import { Array as Arr, Effect, String as Str } from "effect";
@@ -47,9 +48,9 @@ const wordMs = 500;
 /** One Line as the aligner reports it: each word starts when the one before it ends, and is spoken for 450 ms. */
 const alignedLine = (line: Line): AlignedLine => ({
   audio: { file: `${hash}.flac`, sha256: hash },
-  durationMs: wordMs * line.words.length,
+  durationMs: wordMs * wordsOf(line.text).length,
   lineId: line.id,
-  words: Arr.map(line.words, (w, index) => ({
+  words: Arr.map(wordsOf(line.text), (w, index) => ({
     endMs: index * wordMs + 450,
     startMs: index * wordMs,
     w,

@@ -17,7 +17,7 @@ import {
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
-import { readEventPrefix } from "./expr.ts";
+import { formatEvent, readEventPrefix } from "./expr.ts";
 import {
   absolutePattern,
   absoluteUnit,
@@ -40,6 +40,7 @@ import {
   verbs,
 } from "./plan.ts";
 import type { DerivedEvent, Effect, Until, When } from "./plan.ts";
+import { flicksPerSecond } from "./time.ts";
 
 const isSfx = Schema.is(SfxNameSchema);
 const isVerb = Schema.is(VerbSchema);
@@ -130,11 +131,10 @@ const readArgument = (
       );
 };
 
-/** What follows `at`: its text, and the `until` clause after it, if any. */
+/** What follows `at`: an event or an absolute time, and the `until` clause after it, if any. */
 interface Timing {
   readonly until: Until | undefined;
   readonly when: When;
-  readonly written: string;
 }
 
 const untilClause = (
@@ -145,7 +145,7 @@ const untilClause = (
 
   return Result.flatMap(readEventPrefix(text, line), (read) =>
     read.rest === text.length
-      ? Result.succeed({ event: read.event, written: read.written })
+      ? Result.succeed({ event: read.event })
       : Result.fail(
           bad(
             line,
@@ -167,7 +167,6 @@ const timingOf = (
     return Result.map(absoluteWhen(text, line), (when) => ({
       until: undefined,
       when,
-      written: text,
     }));
   }
 
@@ -180,7 +179,6 @@ const timingOf = (
         return Result.succeed({
           until: undefined,
           when: { event: read.event },
-          written: read.written,
         });
       }
 
@@ -199,7 +197,6 @@ const timingOf = (
       return Result.map(untilClause(rest, line), (until) => ({
         until,
         when: { event: read.event },
-        written: read.written,
       }));
     }
   );
@@ -275,7 +272,6 @@ export const parseEffectLine = (
           line,
           verb,
           when: timing.when,
-          written: timing.written,
           ...argument,
         };
 
@@ -327,7 +323,7 @@ export const parseLetLine = (
 
   return Result.flatMap(readEventPrefix(source, line), (read) =>
     read.rest === source.length
-      ? Result.succeed({ event: read.event, line, name, written: read.written })
+      ? Result.succeed({ event: read.event, line, name })
       : Result.fail(
           bad(
             line,
@@ -340,14 +336,31 @@ export const parseLetLine = (
   );
 };
 
-/** The effect as one line of an `[[effects]]` block, its timing as the author wrote it; `parseEffectLine` reads it back. */
+/**
+ * The timing of an effect as an author writes it after `at`: its event in the canonical form (`formatEvent`: a percent
+ * of a transition is the threshold of its progress, an offset in the whole unit that holds it) or its absolute time
+ * with its reason; the event of an `until` follows. The text is derived, never stored.
+ */
+export const formatTiming = (effect: Effect): string => {
+  const when =
+    "event" in effect.when
+      ? formatEvent(effect.when.event)
+      : `${effect.when.absoluteFlicks / flicksPerSecond}${absoluteUnit.token} ${keywords.because} "${effect.when.reason}"`;
+
+  return effect.until === undefined
+    ? when
+    : `${when} ${keywords.until} ${formatEvent(effect.until.event)}`;
+};
+
+/** The effect as one line of an `[[effects]]` block; `parseEffectLine` reads it back. */
 export const formatEffect = (effect: Effect): string =>
-  `${effectLine(effect.id, effect.verb, effect.name ?? effect.target ?? "", effect.written)}${
-    effect.until === undefined
-      ? ""
-      : ` ${keywords.until} ${effect.until.written}`
-  }`;
+  effectLine(
+    effect.id,
+    effect.verb,
+    effect.name ?? effect.target ?? "",
+    formatTiming(effect)
+  );
 
 /** The derived event as a `let` line. */
 export const formatLet = (derived: DerivedEvent): string =>
-  `${keywords.let} ${derived.name} = ${derived.written}`;
+  `${keywords.let} ${derived.name} = ${formatEvent(derived.event)}`;

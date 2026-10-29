@@ -10,6 +10,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import { formatTiming } from "../src/effects.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
@@ -265,10 +266,11 @@ describe("schedule: every anchor kind, resolved by hand", () => {
   );
 
   it.effect(
-    "lists a Scene's effects in resolved order, ties in source order, with the intent as written",
+    "lists a Scene's effects in resolved order, ties in source order, and writes each timing in its canonical form",
     () =>
       Effect.gen(function* order() {
-        const { timeline } = yield* scheduled;
+        const planned = yield* scheduled;
+        const { timeline } = planned;
 
         assert.deepStrictEqual(
           Arr.map(
@@ -277,15 +279,16 @@ describe("schedule: every anchor kind, resolved by hand", () => {
           ),
           ["w1", "k1", "m1", "m2", "e1", "t1", "m3", "a1", "p1", "x1"]
         );
+        // The Timeline stores no text of its own: the canonical form is derived from the effect of the Plan.
         assert.deepStrictEqual(
           Arr.map(
             Arr.filter(
-              timeline?.scenes[1]?.effects ?? [],
-              (effect) => effect.effectId === "m2" || effect.effectId === "p1"
+              planned.scenes[1]?.effects ?? [],
+              (effect) => effect.id === "m2" || effect.id === "p1"
             ),
-            (effect) => effect.intent
+            formatTiming
           ),
-          ["m.move.50%", 'word("nine").start +50%']
+          ["when(m.move.progress >= 50%)", 'word("nine").start +50%']
         );
       })
   );

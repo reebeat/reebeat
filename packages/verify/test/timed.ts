@@ -1,5 +1,5 @@
 // A scheduled Plan for the pure tests: no browser, no ffmpeg, no model.
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
+import { buildPlan, requireTimeline, schedule, wordsOf } from "@reebeat/core";
 import type { RendererLifecycle } from "@reebeat/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
@@ -11,9 +11,9 @@ export const timedWith = (lifecycle: RendererLifecycle, text: string) =>
     const aligned = Arr.flatMap(plan.scenes, (scene) =>
       Arr.map(scene.lines, (line) => ({
         audio: { file: `${Str.repeat(64)("a")}.flac`, sha256: "x" },
-        durationMs: line.words.length * 300,
+        durationMs: wordsOf(line.text).length * 300,
         lineId: line.id,
-        words: Arr.map(line.words, (w, at) => ({
+        words: Arr.map(wordsOf(line.text), (w, at) => ({
           endMs: (at + 1) * 300,
           startMs: at * 300,
           w,

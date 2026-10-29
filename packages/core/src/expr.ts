@@ -1,7 +1,7 @@
 // Event expressions of the effects block (spec 0004), read and written:
 //
 //   event ::= term [ offset ]
-//   term  ::= anchor | name | all(event, ...) | first(event, ...) | each(event, ..., [throttle=d] [stagger=d])
+//   term  ::= anchor | name | last(event, ...) | first(event, ...) | each(event, ..., [throttle=d] [stagger=d])
 //           | within(event, state(n)) | when(<subject>.<transition>.progress >= N%)
 //
 // A recursive descent over the text after `at`, `until` or `=`, with positions; every problem is a Plan error that says
@@ -505,7 +505,7 @@ const readGroup = (
   text: string,
   at: number,
   line: number,
-  name: "all" | "each" | "first",
+  name: "each" | "first" | "last",
   read: EventReader
 ): Parsed<EventExpr> =>
   Result.flatMap(
@@ -647,8 +647,8 @@ const readTerm = (
     return readWord(text, at, line);
   }
 
-  if (isCall(text, at, combinatorWords.all)) {
-    return readGroup(text, at, line, combinatorWords.all, read);
+  if (isCall(text, at, combinatorWords.last)) {
+    return readGroup(text, at, line, combinatorWords.last, read);
   }
 
   if (isCall(text, at, combinatorWords.first)) {
@@ -696,12 +696,11 @@ const readEvent: EventReader = (text, at, line) =>
     }
   );
 
-/** An event and the text it was written as (whitespace collapsed), and what follows it. */
+/** An event, and what follows it. The text it was written as is not kept: `formatEvent` writes it back. */
 export interface ReadEvent {
   readonly event: EventExpr;
   /** The index in `text` after the event and the spaces after it. */
   readonly rest: number;
-  readonly written: string;
 }
 
 /** Reads the event at the start of `text`; what follows is for the caller (`until`, or nothing). */
@@ -712,11 +711,6 @@ export const readEventPrefix = (
   Result.map(readEvent(text, 0, line), ([event, end]) => ({
     event,
     rest: skipSpaces(text, end),
-    written: pipe(
-      Str.slice(0, end)(text),
-      Str.replaceAll(/\s+/gu, " "),
-      Str.trim
-    ),
   }));
 
 /** Flicks as the source writes them: whole seconds, whole milliseconds, or decimal seconds. */
@@ -768,7 +762,7 @@ export const formatEvent = (expr: EventExpr): string => {
       return expr.name;
     }
 
-    case "all":
+    case "last":
     case "first": {
       return `${expr.kind}(${Arr.join(Arr.map(expr.of, formatEvent), ", ")})`;
     }

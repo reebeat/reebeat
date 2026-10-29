@@ -71,7 +71,14 @@ export const construct = (
   deviation?: string
 ) => ({ description, deviation, identifier, origin });
 
-const Id = Schema.NonEmptyString;
+/**
+ * An identifier: a Scene, an Element, an effect or a derived event. One definition, built from `idPattern`: the
+ * grammar, the parser and the JSON Schema (`pattern`) all read it from here.
+ */
+export const IdSchema = Schema.String.check(Schema.isPattern(idPattern));
+
+/** The id of a Line: its Scene's id, a dot and its place in the Scene (`sc4.l2`); not an identifier, since it has a dot. */
+export const LineIdSchema = Schema.NonEmptyString;
 
 /** A 1-based line of the `.fountain` source. */
 const SourceLine = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
@@ -130,9 +137,8 @@ export const SettingsSchema = Schema.Struct({
 });
 
 export const ChapterSchema = Schema.Struct({
-  id: Id,
+  id: IdSchema,
   line: SourceLine,
-  sceneIds: Schema.Array(Id),
   /** The text of the `= synopsis` lines under the Section, joined by a space; only `plan` shows it. */
   synopsis: Schema.optionalKey(Schema.String),
   title: Schema.String,
@@ -148,7 +154,7 @@ export const ChapterSchema = Schema.Struct({
 export const ElementSchema = Schema.Struct({
   cell: CellSchema,
   class: ElementClassSchema,
-  id: Id,
+  id: IdSchema,
   line: SourceLine,
   text: Schema.String,
   /** False: the Element starts hidden and a `show` effect reveals it. */
@@ -192,14 +198,14 @@ export const PointSchema = Schema.Union([
 
 /** Who an anchor is about: an Element or an effect by id, the Scene, or a Beat of the Scene by number. */
 export const SubjectSchema = Schema.Union([
-  Schema.Struct({ id: Id, kind: Schema.Literal("element") }).annotate(
+  Schema.Struct({ id: IdSchema, kind: Schema.Literal("element") }).annotate(
     construct(
       "ElementSubject",
       "SMIL 3.0 timing, the element id of a syncbase-value; SCXML state id",
       "An Element of the Scene, by id."
     )
   ),
-  Schema.Struct({ id: Id, kind: Schema.Literal("effect") }).annotate(
+  Schema.Struct({ id: IdSchema, kind: Schema.Literal("effect") }).annotate(
     construct(
       "EffectSubject",
       "SMIL 3.0 timing, the element id of a timed child",
@@ -359,14 +365,14 @@ export type Duration = typeof DurationSchema.Type;
 
 /**
  * An event of the Scene: a list of frames, built from sources and combinators (spec 0004). `ref` is a name a `let` line
- * declared. `all` happens when every operand has (SMIL `endsync=all`), `first` at the earliest of them, `each` at every
+ * declared. `last` happens when every operand has (SMIL `endsync=last`), `first` at the earliest of them, `each` at every
  * occurrence of every operand (a begin-value list) and may thin them with `throttle` or space them with `stagger`;
  * `within` keeps the occurrences inside a Beat; `shift` moves every occurrence by an offset.
  */
 export type EventExpr =
   | { readonly anchor: typeof AnchorSchema.Type; readonly kind: "anchor" }
   | { readonly kind: "ref"; readonly name: string }
-  | { readonly kind: "all"; readonly of: readonly EventExpr[] }
+  | { readonly kind: "last"; readonly of: readonly EventExpr[] }
   | { readonly kind: "first"; readonly of: readonly EventExpr[] }
   | {
       readonly kind: "each";
@@ -392,7 +398,7 @@ export const EventExprSchema: Schema.Codec<EventExpr> = Schema.Union([
       "The occurrences of an anchor."
     )
   ),
-  Schema.Struct({ kind: Schema.Literal("ref"), name: Id }).annotate(
+  Schema.Struct({ kind: Schema.Literal("ref"), name: IdSchema }).annotate(
     construct(
       "RefEvent",
       "Fran (Elliott and Hudak 1997), a named event; RxJS share (explanatory only)",
@@ -401,14 +407,14 @@ export const EventExprSchema: Schema.Codec<EventExpr> = Schema.Union([
     )
   ),
   Schema.Struct({
-    kind: Schema.Literal("all"),
+    kind: Schema.Literal("last"),
     of: Schema.Array(
       Schema.suspend((): Schema.Codec<EventExpr> => EventExprSchema)
     ),
   }).annotate(
     construct(
-      "AllEvent",
-      'SMIL 3.0 timing, endsync="all"; RxJS forkJoin (explanatory only)',
+      "LastEvent",
+      'SMIL 3.0 timing, endsync="last"; RxJS forkJoin (explanatory only)',
       "Happens when every operand has happened.",
       "At the last occurrence of every operand; it never happens while one operand never does."
     )
@@ -502,41 +508,35 @@ export const WhenSchema = Schema.Union([
   )
 );
 
-/** `until <event>`: the SMIL end value of an effect with a duration, and the text the author wrote for it. */
+/** `until <event>`: the SMIL end value of an effect with a duration. */
 export const UntilSchema = Schema.Struct({
   event: EventExprSchema,
-  written: Schema.NonEmptyString,
 }).annotate(
   construct(
     "Until",
     "SMIL 3.0 timing, end value; RxJS takeUntil (explanatory only)",
-    "The event that ends an effect with a duration, and the text the author wrote for it.",
+    "The event that ends an effect with a duration.",
     "Only on a focus (a show stays shown and a sound plays out); the end is the first occurrence strictly after the fire frame; an event that comes later than the Scene, or never, leaves the effect to the slide change."
   )
 );
 
 export const EffectSchema = Schema.Struct({
-  id: Id,
+  id: IdSchema,
   line: SourceLine,
   /** `sound`: the catalogue name; absent for `show` and `focus`. */
   name: Schema.optionalKey(SfxNameSchema),
   /** `show` and `focus`: an Element id of this Scene; absent for `sound`. */
-  target: Schema.optionalKey(Id),
+  target: Schema.optionalKey(IdSchema),
   /** `focus` only: the event that ends the ring. Without it the ring lasts to the end of the Scene. */
   until: Schema.optionalKey(UntilSchema),
   verb: VerbSchema,
   when: WhenSchema,
-  /**
-   * The `when` exactly as the author wrote it after `at` (whitespace collapsed): `word("box", 1).end +0.1s`. The
-   * review text and the Timeline `intent` print it back; `when` is its parsed meaning.
-   */
-  written: Schema.NonEmptyString,
 }).annotate(
   construct(
     "Effect",
     "Mealy and Moore machine outputs (an effect subscribes to a transition or to a state's enter or leave); SMIL 3.0 timing, a timed child with a begin and an end",
-    "A sound, a show or a focus, and when it happens.",
-    'An effect with several occurrences of its begin event runs once for each, but only a sound may; the instances do not restart each other, unlike SMIL restart="always"; the slide change ends every running effect.'
+    "A sound, a show or a focus, and when it happens. SMIL attributes of each verb (declared once per verb in grammar.ts, not stored per effect): restart overlap for every verb; fill freeze for a show, remove for a focus and a sound.",
+    'restart: overlap, which is not a SMIL value: an effect with several occurrences of its begin event runs once for each (only a sound may), and instances do not restart each other, unlike SMIL restart="always"; occurrences of one event at the same frame are one occurrence; the slide change ends every running effect.'
   )
 );
 
@@ -544,9 +544,7 @@ export const EffectSchema = Schema.Struct({
 export const DerivedEventSchema = Schema.Struct({
   event: EventExprSchema,
   line: SourceLine,
-  name: Id,
-  /** The event as the author wrote it after `=` (whitespace collapsed). */
-  written: Schema.NonEmptyString,
+  name: IdSchema,
 }).annotate(
   construct(
     "DerivedEvent",
@@ -614,32 +612,30 @@ export const LineSchema = Schema.Struct({
       "A speed is a multiple of the voice's natural rate between 0.5 and 2, not a percent."
     )
   ),
-  id: Id,
+  id: LineIdSchema,
   line: SourceLine,
-  /** The narration text: the dialogue, whitespace collapsed (dialogue has no notes). */
+  /** The narration text: the dialogue, whitespace collapsed (dialogue has no notes). Its words are `wordsOf(text)`. */
   text: Schema.String,
-  /** `text` split on single spaces. */
-  words: Schema.Array(Schema.String),
 }).annotate(
   construct(
     "Line",
     "Fountain 1.1, Dialogue of NARRATOR; SMIL 3.0 timing, a media element (its words are sync points)",
-    "One thing the narrator says in a Scene, with its words.",
+    "One thing the narrator says in a Scene: its text, spoken word by word.",
     "The text is byte-identical across revisions of a Story so the speech cache keeps hitting; the times of its words come from alignment, never from the author."
   )
 );
 
 export const IdentitySchema = Schema.Struct({
-  enter: Schema.Array(Id),
-  exit: Schema.Array(Id),
-  same: Schema.Array(Id),
+  enter: Schema.Array(IdSchema),
+  exit: Schema.Array(IdSchema),
+  same: Schema.Array(IdSchema),
   update: Schema.Array(
-    Schema.Struct({ changes: Schema.Array(ElementChangeSchema), id: Id })
+    Schema.Struct({ changes: Schema.Array(ElementChangeSchema), id: IdSchema })
   ),
 });
 
 export const SceneSchema = Schema.Struct({
-  chapterId: Id,
+  chapterId: IdSchema,
   /** The Scene's `[[effects]]` block in source order (empty without a block). */
   effects: Schema.Array(EffectSchema),
   elements: Schema.Array(ElementSchema),
@@ -647,7 +643,7 @@ export const SceneSchema = Schema.Struct({
   events: Schema.Array(DerivedEventSchema),
   heading: Schema.String,
   /** The author's `#id#` of the scene heading, unique in the story. */
-  id: Id,
+  id: IdSchema,
   /** Versus the previous Scene; only when `transition` is `auto-animate`. */
   identity: Schema.NullOr(IdentitySchema),
   line: SourceLine,
@@ -672,7 +668,7 @@ export const TimedEffectSchema = Schema.Struct({
    * Auto-Animate or cut at `slideFrame` (lag 0) and a default fade one frame earlier.
    */
   commandFrame: Frame,
-  effectId: Id,
+  effectId: IdSchema,
   /**
    * Only a `focus` that ends by its own `until` before the Scene does: the frame at which the capture commands the ring
    * off (an end step of the Deck, `stepsOf`).
@@ -690,21 +686,18 @@ export const TimedEffectSchema = Schema.Struct({
   fireFrame: Frame,
   /** 1-based: an effect whose `at` event has several occurrences (`each`) runs once per occurrence, in time order. */
   instance: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
-  /** What the author wrote for the timing, as the review text prints it, e.g. `word("matches").end +100ms`. */
-  intent: Schema.String,
 });
 
 /** A derived event with the frames it resolved to. */
 export const TimedEventSchema = Schema.Struct({
   frames: Schema.Array(Frame),
-  name: Id,
-  written: Schema.String,
+  name: IdSchema,
 });
 
 export const TimedLineSchema = Schema.Struct({
   audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   endFrame: Frame,
-  lineId: Id,
+  lineId: LineIdSchema,
   startFrame: Frame,
   words: Schema.Array(TimedWordSchema),
 });
@@ -716,13 +709,15 @@ export const TimedSceneSchema = Schema.Struct({
   /** The Scene's derived events (`let`) in source order, with their frames. */
   events: Schema.Array(TimedEventSchema),
   lines: Schema.Array(TimedLineSchema),
-  sceneId: Id,
+  sceneId: IdSchema,
   /** The frame at which the slide change is shown. */
   slideFrame: Frame,
 });
 
 export const TimelineSchema = Schema.Struct({
-  chapters: Schema.Array(Schema.Struct({ chapterId: Id, startFrame: Frame })),
+  chapters: Schema.Array(
+    Schema.Struct({ chapterId: IdSchema, startFrame: Frame })
+  ),
   scenes: Schema.Array(TimedSceneSchema),
   totalFrames: Frame,
 });

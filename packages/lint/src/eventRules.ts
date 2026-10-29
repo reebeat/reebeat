@@ -73,7 +73,7 @@ export const derivedEventsNeverUsed = (plan: PlanJson): readonly Diagnostic[] =>
         : [
             {
               line: derived.line,
-              message: `scene ${scene.id}: the derived event ${derived.name} (${derived.written}) is never used; name it in an effect's at or until, or delete the let`,
+              message: `scene ${scene.id}: the derived event ${derived.name} (${formatEvent(derived.event)}) is never used; name it in an effect's at or until, or delete the let`,
               rule: derivedEventNeverUsedRule,
               sceneId: scene.id,
             },
@@ -91,7 +91,7 @@ export const untilsOfTheirOwnFire = (plan: PlanJson): readonly Diagnostic[] =>
         ? [
             {
               line: effect.line,
-              message: `scene ${scene.id}, effect ${effect.id}: until ${effect.until.written} is the event it fires at (${effect.written}), and until takes the first occurrence after the fire frame, so it never ends the effect; name a later event or leave until out`,
+              message: `scene ${scene.id}, effect ${effect.id}: until ${formatEvent(effect.until.event)} is the event it fires at, and until takes the first occurrence after the fire frame, so it never ends the effect; name a later event or leave until out`,
               rule: untilIsItsOwnFireRule,
               sceneId: scene.id,
             },

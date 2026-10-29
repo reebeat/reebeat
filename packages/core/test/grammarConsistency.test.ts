@@ -21,7 +21,12 @@ import {
 } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
-import { isLetLine, parseEffectLine, parseLetLine } from "../src/effects.ts";
+import {
+  formatEffect,
+  isLetLine,
+  parseEffectLine,
+  parseLetLine,
+} from "../src/effects.ts";
 import {
   absoluteUnit,
   anchorWords,
@@ -407,7 +412,10 @@ const composed: readonly Sentence[] = [
   ...Arr.map(verbs, (verb) =>
     sentenceOf(verb, `0.5${absoluteUnit.token} ${keywords.because} "a beat"`)
   ),
-  sentenceOf("sound", `${combinatorWords.all}(m.move.end, u.update.end) +0.1s`),
+  sentenceOf(
+    "sound",
+    `${combinatorWords.last}(m.move.end, u.update.end) +0.1s`
+  ),
   sentenceOf(
     "sound",
     `${combinatorWords.first}(${anchorWords.word}("two").end, ${anchorWords.scene}.end)`
@@ -425,7 +433,7 @@ const composed: readonly Sentence[] = [
     `${combinatorWords.within}(${anchorWords.word}("three").end, ${anchorWords.state}(2))`
   ),
   sentenceOf("sound", "both +50ms", undefined, [
-    `  ${keywords.let} both = ${combinatorWords.all}(m.move.end, u.update.end)`,
+    `  ${keywords.let} both = ${combinatorWords.last}(m.move.end, u.update.end)`,
   ]),
   sentenceOf(
     "focus",
@@ -475,32 +483,56 @@ describe("sentences generated from the closed sets and from the machines", () =>
     }
   });
 
+  it.effect("resolve to a frame, for every instance", () =>
+    Effect.gen(function* resolved() {
+      for (const sentence of sentences) {
+        const plan = yield* buildPlan(withSentence(sentence), fixtureSha256);
+
+        const scheduled = yield* Effect.exit(
+          schedule(plan, evenlySpoken(plan, 300), lifecycle)
+        );
+
+        if (Exit.isFailure(scheduled)) {
+          assert.fail(`${sentence.timing}: ${Cause.pretty(scheduled.cause)}`);
+        }
+
+        assert.isAbove(
+          Arr.filter(
+            scheduled.value.timeline?.scenes[1]?.effects ?? [],
+            (effect) => effect.effectId === "t1"
+          ).length,
+          0,
+          sentence.timing
+        );
+      }
+    })
+  );
+
   it.effect(
-    "resolve to a frame, and the intent is the sentence as written",
+    "write back as the canonical form, which reads as the same effect (a sugar is read, never kept)",
     () =>
-      Effect.gen(function* resolved() {
+      Effect.gen(function* canonicalForm() {
         for (const sentence of sentences) {
           const plan = yield* buildPlan(withSentence(sentence), fixtureSha256);
 
-          const scheduled = yield* Effect.exit(
-            schedule(plan, evenlySpoken(plan, 300), lifecycle)
+          const written = Arr.findFirst(
+            plan.scenes[1]?.effects ?? [],
+            (effect) => effect.id === "t1"
           );
 
-          if (Exit.isFailure(scheduled)) {
-            assert.fail(`${sentence.timing}: ${Cause.pretty(scheduled.cause)}`);
-          }
+          assert.isTrue(Option.isSome(written), sentence.timing);
 
-          const { timeline } = scheduled.value;
+          if (Option.isSome(written)) {
+            const again = parseEffectLine(
+              formatEffect(written.value),
+              written.value.line
+            );
 
-          const found = Arr.filter(
-            timeline?.scenes[1]?.effects ?? [],
-            (effect) => effect.effectId === "t1"
-          );
-
-          assert.isAbove(found.length, 0, sentence.timing);
-
-          for (const entry of found) {
-            assert.strictEqual(entry.intent, sentence.timing, sentence.timing);
+            assert.deepStrictEqual(
+              Result.isSuccess(again) ? again.success : undefined,
+              written.value,
+              sentence.timing
+            );
           }
         }
       })

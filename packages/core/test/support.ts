@@ -7,6 +7,7 @@ import { Array as Arr, Effect, FileSystem, Path, String as Str } from "effect";
 import type { HeardWord } from "../src/align.ts";
 import type { PlanJson } from "../src/plan.ts";
 import type { AlignedLine } from "../src/schedule.ts";
+import { wordsOf } from "../src/words.ts";
 
 /** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
 export const fixtureSha256 =
@@ -88,9 +89,9 @@ export const evenlySpoken = (plan: PlanJson, wordMs: number): AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.map(scene.lines, (line, index) => ({
       audio: audioOf((index % 9) + 1),
-      durationMs: line.words.length * wordMs,
+      durationMs: wordsOf(line.text).length * wordMs,
       lineId: line.id,
-      words: Arr.map(line.words, (w, at) => ({
+      words: Arr.map(wordsOf(line.text), (w, at) => ({
         endMs: (at + 1) * wordMs,
         startMs: at * wordMs,
         w,

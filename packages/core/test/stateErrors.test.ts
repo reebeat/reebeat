@@ -25,7 +25,7 @@ const percentHint =
   "expected start or end, or a percent of a move, an update, a show, a focus, or the transition of a Scene that is not > CUT";
 
 const manyHint =
-  "expected first(...) or all(...) to pick one moment (only a sound runs once for each occurrence)";
+  "expected first(...) or last(...) to pick one moment (only a sound runs once for each occurrence)";
 
 const stateHint = (most: number, what: string): string =>
   `${what} in Scene main, which has at most ${most} (one State, and one more State and one Beat for each show or focus); expected a number from 1 to ${most}`;
@@ -101,13 +101,13 @@ const cases: readonly Case[] = [
     errors: [
       [
         "EffectCycle",
-        'let a = all(b, word("alpha").start)',
+        'let a = last(b, word("alpha").start)',
         `effects and derived events wait for each other: b -> a -> b; ${cycleHint}`,
       ],
     ],
     name: "a cycle through an all",
     rows: [
-      'let a = all(b, word("alpha").start)',
+      'let a = last(b, word("alpha").start)',
       "let b = a",
       "x1: sound pop at b",
     ],

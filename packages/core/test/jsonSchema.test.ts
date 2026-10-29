@@ -17,7 +17,6 @@ const documentOf = Schema.decodeUnknownEffect(
 /** Where each construct of the IR comes from: what its `origin` must name (the table the construct catalogue prints). */
 const origins: Readonly<Record<string, string>> = {
   AbsoluteWhen: "SMIL 3.0 timing",
-  AllEvent: "SMIL 3.0 timing",
   Anchor: "SMIL 3.0 timing",
   AnchorEvent: "SMIL 3.0 timing",
   BeatSubject: "Harel 1987",
@@ -35,6 +34,7 @@ const origins: Readonly<Record<string, string>> = {
   FirstEvent: "SMIL 3.0 timing",
   Graph: "SCXML 1.0",
   GraphScene: "Harel 1987",
+  LastEvent: "SMIL 3.0 timing",
   Line: "Fountain 1.1",
   LineHints: "Fountain 1.1",
   OccupancyAnchor: "Harel 1987",
@@ -56,9 +56,9 @@ const origins: Readonly<Record<string, string>> = {
 
 /** Where reebeat's meaning differs from its origin, said in the definition: the words each `deviation` must contain. */
 const deviations: Readonly<Record<string, string>> = {
-  AllEvent: "last occurrence",
   EachEvent: "stagger",
   Effect: 'restart="always"',
+  LastEvent: "last occurrence",
   OccupancyAnchor: "slide change",
   TimeOffset: "floor(t x rate + 1/2)",
   Until: "Only on a focus",

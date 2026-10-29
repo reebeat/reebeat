@@ -19,6 +19,7 @@ import {
   SceneLeadTooShort,
 } from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
+import { sceneIdsOfChapter } from "./lookup.ts";
 import { AudioFileSchema } from "./plan.ts";
 import type {
   Line,
@@ -37,10 +38,11 @@ import {
   framesOfFlicks,
   rateOf,
 } from "./time.ts";
+import { wordsOf } from "./words.ts";
 
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
-/** What speech provides for one Line: its audio and its words with aligned times; words align 1:1 to `Line.words`. */
+/** What speech provides for one Line: its audio and its words with aligned times; words align 1:1 to `wordsOf(Line.text)`. */
 export const AlignedLineSchema = Schema.Struct({
   audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   durationMs: Milliseconds,
@@ -75,23 +77,24 @@ const checkLine = (
   }
 
   const spoken = Arr.map(aligned.words, (word) => word.w);
+  const words = wordsOf(line.text);
 
-  if (spoken.length !== line.words.length) {
+  if (spoken.length !== words.length) {
     return mismatch(
       line,
-      `Line ${line.id} has ${line.words.length} words but its alignment has ${spoken.length}`
+      `Line ${line.id} has ${words.length} words but its alignment has ${spoken.length}`
     );
   }
 
   const differs = Arr.findFirstIndex(
-    line.words,
+    words,
     (word, index) => word !== spoken[index]
   );
 
   return Option.isSome(differs)
     ? mismatch(
         line,
-        `Line ${line.id} word ${differs.value + 1} is "${line.words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
+        `Line ${line.id} word ${differs.value + 1} is "${words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
       )
     : undefined;
 };
@@ -264,7 +267,10 @@ const timelineOf = (
   return Result.succeed({
     chapters: Arr.flatMap(plan.chapters, (chapter) =>
       Option.match(
-        Arr.findFirst(scenes, (timed) => timed.sceneId === chapter.sceneIds[0]),
+        Arr.findFirst(
+          scenes,
+          (timed) => timed.sceneId === sceneIdsOfChapter(plan, chapter.id)[0]
+        ),
         {
           onNone: () => [],
           onSome: (first) => [

@@ -284,7 +284,6 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
       endedBy: null,
       fireFrame: 100,
       instance: 1,
-      intent: "transition.start",
     };
 
     return judge(

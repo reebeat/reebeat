@@ -67,7 +67,7 @@ Same name, so it moves {id=hint cell=bc class=muted}
 Matched by id {id=note cell=br class=label visible=false}
 
 [[effects
-  let settled = all(one.move.end, tag.update.end)
+  let settled = last(one.move.end, tag.update.end)
   s1: sound whoosh at transition.start
   s2: sound ding at when(one.move.progress >= 50%)
   f2: focus tag at settled
@@ -92,7 +92,7 @@ Same name, so it moves {id=hint cell=bc class=accent}
 Box three {id=three cell=ml class=box}
 
 [[effects
-  let landed = all(one.moving.leave, three.entering.leave)
+  let landed = last(one.moving.leave, three.entering.leave)
   s1: sound ding at transition.start
   f1: focus three at landed
 ]]
@@ -132,7 +132,7 @@ Keep the name and the motion comes free {id=sub cell=bc class=muted}
 [[effects
   p1: sound pop at 0.5s because "a soft pop as the closing card settles, before the narration starts"
   p2: sound pop at first(scene.start +1s, scene.start +0.8s)
-  p3: sound pop at all(scene.start +0.1s, scene.start +0.2s)
+  p3: sound pop at last(scene.start +0.1s, scene.start +0.2s)
 ]]
 
 NARRATOR

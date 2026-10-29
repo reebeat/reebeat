@@ -62,11 +62,11 @@ describe("combinators on real words", () => {
   it.effect("all is the last of its operands, first the earliest", () =>
     assertProbes([
       // bravo ends at 111 and delta starts at 120: all waits for both.
-      ["a1", 'all(word("bravo").end, word("delta").start)', [120]],
+      ["a1", 'last(word("bravo").end, word("delta").start)', [120]],
       // golf starts at 147 and echo ends at 138: first is the earlier.
       ["a2", 'first(word("golf").start, word("echo").end)', [138]],
       // an Element's motion and a word: the move ends at 87, alpha starts at 93.
-      ["a3", 'all(box.move.end, word("alpha").start)', [93]],
+      ["a3", 'last(box.move.end, word("alpha").start)', [93]],
       ["a4", 'first(box.move.end, word("alpha").start)', [87]],
     ])
   );
@@ -161,7 +161,7 @@ describe("a derived event is evaluated once and used wherever it is named", () =
         const plan = yield* scheduledAt(
           statesSource([
             ...stepRows,
-            "let settle = all(box.move.50%, fresh.enter.end)",
+            "let settle = last(box.move.50%, fresh.enter.end)",
             'let marks = each(word("alpha").start, word("echo").start)',
             "l1: sound pop at settle",
             "l2: sound pop at settle +0.1s",
@@ -176,18 +176,10 @@ describe("a derived event is evaluated once and used wherever it is named", () =
         assert.deepStrictEqual(firesOf(plan, "l3"), [93, 129]);
         assert.deepStrictEqual(firesOf(plan, "l4"), [95, 131]);
         assert.deepStrictEqual(
-          Arr.map(mainOf(plan).events, ({ frames, name, written }) => [
-            name,
-            written,
-            frames,
-          ]),
+          Arr.map(mainOf(plan).events, ({ frames, name }) => [name, frames]),
           [
-            ["settle", "all(box.move.50%, fresh.enter.end)", [85]],
-            [
-              "marks",
-              'each(word("alpha").start, word("echo").start)',
-              [93, 129],
-            ],
+            ["settle", [85]],
+            ["marks", [93, 129]],
           ]
         );
       })
@@ -478,6 +470,85 @@ describe("several instances of one sound", () => {
             [3, 129, 129, null, null],
           ]
         );
+      })
+  );
+});
+
+/** The `a1` and `a2` effects of a story in resolved order, with their fire frames. */
+const order = (rows: readonly string[]) =>
+  Effect.map(scheduledAt(statesSource(rows)), (plan) =>
+    Arr.map(
+      Arr.filter(mainOf(plan).effects, ({ effectId }) =>
+        Arr.contains(["a1", "a2"], effectId)
+      ),
+      ({ effectId, fireFrame }) => [effectId, fireFrame]
+    )
+  );
+
+describe("simultaneous events: one moment is one occurrence", () => {
+  it.effect(
+    "gives an each of two operands at one frame one sound instance, and two instances when the frames differ",
+    () =>
+      assertProbes([
+        // alpha starts at 93: the same moment twice is one instance.
+        ["c1", 'each(word("alpha").start, word("alpha").start)', [93]],
+        // the control: alpha starts at 93 and ends at 102, two moments, two instances.
+        ["c2", 'each(word("alpha").start, word("alpha").end)', [93, 102]],
+        // last and first of operands that tie give that frame once.
+        ["c3", 'last(word("echo").start, word("delta").end)', [129]],
+        ["c4", 'first(word("echo").start, word("delta").end)', [129]],
+        // a stagger does not push the second of two simultaneous operands away.
+        [
+          "c5",
+          'each(word("alpha").start, word("alpha").start, stagger=20f)',
+          [93],
+        ],
+      ])
+  );
+
+  it.effect(
+    "fires two different effects at one frame both, in declaration order",
+    () =>
+      Effect.gen(function* together() {
+        const ding = 'a2: sound ding at word("echo").start';
+        const pop = 'a1: sound pop at word("echo").start';
+
+        assert.deepStrictEqual(yield* order([...stepRows, pop, ding]), [
+          ["a1", 129],
+          ["a2", 129],
+        ]);
+        assert.deepStrictEqual(yield* order([...stepRows, ding, pop]), [
+          ["a2", 129],
+          ["a1", 129],
+        ]);
+      })
+  );
+
+  it.effect(
+    "makes one Beat of two steps at one frame, in declaration order",
+    () =>
+      Effect.gen(function* oneBeat() {
+        const plan = yield* scheduledAt(
+          statesSource([
+            'f2: focus tag at word("charlie").end',
+            'r1: show note at word("charlie").end',
+            "b1: sound pop at beat(1).start",
+            "b2: sound pop at state(2).enter",
+          ])
+        );
+
+        const [, scene] = plan.scenes;
+
+        assert.isDefined(scene);
+        assert.deepStrictEqual(
+          scene === undefined
+            ? []
+            : Arr.map(stepsOf(plan, scene), ({ effect }) => effect.id),
+          ["f2", "r1"]
+        );
+        // one Beat (120..124, the show's fade): its start is the shared fire frame, State 2 enters at its end.
+        assert.deepStrictEqual(firesOf(plan, "b1"), [120]);
+        assert.deepStrictEqual(firesOf(plan, "b2"), [124]);
       })
   );
 });

@@ -20,17 +20,12 @@ import {
   ElementClassSchema,
   cells,
   elementClasses,
-  idPattern,
+  IdSchema,
   sfxNames,
   verbs,
 } from "./plan.ts";
 import type { Verb } from "./plan.ts";
 import { flicksPerSecond } from "./time.ts";
-
-/** An identifier: a Scene, an Element or an effect. */
-export const IdentifierSchema = Schema.String.check(
-  Schema.isPattern(idPattern)
-);
 
 /** The words an anchor starts with (`word("x").end`, `state(2).enter`, `beat(1).start`, `scene.start`, `transition.50%`). */
 export const anchorWords = {
@@ -41,11 +36,11 @@ export const anchorWords = {
   word: "word",
 } as const;
 
-/** The words of the event combinators (spec 0004): `all(a, b)`, `when(one.move.progress >= 50%)`. */
+/** The words of the event combinators (spec 0004): `last(a, b)`, `when(one.move.progress >= 50%)`. */
 export const combinatorWords = {
-  all: "all",
   each: "each",
   first: "first",
+  last: "last",
   when: "when",
   within: "within",
 } as const;
@@ -70,7 +65,7 @@ export const reservedIds = [
 export const propertySchemas = {
   cell: CellSchema,
   class: ElementClassSchema,
-  id: IdentifierSchema,
+  id: IdSchema,
   visible: Schema.Literals(["true", "false"]),
 } as const;
 
@@ -133,19 +128,47 @@ export const elementProperties: readonly PropertySpec[] = [
 ];
 
 /**
+ * SMIL 3.0 `restart`: what happens when a begin event of an effect comes while one of its instances is running.
+ * `always`, `whenNotActive` and `never` are SMIL's; `overlap` is not: the new begin starts another instance beside the
+ * running ones, and no instance cuts another (two dings 300 ms apart are two dings). Only `overlap` is authorable
+ * today, so the resolver builds only it (a verb that declares another fails `grammarDoc` and its test).
+ */
+export const restartModes = [
+  "always",
+  "whenNotActive",
+  "never",
+  "overlap",
+] as const;
+
+type RestartMode = (typeof restartModes)[number];
+
+/**
+ * SMIL 3.0 `fill`: what an effect leaves behind when its window ends: `remove` takes its change off, `freeze` keeps
+ * its last state until the Scene ends (the slide change ends everything).
+ */
+export const fillModes = ["remove", "freeze"] as const;
+
+type FillMode = (typeof fillModes)[number];
+
+/**
  * What each verb takes after its name, and the letter its generated ids start with (the messages that write an
  * effect for the author number them `s1`, `r1`, `f1`); the type makes a new verb a compile error here. `until` says
  * whether the verb has a duration an `until` event can end (spec 0004: only a `focus` ring is held; a `show` is
  * permanent and a `sound` plays out); `instances` says whether the `at` event may have several occurrences, one
- * instance each (a `sound` may, a `show` and a `focus` happen once).
+ * instance each (a `sound` may, a `show` and a `focus` happen once). `restart` and `fill` are the SMIL attributes of
+ * the verb, declared once per verb and not stored per effect, since they follow from the verb: a `show` freezes (it
+ * stays shown to the slide change), a `focus` removes its ring at its end or at the slide change, a `sound` removes
+ * itself when it has played.
  */
 export const verbArguments: Readonly<
   Record<
     Verb,
     {
       readonly argument: string;
+      readonly fill: FillMode;
       readonly idPrefix: string;
       readonly instances: "one" | "many";
+      readonly restart: RestartMode;
       readonly summary: string;
       readonly until: boolean;
     }
@@ -153,23 +176,29 @@ export const verbArguments: Readonly<
 > = {
   focus: {
     argument: "element id",
+    fill: "remove",
     idPrefix: "f",
     instances: "one",
+    restart: "overlap",
     summary:
       "rings and scales an Element of this Scene; the ring lasts to its `until` event or the end of the Scene",
     until: true,
   },
   show: {
     argument: "element id",
+    fill: "freeze",
     idPrefix: "r",
     instances: "one",
+    restart: "overlap",
     summary: "reveals an Element that is `visible=false`; it stays shown",
     until: false,
   },
   sound: {
     argument: `sound name (${Arr.join(sfxNames, ", ")})`,
+    fill: "remove",
     idPrefix: "s",
     instances: "many",
+    restart: "overlap",
     summary:
       "plays a sound of the built-in catalogue, once for each occurrence of its event",
     until: false,
@@ -455,7 +484,7 @@ export const productions: readonly Production[] = [
   {
     examples: [
       effectLine("s1", "sound", "pop", "transition.start"),
-      `let settled = ${combinatorWords.all}(m.move.end, m.update.end)`,
+      `let settled = ${combinatorWords.last}(m.move.end, m.update.end)`,
     ],
     name: "line",
     rule: "effect | let",
@@ -471,7 +500,7 @@ export const productions: readonly Production[] = [
   },
   {
     examples: [
-      `${keywords.let} settled = ${combinatorWords.all}(m.move.end, m.update.end)`,
+      `${keywords.let} settled = ${combinatorWords.last}(m.move.end, m.update.end)`,
     ],
     name: "let",
     rule: `"${keywords.let}" name "=" event`,
@@ -502,7 +531,7 @@ export const productions: readonly Production[] = [
     examples: [
       "transition.start",
       'word("two").end +100ms',
-      `${combinatorWords.all}(m.move.end, m.update.end) +0.1s`,
+      `${combinatorWords.last}(m.move.end, m.update.end) +0.1s`,
     ],
     name: "event",
     rule: "term [ offset ]",
@@ -517,7 +546,7 @@ export const productions: readonly Production[] = [
     name: "term",
     rule: `anchor | name | ${Arr.join(
       Arr.map(
-        [combinatorWords.all, combinatorWords.first, combinatorWords.each],
+        [combinatorWords.last, combinatorWords.first, combinatorWords.each],
         (word) => `"${word}(" event { "," event } ")"`
       ),
       " | "

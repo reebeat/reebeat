@@ -12,8 +12,10 @@ import {
 } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import { sceneIdsOfChapter } from "../src/lookup.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
+import { wordsOf } from "../src/words.ts";
 import { fixtureSha256, readFixture } from "./support.ts";
 
 const fixturePlan = Effect.gen(function* plan() {
@@ -67,10 +69,23 @@ describe("buildPlan of the fixture", () => {
         const plan = yield* fixturePlan;
 
         assert.deepStrictEqual(
-          Arr.map(plan.chapters, (chapter) => [chapter.id, chapter.sceneIds]),
+          Arr.map(plan.chapters, (chapter) => [
+            chapter.id,
+            sceneIdsOfChapter(plan, chapter.id),
+          ]),
           [
             ["ch1", ["opening", "second"]],
             ["ch2", ["third", "fourth"]],
+          ]
+        );
+        // The chapter of a Scene is stored once, on the Scene; the Chapter lists no Scenes.
+        assert.deepStrictEqual(
+          Arr.map(plan.chapters, (chapter) =>
+            Record.keys<string, unknown>(chapter)
+          ),
+          [
+            ["id", "line", "title", "synopsis"],
+            ["id", "line", "title"],
           ]
         );
         assert.deepStrictEqual(
@@ -107,7 +122,15 @@ describe("buildPlan of the fixture", () => {
           line?.text,
           "This box sits in the corner. The caption says what it is."
         );
-        assert.strictEqual(line?.words.length, 12);
+        // The words are the text split on single spaces; the Line stores no list of them.
+        assert.strictEqual(wordsOf(line?.text ?? "").length, 12);
+        assert.deepStrictEqual(
+          Arr.map(plan.scenes[0]?.lines ?? [], Record.keys),
+          [
+            ["hints", "id", "line", "text"],
+            ["hints", "id", "line", "text"],
+          ]
+        );
         // (slowly) is the story default 1.1 times 0.9.
         assert.deepStrictEqual(line?.hints, { pauseBefore: 0, speed: 0.99 });
         assert.deepStrictEqual(plan.scenes[1]?.lines[0]?.hints, {

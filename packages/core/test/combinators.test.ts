@@ -6,19 +6,26 @@
 //   b      --------b-----
 //   c      --------------c
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Option, Record, Result, String as Str } from "effect";
+import {
+  Array as Arr,
+  Option,
+  Order,
+  Record,
+  Result,
+  String as Str,
+} from "effect";
 
 import {
-  all,
   each,
   endsAfter,
   first,
+  last,
   once,
   stagger,
   throttle,
   within,
 } from "../src/combinators.ts";
-import type { Event } from "../src/combinators.ts";
+import type { Event, Occurrence } from "../src/combinators.ts";
 import { evaluator } from "../src/evaluate.ts";
 import type { Sources } from "../src/evaluate.ts";
 import type { Duration, EventExpr } from "../src/plan.ts";
@@ -37,31 +44,31 @@ const b = marble("--------b-----");
 const c = marble("--------------c");
 const never = marble("--------------");
 
-describe("all (SMIL endsync=all, forkJoin)", () => {
+describe("last (SMIL endsync=last, forkJoin)", () => {
   it("happens at the last of the operands", () => {
     assert.deepStrictEqual(
-      frames(all([a, b, c])),
+      frames(last([a, b, c])),
       frames(marble("--------------c"))
     );
     assert.deepStrictEqual(
-      frames(all([a, b])),
+      frames(last([a, b])),
       frames(marble("--------b-----"))
     );
   });
 
   it("uses the LAST occurrence of an operand that has several", () => {
     assert.deepStrictEqual(
-      frames(all([each([a, c]), b])),
+      frames(last([each([a, c]), b])),
       frames(marble("--------------c"))
     );
     assert.deepStrictEqual(
-      frames(all([each([a, b]), a])),
+      frames(last([each([a, b]), a])),
       frames(marble("--------b-----"))
     );
   });
 
   it("never happens while one operand never does", () => {
-    assert.deepStrictEqual(all([a, never]), []);
+    assert.deepStrictEqual(last([a, never]), []);
   });
 });
 
@@ -271,7 +278,7 @@ describe("let (share): one evaluation, the same list everywhere", () => {
     const calls: string[] = [];
 
     const named = new Map<string, EventExpr>([
-      ["pair", { kind: "all", of: [word("a"), word("b")] }],
+      ["pair", { kind: "last", of: [word("a"), word("b")] }],
     ]);
 
     const result = frameList(
@@ -329,6 +336,210 @@ describe("within and the combinators over expressions", () => {
         )
       ),
       Result.succeed(frames(marble("----a-----b-----c")))
+    );
+  });
+});
+
+// Simultaneous events and an `until` at an equal frame (spec 0004, the rule): occurrences of ONE event at the same frame
+// are ONE occurrence, the first operand's window kept (an effect fires once for a moment; SMIL: equal times in a
+// begin-value list are one begin; a reactive `merge` would keep both, the algebra does not), and an `until` ignores an
+// occurrence at or before the fire frame. Each row is worked out by hand (the string is `frame[window start-end]` for
+// each occurrence); each mutant breaks one rule and must fail exactly the rows that defend it.
+type Operands = (operands: readonly Event[]) => Event;
+
+interface Ended {
+  readonly frame: number;
+  readonly interrupted: boolean;
+}
+
+type Ends = (begin: number, ends: Event, fallback: number) => Ended;
+
+interface Algebra {
+  readonly each: Operands;
+  readonly endsAfter: Ends;
+  readonly first: Operands;
+  readonly last: Operands;
+}
+
+const real: Algebra = { each, endsAfter, first, last };
+
+const byFrame = Order.mapInput(Order.Number, ({ frame }: Occurrence) => frame);
+
+/** The occurrences of the operands whose frame is the one `pick` chooses, ties kept (what the rule forbids). */
+const keepingTies =
+  (pick: (edgeFrames: readonly number[]) => number): Operands =>
+  (operands) => {
+    const edges = Arr.flatMap(operands, (operand) => Arr.take(operand, 1));
+    const chosen = pick(Arr.map(edges, ({ frame }) => frame));
+
+    return Arr.filter(edges, ({ frame }) => frame === chosen);
+  };
+
+const mutants: Readonly<Record<string, Algebra>> = {
+  // `each` that keeps both occurrences of a frame.
+  eachKeepsBoth: {
+    ...real,
+    each: (operands) => Arr.sort(Arr.flatten(operands), byFrame),
+  },
+  // `first` that keeps every operand that ties for the earliest frame.
+  firstKeepsTies: {
+    ...real,
+    first: keepingTies((edgeFrames) => Math.min(...edgeFrames)),
+  },
+  // `last` that keeps every operand that ties for the latest frame (each operand's LAST occurrence).
+  lastKeepsTies: {
+    ...real,
+    last: (operands) => {
+      const lasts = Arr.flatMap(operands, (operand) =>
+        Arr.takeRight(operand, 1)
+      );
+
+      const top = Math.max(...Arr.map(lasts, ({ frame }) => frame));
+
+      return Arr.filter(lasts, ({ frame }) => frame === top);
+    },
+  },
+  // an `until` that takes an occurrence at the fire frame as the end (the real rule, one frame earlier).
+  untilTakesEqual: {
+    ...real,
+    endsAfter: (begin, ends, fallback) => endsAfter(begin - 1, ends, fallback),
+  },
+};
+
+const show = (event: Event): string =>
+  Arr.join(
+    Arr.map(
+      event,
+      ({ frame, window }) => `${frame}[${window.start}-${window.end}]`
+    ),
+    " "
+  );
+
+const ended = (found: Ended): string =>
+  `${found.frame}${found.interrupted ? " interrupted" : ""}`;
+
+// Two words at frame 4 with different windows, and one at frame 8.
+const p = once(4, { end: 6, start: 4 });
+const q = once(4, { end: 10, start: 4 });
+const r = once(8, { end: 8, start: 8 });
+const twelve = once(12);
+
+interface Row {
+  readonly expected: string;
+  /** The mutants that break this rule, so must fail this row. */
+  readonly failsFor: readonly string[];
+  readonly name: string;
+  readonly run: (algebra: Algebra) => string;
+}
+
+const rows: readonly Row[] = [
+  {
+    expected: "4[4-6]",
+    failsFor: ["eachKeepsBoth"],
+    name: "each of two operands at one frame is one occurrence, with the first operand's window",
+    run: (algebra) => show(algebra.each([p, q])),
+  },
+  {
+    expected: "4[4-6] 8[8-8]",
+    failsFor: ["eachKeepsBoth"],
+    name: "each of simultaneous operands and a later one",
+    run: (algebra) => show(algebra.each([p, q, r])),
+  },
+  {
+    expected: "4[4-6]",
+    failsFor: ["eachKeepsBoth"],
+    name: "each of one operand twice",
+    run: (algebra) => show(algebra.each([p, p])),
+  },
+  {
+    expected: "4[4-6]",
+    failsFor: ["lastKeepsTies"],
+    name: "last of a tie gives that frame once",
+    run: (algebra) => show(algebra.last([p, q])),
+  },
+  {
+    expected: "8[8-8]",
+    failsFor: [],
+    name: "last with a later operand is that operand",
+    run: (algebra) => show(algebra.last([p, q, r])),
+  },
+  {
+    expected: "4[4-6]",
+    failsFor: ["firstKeepsTies"],
+    name: "first of a tie gives that frame once",
+    run: (algebra) => show(algebra.first([p, q])),
+  },
+  {
+    expected: "4[4-6]",
+    failsFor: ["eachKeepsBoth"],
+    name: "stagger does not push the second of two simultaneous operands away",
+    run: (algebra) => show(stagger(algebra.each([p, q]), 3)),
+  },
+  {
+    expected: "4[4-6]",
+    failsFor: [],
+    name: "throttle drops the second of two simultaneous operands (an equal frame is closer than any gap)",
+    run: (algebra) => show(throttle(algebra.each([p, q]), 3)),
+  },
+  {
+    expected: "12",
+    failsFor: ["untilTakesEqual"],
+    name: "until at the fire frame is ignored: the next occurrence ends it",
+    run: (algebra) =>
+      ended(algebra.endsAfter(4, algebra.each([p, twelve]), 20)),
+  },
+  {
+    expected: "20 interrupted",
+    failsFor: ["untilTakesEqual"],
+    name: "until only at the fire frame is ignored: the end of the Scene interrupts",
+    run: (algebra) => ended(algebra.endsAfter(4, p, 20)),
+  },
+  {
+    expected: "5",
+    failsFor: [],
+    name: "until at the frame after the fire frame ends there",
+    run: (algebra) => ended(algebra.endsAfter(4, once(5), 20)),
+  },
+  {
+    expected: "20 interrupted",
+    failsFor: [],
+    name: "until before the fire frame is ignored",
+    run: (algebra) => ended(algebra.endsAfter(4, once(2), 20)),
+  },
+];
+
+describe("simultaneous events are one occurrence; an until ignores the fire frame", () => {
+  for (const { expected, name, run } of rows) {
+    it(name, () => {
+      assert.strictEqual(run(real), expected);
+    });
+  }
+
+  for (const [mutant, algebra] of Record.toEntries(mutants)) {
+    it(`negative control: ${mutant} fails exactly the rows that defend its rule`, () => {
+      assert.deepStrictEqual(
+        Arr.map(
+          Arr.filter(rows, ({ expected, run }) => run(algebra) !== expected),
+          ({ name }) => name
+        ),
+        Arr.map(
+          Arr.filter(rows, ({ failsFor }) => Arr.contains(failsFor, mutant)),
+          ({ name }) => name
+        )
+      );
+    });
+  }
+
+  it("gives an each of the same word twice, through the evaluator, one occurrence that stagger and throttle leave alone", () => {
+    assert.deepStrictEqual(
+      frameList(
+        group(
+          [word("a"), word("a")],
+          { unit: "f", value: 6 },
+          { unit: "f", value: 3 }
+        )
+      ),
+      Result.succeed(frames(marble("----a")))
     );
   });
 });

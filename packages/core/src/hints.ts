@@ -22,7 +22,7 @@ import {
 } from "./grammar.ts";
 import type { LegacyCue } from "./narration.ts";
 import type { Anchor, Verb } from "./plan.ts";
-import { findPhrase } from "./words.ts";
+import { findPhrase, wordsOf } from "./words.ts";
 
 /** A release-1 cue and the index, in the Scene's Lines, of the Line that holds it. */
 export interface SceneCue extends LegacyCue {
@@ -36,7 +36,7 @@ export interface CueScene {
   readonly effects: readonly { readonly id: string }[];
   /** The ids of the release-1 `hidden` Elements, in document order. */
   readonly hidden: readonly string[];
-  readonly lines: readonly { readonly words: readonly string[] }[];
+  readonly lines: readonly { readonly text: string }[];
 }
 
 /** A word as an anchor names it: without the punctuation around it. */
@@ -58,7 +58,7 @@ const wordBefore = (
     line >= 0;
     line -= 1
   ) {
-    const words = lines[line]?.words ?? [];
+    const words = wordsOf(lines[line]?.text ?? "");
 
     const end =
       line === cue.lineIndex
@@ -77,8 +77,11 @@ const wordBefore = (
 
 /** The first word of the Scene's narration with letters or digits. */
 const firstWord = (lines: CueScene["lines"]): WordAt | undefined => {
-  for (const [line, { words }] of lines.entries()) {
-    const word = Arr.findFirstIndex(words, (found) => usable(found) !== "");
+  for (const [line, { text }] of lines.entries()) {
+    const word = Arr.findFirstIndex(
+      wordsOf(text),
+      (found) => usable(found) !== ""
+    );
 
     if (Option.isSome(word)) {
       return { line, word: word.value };
@@ -94,7 +97,7 @@ const wordAnchor = (
   at: WordAt,
   edge: Extract<Anchor, { kind: "word" }>["edge"]
 ): string => {
-  const phrase = usable(lines[at.line]?.words[at.word] ?? "");
+  const phrase = usable(wordsOf(lines[at.line]?.text ?? "")[at.word] ?? "");
   const found = findPhrase(lines, phrase);
 
   const index = Arr.findFirstIndex(

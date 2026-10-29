@@ -40,7 +40,6 @@ const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
     id,
     line: draft.line,
     text: draft.text,
-    words: draft.words,
   };
 };
 
@@ -68,9 +67,6 @@ const buildChapters = (story: Story): readonly Chapter[] =>
     const chapter: Chapter = {
       id: `ch${index + 1}`,
       line: draft.line,
-      sceneIds: Arr.flatMap(story.scenes, (scene) =>
-        scene.chapterIndex === index ? [scene.id] : []
-      ),
       title: draft.title,
     };
 

@@ -165,7 +165,7 @@ const durations = asText([
   '  f1: focus m at word("three").end until word("six").start',
   '  s1: sound pop at each(word("four").end, word("eight").end)',
   '  f2: focus m at word("ten").end',
-  "  let both = all(r1.end, f1.end)",
+  "  let both = last(r1.end, f1.end)",
   "  s2: sound ding at both",
   "]]",
   "",

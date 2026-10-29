@@ -9,7 +9,7 @@
 //            the slide change, an Element's enter, exit, move or update and the states between them, a Beat or a State of
 //            the Scene, another effect's observed run; a word of the narration, and the first Scene's slide change, have
 //            no picture and keep the Timeline's frame. The SAME expression is then evaluated over those observed frames
-//            with core's evaluator (`all`, `first`, `each`, `within`, offsets, `let`), so a combinator is checked against
+//            with core's evaluator (`last`, `first`, `each`, `within`, offsets, `let`), so a combinator is checked against
 //            the picture with the one definition of the algebra
 //
 // An instance passes when its own observed frame is within one frame of its resolved frame, the expression evaluated over
@@ -157,7 +157,12 @@ export const letFinding = (
   index: number,
   timed: TimedEvent
 ): readonly [string, Finding] => {
-  const label = `${scene.id}.${timed.name} let ${timed.written}`;
+  const written = Option.match(
+    Arr.findFirst(scene.events, (derived) => derived.name === timed.name),
+    { onNone: () => "", onSome: (derived) => formatEvent(derived.event) }
+  );
+
+  const label = `${scene.id}.${timed.name} let ${written}`;
   const expr: EventExpr = { kind: "ref", name: timed.name };
 
   return Result.match(evaluate(expr), {

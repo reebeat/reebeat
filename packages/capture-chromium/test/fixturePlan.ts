@@ -9,7 +9,7 @@
 // duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; an effect fires at `Line start + round(30 *
 // word end)`; `commandFrame` is `fireFrame - 1` for show and focus, `fireFrame` for a sound. `test/fixtures/deck/deck.html` is
 // the page that goes with it.
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
+import { buildPlan, requireTimeline, schedule, wordsOf } from "@reebeat/core";
 import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
 import { contractLifecycle } from "@reebeat/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
@@ -79,7 +79,7 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
       audio: { file: audioFile(sceneIndex + 1), sha256: `0${sceneIndex}` },
       durationMs: durations.get(line.id) ?? 0,
       lineId: line.id,
-      words: Arr.map(line.words, (w, index) => ({
+      words: Arr.map(wordsOf(line.text), (w, index) => ({
         endMs: line.id === "sc3.l1" ? 580 : index * 300 + 280,
         startMs: index * 300,
         w,

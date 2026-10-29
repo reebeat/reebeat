@@ -2,7 +2,7 @@
 // provenance, and determinism. No model, no binary: the synthesiser, the aligner and the cache are stand-ins and
 // the encoder is a fake that stores the samples as they are.
 import { assert, layer } from "@effect/vitest";
-import { buildPlan, schedule } from "@reebeat/core";
+import { buildPlan, schedule, wordsOf } from "@reebeat/core";
 import { AssetCache, SpeechSynthesizer, WordAligner } from "@reebeat/services";
 import { contractLifecycle } from "@reebeat/services/contract";
 import {
@@ -148,7 +148,7 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
           assert.match(entry?.audio.file ?? "", /^[0-9a-f]{64}\.flac$/u);
           assert.deepStrictEqual(
             Arr.map(entry?.words ?? [], (word) => word.w),
-            line.words
+            wordsOf(line.text)
           );
           assert.isTrue(Option.isSome(flac));
           assert.strictEqual(

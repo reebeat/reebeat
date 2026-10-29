@@ -8,19 +8,12 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "line": {
           "type": "integer",
           "minimum": 1,
           "maximum": 9007199254740991
-        },
-        "sceneIds": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
         },
         "synopsis": {
           "type": "string"
@@ -32,7 +25,6 @@
       "required": [
         "id",
         "line",
-        "sceneIds",
         "title"
       ],
       "additionalProperties": false,
@@ -120,7 +112,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "kind": {
           "type": "string",
@@ -142,7 +134,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "kind": {
           "type": "string",
@@ -384,7 +376,7 @@
         },
         "name": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         }
       },
       "required": [
@@ -396,13 +388,13 @@
       "deviation": "Local to its Scene and evaluated once; a name that waits for itself is a lint error.",
       "origin": "Fran (Elliott and Hudak 1997), a named event; RxJS share (explanatory only)"
     },
-    "AllEvent": {
+    "LastEvent": {
       "type": "object",
       "properties": {
         "kind": {
           "type": "string",
           "enum": [
-            "all"
+            "last"
           ]
         },
         "of": {
@@ -419,7 +411,7 @@
       "additionalProperties": false,
       "description": "Happens when every operand has happened.",
       "deviation": "At the last occurrence of every operand; it never happens while one operand never does.",
-      "origin": "SMIL 3.0 timing, endsync=\"all\"; RxJS forkJoin (explanatory only)"
+      "origin": "SMIL 3.0 timing, endsync=\"last\"; RxJS forkJoin (explanatory only)"
     },
     "FirstEvent": {
       "type": "object",
@@ -636,7 +628,7 @@
           "$ref": "#/$defs/RefEvent"
         },
         {
-          "$ref": "#/$defs/AllEvent"
+          "$ref": "#/$defs/LastEvent"
         },
         {
           "$ref": "#/$defs/FirstEvent"
@@ -660,18 +652,13 @@
       "properties": {
         "event": {
           "$ref": "#/$defs/EventExpr"
-        },
-        "written": {
-          "type": "string",
-          "minLength": 1
         }
       },
       "required": [
-        "event",
-        "written"
+        "event"
       ],
       "additionalProperties": false,
-      "description": "The event that ends an effect with a duration, and the text the author wrote for it.",
+      "description": "The event that ends an effect with a duration.",
       "deviation": "Only on a focus (a show stays shown and a sound plays out); the end is the first occurrence strictly after the fire frame; an event that comes later than the Scene, or never, leaves the effect to the slide change.",
       "origin": "SMIL 3.0 timing, end value; RxJS takeUntil (explanatory only)"
     },
@@ -728,7 +715,7 @@
       "properties": {
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "line": {
           "type": "integer",
@@ -745,7 +732,7 @@
         },
         "target": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "until": {
           "$ref": "#/$defs/Until"
@@ -760,22 +747,17 @@
         },
         "when": {
           "$ref": "#/$defs/When"
-        },
-        "written": {
-          "type": "string",
-          "minLength": 1
         }
       },
       "required": [
         "id",
         "line",
         "verb",
-        "when",
-        "written"
+        "when"
       ],
       "additionalProperties": false,
-      "description": "A sound, a show or a focus, and when it happens.",
-      "deviation": "An effect with several occurrences of its begin event runs once for each, but only a sound may; the instances do not restart each other, unlike SMIL restart=\"always\"; the slide change ends every running effect.",
+      "description": "A sound, a show or a focus, and when it happens. SMIL attributes of each verb (declared once per verb in grammar.ts, not stored per effect): restart overlap for every verb; fill freeze for a show, remove for a focus and a sound.",
+      "deviation": "restart: overlap, which is not a SMIL value: an effect with several occurrences of its begin event runs once for each (only a sound may), and instances do not restart each other, unlike SMIL restart=\"always\"; occurrences of one event at the same frame are one occurrence; the slide change ends every running effect.",
       "origin": "Mealy and Moore machine outputs (an effect subscribes to a transition or to a state's enter or leave); SMIL 3.0 timing, a timed child with a begin and an end"
     },
     "Element": {
@@ -807,7 +789,7 @@
         },
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "line": {
           "type": "integer",
@@ -847,18 +829,13 @@
         },
         "name": {
           "type": "string",
-          "minLength": 1
-        },
-        "written": {
-          "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         }
       },
       "required": [
         "event",
         "line",
-        "name",
-        "written"
+        "name"
       ],
       "additionalProperties": false,
       "description": "A `let` line: a name for an event of the Scene, evaluated once and used wherever the name is written.",
@@ -904,23 +881,16 @@
         },
         "text": {
           "type": "string"
-        },
-        "words": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": [
         "hints",
         "id",
         "line",
-        "text",
-        "words"
+        "text"
       ],
       "additionalProperties": false,
-      "description": "One thing the narrator says in a Scene, with its words.",
+      "description": "One thing the narrator says in a Scene: its text, spoken word by word.",
       "deviation": "The text is byte-identical across revisions of a Story so the speech cache keeps hitting; the times of its words come from alignment, never from the author.",
       "origin": "Fountain 1.1, Dialogue of NARRATOR; SMIL 3.0 timing, a media element (its words are sync points)"
     },
@@ -929,7 +899,7 @@
       "properties": {
         "chapterId": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "effects": {
           "type": "array",
@@ -954,7 +924,7 @@
         },
         "id": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
         },
         "line": {
           "type": "integer",

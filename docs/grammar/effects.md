@@ -87,7 +87,7 @@ Every box has a name {id=tag cell=tc class=accent}
 Same name, so it moves {id=hint cell=bc class=muted}
 
 [[effects
-  let settled = all(one.move.end, tag.update.end)
+  let settled = last(one.move.end, tag.update.end)
   s1: sound whoosh at transition.start
   s2: sound ding at when(one.move.progress >= 50%)
   s3: sound pop at settled +0.1s
@@ -102,7 +102,7 @@ On the next screen, box one sits somewhere else. Its name matches, so it slides 
 
 ## The Scene heading
 
-The id sits between `#` at the end of the heading: `INT. THE NEXT SCREEN - DAY #sc4#`. It is required, unique in the story, and starts with a letter followed by letters, digits, `_` or `-`; `beat`, `scene`, `state`, `transition`, `word`, `all`, `each`, `first`, `when`, `within`, `let` are reserved by the anchor grammar (no Scene, Element or effect may carry one).
+The id sits between `#` at the end of the heading: `INT. THE NEXT SCREEN - DAY #sc4#`. It is required, unique in the story, and starts with a letter followed by letters, digits, `_` or `-`; `beat`, `scene`, `state`, `transition`, `word`, `each`, `first`, `last`, `when`, `within`, `let` are reserved by the anchor grammar (no Scene, Element or effect may carry one).
 
 ## Element lines
 
@@ -130,7 +130,7 @@ verb     ::= "sound" sound name (pop, whoosh, ding) | "show" element id | "focus
 when     ::= event | absolute
 absolute ::= number "s" "because" quoted
 event    ::= term [ offset ]
-term     ::= anchor | name | "all(" event { "," event } ")" | "first(" event { "," event } ")" | "each(" event { "," event } ")" | "within(" event "," "state(" n ")" ")" | "when(" progress ">=" number "%" ")"
+term     ::= anchor | name | "last(" event { "," event } ")" | "first(" event { "," event } ")" | "each(" event { "," event } ")" | "within(" event "," "state(" n ")" ")" | "when(" progress ">=" number "%" ")"
 each     ::= "each(" event { "," event } [ "," "throttle=" duration ] [ "," "stagger=" duration ] ")"
 anchor   ::= one of the shapes below, generated from the machines
 offset   ::= ( "+" | "-" ) number ( "ms" | "s" | "f" | "%" )
@@ -140,11 +140,13 @@ id       ::= letter { letter | digit | "_" | "-" }
 
 ### Verbs
 
-| verb | argument | meaning |
-| --- | --- | --- |
-| `sound` | sound name (pop, whoosh, ding) | plays a sound of the built-in catalogue, once for each occurrence of its event |
-| `show` | element id | reveals an Element that is `visible=false`; it stays shown |
-| `focus` | element id | rings and scales an Element of this Scene; the ring lasts to its `until` event or the end of the Scene |
+| verb | argument | restart | fill | meaning |
+| --- | --- | --- | --- | --- |
+| `sound` | sound name (pop, whoosh, ding) | `overlap` | `remove` | plays a sound of the built-in catalogue, once for each occurrence of its event |
+| `show` | element id | `overlap` | `freeze` | reveals an Element that is `visible=false`; it stays shown |
+| `focus` | element id | `overlap` | `remove` | rings and scales an Element of this Scene; the ring lasts to its `until` event or the end of the Scene |
+
+The `restart` and `fill` columns are the SMIL 3.0 attributes of the same names, declared once for each verb (they follow from it, so no effect stores them). `restart` is one of `always`, `whenNotActive`, `never`, `overlap`: what happens when an effect's begin event comes while one of its instances is running. `always`, `whenNotActive` and `never` are SMIL's; `overlap` is not: the new begin starts another instance beside the running ones and no instance cuts another (two dings 300 ms apart are two dings), a deliberate departure from SMIL's default `restart="always"`. Only `overlap` is built (the resolver has no other). `fill` is one of `remove`, `freeze`: what an effect leaves when its window ends; `freeze` keeps the last state to the end of the Scene, `remove` takes the change off (the slide change ends every effect that is still running).
 
 ### The machines
 
@@ -213,7 +215,7 @@ An event is a list of frames. The combinators are total functions over such list
 
 | written | meaning |
 | --- | --- |
-| `all(a, b)` | when every operand has happened: the latest of their last occurrences (SMIL `endsync=all`, `forkJoin`) |
+| `last(a, b)` | when every operand has happened: the latest of their last occurrences (SMIL `endsync=last`, `forkJoin`) |
 | `first(a, b)` | the earliest occurrence of any operand (SMIL `endsync=first`, `race`) |
 | `each(a, b)` | every occurrence of every operand, in time order (a begin-value list, `merge`); a `sound` runs once for each, a `show` or `focus` must have one |
 | `each(a, b, throttle=250ms)` | drops an occurrence closer than the duration to the last one kept (leading `throttle`) |
@@ -221,6 +223,8 @@ An event is a list of frames. The combinators are total functions over such list
 | `within(a, state(2))` | the occurrences of `a` inside State 2 (scoping) |
 | `let name = a` | a derived event of the Scene, evaluated once and shared (`share`) |
 | `... until a` | the end of a `focus` ring: the first occurrence of `a` after the fire frame (SMIL end value, `takeUntil`); the slide change interrupts a ring that is still held |
+
+**Simultaneous events are one event.** Occurrences of one event at the same frame are one occurrence (an effect fires once for a moment): `each(a, b)` with `a` and `b` at the same frame has that frame once, and keeps the first operand's window; `last` and `first` of operands that tie give that frame once; a `sound` anchored there sounds once. SMIL does the same (equal times in a begin-value list are one begin); a reactive `merge` would keep both, and this language does not. Two **different** effects at one frame both fire, in the order they are declared, and two steps (`show`, `focus`) at one frame make one Beat. An `until` ignores an occurrence at or before the fire frame of the effect it ends: the end is the first occurrence strictly after it.
 
 Effects anchored to a Beat's events (`beat(n).start`, `one.move.end`) are Mealy outputs: they fire on a transition. Effects anchored to a State's events (`state(n).enter`, `one.moving.leave`) are Moore outputs: they fire on entering or leaving a state.
 

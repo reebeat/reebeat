@@ -159,7 +159,14 @@ const wordErrors = (
     // The words are there, one after the other, but not inside one Line: say the rule, not only that it is missing.
     const spans =
       findPhrase(
-        [{ words: Arr.flatMap(scene.lines, (line) => line.words) }],
+        [
+          {
+            text: Arr.join(
+              Arr.map(scene.lines, (line) => line.text),
+              " "
+            ),
+          },
+        ],
         anchor.phrase
       ).length > 0;
 
@@ -448,12 +455,12 @@ const windowed = (
 ): boolean =>
   Match.value(expr).pipe(
     Match.discriminatorsExhaustive("kind")({
-      all: (found) =>
-        Arr.every(found.of, (operand) => windowed(scene, lets, operand)),
       anchor: ({ anchor }) => anchorWindowed(scene, anchor),
       each: (found) =>
         Arr.every(found.of, (operand) => windowed(scene, lets, operand)),
       first: (found) =>
+        Arr.every(found.of, (operand) => windowed(scene, lets, operand)),
+      last: (found) =>
         Arr.every(found.of, (operand) => windowed(scene, lets, operand)),
       ref: (found) => {
         const body = lets.get(found.name);
@@ -484,10 +491,6 @@ const percentErrors = (
 ): readonly PlanError[] =>
   Match.value(expr).pipe(
     Match.discriminatorsExhaustive("kind")({
-      all: (found) =>
-        Arr.flatMap(found.of, (operand) =>
-          percentErrors(scene, lets, place, operand)
-        ),
       anchor: ({ anchor }) =>
         anchor.kind === "edge" &&
         !isEdgePoint(anchor.at) &&
@@ -505,6 +508,10 @@ const percentErrors = (
           percentErrors(scene, lets, place, operand)
         ),
       first: (found) =>
+        Arr.flatMap(found.of, (operand) =>
+          percentErrors(scene, lets, place, operand)
+        ),
+      last: (found) =>
         Arr.flatMap(found.of, (operand) =>
           percentErrors(scene, lets, place, operand)
         ),
@@ -550,7 +557,6 @@ const occurrences = (scene: Scene, expr: EventExpr, depth: number): number =>
     ? 1
     : Match.value(expr).pipe(
         Match.discriminatorsExhaustive("kind")({
-          all: () => 1,
           anchor: ({ anchor }) => {
             if (anchor.kind === "word" || anchor.subject.kind !== "effect") {
               return 1;
@@ -569,6 +575,7 @@ const occurrences = (scene: Scene, expr: EventExpr, depth: number): number =>
               (total, operand) => total + occurrences(scene, operand, depth + 1)
             ),
           first: () => 1,
+          last: () => 1,
           ref: (found) =>
             Option.match(
               Arr.findFirst(
@@ -602,8 +609,8 @@ const onceErrors = (scene: Scene, effect: Effect): readonly PlanError[] => {
           "BadEffect",
           effect.line,
           problem(
-            `${effect.id}: ${effect.written} can happen ${count} times, but a ${effect.verb} happens once`,
-            "first(...) or all(...) to pick one moment (only a sound runs once for each occurrence)"
+            `${effect.id}: ${formatEvent(effect.when.event)} can happen ${count} times, but a ${effect.verb} happens once`,
+            "first(...) or last(...) to pick one moment (only a sound runs once for each occurrence)"
           )
         ),
       ]

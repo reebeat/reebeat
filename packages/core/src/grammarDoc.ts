@@ -11,11 +11,13 @@ import {
   anchorWords,
   combinatorWords,
   elementProperties,
+  fillModes,
   keywords,
   optionWords,
   productions,
   releaseOneForms,
   reservedIds,
+  restartModes,
   sourceUnits,
   verbArguments,
 } from "./grammar.ts";
@@ -108,7 +110,7 @@ const valid: readonly Example[] = [
       "Same name, so it moves {id=hint cell=bc class=muted}",
       "",
       "[[effects",
-      "  let settled = all(one.move.end, tag.update.end)",
+      "  let settled = last(one.move.end, tag.update.end)",
       "  s1: sound whoosh at transition.start",
       "  s2: sound ding at when(one.move.progress >= 50%)",
       "  s3: sound pop at settled +0.1s",
@@ -341,13 +343,17 @@ export const grammarDocument = (): string =>
       "### Verbs",
       "",
       ...table(
-        ["verb", "argument", "meaning"],
+        ["verb", "argument", "restart", "fill", "meaning"],
         Arr.map(verbs, (verb) => [
           code(verb),
           verbArguments[verb].argument,
+          code(verbArguments[verb].restart),
+          code(verbArguments[verb].fill),
           verbArguments[verb].summary,
         ])
       ),
+      `The \`restart\` and \`fill\` columns are the SMIL 3.0 attributes of the same names, declared once for each verb (they follow from it, so no effect stores them). \`restart\` is one of ${list(restartModes)}: what happens when an effect's begin event comes while one of its instances is running. \`always\`, \`whenNotActive\` and \`never\` are SMIL's; \`overlap\` is not: the new begin starts another instance beside the running ones and no instance cuts another (two dings 300 ms apart are two dings), a deliberate departure from SMIL's default \`restart="always"\`. Only \`overlap\` is built (the resolver has no other). \`fill\` is one of ${list(fillModes)}: what an effect leaves when its window ends; \`freeze\` keeps the last state to the end of the Scene, \`remove\` takes the change off (the slide change ends every effect that is still running).`,
+      "",
       "### The machines",
       "",
       "A **machine** says which states a thing passes through and which timed transitions connect them. The anchors below are generated from these declarations (`packages/core/src/machines.ts`); an anchor that names none of them is an error. Graph model: a **State** (node) holds for a dwell interval, a **Beat** (edge) is the transition the engine generates from one State to the next, and a **Scene** is a compound State (a superstate) that groups the States sharing one identity scope. Each Element's lifecycle (presence, position, style) and each effect run as parallel regions inside a Scene.",
@@ -389,8 +395,8 @@ export const grammarDocument = (): string =>
         ["written", "meaning"],
         [
           [
-            code(`${combinatorWords.all}(a, b)`),
-            "when every operand has happened: the latest of their last occurrences (SMIL `endsync=all`, `forkJoin`)",
+            code(`${combinatorWords.last}(a, b)`),
+            "when every operand has happened: the latest of their last occurrences (SMIL `endsync=last`, `forkJoin`)",
           ],
           [
             code(`${combinatorWords.first}(a, b)`),
@@ -424,6 +430,8 @@ export const grammarDocument = (): string =>
           ],
         ]
       ),
+      "**Simultaneous events are one event.** Occurrences of one event at the same frame are one occurrence (an effect fires once for a moment): `each(a, b)` with `a` and `b` at the same frame has that frame once, and keeps the first operand's window; `last` and `first` of operands that tie give that frame once; a `sound` anchored there sounds once. SMIL does the same (equal times in a begin-value list are one begin); a reactive `merge` would keep both, and this language does not. Two **different** effects at one frame both fire, in the order they are declared, and two steps (`show`, `focus`) at one frame make one Beat. An `until` ignores an occurrence at or before the fire frame of the effect it ends: the end is the first occurrence strictly after it.",
+      "",
       `Effects anchored to a Beat's events (\`beat(n).start\`, \`one.move.end\`) are Mealy outputs: they fire on a transition. Effects anchored to a State's events (\`state(n).enter\`, \`one.moving.leave\`) are Moore outputs: they fire on entering or leaving a state.`,
       "",
       "### Offsets",

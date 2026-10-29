@@ -65,13 +65,13 @@ const effectDifference = (path: string, left: Effect, right: Effect) =>
     () => leaf(`${path}.name`, left.name, right.name),
     () => leaf(`${path}.target`, left.target, right.target),
     () => leaf(`${path}.when`, left.when, right.when),
+    () => leaf(`${path}.until`, left.until, right.until),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
 
 const lineDifference = (path: string, left: Line, right: Line) =>
   firstOf([
     () => leaf(`${path}.text`, left.text, right.text),
-    () => leaf(`${path}.words`, left.words, right.words),
     () => leaf(`${path}.hints`, left.hints, right.hints),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);

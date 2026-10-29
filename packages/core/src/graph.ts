@@ -21,7 +21,7 @@ import { ChapterSchema, SceneSchema, SpeedSchema, construct } from "./plan.ts";
 export const graphVersion = 1;
 
 /** A Scene as declared: its Elements, Lines, effects and derived events. Its identity diff is derived, not declared. */
-export const GraphSceneSchema = SceneSchema.mapFields(
+const GraphSceneSchema = SceneSchema.mapFields(
   Struct.omit(["identity"])
 ).annotate(
   construct(

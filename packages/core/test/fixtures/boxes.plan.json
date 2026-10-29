@@ -4,20 +4,12 @@
     {
       "id": "ch1",
       "line": 7,
-      "sceneIds": [
-        "opening",
-        "second"
-      ],
       "synopsis": "One box, two screens.",
       "title": "The same box"
     },
     {
       "id": "ch2",
       "line": 51,
-      "sceneIds": [
-        "third",
-        "fourth"
-      ],
       "title": "The cut"
     }
   ],
@@ -41,8 +33,7 @@
               },
               "kind": "anchor"
             }
-          },
-          "written": "word(\"corner\").end"
+          }
         },
         {
           "id": "f1",
@@ -60,8 +51,7 @@
               },
               "kind": "anchor"
             }
-          },
-          "written": "word(\"box\", 2).start"
+          }
         },
         {
           "id": "s1",
@@ -86,8 +76,7 @@
                 "value": 70560000
               }
             }
-          },
-          "written": "word(\"box\", 2).end +100ms"
+          }
         }
       ],
       "elements": [
@@ -137,21 +126,7 @@
           },
           "id": "opening.l1",
           "line": 26,
-          "text": "This box sits in the corner. The caption says what it is.",
-          "words": [
-            "This",
-            "box",
-            "sits",
-            "in",
-            "the",
-            "corner.",
-            "The",
-            "caption",
-            "says",
-            "what",
-            "it",
-            "is."
-          ]
+          "text": "This box sits in the corner. The caption says what it is."
         },
         {
           "hints": {
@@ -160,13 +135,7 @@
           },
           "id": "opening.l2",
           "line": 29,
-          "text": "Look at the box.",
-          "words": [
-            "Look",
-            "at",
-            "the",
-            "box."
-          ]
+          "text": "Look at the box."
         }
       ],
       "transition": "default"
@@ -191,8 +160,7 @@
               },
               "kind": "anchor"
             }
-          },
-          "written": "transition.start"
+          }
         },
         {
           "id": "s2",
@@ -214,8 +182,7 @@
               },
               "kind": "anchor"
             }
-          },
-          "written": "box.move.50%"
+          }
         },
         {
           "id": "r1",
@@ -233,8 +200,7 @@
               },
               "kind": "anchor"
             }
-          },
-          "written": "word(\"enters\").end"
+          }
         },
         {
           "id": "f1",
@@ -261,8 +227,7 @@
                 "value": 3
               }
             }
-          },
-          "written": "r1.end +3f"
+          }
         }
       ],
       "elements": [
@@ -337,17 +302,7 @@
           },
           "id": "second.l1",
           "line": 49,
-          "text": "Same id, new place. A new element enters.",
-          "words": [
-            "Same",
-            "id,",
-            "new",
-            "place.",
-            "A",
-            "new",
-            "element",
-            "enters."
-          ]
+          "text": "Same id, new place. A new element enters."
         }
       ],
       "transition": "auto-animate"
@@ -378,15 +333,7 @@
           },
           "id": "third.l1",
           "line": 63,
-          "text": "Nothing is matched across a cut.",
-          "words": [
-            "Nothing",
-            "is",
-            "matched",
-            "across",
-            "a",
-            "cut."
-          ]
+          "text": "Nothing is matched across a cut."
         }
       ],
       "transition": "cut"
@@ -419,8 +366,7 @@
                 "value": -35280000
               }
             }
-          },
-          "written": "fresh.move.end -50ms"
+          }
         },
         {
           "id": "s2",
@@ -430,8 +376,7 @@
           "when": {
             "absoluteFlicks": 1058400000,
             "reason": "the title settles on a beat in the music"
-          },
-          "written": "1.5s because \"the title settles on a beat in the music\""
+          }
         }
       ],
       "elements": [
@@ -469,13 +414,7 @@
           },
           "id": "fourth.l1",
           "line": 77,
-          "text": "The title moves up.",
-          "words": [
-            "The",
-            "title",
-            "moves",
-            "up."
-          ]
+          "text": "The title moves up."
         }
       ],
       "transition": "auto-animate"

@@ -9,6 +9,7 @@
 // algebra the Timeline used, O is where the effect was seen or heard, R the frame its focus ring goes, U the frame the
 // observed sources end it at; each (+d) is the signed distance in frames from the resolved frame. An instance passes when
 // every observed frame is within one frame of the one it is compared with.
+import { formatTiming } from "@reebeat/core";
 import { Array as Arr } from "effect";
 
 import { effectKey } from "./effectFacts.ts";
@@ -55,7 +56,7 @@ export interface Finding {
   readonly problems: readonly string[];
 }
 
-/** What an instance is called in the report: its key, what it does and what the author wrote. */
+/** What an instance is called in the report: its key, what it does and what the author wrote (derived, canonical). */
 export const labelOf = (fact: EffectFact): string =>
   Arr.join(
     Arr.filter(
@@ -63,7 +64,7 @@ export const labelOf = (fact: EffectFact): string =>
         effectKey(fact),
         fact.effect.verb,
         fact.effect.name ?? fact.effect.target ?? "",
-        fact.timed.intent,
+        formatTiming(fact.effect),
       ],
       (part) => part !== ""
     ),

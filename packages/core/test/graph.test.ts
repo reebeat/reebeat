@@ -23,7 +23,7 @@ const sameId = readLocal("../../../stories/same-id/story.fountain");
 const everyKind = statesSource([
   'r1: show note at word("charlie").end +0.1s',
   'f1: focus box at word("foxtrot").start until first(word("hotel").start, scene.end)',
-  "let settled = all(box.move.end, tag.update.50%, when(fresh.enter.progress >= 25%))",
+  "let settled = last(box.move.end, tag.update.50%, when(fresh.enter.progress >= 25%))",
   'let words = each(word("alpha").start, word("echo").start, throttle=0.2s, stagger=6f)',
   "x1: sound pop at settled +50%",
   "x2: sound ding at within(words, state(2)) -2f",
@@ -109,6 +109,24 @@ describe("the JSON codec of the IR", () => {
         "version"
       );
     })
+  );
+
+  it.effect(
+    "refuses an id that does not match idPattern, and reads one that does",
+    () =>
+      Effect.gen(function* ids() {
+        const { text } = yield* Effect.flatMap(sameId, encoded);
+
+        const rename = (id: string) =>
+          Str.replace('"id": "one"', `"id": "${id}"`)(text);
+
+        assert.include(text, '"id": "one"');
+        assert.isTrue(Result.isSuccess(jsonCodec.decode(rename("uno"))));
+
+        for (const bad of ["1one", "-one", "one two", ""]) {
+          assert.include(failureOf(jsonCodec.decode(rename(bad))), "id");
+        }
+      })
   );
 });
 

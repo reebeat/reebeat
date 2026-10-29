@@ -3,7 +3,7 @@
 // an asset whose words are the Line's words 1:1, and the aligned Lines schedule. A copy with one asset removed is
 // the F12 cache-miss control. The cache is refilled by `reebeat build ... --refresh-speech` (see the pipeline README).
 import { assert, layer } from "@effect/vitest";
-import { schedule } from "@reebeat/core";
+import { schedule, wordsOf } from "@reebeat/core";
 import { speechStage } from "@reebeat/pipeline";
 import { revealLifecycle } from "@reebeat/render-reveal";
 import { AssetCache } from "@reebeat/services";
@@ -38,7 +38,7 @@ layer(platform)("the committed speech cache", (it) => {
         for (const [index, line] of lines.entries()) {
           assert.deepStrictEqual(
             Arr.map(aligned[index]?.words ?? [], (word) => word.w),
-            line.words,
+            wordsOf(line.text),
             `${line.id} words`
           );
         }

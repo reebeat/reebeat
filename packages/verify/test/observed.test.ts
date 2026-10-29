@@ -67,7 +67,7 @@ Entering {id=d cell=mc class=label}
 Hidden {id=h cell=br class=muted visible=false}
 
 [[effects
-  let settled = all(a.move.end, a.update.end)
+  let settled = last(a.move.end, a.update.end)
   s1: sound whoosh at transition.start
   s2: sound ding at settled +2f
   s3: sound pop at when(a.move.progress >= 50%)
@@ -405,7 +405,7 @@ describe("an event expression evaluated over the observed frames", () => {
         const plan = yield* timedWith(referenceLifecycle, story);
         const late = withSeen(worldOf(plan), moveKey, moveSeen(108, 92));
 
-        // settled = all(move.end, update.end) is now 108: ding at settled +2f is observed at 110, resolved at 107.
+        // settled = last(move.end, update.end) is now 108: ding at settled +2f is observed at 110, resolved at 107.
         const ding = Arr.join(problemsOf(late, "sc2.s2#1"), "\n");
 
         assert.include(ding, "sc2.s2#1 sound ding");
@@ -446,7 +446,6 @@ describe("an event expression evaluated over the observed frames", () => {
           {
             frames: [105],
             name: "settled",
-            written: "all(a.move.end, a.update.end)",
           }
         );
 
@@ -463,7 +462,6 @@ describe("an event expression evaluated over the observed frames", () => {
             {
               frames: [105],
               name: "settled",
-              written: "all(a.move.end, a.update.end)",
             }
           )[1].problems,
           []

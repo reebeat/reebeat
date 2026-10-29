@@ -32,6 +32,7 @@ import { evaluator } from "./evaluate.ts";
 import type { Evaluate, Sources } from "./evaluate.ts";
 import { eventKind, initialState, isStep, showEffectOf } from "./events.ts";
 import type { EventKind } from "./events.ts";
+import { formatEvent } from "./expr.ts";
 import { verbArguments } from "./grammar.ts";
 import { effectOf } from "./lookup.ts";
 import { elementMachineOf, machines } from "./machines.ts";
@@ -793,7 +794,7 @@ const firesOf = (
       return Result.fail(
         unresolved(
           context,
-          `effect ${effect.id} (line ${effect.line}) never fires: ${effect.written} has no occurrence in Scene ${context.scene.id}`
+          `effect ${effect.id} (line ${effect.line}) never fires: ${formatEvent(when.event)} has no occurrence in Scene ${context.scene.id}`
         )
       );
     }
@@ -802,7 +803,7 @@ const firesOf = (
       ? Result.fail(
           unresolved(
             context,
-            `effect ${effect.id} (line ${effect.line}) fires ${found.length} times (frames ${Arr.join(Arr.map(found, String), ", ")}), but a ${effect.verb} happens once: use first(...) or all(...) to pick one`
+            `effect ${effect.id} (line ${effect.line}) fires ${found.length} times (frames ${Arr.join(Arr.map(found, String), ", ")}), but a ${effect.verb} happens once: use first(...) or last(...) to pick one`
           )
         )
       : Result.succeed(found);
@@ -900,11 +901,6 @@ const sourcesOf = (context: Context): Sources<ScheduleError> => ({
   unresolved: (message) => unresolved(context, message),
 });
 
-const intentOf = (effect: Effect): string =>
-  effect.until === undefined
-    ? effect.written
-    : `${effect.written} until ${effect.until.written}`;
-
 const timedRuns = (
   effect: Effect,
   runs: readonly Run[]
@@ -918,7 +914,6 @@ const timedRuns = (
     endedBy: run.endedBy,
     fireFrame: run.fire,
     instance: index + 1,
-    intent: intentOf(effect),
   }));
 
 /** The Scene's effects with their frames, one entry per instance, in resolved time order. */
@@ -974,7 +969,6 @@ export const resolveEffects = (
         (event): TimedEvent => ({
           frames: Arr.map(event, ({ frame }) => frame),
           name: derived.name,
-          written: derived.written,
         })
       );
     })

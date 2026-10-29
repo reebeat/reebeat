@@ -28,7 +28,7 @@ Chapter ch1  The same box  (line 7)
       + new           enter   @tr .title hidden "New arrival"
     Effects
       s1  sound whoosh  transition.start
-      s2  sound ding    box.move.50% (canonical: when(box.move.progress >= 50%))
+      s2  sound ding    when(box.move.progress >= 50%)
       r1  show new      word("enters").end
       f1  focus new     r1.end +3f
     Lines

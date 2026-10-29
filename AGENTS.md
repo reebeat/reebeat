@@ -28,7 +28,7 @@ Every gate is a root script in `package.json`; `bun run ready` runs them in this
 | Commit message | commitlint (`.vite-hooks/commit-msg`) | every commit | a message that is not a Conventional Commit | `git commit -m "stuff"` |
 | Secrets, staged | gitleaks on staged blobs (`.vite-hooks/pre-commit`) | every commit | a secret in a staged file | stage a file with a fake key in a well-known format |
 | Format and lint, staged | `vp staged` (`vp check --fix`, `.vite-hooks/pre-commit`) | every commit | format drift, lint errors | stage a file with `var x = 1;` |
-| Tests | `bun run test` (`.vite-hooks/pre-push`) | every push, `ready`, CI | a failing test, including the family check and the exception check's tests | break an assertion in `tools/quality/test` |
+| Tests | `bun run test` (`.vite-hooks/pre-push`) | every push, `ready`, CI | a failing test, including the family check, the exception check's tests and the licence gate (every manifest says Apache-2.0; every locked package has a recorded licence the policy allows) | break an assertion in `tools/quality/test`; add a package to `bun.lock` without recording its licence |
 | Verification skill drift | `bun run test` (`tools/quality/test/verifyMap.test.ts`, `reviewRecord.test.ts`, `headroom.test.ts`) | `ready`, CI | a spec from 0009 on without a `Verify skill:` line, a line that names a row the feature map lacks, a verb, sound, anchor kind, Element event or transition of `@reebeat/core` without a row; a review record without its header or a pass by the author; a headroom reading that is missing or not a number passing as healthy | remove the `Verify skill:` line of spec 0009; delete the `effect-focus` row of `features.md`; make `headroom.sh` treat an empty pressure file as healthy |
 | Format, lint, types | `bun run check` (`vp check`) | `ready`, CI | Oxfmt drift; Oxlint with Ultracite, the Effect plugin and diagnostics, anti-slop rules, cognitive complexity above 15; type errors (type-aware via tsgolint) | a function with complexity 16; a statement `Effect.succeed(1);` |
 | Exception registry | `bun run check:exceptions` | `ready`, CI | a suppression directive without a registry entry; a registry entry without a live suppression | add `// oxlint-disable-next-line <rule>` with no entry |
@@ -70,7 +70,7 @@ Three tiers, one dependency direction (design R3, spec 0001): **library** (pure,
 - Python only for throwaway work; commit TypeScript.
 - Copied code carries its provenance (source repository, commit, deviations) in a header or a `PROVENANCE.md`; keep third-party licences in place.
 - Tests prove a rule, not an implementation detail; a test fixture lives in a temporary directory the test creates, never outside the repository.
-- No LICENSE file yet: the licence is deferred (see the README).
+- Licence: the compiler and its formats are Apache-2.0 (`LICENSE`, `NOTICE`); every `package.json` says `"license": "Apache-2.0"`. A new dependency needs its licence recorded in `tools/quality/third-party-licences.json` (`docs/design/third-party.md`, "The gate"); GPL, AGPL, SSPL and unknown licences are rejected. What is open and what is closed: `docs/design/open-core-boundary.md`. An experimental dependency is pinned exactly and its types stay out of the public API.
 
 ## Emergency
 

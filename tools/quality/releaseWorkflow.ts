@@ -80,7 +80,9 @@ export const declaredSecrets = (
 const Values = Schema.Record(Schema.String, Schema.Unknown);
 
 const Step = Schema.Struct({
+  "continue-on-error": Schema.optional(Schema.Unknown),
   env: Schema.optional(Values),
+  if: Schema.optional(Schema.Union([Schema.String, Schema.Boolean])),
   name: Schema.optional(Schema.String),
   run: Schema.optional(Schema.String),
   uses: Schema.optional(Schema.String),
@@ -93,6 +95,7 @@ const Environment = Schema.Union([
 ]);
 
 const Job = Schema.Struct({
+  "continue-on-error": Schema.optional(Schema.Unknown),
   env: Schema.optional(Values),
   environment: Schema.optional(Environment),
   if: Schema.optional(Schema.String),
@@ -475,6 +478,9 @@ export const holdScript = (file: WorkflowFile): Option.Option<string> =>
     )
   );
 
+const label = (step: typeof Step.Type): string =>
+  step.name ?? step.uses ?? "(unnamed)";
+
 /**
  * Sentences about the release hold. Empty when every job that holds a publish command has a step that tests for
  * `.github/release-hold`, and nothing but the checkout runs before it. (That the script fails while the file exists is
@@ -502,12 +508,38 @@ export const holdFindings = (file: WorkflowFile): readonly string[] => {
       ];
     }
 
-    return Arr.filterMap(Arr.take(steps, held.value), (step) =>
+    const early = Arr.filterMap(Arr.take(steps, held.value), (step) =>
       Str.startsWith("actions/checkout@")(step.uses ?? "")
         ? Result.failVoid
         : Result.succeed(
-            `${file.name}: job ${name} runs step ${step.name ?? step.uses ?? "(unnamed)"} before the release hold`
+            `${file.name}: job ${name} runs step ${label(step)} before the release hold`
           )
     );
+
+    const hold = steps[held.value];
+
+    // A failed hold must stop the job, and no later step may run after it: no continue-on-error, no `if` that can
+    // override the failure (`always()`, `failure()`, `!cancelled()`), so no `if` at all.
+    const bypasses = [
+      ...(job["continue-on-error"] === undefined
+        ? []
+        : [
+            `${file.name}: job ${name} sets continue-on-error, so a failed hold would not stop the publish`,
+          ]),
+      ...(hold !== undefined && hold["continue-on-error"] !== undefined
+        ? [
+            `${file.name}: job ${name} sets continue-on-error on the release hold step`,
+          ]
+        : []),
+      ...Arr.filterMap(Arr.drop(steps, held.value), (step) =>
+        step.if === undefined
+          ? Result.failVoid
+          : Result.succeed(
+              `${file.name}: job ${name} step ${label(step)} has an if, which could run it after the release hold failed`
+            )
+      ),
+    ];
+
+    return [...early, ...bypasses];
   });
 };

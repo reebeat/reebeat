@@ -47,6 +47,9 @@ const publishCondition =
 
 interface Changes {
   readonly beforeHold?: string;
+  readonly holdExtra?: string;
+  readonly jobExtra?: string;
+  readonly publishExtra?: string;
   readonly checkRun?: string;
   readonly environment?: string;
   readonly jobEnv?: string;
@@ -59,6 +62,12 @@ interface Changes {
   readonly variable?: string;
   readonly workflowEnv?: string;
 }
+
+/** The hold step of the fixture: the real script, with a line a control may add to the step. */
+const holdBlock = (changes: Changes): string =>
+  changes.noHold === true
+    ? ""
+    : `      - name: Release hold\n        run: if [ -e .github/release-hold ]; then exit 1; fi\n${changes.holdExtra ?? ""}`;
 
 /** A release workflow in the shape the real one has, with the lines a control changes made explicit. */
 const release = (changes: Changes): WorkflowFile => ({
@@ -87,11 +96,11 @@ ${changes.needs ?? ""}
     if: ${changes.publishIf ?? publishCondition}
     runs-on: ubuntu-latest
     environment: npm-release
-${changes.jobEnv ?? ""}
+${changes.jobEnv ?? ""}${changes.jobExtra ?? ""}
     steps:
       - uses: actions/checkout@abc
-${changes.beforeHold ?? ""}${changes.noHold === true ? "" : "      - name: Release hold\n        run: if [ -e .github/release-hold ]; then exit 1; fi\n"}      - name: Publish
-        env:
+${changes.beforeHold ?? ""}${holdBlock(changes)}      - name: Publish
+${changes.publishExtra ?? ""}        env:
           NODE_AUTH_TOKEN: ${expression("NPM_TOKEN")}
         run: ${changes.publishRun ?? "bunx changeset publish"}
 `,
@@ -384,6 +393,35 @@ describe("the release hold (operator decision of 2026-10-29)", () => {
     assert.isTrue(
       mentioning("before the release hold")(
         holdFindings(release({ beforeHold: early }))
+      )
+    );
+  });
+
+  it("fails a hold that a failure does not stop: continue-on-error, or an if on a later step (controls)", () => {
+    const bypass = mentioning("hold");
+
+    assert.isTrue(
+      bypass(
+        holdFindings(
+          release({ holdExtra: "        continue-on-error: true\n" })
+        )
+      )
+    );
+    assert.isTrue(
+      bypass(
+        holdFindings(release({ jobExtra: "\n    continue-on-error: true" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("has an if")(
+        holdFindings(release({ publishExtra: "        if: always()\n" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("has an if")(
+        holdFindings(
+          release({ publishExtra: `        if: \${{ !cancelled() }}\n` })
+        )
       )
     );
   });

@@ -1,7 +1,7 @@
 // F7 on a `> CUT` (spec 0001, Revision "review round 2"): a cut shows no intermediate frame. The first changed frame of
 // the scene change is already the settled frame (within the encoder's noise); the old slide must not fade out over the
 // new one. The control captures the same deck with the rule that makes the old slide leave at once removed: reveal.js
-// then fades it out over 15 frames and F7 fails naming the cut.
+// then fades it out over 12 frames and F7 fails naming the cut.
 import { assert, layer } from "@effect/vitest";
 import { Effect, Path } from "effect";
 

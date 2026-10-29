@@ -8,24 +8,28 @@ import {
   FileSystem,
   Order,
   Path,
+  Record,
   Schema,
+  String as Str,
   Struct,
 } from "effect";
 
 import {
   decodeRoot,
+  directiveFindings,
   importUses,
   isEffectFamily,
   packageOf,
   peerFindings,
   publicPackages,
-  publishedUses,
+  publishedSources,
   publishManifest,
   readPackages,
   scanUnstable,
   undeclaredImports,
   unexpectedFiles,
   unstableModules,
+  usesOf,
   versionsOf,
 } from "../release.ts";
 import type {
@@ -34,6 +38,9 @@ import type {
   SourceManifest,
   WorkspacePackage,
 } from "../release.ts";
+
+/** A `tsc` scan takes about a second on a development machine and several on a CI runner. */
+const scanTimeout = 60_000;
 
 const root: RootManifest = {
   bugs: { url: "https://example.test/issues" },
@@ -106,6 +113,11 @@ describe("the manifest a package publishes", () => {
       ".": { default: "./src/index.mjs", types: "./src/index.d.mts" },
       "./x": { default: "./x/i.mjs", types: "./x/i.d.mts" },
     });
+    // Order is meaning: the first condition that matches wins, and `default` matches anything.
+    assert.deepStrictEqual(Record.keys(staged.manifest.exports["."] ?? {}), [
+      "types",
+      "default",
+    ]);
     assert.strictEqual(staged.manifest.repository.directory, "packages/probe");
     assert.strictEqual(staged.manifest.repository.url, root.repository.url);
   });
@@ -260,8 +272,36 @@ describe("unstable Effect APIs used by the published sources", () => {
           ),
           []
         );
-      }).pipe(Effect.provide(NodeServices.layer))
+        // Why directives are refused: the compiler obeys them, so the scan alone would report no use here.
+        assert.deepStrictEqual(
+          yield* scan(
+            '// @effect-diagnostics unstableApiUsage:off\nimport { FileSystem } from "effect";\nexport const fs = FileSystem.FileSystem;\n'
+          ),
+          []
+        );
+      }).pipe(Effect.provide(NodeServices.layer)),
+    scanTimeout
   );
+
+  it("finds an @effect-diagnostics directive in any form, and only that", () => {
+    const sources = [
+      { file: "a.ts", text: "// @effect-diagnostics unstableApiUsage:off\n" },
+      { file: "b.ts", text: "// @effect-diagnostics-next-line *:off\n" },
+      {
+        file: "c.ts",
+        text: "/* @effect-diagnostics floatingEffect:skip-file */",
+      },
+      {
+        file: "d.ts",
+        text: "// effect diagnostics are documented elsewhere\n",
+      },
+    ];
+
+    assert.deepStrictEqual(
+      Arr.map(directiveFindings(sources), Str.slice(0, 4)),
+      ["a.ts", "b.ts", "c.ts"]
+    );
+  });
 
   it("names the package of a specifier", () => {
     assert.strictEqual(packageOf("effect/Cause"), "effect");
@@ -383,16 +423,23 @@ describe("the real repository", () => {
           (workspace) =>
             Effect.map(
               Effect.all([
-                publishedUses(where, workspace),
+                publishedSources(where, workspace),
                 scanUnstable(tsc, where, workspace),
               ]),
-              ([uses, unstable]) =>
-                peerFindings(workspace.manifest, uses, unstable, top.catalog)
-            )
+              ([sources, unstable]) =>
+                peerFindings(
+                  workspace.manifest,
+                  usesOf(sources),
+                  unstable,
+                  top.catalog
+                )
+            ),
+          { concurrency: "unbounded" }
         );
 
         assert.deepStrictEqual(Arr.flatten(perPackage), []);
-      }).pipe(Effect.provide(NodeServices.layer))
+      }).pipe(Effect.provide(NodeServices.layer)),
+    scanTimeout
   );
 
   it.effect(
@@ -404,9 +451,25 @@ describe("the real repository", () => {
         const perPackage = yield* Effect.forEach(
           publicPackages(packages),
           (workspace) =>
-            Effect.map(publishedUses(where, workspace), (uses) =>
-              undeclaredImports(workspace.manifest, uses)
+            Effect.map(publishedSources(where, workspace), (sources) =>
+              undeclaredImports(workspace.manifest, usesOf(sources))
             )
+        );
+
+        assert.deepStrictEqual(Arr.flatten(perPackage), []);
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+
+  it.effect(
+    "no published source carries an @effect-diagnostics directive (issue #14 covers the other suppressions)",
+    () =>
+      Effect.gen(function* directives() {
+        const { packages, top: where } = yield* repository;
+
+        const perPackage = yield* Effect.forEach(
+          publicPackages(packages),
+          (workspace) =>
+            Effect.map(publishedSources(where, workspace), directiveFindings)
         );
 
         assert.deepStrictEqual(Arr.flatten(perPackage), []);

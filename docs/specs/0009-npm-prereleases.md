@@ -7,7 +7,7 @@ Process: [spec 0000](0000-development-lifecycle.md). Number 0009 because 0004 is
 
 A maintainer runs one workflow, on `main`, after a version commit, and seven packages appear on npm as `0.1.0-alpha.N` under the `alpha` dist-tag, with a provenance attestation, published by GitHub Actions through npm trusted publishing (OIDC). No npm token is stored in GitHub or anywhere else. `reebeat/studio` installs them with `npm i @reebeat/core@alpha` and imports them in Node and in a Vite browser bundle.
 
-Nothing observable changes in the compiler: sources, the journey and every falsifier of specs 0001 to 0003 are untouched. The only change to a package's own manifest is that it is no longer `private`.
+Nothing observable changes in the compiler: sources, the journey and every falsifier of specs 0001 to 0003 are untouched. A published package's own manifest changes in these ways: it is no longer `private`; it gains `license`, `description`, `publishConfig` (`access: public`, `directory: dist`) and a `prepublishOnly` script that refuses a publish from the source directory; `effect` moves from `dependencies` to `peerDependencies` (and `devDependencies`, as `catalog:`), and `@effect/vitest` becomes an optional peer of `services`. Nothing in `exports` changes: it still points at the sources, and the manifest that ships is generated.
 
 ## Journey
 
@@ -80,6 +80,8 @@ Since 4.0.0 an Effect API tagged `@stability unstable` or `experimental` may bre
 
 Today: `core`, `subtitles`, `lint`, `sounds-synth` are `^4.1.0`; `services` (for `effect`: `crypto/Digest`, `FileSystem`, `Path`, `PlatformError`; and `@effect/vitest`), `pipeline` and `render-reveal` are `~4.1.0`. The test fails on the wrong operator, on a pin (`catalog`) outside the range (an Effect upgrade fails here until the ranges are re-examined), on `effect` in `dependencies`, and on an `effect`-family import that is not declared.
 
+The scan trusts the compiler, and the compiler obeys `@effect-diagnostics` comments, so a published source carries none (F-npm7, added in the revision of round 1).
+
 ### Publishing: GitHub Actions, trusted publishing, provenance
 
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml), `workflow_dispatch` only, job `publish`, environment `npm-release`, permissions `contents: read`, `checks: read`, `id-token: write`. It refuses any ref but `main`, requires a green `checks` run on the commit, requires npm 11.5.1 or later, runs `release:stage` and `changeset publish --no-git-tag`. The runner has no npm credential; the npm CLI exchanges the job's OIDC identity for a short-lived token. [npm's documentation](https://docs.npmjs.com/trusted-publishers) states what this spec relies on:
@@ -109,9 +111,10 @@ Run on the branch after `changeset version` (reverted afterwards), with the seve
 | | Claim | Gate | Falsified by |
 | --- | --- | --- | --- |
 | F-npm1 | Every published package yields a complete manifest: no `workspace:` or `catalog:` left, a licence, `access: public`, `directory: dist`, `.ts` exports | `release.test.ts` ("every published package builds a clean manifest"), `bun run release:stage` | a public package with `"@reebeat/verify": "workspace:*"` (controlled: `release:stage` exits 1 naming it) |
-| F-npm2 | The published set is the Changesets `fixed` group | `release.test.ts` | adding or removing a `private` flag alone |
+| F-npm2 | The published set is the Changesets `fixed` group | `release.test.ts` | removing `"private": true` from `packages/verify` (controlled: the fixed-group test fails, `expected [ '@reebeat/core', …(6) ] to deeply equal [ '@reebeat/core', …(7) ]`, and so do the manifest and peer tests) |
 | F-npm3 | Only built output ships | `release:stage` (`npm pack --dry-run --json` allowlist; unit test of the allowlist) | a source, test or map file in `dist` |
-| F-npm4 | The `effect` peer range matches the stability of the APIs used, admits the repository's pin, and is never a dependency | `release.test.ts` | `"effect": "^4.1.0"` in `services` (controlled: the test fails with "its published sources reach an unstable API, so the range must be ~") |
+| F-npm4 | The `effect` peer range matches the stability of the APIs used, admits the repository's pin, and is never a dependency | `release.test.ts` | `"effect": "^4.1.0"` in `services` or in `pipeline` (controlled: the test fails with "its published sources reach an unstable API, so the range must be ~") |
+| F-npm7 | No published source hides an unstable use from F-npm4 with an `@effect-diagnostics` directive | `release.test.ts` | `// @effect-diagnostics unstableApiUsage:off` added to `packages/pipeline/src/buildProgram.ts` (controlled: the test names the file; a scan control shows the compiler alone would report nothing) |
 | F-npm5 | Published sources import only declared packages | `release.test.ts` | a development dependency imported from `src` |
 | F-npm6 | The published packages work outside the monorepo | the rehearsal above (a procedure, not a gate: it needs the network and a browser) | any step of it |
 
@@ -125,4 +128,9 @@ Run on the branch after `changeset version` (reverted afterwards), with the seve
 
 ## Revisions
 
-None yet.
+- **2026-10-29, review round 1 on PR #18.**
+  - **CI timeout.** The `tsc` scans took 5.07 s for the peer test on a GitHub runner against vitest's 5 s default. Both scan tests now carry an explicit 60 s timeout, and the seven package scans of the peer test run concurrently.
+  - **Directives fail closed (F-npm7, supersedes "any finding is a use, however it was imported" for the case of a suppression).** The scan runs the Effect language service, which honours `@effect-diagnostics` comments, so such a comment in a published source hid an unstable use and let `^4.1.0` through (reviewer's mutation: `// @effect-diagnostics unstableApiUsage:off` in the six `pipeline` files that use `FileSystem`, `Path` or `Digest`, `^4.1.0`: the test passed). The release rules test now refuses any `@effect-diagnostics` directive, in any form and for any rule, registered or not, in a published package's sources. Lint-style suppressions stay with `check:exceptions` ([issue #14](https://github.com/reebeat/reebeat/issues/14)).
+  - **`types` before `default`.** The generated `exports` were key-sorted (`default` first), so TypeScript resolved under `default` and found its declarations only because `.d.mts` sits beside `.mjs`. The condition maps are built from ordered entries (the linter sorts object keys), a test pins the order, and `tsc --traceResolution` in a consumer now prints `Matched 'exports' condition 'types'`.
+  - **Line 10 corrected:** the manifest changes are listed in full (Goal section).
+  - **F-npm2 control:** removing `"private": true` from `packages/verify` fails three tests (clean manifests, fixed group, peer ranges); the fixture the table promised does not exist and the row no longer claims one.

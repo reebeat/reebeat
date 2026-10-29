@@ -67,7 +67,7 @@ const PublishedManifestSchema = Schema.Struct({
   description: Schema.optional(Schema.String),
   exports: Schema.Record(
     Schema.String,
-    Schema.Struct({ default: Schema.String, types: Schema.String })
+    Schema.Record(Schema.String, Schema.String)
   ),
   homepage: Schema.String,
   license: Schema.String,
@@ -238,10 +238,14 @@ export const publishManifest = (
       bugs: root.bugs,
       dependencies: dependencies.ranges,
       description: manifest.description,
-      exports: Record.map(manifest.exports ?? {}, (entry) => ({
-        default: Str.replace(sourceExtension, ".mjs")(entry),
-        types: Str.replace(sourceExtension, ".d.mts")(entry),
-      })),
+      // `types` before `default`: TypeScript takes the first condition that matches, and `default` matches anything.
+      // Built from ordered entries, because the linter sorts object keys.
+      exports: Record.map(manifest.exports ?? {}, (entry) =>
+        Record.fromEntries([
+          ["types", Str.replace(sourceExtension, ".d.mts")(entry)],
+          ["default", Str.replace(sourceExtension, ".mjs")(entry)],
+        ])
+      ),
       homepage: root.homepage,
       license: manifest.license ?? "",
       name: manifest.name,
@@ -366,12 +370,18 @@ const exportedDirectories = (manifest: SourceManifest): readonly string[] =>
     )
   );
 
-/** The imports of the sources a package publishes: every source file below a directory its exports are built from. */
-export const publishedUses = Effect.fnUntraced(function* publishedUses(
+/** A source file a package publishes: its path relative to the repository root and its text. */
+interface PublishedSource {
+  readonly file: string;
+  readonly text: string;
+}
+
+/** Every source file below a directory the package's exports are built from (`src`, `contract`, `standins`). */
+export const publishedSources = Effect.fnUntraced(function* publishedSources(
   root: string,
   { directory, manifest }: WorkspacePackage
 ): Effect.fn.Return<
-  readonly ImportUse[],
+  readonly PublishedSource[],
   PlatformError.PlatformError,
   FileSystem.FileSystem | Path.Path
 > {
@@ -383,13 +393,39 @@ export const publishedUses = Effect.fnUntraced(function* publishedUses(
     (name) => sourceFiles(path.join(root, "packages", directory, name))
   );
 
-  const texts = yield* Effect.forEach(
+  return yield* Effect.forEach(
     Arr.flatMap(listings, (listing) => listing.files),
-    (file) => fs.readFileString(file)
+    (file) =>
+      Effect.map(fs.readFileString(file), (text) => ({
+        file: path.relative(root, file),
+        text,
+      }))
   );
-
-  return Arr.flatMap(texts, importUses);
 });
+
+/** The imports of the sources a package publishes. */
+export const usesOf = (
+  sources: readonly PublishedSource[]
+): readonly ImportUse[] => Arr.flatMap(sources, ({ text }) => importUses(text));
+
+const directive = /@effect-diagnostics/u;
+
+/**
+ * Sentences about `@effect-diagnostics` directives in published sources. The unstable-API scan runs the Effect language
+ * service, which honours those comments, so one (any form, any rule, registered or not) could hide a use from it and let
+ * a `^` range through. The scan fails closed: a published source has none. (A suppression directive of the lint kind is
+ * `check:exceptions`' business, issue #14.)
+ */
+export const directiveFindings = (
+  sources: readonly PublishedSource[]
+): readonly string[] =>
+  Arr.filterMap(sources, ({ file, text }) =>
+    directive.test(text)
+      ? Result.succeed(
+          `${file} has an @effect-diagnostics directive, which could hide an unstable API from the range check`
+        )
+      : Result.failVoid
+  );
 
 /**
  * Sentences about imports of the published sources that the built package could not resolve or would inline: a

@@ -1,0 +1,65 @@
+# 0003 Upgrade to Effect 4.1.0
+
+Status: **plan** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator, 2026-10-29 (upgrade every repository to the `latest` Effect and adopt the new features only where they delete or simplify real code).
+Process: [spec 0000](0000-development-lifecycle.md). AGENTS.md: "An upgrade is its own spec." Number 0003 because 0002 belongs to the open PR #4 (explicit anchors).
+
+## Goal
+
+`effect`, `@effect/platform-node`, `@effect/platform-node-shared` and `@effect/vitest` move from 4.0.6 to **4.1.0** in one change (root `catalog` and `overrides`, `bun.lock`), `@effect/tsgo` from 0.53.1 to **0.63.0** (the newest release; its `effect-tsgo patch` re-ran through `prepare`). Every breaking change of 4.1.0 that reaches this repository is fixed at its cause, and the new features are adopted only where they replace real code.
+
+Nothing observable changes: the committed speech cache (`stories/same-id/speech-cache`, 12 assets) keeps hitting, and the journey builds the same Deck and Video as `main`, byte for byte.
+
+## Journey
+
+```text
+devenv shell -- bun install        # lockfile at 4.1.0, effect-tsgo patch re-applied
+devenv shell -- bun run ready      # check, check:exceptions, check:tiers, test, knip, cpd, secrets, journey
+```
+
+`bun run journey` is the end-to-end proof: build, check (F1 to F9 but F6), build again, F6. Run on `main` (4.0.6) and on this branch (4.1.0), every written file of `build/same-id` must have the same SHA-256, and the 12 speech assets must all be cache hits (a miss without `--refresh-speech` is `SpeechCacheMiss` and fails the build, F12).
+
+## Breaking changes that bite this repository
+
+Read against the 4.1.0 CHANGELOG (`packages/effect/CHANGELOG.md`) and the installed `node_modules/effect` 4.1.0. Line numbers are those of `main` at `79cb960`.
+
+| Change | Where it bites | Fix |
+| --- | --- | --- |
+| `effect/Crypto` is replaced by `effect/crypto/*`; the `Crypto.Crypto` service is gone, `Digest.Digest` (`digest`, `digestHex`, algorithm values `Digest.sha256`) replaces it | `packages/pipeline/src/hash.ts:3-11`; `packages/services/src/cacheKey.ts:5,72-92`; `packages/services/standins/memoryCache.ts:6,34,39,70`; `packages/cache-fs/src/fsAssetCache.ts:17,102-105,157,197,269`; `packages/align-whisper/src/whisperAligner.ts:15,121,158-160`; requirement types in `packages/cli/src/adapters.ts:25,33`, `packages/cli/src/verifier.ts:4,30`, `packages/verify/src/guard.ts:4,11`, `load.ts:8,105`, `sources.ts:18,88`; type tests `packages/services/test/types.test.ts:5,75-77,89,100` | Every use is `Digest.Digest`; `digestHex(Digest.sha256, bytes)` is the lower-case hex the old code built with `Hex.encode(yield* Effect.orDie(crypto.digest("SHA-256", bytes)))`. The digest cannot fail now, so the `orDie` and the `Effect.mapError(..., CacheFailed)` over hashing are deleted. The key is the same SHA-256 hex of the same canonical JSON |
+| Crypto is no longer in `NodeServices` | the composition root `packages/cli/bin/reebeat.ts:17` and every test platform (`packages/{cli,pipeline,services,cache-fs,align-whisper}/test/*`, `packages/{cli,align-whisper}/live/*`, `packages/verify/test/support.ts:56,216,625`) | `Layer.merge(NodeServices.layer, NodeCrypto.layerDigest)` (`NodeCrypto` from `@effect/platform-node`); only the digest layer, not the whole `NodeCrypto.layer`, because nothing here needs a MAC, a KDF or randomness |
+| `effect/crypto/Digest` and `@effect/platform-node-shared/NodeCrypto` are `@stability unstable` and the repository sets `unstableApiUsage` to `error` | `tsconfig.json` `allowedUnstableApis` listed `effect/Crypto` | the entry becomes `effect/crypto/Digest`; `@effect/platform-node-shared/NodeCrypto` is added (the language service names the shared package that defines `layerDigest`). This is the repository's own allow-list, not a suppression |
+| `@effect/tsgo` 0.63.0 turns five more rules on by default | `tools/quality/test/diagnosticCoverage.test.ts` failed: `failCauseToConstructor`, `flatMapIdentityToFlatten`, `manualMetricTapToTrack`, `mapConstToAs`, `schemaClassObjectLiteral` were missing from `tsconfig.json` `diagnosticSeverity` | added at `error`, like every default-on rule; the lint side is generated from the schema (`tools/quality/diagnosticRules.ts`) and needed nothing. No code violated them |
+
+Checked and **not** hit: `ChildProcess.make` templates (every call is the array form `make(command, args)`: `align-whisper/src/tool.ts:35`, `capture-chromium/src/browser.ts:185`, `encode-ffmpeg/src/ffmpegEncoder.ts:57`, `mediaTools.ts:66`, `tools/quality/checkEffectExceptions.ts:18`, the live and test helpers; no `shell` option); a custom `FileSystem` (the only wrapper, `packages/cache-fs/test/support.ts`, spreads the real one, so `readDirectoryEntries` and the derived `glob` come along); `Migrator`, `sql.insert`, `HttpMethod`, `Toml`, `KeyValueStore`, `FetchHttpClient`, `BunHttpServer`, RPC, OpenTelemetry, `Terminal.make`, `TestCrypto` (no use anywhere); Node stream `chunkSize` (no use).
+
+## Adoptions
+
+| Feature | Decision | Why |
+| --- | --- | --- |
+| `Digest` (`effect/crypto`) | **adopted**, forced by the breaking change | one `digestHex(Digest.sha256, bytes)` replaces `Hex.encode(orDie(digest(...)))` at five sites; the `Effect.orDie` and `mapError` over what is now an infallible effect and the `Hex` imports are gone; the cache key is pinned to a vector computed outside Effect (`cacheKey.test.ts`) |
+| `FileSystem.glob` | **adopted once**: `sourceFiles` in `tools/quality/tiers.ts` | a 33-line recursive walk (`readDirectory`, `stat` per entry, directory-name filter, regex, `.d.ts` test) becomes one `glob("**/*.{ts,tsx,mts,cts}", { dot: true, exclude: [...] })` and a `path.join`. Excluded directories are not read. The old regex also admitted the unreal `.ctsx` and `.mtsx`; they are dropped |
+| `FileSystem.glob` in `pipeline/src/manifest.ts` `listFiles` | rejected | `glob("**/*")` returns directories as well as files, so the `stat` per entry and the type filter stay; the path-separator normalisation would go, a net of two lines for a changed error path |
+| `FileSystem.glob` in `verify/src/load.ts` `locateMp4`, `pipeline/src/buildProgram.ts` output listing, `tools/quality/tiers.ts` package listing | rejected | one `readDirectory` and one filter each; `glob` turns a missing directory into an empty result instead of a typed error, which changes what the callers report, for no deleted code |
+| `CommandLine`, `Redacted` arguments and `env` in `ChildProcess` | rejected | no call passes a secret: ffmpeg, ffprobe, whisper-cli, Chromium (`--version`) and git take paths and flags, Kokoro runs in process, and no command line is printed or logged (failures carry the tool name and the tail of its output). The future ElevenLabs key is a `Config.Redacted` read by its own adapter (AGENTS.md: secrets come from the environment only, never keyed, never printed); it adds a child process only if that adapter shells out, and the day it does the argument is `Redacted` |
+| `Effect.ignore({ log })` | rejected | the three `Effect.ignore` sites (`capture-chromium/src/browser.ts:300` closing a browser in a finalizer, `pipeline/src/buildProgram.ts:253`, `services/contract/assetCache.ts:240`) are deliberate best-effort or contract probes; adding a log line there would be new behaviour, not a simplification |
+| `effect/encoding` `Csv`, `HttpApiError.Problem`, `Pool.stats`, `Duration.fromIso`, `Schema.DurationFromIsoString`, `Match.literals` | rejected | no CSV, HTTP API, pool, ISO duration or `Match` in this repository |
+| `effect/crypto` `SecureRandom` | rejected | no randomness in the build (the Video is a pure function of the frame number) |
+
+## Falsifiers
+
+- **F-up1, one version.** `bun run test` runs `tools/quality/test/effectFamily.test.ts`: `effect` locked once, every `@effect/*` runtime package at 4.1.0. Falsified by any entry of `bun.lock` at another version.
+- **F-up2, the cache survives.** The 12 keys in `build.json` of this branch equal the 12 keys of `main`'s build and the 12 `*.provenance.json` of `stories/same-id/speech-cache`; the build ran without `--refresh-speech`, so one miss would have failed it (`SpeechCacheMiss`). `packages/services/test/cacheKey.test.ts` pins one key to the SHA-256 that coreutils computes for the canonical JSON.
+- **F-up3, same output.** `build.json`, `deck.html`, `plan.json`, `same-id.mp4` and `same-id.vtt` of the journey have the SHA-256 they have on `main` at 4.0.6 (and the assets directory too).
+- **F-up4, the full gate.** `bun run ready` passes on the head with no error from `vp check` (the 4.1.0 type check, the Effect diagnostics at `error`, Oxlint).
+- **F-up5, no suppression.** `bun run check:exceptions` reports the same three exceptions as before; the upgrade added none.
+
+## Scope and non-goals
+
+- No behaviour change, no new feature of reebeat.
+- `@phibkro/oxlint-effect-plugin` 0.2.0 pins its own `@effect/tsgo` 0.48.0 inside its tree and has no `effect` peer, so the upgrade does not touch it.
+- Peer dependencies: `@effect/vitest` 4.1.0 peers `vitest` `>=5.0.0 <6.0.0` (the repository runs vite-plus 1.2.0 with vitest 5.0.4); `@effect/platform-node` 4.1.0 peers `effect ^4.1.0`. Nothing else in the tree peers on `effect`.
+- `@effect/tsgo` 0.63.0 reports 275 `effecttsgo(prefer-effect-string)` warnings (native `String.prototype.slice`, `repeat`, ...). They are warnings in the preset, not gates, and not a 4.1.0 feature; they are left for a spec of their own.
+
+## Revisions
+
+- **2026-10-29, plan written against the CHANGELOG, then built.** The only structural surprise was the language service: `unstableApiUsage` is `error` here and the new modules are `@stability unstable`, so the allow-list in `tsconfig.json` had to name `effect/crypto/Digest` and the shared Node package. Recorded in the table above.
+- **2026-10-29, `glob` measured before adopting it.** A probe (deleted) ran the old walk and the new `glob` over all 14 package directories: the file lists were equal, in the same order, for each (5, 3, 9, 17, 17, 11, 7, 13, 12, 32, 4, 4, 7 and 25 files). The same probe showed `glob("**/*")` returns directories (`src` next to `src/align.ts`), which is why `manifest.ts` `listFiles` keeps its `stat`.

@@ -47,7 +47,7 @@ The rule has a consequence for the open core: the open part never needs a server
 
 Users can bring their own agents (through the tool protocol) and write plugins and extensions (through the adapter seams). Deeply integrated hosted agents are the paid part; the tools they use are not.
 
-## Experimental dependencies stay behind adapters
+## Experimental dependencies
 
 The compiler may depend on experimental or alpha packages (XState v6 alpha, `@xstate/effect` alpha), because they are build-time assets. The operator decided on 2026-10-29 that they are pinned exactly and that their types stay out of reebeat's public API; the third rule is a proposal. Three rules keep that safe:
 

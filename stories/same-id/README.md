@@ -28,8 +28,8 @@ Dialogue is plain prose: the narration, the subtitles and the notes are its text
 | `sc2` | `r1: show twin at word("too").end` | the hidden box is revealed when "too" ends |
 | `sc4` | `s1: sound whoosh at transition.start` | the whoosh sounds with the slide change, not at the first word of the Line (the narration starts 1 s later) |
 | `sc4` | `s2: sound ding at one.move.50%` | the ding sounds when box `one` is half way across (position, not time: 8 frames in, where time is half way at 13) |
-| `sc4` | `r1: show note at word("matches").end +100ms` | a hidden Element appears 0.1 s after "matches" |
-| `sc4` | `f1: focus hint at word("slides").start -200ms` | the ring goes on `hint` 0.2 s before "slides"; it is written first and resolves **after** `r1`, so the Deck has the steps in the order `r1`, `f1` |
+| `sc4` | `r1: show note at word("matches").end +0.1s` | a hidden Element appears 0.1 s after "matches" |
+| `sc4` | `f1: focus hint at word("slides").start -0.2s` | the ring goes on `hint` 0.2 s before "slides"; it is written first and resolves **after** `r1`, so the Deck has the steps in the order `r1`, `f1` |
 | `sc5` | `s1: sound ding at transition.start` | the ding sounds as the new box starts to appear |
 | `sc7` | `p1: sound pop at 0.5s because "..."` | an absolute time, which needs its reason and which `reebeat lint` lists |
 

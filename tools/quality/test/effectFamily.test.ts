@@ -168,42 +168,60 @@ const readRegistry = Effect.gen(function* readRegistry() {
   );
 });
 
-/** What a record that names `name` at `recorded` says when the lock holds `locked`: nothing when they agree. */
+/** What a record says about `name` when it differs from the lock: a missing key (`recorded` undefined) is a difference. */
 const staleRecord = (
   id: string,
   name: string,
   recorded: string | undefined,
   locked: string | undefined
 ) =>
-  recorded === undefined || recorded === locked
+  recorded === locked
     ? Result.failVoid
     : Result.succeed(
-        `${id} records ${name} ${recorded}, the lock holds ${locked}`
+        recorded === undefined
+          ? `${id} records no ${name}, the lock holds ${locked}`
+          : `${id} records ${name} ${recorded}, the lock holds ${locked}`
       );
+
+interface Held {
+  readonly "@effect/tsgo": string | undefined;
+  readonly effect: string | undefined;
+}
+
+/** Every exception record that does not name each held package at the version the lock holds, a missing key included. */
+const staleRecords = (
+  exceptions: readonly {
+    readonly id: string;
+    readonly versions: Readonly<Record<string, string>>;
+  }[],
+  held: Held
+) =>
+  Arr.flatMap(exceptions, ({ id, versions }) =>
+    Arr.filterMap(Record.toEntries(held), ([name, version]) =>
+      staleRecord(id, name, versions[name], version)
+    )
+  );
+
+const heldBy = (lock: string): Held => ({
+  "@effect/tsgo": /"@effect\/tsgo": \["@effect\/tsgo@(?<version>[^"]+)"/u.exec(
+    lock
+  )?.groups?.version,
+  effect: /"effect@(?<version>[^"]+)"/u.exec(lock)?.groups?.version,
+});
 
 describe("registered exceptions follow the upgrade", () => {
   it.effect(
     "every exception records the effect and @effect/tsgo versions the lock holds, so a bump reopens it",
     () =>
       Effect.gen(function* recorded() {
-        const lock = yield* readLock;
+        const held = heldBy(yield* readLock);
 
-        const held = {
-          "@effect/tsgo":
-            /"@effect\/tsgo": \["@effect\/tsgo@(?<version>[^"]+)"/u.exec(lock)
-              ?.groups?.version,
-          effect: /"effect@(?<version>[^"]+)"/u.exec(lock)?.groups?.version,
-        };
-
-        const stale = Arr.flatMap(
-          (yield* readRegistry).exceptions,
-          ({ id, versions }) =>
-            Arr.filterMap(Record.toEntries(held), ([name, version]) =>
-              staleRecord(id, name, versions[name], version)
-            )
+        assert.isDefined(held.effect);
+        assert.isDefined(held["@effect/tsgo"]);
+        assert.deepStrictEqual(
+          staleRecords((yield* readRegistry).exceptions, held),
+          []
         );
-
-        assert.deepStrictEqual(stale, []);
       }).pipe(Effect.provide(NodeServices.layer))
   );
 
@@ -216,4 +234,31 @@ describe("registered exceptions follow the upgrade", () => {
       "EX-0001 records effect 4.0.6, the lock holds 4.1.0"
     );
   });
+
+  it.effect(
+    "negative control: deleting `effect` or `@effect/tsgo` from a real record is a failure, not a pass",
+    () =>
+      Effect.gen(function* missing() {
+        const held = heldBy(yield* readLock);
+        const [first, ...rest] = (yield* readRegistry).exceptions;
+
+        assert.isDefined(first);
+
+        const without = (name: string) => ({
+          ...first,
+          versions: Record.remove(first.versions, name),
+        });
+
+        assert.deepStrictEqual(
+          staleRecords([without("effect"), ...rest], held),
+          [`${first.id} records no effect, the lock holds ${held.effect}`]
+        );
+        assert.deepStrictEqual(
+          staleRecords([without("@effect/tsgo"), ...rest], held),
+          [
+            `${first.id} records no @effect/tsgo, the lock holds ${held["@effect/tsgo"]}`,
+          ]
+        );
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
 });

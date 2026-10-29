@@ -1,13 +1,12 @@
 // A scheduled Plan built by the real core: three Lines of 500 ms a word, so every frame is a whole number and the
 // expected timestamps can be worked out by hand (a Line starts `sceneLead` = 1 s after its slide frame).
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
-import type {
-  AlignedLine,
-  Line,
-  PlanJson,
-  RendererLifecycle,
-  TimedPlan,
+import {
+  buildPlan,
+  referenceLifecycle,
+  requireTimeline,
+  schedule,
 } from "@reebeat/core";
+import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
 import { Array as Arr, Effect } from "effect";
 
 const source = Arr.join(
@@ -43,14 +42,6 @@ const source = Arr.join(
 
 export const hash = "5a".repeat(32);
 
-/** The slide change of an imagined renderer: these Plans have no effect, so only the Auto-Animate time matters. */
-const lifecycle: RendererLifecycle = {
-  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
-  showMs: 133,
-  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
-  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
-};
-
 const wordMs = 500;
 
 /** One Line as the aligner reports it: each word starts when the one before it ends, and is spoken for 450 ms. */
@@ -76,7 +67,9 @@ export const timed = Effect.gen(function* timedPlan() {
   const plan = yield* buildPlan(source, hash);
 
   return yield* Effect.fromResult(
-    requireTimeline(yield* schedule(plan, alignedLines(plan), lifecycle))
+    requireTimeline(
+      yield* schedule(plan, alignedLines(plan), referenceLifecycle)
+    )
   );
 });
 

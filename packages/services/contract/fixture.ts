@@ -1,7 +1,7 @@
 // The Plan the Renderer and FrameCapturer contracts use unless an adapter supplies its own: one Scene, two Elements,
 // one Line, with a Timeline so that a capturer knows its frame count. Built by the core's own `buildPlan` and
 // `schedule`, so it is a valid Plan by construction.
-import { buildPlan, schedule } from "@reebeat/core";
+import { buildPlan, referenceLifecycle, schedule } from "@reebeat/core";
 import type {
   AlignedLine,
   PlanError,
@@ -49,16 +49,8 @@ export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
-/**
- * A renderer's declaration of its slide change, for the Plan the contracts schedule: sane numbers (the Auto-Animate
- * duration is the Plan's own 0.8 s), not the measurements of any adapter.
- */
-export const contractLifecycle: RendererLifecycle = {
-  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
-  showMs: 133,
-  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
-  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
-};
+/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@reebeat/core`'s reference one. */
+export const contractLifecycle: RendererLifecycle = referenceLifecycle;
 
 /** The contract Plan, with its Timeline. */
 export const contractPlan = Effect.flatMap(buildPlan(source, digest), (plan) =>

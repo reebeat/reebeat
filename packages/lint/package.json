@@ -1,6 +1,6 @@
 {
   "name": "@reebeat/lint",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "reebeat lint: pure rules that return diagnostics for a Plan. Pure, no runtime.",
   "license": "Apache-2.0",
   "type": "module",

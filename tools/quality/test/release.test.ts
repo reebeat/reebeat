@@ -443,33 +443,18 @@ describe("the real repository", () => {
   );
 
   it.effect(
-    "every package the published sources import is a dependency or a peer",
+    "published sources import only declared packages and carry no @effect-diagnostics directive (issue #14 covers the other suppressions)",
     () =>
-      Effect.gen(function* imports() {
+      Effect.gen(function* sources() {
         const { packages, top: where } = yield* repository;
 
         const perPackage = yield* Effect.forEach(
           publicPackages(packages),
           (workspace) =>
-            Effect.map(publishedSources(where, workspace), (sources) =>
-              undeclaredImports(workspace.manifest, usesOf(sources))
-            )
-        );
-
-        assert.deepStrictEqual(Arr.flatten(perPackage), []);
-      }).pipe(Effect.provide(NodeServices.layer))
-  );
-
-  it.effect(
-    "no published source carries an @effect-diagnostics directive (issue #14 covers the other suppressions)",
-    () =>
-      Effect.gen(function* directives() {
-        const { packages, top: where } = yield* repository;
-
-        const perPackage = yield* Effect.forEach(
-          publicPackages(packages),
-          (workspace) =>
-            Effect.map(publishedSources(where, workspace), directiveFindings)
+            Effect.map(publishedSources(where, workspace), (files) => [
+              ...undeclaredImports(workspace.manifest, usesOf(files)),
+              ...directiveFindings(files),
+            ])
         );
 
         assert.deepStrictEqual(Arr.flatten(perPackage), []);

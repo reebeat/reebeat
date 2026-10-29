@@ -3,7 +3,7 @@
 // silent drop. A plain function.
 import { Array as Arr, Option, Result, String as Str, pipe } from "effect";
 
-import { parseEffectLine } from "./effects.ts";
+import { isLetLine, parseEffectLine, parseLetLine } from "./effects.ts";
 import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
@@ -13,7 +13,7 @@ import type { SceneCue } from "./hints.ts";
 import { parseNarration } from "./narration.ts";
 import type { FountainToken } from "./parse.ts";
 import { idPattern } from "./plan.ts";
-import type { Effect, Element, Line, Scene } from "./plan.ts";
+import type { DerivedEvent, Effect, Element, Line, Scene } from "./plan.ts";
 import {
   defaultSpeed,
   parseSpeed,
@@ -40,8 +40,8 @@ export interface SceneDraft {
   readonly effects: Effect[];
   /** The line of the `[[effects` block; none: the Scene has no block yet. */
   effectsLine: number | undefined;
-  /** Ids of the effects whose `word(...)` wrote an occurrence number. */
-  readonly explicitOccurrences: Set<string>;
+  /** The `let` lines of the block, in source order. */
+  readonly events: DerivedEvent[];
   /** An Element or effect line of the Scene has an error: its references are not checked until it is fixed. */
   invalid: boolean;
   readonly elements: Element[];
@@ -307,7 +307,7 @@ const headingToken = (state: State, token: FountainToken): void => {
     effects: [],
     effectsLine: undefined,
     elements: [],
-    explicitOccurrences: new Set(),
+    events: [],
     heading: Str.trim(token.text),
     hidden: [],
     id,
@@ -372,6 +372,21 @@ const elementLine = (
   }
 };
 
+/** The line of `scene`'s effect or derived event named `name`, or `undefined`: both share one namespace. */
+const nameTaken = (scene: SceneDraft, name: string): boolean =>
+  Arr.some(scene.effects, (other) => other.id === name) ||
+  Arr.some(scene.events, (other) => other.name === name);
+
+const duplicate = (line: number, what: string, name: string): PlanError =>
+  planError(
+    "DuplicateId",
+    line,
+    problem(
+      `${what} "${name}" is already used in this Scene`,
+      "a different name for each effect and derived event of a Scene"
+    )
+  );
+
 const effectRows = (
   state: State,
   scene: SceneDraft,
@@ -385,29 +400,30 @@ const effectRows = (
       continue;
     }
 
+    if (isLetLine(row)) {
+      const derived = parseLetLine(row, line);
+
+      if (Result.isFailure(derived)) {
+        state.errors.push(derived.failure);
+      } else if (nameTaken(scene, derived.success.name)) {
+        state.errors.push(
+          duplicate(line, "derived event", derived.success.name)
+        );
+      } else {
+        scene.events.push(derived.success);
+      }
+
+      continue;
+    }
+
     const parsed = parseEffectLine(row, line);
 
     if (Result.isFailure(parsed)) {
       state.errors.push(parsed.failure);
-    } else if (
-      Arr.some(scene.effects, (other) => other.id === parsed.success.effect.id)
-    ) {
-      state.errors.push(
-        planError(
-          "DuplicateId",
-          line,
-          problem(
-            `effect id "${parsed.success.effect.id}" is already used in this Scene`,
-            "a different id for each effect of a Scene"
-          )
-        )
-      );
+    } else if (nameTaken(scene, parsed.success.id)) {
+      state.errors.push(duplicate(line, "effect id", parsed.success.id));
     } else {
-      scene.effects.push(parsed.success.effect);
-
-      if (parsed.success.explicitOccurrence) {
-        scene.explicitOccurrences.add(parsed.success.effect.id);
-      }
+      scene.effects.push(parsed.success);
     }
   }
 };

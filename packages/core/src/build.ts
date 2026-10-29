@@ -1,9 +1,12 @@
 // `buildPlan`: Fountain source in, Plan out (spec 0001, "The source" and "The Plan contract"; spec 0002 for the
-// effects).
+// effects; spec 0004 for the IR). The Fountain reader is an IMPORTER: it reads the source into the IR (`graph.ts`),
+// checking it, and the Plan is a function of the IR (`planOf`). Plain functions.
 import { Array as Arr, Effect, Order, Result } from "effect";
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
+import { graphVersion } from "./graph.ts";
+import type { Graph, GraphScene, ImportErrors, Importer } from "./graph.ts";
 import { identityDiff } from "./identity.ts";
 import { parseFountain } from "./parse.ts";
 import type { Chapter, Line, PlanJson, Scene, Settings } from "./plan.ts";
@@ -12,8 +15,7 @@ import type { LineDraft, SceneDraft, Story } from "./story.ts";
 import { validateScene } from "./validate.ts";
 
 /** The pacing and canvas defaults of release 1 (spec 0001, "Time"); the speech rate comes from the Story. */
-const defaultSettings: Omit<Settings, "speed"> = {
-  fps: 30,
+const defaultSettings: Omit<Settings, "fps" | "ntsc" | "speed"> = {
   height: 720,
   lineGap: 0.5,
   sceneLead: 1,
@@ -22,6 +24,11 @@ const defaultSettings: Omit<Settings, "speed"> = {
   voice: "af_heart",
   width: 1280,
 };
+
+/** The render setting that is not in the IR: the output frame rate. The default is 30 fps. */
+export type RenderRate = Pick<Settings, "fps" | "ntsc">;
+
+const defaultRate: RenderRate = { fps: 30, ntsc: false };
 
 const untitled = "Untitled";
 
@@ -37,21 +44,17 @@ const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
   };
 };
 
-const buildScenes = (story: Story): readonly Scene[] =>
-  Arr.map(story.scenes, (draft: SceneDraft, index): Scene => {
+const graphScenes = (story: Story): readonly GraphScene[] =>
+  Arr.map(story.scenes, (draft: SceneDraft): GraphScene => {
     const { id } = draft;
-    const previous = story.scenes[index - 1];
 
     return {
       chapterId: `ch${draft.chapterIndex + 1}`,
       effects: draft.effects,
       elements: draft.elements,
+      events: draft.events,
       heading: draft.heading,
       id,
-      identity:
-        draft.transition === "auto-animate" && previous !== undefined
-          ? identityDiff(previous.elements, draft.elements)
-          : null,
       line: draft.line,
       lines: Arr.map(draft.lines, (line, lineIndex) =>
         buildLine(line, id, lineIndex)
@@ -76,6 +79,56 @@ const buildChapters = (story: Story): readonly Chapter[] =>
       : { ...chapter, synopsis: Arr.join(draft.synopsis, " ") };
   });
 
+/** The Story as the IR: what the source declared. */
+const graphOf = (story: Story): Graph => {
+  const graph: Graph = {
+    chapters: buildChapters(story),
+    scenes: graphScenes(story),
+    speed: story.speed,
+    title: story.title ?? untitled,
+    version: graphVersion,
+  };
+
+  return story.author === undefined
+    ? graph
+    : { ...graph, author: story.author };
+};
+
+/** The Scenes of the Plan: the IR's Scenes with the identity diff against the previous Scene where Auto-Animate joins them. */
+const planScenes = (graph: Graph): readonly Scene[] =>
+  Arr.map(graph.scenes, (scene, index): Scene => {
+    const previous = graph.scenes[index - 1];
+
+    return {
+      ...scene,
+      identity:
+        scene.transition === "auto-animate" && previous !== undefined
+          ? identityDiff(previous.elements, scene.elements)
+          : null,
+    };
+  });
+
+/**
+ * The Plan (without a `timeline`) of the IR: a function of it, of the hash of the source it came from and of the
+ * render's frame rate (30 fps unless a preset is given). Time in the IR is exact; frames appear only in the Timeline.
+ */
+export const planOf = (
+  graph: Graph,
+  sourceSha256: string,
+  rate: RenderRate = defaultRate
+): PlanJson => {
+  const plan: PlanJson = {
+    chapters: graph.chapters,
+    scenes: planScenes(graph),
+    schema: 1,
+    settings: { ...defaultSettings, ...rate, speed: graph.speed },
+    sourceSha256,
+    title: graph.title,
+  };
+
+  return graph.author === undefined ? plan : { ...plan, author: graph.author };
+};
+
 const byLine = Order.mapInput(Order.Number, (found: PlanError) => found.line);
 
 /** Every error of the source, in document order (ties keep the order they were found in). */
@@ -83,7 +136,7 @@ const errorsOf = (story: Story): readonly PlanError[] =>
   Arr.sort(
     [
       ...story.errors,
-      ...Arr.flatMap(buildScenes(story), (scene, index) => {
+      ...Arr.flatMap(planScenes(graphOf(story)), (scene, index) => {
         const draft = story.scenes[index];
         const previous = story.scenes[index - 1];
 
@@ -92,7 +145,7 @@ const errorsOf = (story: Story): readonly PlanError[] =>
           draft.invalid ||
           (scene.identity !== null && previous?.invalid === true)
           ? []
-          : validateScene(scene, draft.explicitOccurrences);
+          : validateScene(scene);
       }),
       ...(story.scenes.length === 0
         ? [
@@ -108,36 +161,23 @@ const errorsOf = (story: Story): readonly PlanError[] =>
   );
 
 /**
- * Reads one Fountain source into the checked Story. A failure carries every error found, in document order.
+ * The Fountain importer: reads one Fountain source into the IR and checks it. A failure carries every error found, in
+ * document order. One way: nothing writes Fountain, and what Fountain cannot say is not in the IR.
  */
-const analyzeSource = (
-  source: string
-): Result.Result<Story, Arr.NonEmptyReadonlyArray<PlanError>> => {
-  const story = adaptTokens(parseFountain(source));
-  const errors = errorsOf(story);
+export const fountainImporter: Importer<string> = {
+  import: (source: string): Result.Result<Graph, ImportErrors> => {
+    const story = adaptTokens(parseFountain(source));
+    const errors = errorsOf(story);
 
-  return Arr.isReadonlyArrayNonEmpty(errors)
-    ? Result.fail(errors)
-    : Result.succeed(story);
-};
-
-/** Assembles the Plan (without a `timeline`) of a checked Story. */
-const assemblePlan = (story: Story, sourceSha256: string): PlanJson => {
-  const plan: PlanJson = {
-    chapters: buildChapters(story),
-    scenes: buildScenes(story),
-    schema: 1,
-    settings: { ...defaultSettings, speed: story.speed },
-    sourceSha256,
-    title: story.title ?? untitled,
-  };
-
-  return story.author === undefined ? plan : { ...plan, author: story.author };
+    return Arr.isReadonlyArrayNonEmpty(errors)
+      ? Result.fail(errors)
+      : Result.succeed(graphOf(story));
+  },
 };
 
 /** Every error `buildPlan` could report for `source`, in document order; empty when the source is valid. */
 export const collectErrors = (source: string): readonly PlanError[] =>
-  Result.match(analyzeSource(source), {
+  Result.match(fountainImporter.import(source), {
     onFailure: (errors) => errors,
     onSuccess: () => [],
   });
@@ -151,8 +191,8 @@ export const buildPlan = Effect.fn("buildPlan")(
   (source: string, sourceSha256: string) =>
     Effect.fromResult(
       Result.map(
-        Result.mapError(analyzeSource(source), Arr.headNonEmpty),
-        (story) => assemblePlan(story, sourceSha256)
+        Result.mapError(fountainImporter.import(source), Arr.headNonEmpty),
+        (graph) => planOf(graph, sourceSha256)
       )
     )
 );

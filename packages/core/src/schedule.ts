@@ -31,6 +31,12 @@ import type {
   Timeline,
 } from "./plan.ts";
 import { resolveEffects } from "./resolve.ts";
+import {
+  flicksOfMilliseconds,
+  flicksOfSeconds,
+  framesOfFlicks,
+  rateOf,
+} from "./time.ts";
 
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
@@ -51,10 +57,10 @@ export const AlignedLineSchema = Schema.Struct({
 export type AlignedLine = typeof AlignedLineSchema.Type;
 
 const secondsToFrames = (settings: Settings, seconds: number): number =>
-  Math.round(settings.fps * seconds);
+  framesOfFlicks(rateOf(settings), flicksOfSeconds(seconds));
 
 const millisecondsToFrames = (settings: Settings, ms: number): number =>
-  Math.round((settings.fps * ms) / 1000);
+  framesOfFlicks(rateOf(settings), flicksOfMilliseconds(ms));
 
 const mismatch = (line: Line, message: string): AlignmentMismatch =>
   new AlignmentMismatch({ lineId: line.id, message });
@@ -164,9 +170,10 @@ const timeScene = (
 
   return Result.map(
     resolveEffects(scene, { endFrame, lines, slideFrame }, settings, lifecycle),
-    (effects): TimedScene => ({
+    ({ effects, events }): TimedScene => ({
       effects,
       endFrame,
+      events,
       lines,
       sceneId: scene.id,
       slideFrame,

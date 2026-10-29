@@ -11,7 +11,7 @@
 // Plain functions over the Scene's drafts.
 import { Array as Arr, Option, String as Str } from "effect";
 
-import { formatAnchor } from "./effects.ts";
+import { formatAnchor } from "./anchors.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import {
@@ -105,6 +105,7 @@ const wordAnchor = (
   return formatAnchor(
     {
       edge,
+      explicit: false,
       kind: "word",
       occurrence: Option.getOrElse(index, () => 0) + 1,
       phrase,
@@ -126,7 +127,12 @@ const whenOf = (
   }
 
   if (verb === "sound") {
-    return formatAnchor({ at: "start", kind: "transition" });
+    return formatAnchor({
+      at: "start",
+      kind: "edge",
+      subject: { kind: "scene" },
+      transition: "transition",
+    });
   }
 
   const first = firstWord(scene.lines);

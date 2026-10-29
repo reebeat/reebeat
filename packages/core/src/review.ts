@@ -274,7 +274,7 @@ const sceneRows = (
 const absoluteRows = (plan: PlanJson): readonly string[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.flatMap(scene.effects, (effect) =>
-      "absoluteMs" in effect.when
+      "absoluteFlicks" in effect.when
         ? [
             `  ${scene.id} ${effect.id} (line ${effect.line}): at ${effect.written}`,
           ]

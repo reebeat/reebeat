@@ -4,9 +4,40 @@ export { alignWords, matchThreshold, normaliseWord } from "./align.ts";
 
 export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
-export { buildPlan, collectErrors } from "./build.ts";
+export { buildPlan, collectErrors, fountainImporter, planOf } from "./build.ts";
 
-export { formatAnchor, formatEffect, parseEffectLine } from "./effects.ts";
+export { GraphSchema, graphVersion, jsonCodec } from "./graph.ts";
+
+export type {
+  ArtifactRenderer,
+  Graph,
+  GraphScene,
+  ImportErrors,
+  Importer,
+  IrCodec,
+} from "./graph.ts";
+
+export { formatAnchor } from "./anchors.ts";
+
+export { formatEffect, formatLet, parseEffectLine } from "./effects.ts";
+
+export { anchorsOf, evaluator, refsOf, statesOf } from "./evaluate.ts";
+
+export type { Evaluate, Sources } from "./evaluate.ts";
+
+export { endsAfter, once } from "./combinators.ts";
+
+export type { Event, Occurrence, Window } from "./combinators.ts";
+
+export { formatEvent } from "./expr.ts";
+
+export { machines, vocabulary } from "./machines.ts";
+
+export type { Form, Machine } from "./machines.ts";
+
+export { initialState } from "./events.ts";
+
+export { occupancies, stateEvent } from "./occupancy.ts";
 
 export * from "./errors.ts";
 

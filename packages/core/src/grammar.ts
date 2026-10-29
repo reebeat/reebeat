@@ -6,32 +6,65 @@
 import { Array as Arr, Record, Schema, String as Str } from "effect";
 
 import {
+  aliases,
+  headPlaceholder,
+  machines,
+  percentToken,
+  spelled,
+  subjectKinds,
+  vocabulary,
+} from "./machines.ts";
+import type { Form, Machine, Transition } from "./machines.ts";
+import {
   CellSchema,
   ElementClassSchema,
   cells,
-  edges,
   elementClasses,
-  elementEvents,
   idPattern,
   sfxNames,
   verbs,
 } from "./plan.ts";
-import type { Anchor, Verb } from "./plan.ts";
+import type { Verb } from "./plan.ts";
+import { flicksPerSecond } from "./time.ts";
 
 /** An identifier: a Scene, an Element or an effect. */
 export const IdentifierSchema = Schema.String.check(
   Schema.isPattern(idPattern)
 );
 
-/** The words an anchor starts with (`word("x").end`, `scene.start`, `transition.50%`). */
+/** The words an anchor starts with (`word("x").end`, `state(2).enter`, `beat(1).start`, `scene.start`, `transition.50%`). */
 export const anchorWords = {
+  beat: "beat",
   scene: "scene",
+  state: "state",
   transition: "transition",
   word: "word",
 } as const;
 
-/** The words the anchor grammar uses as its first word; no Element or effect may carry one of these ids. */
-export const reservedIds = Record.values(anchorWords);
+/** The words of the event combinators (spec 0004): `all(a, b)`, `when(one.move.progress >= 50%)`. */
+export const combinatorWords = {
+  all: "all",
+  each: "each",
+  first: "first",
+  when: "when",
+  within: "within",
+} as const;
+
+/** The options of `each(...)` that thin or space its occurrences (`throttle=250ms`, `stagger=0.3s`). */
+export const optionWords = {
+  stagger: "stagger",
+  throttle: "throttle",
+} as const;
+
+/** The last token of a path that names the behaviour of a transition, read only inside `when(... >= N%)`. */
+export const progressWord = "progress";
+
+/** The words the grammar uses as its first word; no Element, Scene, effect or derived event may carry one of these ids. */
+export const reservedIds = [
+  ...Record.values(anchorWords),
+  ...Record.values(combinatorWords),
+  "let",
+];
 
 /** The `key=value` properties of an Element line: one Schema per key, decoded from the text after `=`. */
 export const propertySchemas = {
@@ -101,7 +134,10 @@ export const elementProperties: readonly PropertySpec[] = [
 
 /**
  * What each verb takes after its name, and the letter its generated ids start with (the messages that write an
- * effect for the author number them `s1`, `r1`, `f1`); the type makes a new verb a compile error here.
+ * effect for the author number them `s1`, `r1`, `f1`); the type makes a new verb a compile error here. `until` says
+ * whether the verb has a duration an `until` event can end (spec 0004: only a `focus` ring is held; a `show` is
+ * permanent and a `sound` plays out); `instances` says whether the `at` event may have several occurrences, one
+ * instance each (a `sound` may, a `show` and a `focus` happen once).
  */
 export const verbArguments: Readonly<
   Record<
@@ -109,39 +145,49 @@ export const verbArguments: Readonly<
     {
       readonly argument: string;
       readonly idPrefix: string;
+      readonly instances: "one" | "many";
       readonly summary: string;
+      readonly until: boolean;
     }
   >
 > = {
   focus: {
     argument: "element id",
     idPrefix: "f",
-    summary: "rings and scales an Element of this Scene",
+    instances: "one",
+    summary:
+      "rings and scales an Element of this Scene; the ring lasts to its `until` event or the end of the Scene",
+    until: true,
   },
   show: {
     argument: "element id",
     idPrefix: "r",
-    summary: "reveals an Element that is `visible=false`",
+    instances: "one",
+    summary: "reveals an Element that is `visible=false`; it stays shown",
+    until: false,
   },
   sound: {
     argument: `sound name (${Arr.join(sfxNames, ", ")})`,
     idPrefix: "s",
-    summary: "plays a sound of the built-in catalogue",
+    instances: "many",
+    summary:
+      "plays a sound of the built-in catalogue, once for each occurrence of its event",
+    until: false,
   },
 };
 
-/** A unit as written, what it is stored as, and an example number for the messages that show the form. */
+/** A unit as written, what it is stored as (`factor` flicks, frames or percents per unit), and an example number. */
 const milliseconds = {
   example: "100",
-  factor: 1,
-  stored: "ms",
+  factor: flicksPerSecond / 1000,
+  stored: "flicks",
   token: "ms",
 } as const;
 
 const seconds = {
   example: "0.1",
-  factor: 1000,
-  stored: "ms",
+  factor: flicksPerSecond,
+  stored: "flicks",
   token: "s",
 } as const;
 
@@ -154,8 +200,17 @@ const percent = {
   token: "%",
 } as const;
 
-/** The units of an offset, in the order the messages list them. `s` is stored as milliseconds. */
+/** The units of an offset, in the order the messages list them. `ms` and `s` are stored as flicks (spec 0004: IR time is exact). */
 export const sourceUnits = [milliseconds, seconds, frames, percent] as const;
+
+/** The units of a duration (`throttle=250ms`, `stagger=0.3s`, `stagger=6f`): never a share of a window. */
+export const durationUnits = [milliseconds, seconds, frames] as const;
+
+/** The durations as an author writes them, one per unit: `100ms`, `0.1s`, `3f`. */
+export const durationExamples = Arr.map(
+  durationUnits,
+  ({ example, token }) => `${example}${token}`
+);
 
 /** The unit of an absolute time (`at 12.5s because "..."`). */
 export const absoluteUnit = seconds;
@@ -164,7 +219,12 @@ export const absoluteUnit = seconds;
 export const percentUnit = percent;
 
 /** The words of the effects line that belong to no closed set. */
-export const keywords = { at: "at", because: "because" } as const;
+export const keywords = {
+  at: "at",
+  because: "because",
+  let: "let",
+  until: "until",
+} as const;
 
 /** One line of an `[[effects]]` block: the one place that says how its parts are put together. */
 export const effectLine = (
@@ -195,12 +255,6 @@ export const bodyPattern = new RegExp(
   "u"
 );
 
-/** `word("<phrase>"[, <n>]).<edge>` and what follows it. */
-export const wordPattern = new RegExp(
-  String.raw`^${anchorWords.word}\(\s*"(?<phrase>[^"]*)"\s*(?:,\s*(?<n>\d+)\s*)?\)\.(?<edge>[^\s.]+)(?<rest>.*)$`,
-  "u"
-);
-
 /** `<number><unit>[ because "<reason>"]`: an absolute time. */
 export const absolutePattern = new RegExp(
   String.raw`^(?<value>${number})(?<unit>[A-Za-z]*)(?:\s+${keywords.because}\s+"(?<reason>[^"]*)")?\s*$`,
@@ -213,49 +267,156 @@ export const offsetPattern = new RegExp(
   "u"
 );
 
+/** `<number><unit>`: a duration (`throttle=250ms`). */
+export const durationPattern = new RegExp(
+  String.raw`^(?<value>${number})(?<unit>[A-Za-z]*)$`,
+  "u"
+);
+
 /** `<number>%`: a share of a window, as the last part of an anchor. */
 export const percentPattern = new RegExp(
   String.raw`^(?<value>${number})${escaped(percentUnit.token)}$`,
   "u"
 );
 
-const edgeAlternatives = Arr.join(edges, "|");
-const eventAlternatives = Arr.join(elementEvents, "|");
+/** One generated spelling of the vocabulary as the grammar document and the messages print it. */
+export interface AnchorSpelling {
+  readonly form: string;
+  readonly meaning: string;
+}
 
-/** How each kind of anchor is written and what it points at; the type makes a new kind a compile error here. */
-export const anchorForms: Readonly<
-  Record<Anchor["kind"], { readonly form: string; readonly meaning: string }>
-> = {
-  effect: {
-    form: `<effect>.${edgeAlternatives}`,
-    meaning:
-      "another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error",
-  },
-  element: {
-    form: `<element>.${eventAlternatives}.${edgeAlternatives}|<N>${percentUnit.token}`,
-    meaning:
-      "a lifecycle event of an Element of this Scene (exit: of the previous Scene, seen at the transition): the first frame it differs, the frame it settles, or N percent of the way (move and update: by the renderer's declared easing)",
-  },
-  scene: {
-    form: `${anchorWords.scene}.${edgeAlternatives}`,
-    meaning:
-      "scene.start: the frame the slide change is shown; scene.end: the last frame of the Scene",
-  },
-  transition: {
-    form: `${anchorWords.transition}.${edgeAlternatives}|<N>${percentUnit.token}`,
-    meaning:
-      "the Scene's incoming slide transition: its first frame, its last frame, or N percent of the way (linear in time)",
-  },
-  word: {
-    form: `${anchorWords.word}("<phrase>"[, <n>]).${edgeAlternatives}`,
-    meaning:
-      "a word or phrase of this Scene's narration: the start of its first word or the end of its last; n picks the nth occurrence and is required when the phrase occurs more than once",
-  },
+/** The token a form ends in: `start`, `end`, `<N>%`, `enter`, `leave`. */
+const lastOf = (form: Form): string => form.tail.at(-1) ?? "";
+
+/** The forms of one transition or state as one spelling: the tail with its last token as `a|b|c`. */
+const groupedSpelling = (
+  head: string,
+  own: readonly Form[],
+  meaning: string
+): AnchorSpelling[] => {
+  const [first] = own;
+
+  return first === undefined
+    ? []
+    : [
+        {
+          form: spelled(head, {
+            ...first,
+            tail: [
+              ...Arr.dropRight(first.tail, 1),
+              Arr.join(Arr.map(own, lastOf), "|"),
+            ],
+          }),
+          meaning,
+        },
+      ];
 };
 
-/** The anchor forms as one list, for the messages that say what is expected. */
-export const anchorFormsText = Arr.join(
-  Arr.map(Record.values(anchorForms), ({ form }) => form),
+const progressSpelling = (
+  head: string,
+  edge: Form,
+  transition: Transition
+): AnchorSpelling => ({
+  form: `${combinatorWords.when}(${Arr.join([head, ...Arr.dropRight(edge.tail, 1), progressWord], ".")} >= ${percentToken})`,
+  meaning: `the first frame the progress of the transition reaches N percent (${transition.progress === "eased" ? "by the renderer's declared easing" : "linear in time"}); the sugar \`${spelled(head, edge)}\` means the same`,
+});
+
+const machineSpellings = (machine: Machine): readonly AnchorSpelling[] => {
+  const head = headPlaceholder[machine.subject];
+  const forms = Arr.filter(vocabulary, (form) => form.machine === machine);
+
+  return [
+    ...Arr.flatMap(machine.transitions, (transition) => {
+      const own = Arr.filter(
+        forms,
+        (form) => form.kind === "edge" && form.transition === transition
+      );
+
+      return [
+        ...groupedSpelling(head, own, transition.means),
+        ...Arr.map(Arr.take(own, 1), (edge) =>
+          progressSpelling(head, edge, transition)
+        ),
+      ];
+    }),
+    ...Arr.flatMap(machine.states, (state) =>
+      groupedSpelling(
+        head,
+        Arr.filter(
+          forms,
+          (form) => form.kind === "state" && form.state === state
+        ),
+        state.means
+      )
+    ),
+  ];
+};
+
+/** The spellings the aliases add, one for each form an alias reaches (the progress behaviour has none). */
+const aliasSpellings: readonly AnchorSpelling[] = Arr.flatMap(
+  aliases,
+  (alias) =>
+    Arr.flatMap(
+      Arr.filter(vocabulary, (form) => form.kind !== "progress"),
+      (form: Form): readonly AnchorSpelling[] => {
+        const path = [headPlaceholder[form.machine.subject], ...form.tail];
+
+        return Arr.join(Arr.take(path, alias.for.length), ".") ===
+          Arr.join(alias.for, ".")
+          ? [
+              {
+                form: Arr.join(
+                  [...alias.spelled, ...Arr.drop(path, alias.for.length)],
+                  "."
+                ),
+                meaning: `the same as \`${Arr.join(path, ".")}\``,
+              },
+            ]
+          : [];
+      }
+    )
+);
+
+/** The spelling of a word of the narration: the one source that is not a machine. */
+export const wordSpelling: AnchorSpelling = {
+  form: `${anchorWords.word}("<phrase>"[, <n>]).<edge>`,
+  meaning:
+    "a word or phrase of this Scene's narration: the start of its first word or the end of its last; n picks the nth occurrence and is required when the phrase occurs more than once",
+};
+
+/** Every anchor spelling: the word, what the machines generate (declaration order), and the aliases. */
+export const anchorSpellings: readonly AnchorSpelling[] = [
+  wordSpelling,
+  ...Arr.flatMap(machines, machineSpellings),
+  ...aliasSpellings,
+];
+
+/**
+ * The anchor shapes for the messages that say what is expected: the word, and for each kind of subject its head and
+ * the transitions and states it has (`<id>.<enter|exit|move|update|...>`).
+ */
+export const anchorFormsText: string = Arr.join(
+  [
+    wordSpelling.form,
+    ...Arr.map(subjectKinds, (subject) => {
+      const own = Arr.filter(
+        machines,
+        (machine) => machine.subject === subject
+      );
+
+      return `${headPlaceholder[subject]}.<${Arr.join(
+        Arr.dedupe(
+          Arr.flatMap(own, (machine) => [
+            ...Arr.map(machine.transitions, ({ name }) => name),
+            ...(machine.stateElided
+              ? []
+              : Arr.map(machine.states, ({ name }) => name)),
+          ])
+        ),
+        "|"
+      )}>...`;
+    }),
+  ],
   ", "
 );
 
@@ -278,7 +439,7 @@ export const offsetExamples = Arr.map(
   ({ example, token }) => `+${example}${token}`
 );
 
-/** The grammar of the effects block, written from the closed sets; the grammar document prints it. */
+/** The grammar of the effects block, written from the machines and the closed sets; the grammar document prints it. */
 export const productions: readonly Production[] = [
   {
     examples: [
@@ -298,10 +459,26 @@ export const productions: readonly Production[] = [
   {
     examples: [
       effectLine("s1", "sound", "pop", "transition.start"),
-      effectLine("r1", "show", "note", 'word("two").end +0.1s'),
+      `let settled = ${combinatorWords.all}(m.move.end, m.update.end)`,
     ],
     name: "line",
-    rule: `id ":" verb argument "${keywords.at}" when`,
+    rule: "effect | let",
+  },
+  {
+    examples: [
+      effectLine("s1", "sound", "pop", "transition.start"),
+      effectLine("r1", "show", "note", 'word("two").end +0.1s'),
+      `${effectLine("f1", "focus", "m", 'word("one").start')} ${keywords.until} ${combinatorWords.first}(${anchorWords.scene}.end, word("two").end)`,
+    ],
+    name: "effect",
+    rule: `id ":" verb argument "${keywords.at}" when [ "${keywords.until}" event ]`,
+  },
+  {
+    examples: [
+      `${keywords.let} settled = ${combinatorWords.all}(m.move.end, m.update.end)`,
+    ],
+    name: "let",
+    rule: `"${keywords.let}" name "=" event`,
   },
   {
     examples: ["sound pop", "show note", "focus note"],
@@ -318,7 +495,7 @@ export const productions: readonly Production[] = [
       `0.5${absoluteUnit.token} ${keywords.because} "a beat"`,
     ],
     name: "when",
-    rule: "anchor [ offset ] | absolute",
+    rule: "event | absolute",
   },
   {
     examples: [`0.5${absoluteUnit.token} ${keywords.because} "a beat"`],
@@ -327,25 +504,61 @@ export const productions: readonly Production[] = [
   },
   {
     examples: [
+      "transition.start",
+      'word("two").end +100ms',
+      `${combinatorWords.all}(m.move.end, m.update.end) +0.1s`,
+    ],
+    name: "event",
+    rule: "term [ offset ]",
+  },
+  {
+    examples: [
+      "transition.50%",
+      "settled",
+      `${combinatorWords.first}(word("one").end, word("two").end)`,
+    ],
+    name: "term",
+    rule: `anchor | name | ${Arr.join(
+      Arr.map(
+        [combinatorWords.all, combinatorWords.first, combinatorWords.each],
+        (word) => `"${word}(" event { "," event } ")"`
+      ),
+      " | "
+    )} | "${combinatorWords.within}(" event "," "${anchorWords.state}(" n ")" ")" | "${combinatorWords.when}(" progress ">=" number "%" ")"`,
+  },
+  {
+    examples: [
+      `${combinatorWords.each}(word("one").end, word("two").end, ${optionWords.stagger}=0.3s)`,
+      `${combinatorWords.each}(word("one").end, word("two").end, ${optionWords.throttle}=5f)`,
+    ],
+    name: "each",
+    rule: `"${combinatorWords.each}(" event { "," event } [ "," "${optionWords.throttle}=" duration ] [ "," "${optionWords.stagger}=" duration ] ")"`,
+  },
+  {
+    examples: [
       'word("two").end',
       'word("one", 2).start',
       "scene.end",
       "transition.50%",
       "m.move.start",
+      "m.moving.leave",
       "r1.end",
+      "state(1).leave",
+      "beat(1).start",
+      `${combinatorWords.when}(m.move.progress >= 50%)`,
     ],
     name: "anchor",
-    rule: Arr.join(
-      Arr.map(Record.values(anchorForms), ({ form }) => form),
-      " | "
-    ),
+    rule: "one of the shapes below, generated from the machines",
   },
-  { examples: edges, name: "edge", rule: quoted(edges) },
-  { examples: elementEvents, name: "event", rule: quoted(elementEvents) },
   {
     examples: offsetExamples,
     name: "offset",
     rule: `( "+" | "-" ) number ( ${quoted(Arr.map(sourceUnits, ({ token }) => token))} )`,
+  },
+  {
+    examples: durationExamples,
+    name: "duration",
+    rule: `number ( ${quoted(Arr.map(durationUnits, ({ token }) => token))} )`,
   },
   {
     examples: ["s1", "box-2"],

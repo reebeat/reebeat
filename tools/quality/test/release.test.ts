@@ -434,7 +434,7 @@ describe("the real repository", () => {
                   top.catalog
                 )
             ),
-          { concurrency: "unbounded" }
+          { concurrency: 4 }
         );
 
         assert.deepStrictEqual(Arr.flatten(perPackage), []);

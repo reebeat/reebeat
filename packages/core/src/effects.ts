@@ -268,22 +268,24 @@ const readOffset = (
     );
   }
 
-  const value = scaled(Number(groups.value), unit.factor);
+  const magnitude = scaled(Number(groups.value), unit.factor);
+  const signed = groups.sign === "-" ? -magnitude : magnitude;
 
-  if (unit.stored === "f" && !Number.isInteger(value)) {
+  if (unit.stored === "f" && !Number.isInteger(signed)) {
+    // The nearest whole form rounds the SIGNED value, as the schedule does (halves toward +infinity): -1.5f is -1f.
+    const whole = Math.round(signed);
+
     return Result.fail(
       bad(
         line,
         problem(
           `frame offset "${text}" is not a whole number of frames`,
           "+Nf with an integer N, as +2f (seconds, milliseconds and percents may be decimal)",
-          `${groups.sign}${Math.round(value)}f`
+          `${whole < 0 ? "-" : "+"}${Math.abs(whole)}f`
         )
       )
     );
   }
-
-  const signed = groups.sign === "-" ? -value : value;
 
   return Result.succeed([
     unit.stored === "percent"

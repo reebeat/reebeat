@@ -1,0 +1,1 @@
+Exception in thread "main" org.apache.commons.scxml2.model.ModelException: The <scxml> element defines an unsupported version "1", only version "1.0" is supported.

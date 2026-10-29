@@ -103,3 +103,27 @@ else
   echo "XSD modules not found in $XSD; skipped" > "$OUT/interop-xsd.txt"
 fi
 echo done
+
+# ---- 6. Two side findings (rerun on purpose) -----------------------------------------------------------------------------
+# (a) Commons SCXML takes a foreign attribute for the SCXML one of the same local name: rb:ir renamed to rb:version.
+sed 's/rb:ir=/rb:version=/' "$DOC" > "$WORK/collide.scxml"
+{
+  nix shell nixpkgs#jdk17 -c sh -c "java -cp '$WORK/probe:$CP' Probe '$WORK/collide.scxml' '$WORK/collide-out.scxml'" 2>&1 | grep -m1 "Exception"
+} > "$OUT/interop-commons-collision.txt" 2>&1
+# (b) SCION keeps the attributes of a foreign element; does it keep its text content?
+printf '%s' '<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:rb="urn:reebeat:ir:1" version="1.0" initial="a"><state id="a"><rb:t k="ATTRVALUE">TEXTCONTENT</rb:t></state></scxml>' > "$WORK/text.scxml"
+cat > "$WORK/scion/text-probe.mjs" <<'JS'
+import { JSDOM } from "jsdom";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+const dom = new JSDOM("<!doctype html><body></body>", { runScripts: "outside-only" });
+for (const k of ["document", "window", "navigator"]) Object.defineProperty(globalThis, k, { value: dom.window[k] ?? dom.window, configurable: true });
+globalThis.regeneratorRuntime = (await import("regenerator-runtime")).default;
+const scxml = createRequire(import.meta.url)("./node_modules/scxml/dist/scxml.js");
+scxml.documentStringToModel(null, readFileSync(process.argv[2], "utf8"), (err, model) => {
+  const code = model.compiledInvokeConstructors[0].module.code;
+  console.log("attribute value kept:", code.includes("ATTRVALUE"), " text content kept:", code.includes("TEXTCONTENT"));
+});
+JS
+(cd "$WORK/scion" && node text-probe.mjs "$WORK/text.scxml" 2>&1) > "$OUT/interop-scion-text.txt"
+echo done

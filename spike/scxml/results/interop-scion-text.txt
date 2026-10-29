@@ -1,0 +1,1 @@
+attribute value kept: true  text content kept: false

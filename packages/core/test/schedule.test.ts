@@ -31,7 +31,7 @@ const secondEffects = [
   "  t1: sound ding at transition.50%",
   "  x1: sound pop at scene.end -1f",
   '  p1: sound pop at word("nine").start +50%',
-  "  k1: sound ding at w1.end +1f",
+  "  k1: sound ding at w1.start +1f",
   '  a1: sound pop at 1s because "the music has its beat here"',
 ];
 
@@ -257,7 +257,7 @@ describe("schedule: every anchor kind, resolved by hand", () => {
         // p1 word("nine").start +50%: "nine." is frames 225 .. 240 (Line start 210 + 15 .. + 30); 50 % of 15 = 7.5,
         // rounded up to 8: 225 + 8 = 233.
         assert.strictEqual(by.get("p1"), 233);
-        // k1 w1.end +1f: a sound has no window, so w1.end is its fire frame 180; +1 gives 181.
+        // k1 w1.start +1f: a sound has no window, so w1.start is its fire frame 180; +1 gives 181.
         assert.strictEqual(by.get("k1"), 181);
         // a1 at 1 s because ...: 180 + 30 = 210.
         assert.strictEqual(by.get("a1"), 210);

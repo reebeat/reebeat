@@ -56,7 +56,7 @@ A title {id=title cell=mc class=title}
   w1: sound whoosh at transition.start
   w2: sound ding at word("again", 2).end
   w3: sound pop at 2.5s because "the music has a beat here"
-  w4: sound pop at w1.end +3f
+  w4: sound pop at w1.start +3f
 ]]
 
 NARRATOR
@@ -111,7 +111,7 @@ An anchor names a moment of the Plan. It resolves to a frame in the schedule sta
 
 | anchor | points at |
 | --- | --- |
-| `<effect>.start\|end` | another effect of this Scene: its own start (its fire frame) or end (a show: its fire frame plus the renderer's show time; a sound or focus: its fire frame) |
+| `<effect>.start\|end` | another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error |
 | `<element>.enter\|exit\|move\|update.start\|end\|<N>%` | a lifecycle event of an Element of this Scene (exit: of the previous Scene, seen at the transition): the first frame it differs, the frame it settles, or N percent of the way (move and update: by the renderer's declared easing) |
 | `scene.start\|end` | scene.start: the frame the slide change is shown; scene.end: the last frame of the Scene |
 | `transition.start\|end\|<N>%` | the Scene's incoming slide transition: its first frame, its last frame, or N percent of the way (linear in time) |

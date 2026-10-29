@@ -86,7 +86,7 @@ const valid: readonly Example[] = [
       "  w1: sound whoosh at transition.start",
       '  w2: sound ding at word("again", 2).end',
       '  w3: sound pop at 2.5s because "the music has a beat here"',
-      "  w4: sound pop at w1.end +3f",
+      "  w4: sound pop at w1.start +3f",
       "]]",
       ...narrate("Say it, and say it again. Then say it again."),
     ]),

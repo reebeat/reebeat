@@ -125,7 +125,7 @@ export const anchorForms: Readonly<
   effect: {
     form: `<effect>.${edgeAlternatives}`,
     meaning:
-      "another effect of this Scene: its own start (its fire frame) or end (a show: its fire frame plus the renderer's show time; a sound or focus: its fire frame)",
+      "another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error",
   },
   element: {
     form: `<element>.${eventAlternatives}.${edgeAlternatives}|<N>%`,

@@ -26,7 +26,7 @@ const source = asText([
   '  f1: focus m at word("three").end',
   "  a1: sound pop at late.enter.end",
   '  a2: sound ding at word("five").end',
-  "  a3: sound pop at f1.end",
+  "  a3: sound pop at f1.start",
   "  a4: sound whoosh at scene.start",
   "  a5: sound pop at scene.end",
   '  a6: sound ding at 0.1s because "before any step"',
@@ -46,7 +46,7 @@ const source = asText([
   "  b1: sound whoosh at transition.start",
   "  b2: sound pop at m.move.end",
   "  b3: sound ding at fresh.enter.start",
-  "  b4: sound pop at b1.end +1f",
+  "  b4: sound pop at b1.start +1f",
   "]]",
   "",
   "NARRATOR",
@@ -124,7 +124,7 @@ describe("soundsOf", () => {
           ["a1", { effectId: "r1", kind: "step" }],
           // word("five").end: the nearest step at or before it in time is f1 (word "three").
           ["a2", { effectId: "f1", kind: "step" }],
-          // f1.end: another effect's end: the step of that effect.
+          // f1.start: another effect's start: the step of that effect.
           ["a3", { effectId: "f1", kind: "step" }],
           // scene.start: the slide change.
           ["a4", { kind: "slide" }],
@@ -143,7 +143,7 @@ describe("soundsOf", () => {
           ["b1", { kind: "slide" }],
           ["b2", { kind: "slide" }],
           ["b3", { kind: "slide" }],
-          // b1.end: a sound anchored to a sound plays where that sound plays.
+          // b1.start: a sound anchored to a sound plays where that sound plays.
           ["b4", { kind: "slide" }],
         ]);
       })

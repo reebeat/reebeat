@@ -236,18 +236,32 @@ const effectErrors = (
   scene: Scene,
   effect: Effect,
   anchor: Extract<Anchor, { kind: "effect" }>
-): readonly PlanError[] =>
-  effectOf(scene, anchor.id) === undefined
+): readonly PlanError[] => {
+  const target = effectOf(scene, anchor.id);
+
+  if (target === undefined) {
+    return [
+      unknown(
+        scene,
+        effect,
+        "effect",
+        anchor.id,
+        Arr.map(scene.effects, (other) => other.id)
+      ),
+    ];
+  }
+
+  // Only a `show` has a window; a sound and a focus happen at one frame, so their `.end` would silently equal `.start`.
+  return anchor.edge === "end" && target.verb !== "show"
     ? [
-        unknown(
-          scene,
-          effect,
-          "effect",
-          anchor.id,
-          Arr.map(scene.effects, (other) => other.id)
+        planError(
+          "UnsupportedEdge",
+          effect.line,
+          `${anchor.id}.end: a ${target.verb} has no end; use ${anchor.id}.start`
         ),
       ]
     : [];
+};
 
 /** Whether the anchored event has a window to take a percent of; `undefined` when the anchor fails elsewhere. */
 const windowOf = (scene: Scene, anchor: Anchor): boolean | undefined =>

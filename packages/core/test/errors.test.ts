@@ -307,12 +307,29 @@ const cases: readonly Case[] = [
     message:
       "effects wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event",
     name: "two effects that wait for each other",
-    needle: "s1: sound pop at s2.end",
+    needle: "s1: sound pop at s2.start",
     source: change(
       "s1: sound pop at r1.end +100ms",
-      "s1: sound pop at s2.end\n  s2: sound pop at s1.start"
+      "s1: sound pop at s2.start\n  s2: sound pop at s1.start"
     ),
     tag: "EffectCycle",
+  },
+  {
+    message: "s1.end: a sound has no end; use s1.start",
+    name: "the end of a sound, which has no window",
+    needle: "s2: sound ding at s1.end",
+    source: change(
+      "s1: sound pop at r1.end +100ms",
+      "s1: sound pop at r1.end +100ms\n  s2: sound ding at s1.end"
+    ),
+    tag: "UnsupportedEdge",
+  },
+  {
+    message: "f1.end: a focus has no end; use f1.start",
+    name: "the end of a focus, which has no window",
+    needle: "s1: sound pop at f1.end",
+    source: change("s1: sound pop at r1.end +100ms", "s1: sound pop at f1.end"),
+    tag: "UnsupportedEdge",
   },
   {
     message:

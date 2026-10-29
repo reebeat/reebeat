@@ -182,6 +182,8 @@ export default defineConfig({
     ignorePatterns: [
       ...(core.ignorePatterns ?? []),
       "tools/oxlint/anti-slop/**",
+      // Skill scripts run under Bun outside every workspace: no tsconfig gives them types. They are exercised by the verify run, not linted.
+      ".agents/skills/*/scripts/**",
     ],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },

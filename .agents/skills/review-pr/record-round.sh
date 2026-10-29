@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Provenance: copied from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888 (.agents/skills/review-pr/record-round.sh), unchanged.
+# Provenance: copied from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888 (.agents/skills/review-pr/record-round.sh).
+# Deviation (spec 0010): the body file's header (Author, Reviewers, Checked) is validated by check-record.sh before anything is posted.
 # record-round.sh <pr> <round> <pass|changes> <body-file>
 # Posts one review round on the PR as a GitHub review (comment), headed by the marker that merge.sh requires.
 # The head is read from GitHub, so a record always names the commit that was reviewed.
@@ -9,6 +10,7 @@ n=$1; round=$2; verdict=$3; body=$4
 case "$verdict" in pass|changes) ;; *) echo "verdict must be pass or changes" >&2; exit 64 ;; esac
 [[ "$round" =~ ^[1-9][0-9]*$ ]] || { echo "round must be a positive integer" >&2; exit 64; }
 [ -s "$body" ] || { echo "body file is empty or missing: $body" >&2; exit 64; }
+"$(dirname "$0")/check-record.sh" "$verdict" "$body"
 head=$(gh pr view "$n" --json headRefOid --jq .headRefOid)
 {
   echo "<!-- review-round n=$round head=$head verdict=$verdict -->"

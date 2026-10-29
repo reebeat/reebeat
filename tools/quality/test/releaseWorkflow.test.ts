@@ -12,10 +12,13 @@ import {
   Result,
   String as Str,
 } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import {
   declaredSecrets,
   evaluateCondition,
+  holdFindings,
+  holdScript,
   modeFindings,
   referencedSecrets,
   tokenFindings,
@@ -43,10 +46,12 @@ const publishCondition =
   "inputs.mode == 'publish' && github.ref == 'refs/heads/main'";
 
 interface Changes {
+  readonly beforeHold?: string;
   readonly checkRun?: string;
   readonly environment?: string;
   readonly jobEnv?: string;
   readonly mode?: string;
+  readonly noHold?: boolean;
   readonly needs?: string;
   readonly publishIf?: string;
   readonly publishRun?: string;
@@ -84,7 +89,8 @@ ${changes.needs ?? ""}
     environment: npm-release
 ${changes.jobEnv ?? ""}
     steps:
-      - name: Publish
+      - uses: actions/checkout@abc
+${changes.beforeHold ?? ""}${changes.noHold === true ? "" : "      - name: Release hold\n        run: if [ -e .github/release-hold ]; then exit 1; fi\n"}      - name: Publish
         env:
           NODE_AUTH_TOKEN: ${expression("NPM_TOKEN")}
         run: ${changes.publishRun ?? "bunx changeset publish"}
@@ -359,5 +365,61 @@ describe("the real files", () => {
         assert.isTrue(Str.includes("id-token: write")(text));
         assert.isTrue(Str.includes('NPM_CONFIG_PROVENANCE: "true"')(text));
       }).pipe(Effect.provide(NodeServices.layer))
+  );
+});
+
+describe("the release hold (operator decision of 2026-10-29)", () => {
+  const early = "      - name: Install\n        run: nix profile add x\n";
+
+  it("holds for the shape in which the hold step follows the checkout", () => {
+    assert.deepStrictEqual(holdFindings(release({})), []);
+  });
+
+  it("fails a publishing job without a hold step, or with a step before it (controls)", () => {
+    assert.isTrue(
+      mentioning("has no step that tests .github/release-hold")(
+        holdFindings(release({ noHold: true }))
+      )
+    );
+    assert.isTrue(
+      mentioning("before the release hold")(
+        holdFindings(release({ beforeHold: early }))
+      )
+    );
+  });
+
+  it.effect(
+    "the real hold step refuses where the file exists and passes where it does not, and the real job has one",
+    () =>
+      Effect.gen(function* running() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+        const workflow: WorkflowFile = {
+          name: "release.yml",
+          text: yield* readRepositoryFile(".github/workflows/release.yml"),
+        };
+
+        const script = yield* Effect.fromOption(holdScript(workflow));
+
+        const withoutFile = yield* fs.makeTempDirectoryScoped();
+        const withFile = yield* fs.makeTempDirectoryScoped();
+
+        yield* fs.makeDirectory(path.join(withFile, ".github"));
+        yield* fs.writeFileString(
+          path.join(withFile, ".github", "release-hold"),
+          "on hold\n"
+        );
+
+        const exit = (cwd: string) =>
+          spawner.exitCode(
+            ChildProcess.make("bash", ["-c", script], { cwd, stdout: "ignore" })
+          );
+
+        assert.deepStrictEqual(holdFindings(workflow), []);
+        assert.strictEqual(yield* exit(withoutFile), 0);
+        assert.strictEqual(yield* exit(withFile), 1);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 });

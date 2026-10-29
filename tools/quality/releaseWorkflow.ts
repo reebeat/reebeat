@@ -83,6 +83,7 @@ const Step = Schema.Struct({
   env: Schema.optional(Values),
   name: Schema.optional(Schema.String),
   run: Schema.optional(Schema.String),
+  uses: Schema.optional(Schema.String),
   with: Schema.optional(Values),
 });
 
@@ -454,4 +455,59 @@ export const modeFindings = (file: WorkflowFile): readonly string[] => {
         `${file.name}: job ${name} needs a job that publishes, so a run that skips the publisher still depends on it`
     ),
   ];
+};
+
+/** The file whose presence holds the release (operator decision of 2026-10-29). */
+const holdFile = ".github/release-hold";
+
+const holdsRelease = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes(holdFile)(step.run);
+
+/** The script of the hold step, or none when the workflow has no such step. */
+export const holdScript = (file: WorkflowFile): Option.Option<string> =>
+  Option.flatMap(Result.getSuccess(parseWorkflow(file)), ({ jobs }) =>
+    Option.flatMapNullishOr(
+      Arr.findFirst(
+        Arr.flatMap(Record.values(jobs), (job) => job.steps ?? []),
+        holdsRelease
+      ),
+      (step) => step.run
+    )
+  );
+
+/**
+ * Sentences about the release hold. Empty when every job that holds a publish command has a step that tests for
+ * `.github/release-hold`, and nothing but the checkout runs before it. (That the script fails while the file exists is
+ * run by the test, on the script `holdScript` returns.)
+ */
+export const holdFindings = (file: WorkflowFile): readonly string[] => {
+  const parsed = parseWorkflow(file);
+
+  if (Result.isFailure(parsed)) {
+    return [parsed.failure];
+  }
+
+  return Arr.flatMap(Record.toEntries(parsed.success.jobs), ([name, job]) => {
+    const steps = job.steps ?? [];
+
+    if (!Arr.some(steps, (step) => publishCommand.test(step.run ?? ""))) {
+      return [];
+    }
+
+    const held = Arr.findFirstIndex(steps, holdsRelease);
+
+    if (Option.isNone(held)) {
+      return [
+        `${file.name}: job ${name} publishes and has no step that tests ${holdFile}`,
+      ];
+    }
+
+    return Arr.filterMap(Arr.take(steps, held.value), (step) =>
+      Str.startsWith("actions/checkout@")(step.uses ?? "")
+        ? Result.failVoid
+        : Result.succeed(
+            `${file.name}: job ${name} runs step ${step.name ?? step.uses ?? "(unnamed)"} before the release hold`
+          )
+    );
+  });
 };

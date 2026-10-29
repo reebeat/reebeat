@@ -76,6 +76,16 @@ jobs:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           fetch-depth: 0
+      - name: Release hold
+        shell: bash
+        # While .github/release-hold exists nothing below runs (operator decision of 2026-10-29: the name is under
+        # trademark clearance, and a published npm name is permanent). A pull request that deletes the file lifts it.
+        run: |
+          if [ -e .github/release-hold ]; then
+            echo "::error::the npm release is on hold: .github/release-hold exists"
+            cat .github/release-hold
+            exit 1
+          fi
       - name: The commit passed the checks workflow
         shell: bash
         env:

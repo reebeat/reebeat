@@ -13,7 +13,7 @@ import type { Point } from "@reebeat/core";
 // is consistent with itself but puts a sound somewhere else than the picture shows is caught: a renderer that declares
 // the wrong lifecycle). The per-effect offsets are reported, positive when the observed frame is late.
 import { decodeMonoPcm } from "@reebeat/encode-ffmpeg";
-import { sfxNames, synthClip } from "@reebeat/sounds-synth";
+import { synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect, Option } from "effect";
 
 import {
@@ -35,7 +35,8 @@ import {
 } from "./units.ts";
 import { fail, notApplicable, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-import { soundMatchFloor, soundOffsetMs } from "./wav.ts";
+import { locateSounds, soundMatchFloor } from "./wav.ts";
+import type { SoundFound } from "./wav.ts";
 
 /** How far from the fire frame, in milliseconds, the catalogue sound is looked for. */
 const soundWindowMs = 150;
@@ -61,45 +62,49 @@ const subjectKey = (subject: Subject): string => {
   return `step ${subject.sceneIndex} ${subject.id} ${subject.fireFrame}`;
 };
 
-/** Where the catalogue sound `name` starts in the mixed track, in frames from `fireFrame`; none when it is not found. */
-const observeSound = (
-  track: Float32Array,
-  name: string,
-  fireFrame: number,
-  fps: number
-): Own => {
-  const known = Arr.findFirst(sfxNames, (candidate) => candidate === name);
-
-  if (Option.isNone(known)) {
+/** The sound found at `offsetMs` from `fireFrame` with `score`; none when it matches under the floor. */
+const heardAs = (found: SoundFound, fireFrame: number, fps: number): Own => {
+  if (found.score < soundMatchFloor) {
     return {
       end: undefined,
-      reason: `the sound ${name} is not in the catalogue`,
-      score: undefined,
+      reason: `the sound is not found within ${soundWindowMs} ms (best match ${found.score.toFixed(2)}, at least ${soundMatchFloor} needed)`,
+      score: found.score,
       start: undefined,
     };
   }
 
-  const reference = synthClip(known.value).samples;
+  const start = fireFrame + msToFrames(found.offsetMs, fps);
 
-  const { offsetMs, score } = soundOffsetMs(
+  return { end: start, reason: "", score: found.score, start };
+};
+
+/** Where every `sound` effect of the Timeline starts in the mixed track, by the key of its effect. */
+const hearSounds = (
+  track: Float32Array,
+  facts: readonly EffectFact[],
+  fps: number
+): ReadonlyMap<string, Own> => {
+  const sounds = Arr.flatMap(facts, (fact) =>
+    fact.effect.verb === "sound" && fact.effect.name !== undefined
+      ? [{ fact, name: fact.effect.name }]
+      : []
+  );
+
+  const found = locateSounds(
     track,
-    reference,
-    frameStartMs(fireFrame, fps),
+    Arr.map(sounds, ({ fact, name }) => ({
+      expectedMs: frameStartMs(fact.timed.fireFrame, fps),
+      reference: synthClip(name).samples,
+    })),
     soundWindowMs
   );
 
-  if (score < soundMatchFloor) {
-    return {
-      end: undefined,
-      reason: `the sound is not found within ${soundWindowMs} ms (best match ${score.toFixed(2)}, at least ${soundMatchFloor} needed)`,
-      score,
-      start: undefined,
-    };
-  }
-
-  const start = fireFrame + msToFrames(offsetMs, fps);
-
-  return { end: start, reason: "", score, start };
+  return new Map(
+    Arr.map(Arr.zip(sounds, found), ([{ fact }, heard]): [string, Own] => [
+      effectKey(fact),
+      heardAs(heard, fact.timed.fireFrame, fps),
+    ])
+  );
 };
 
 const ownOf = (
@@ -408,21 +413,14 @@ export const effectTiming = (build: Build) =>
         ? yield* decodeMonoPcm(build.mp4)
         : new Float32Array(0);
 
+      const heard = hearing
+        ? hearSounds(track, facts, fps)
+        : new Map<string, Own>();
+
       const owns = new Map(
         Arr.map(facts, (fact): [string, Own] => [
           effectKey(fact),
-          ownOf(
-            fact,
-            seen,
-            fact.effect.verb === "sound" && hearing
-              ? observeSound(
-                  track,
-                  fact.effect.name ?? "",
-                  fact.timed.fireFrame,
-                  fps
-                )
-              : undefined
-          ),
+          ownOf(fact, seen, heard.get(effectKey(fact))),
         ])
       );
 

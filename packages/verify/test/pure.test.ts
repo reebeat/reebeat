@@ -10,7 +10,7 @@ import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
-import { onsetIndex, soundOffsetMs } from "../src/wav.ts";
+import { locateSounds, onsetIndex } from "../src/wav.ts";
 import { storyText } from "./support.ts";
 
 const holds: Verdict = {
@@ -159,22 +159,65 @@ describe("the signal helpers", () => {
       track[dingAt + index] = (track[dingAt + index] ?? 0) + sample;
     }
 
-    const found = soundOffsetMs(track, ding, 300, 150);
+    const [found] = locateSounds(
+      track,
+      [{ expectedMs: 300, reference: ding }],
+      150
+    );
+
     const normalised = audioOffsetMs(track, ding, 300, 150);
 
-    assert.approximately(found.offsetMs, 0, 0.1);
-    assert.isAbove(found.score, 0.5);
+    assert.approximately(found?.offsetMs ?? Number.NaN, 0, 0.1);
+    assert.isAbove(found?.score ?? 0, 0.5);
     // The control: the normalised correlation is the one that goes wrong, which is why catalogue sounds are not found with it.
     assert.isAbove(Math.abs(normalised.offsetMs), 20);
   });
 
-  it("does not find a sound that is not in the track", () => {
+  it("finds a whoosh and the ding that sounds over its tail, each where it is, even when the plan puts them a frame off", () => {
     const rate = 48_000;
-    const quiet = new Float32Array(rate);
+    const track = new Float32Array(rate * 3);
+    const whoosh = synthClip("whoosh").samples;
+    const ding = synthClip("ding").samples;
+    const frame = rate / 30;
+    const whooshAt = 20 * frame;
+    const dingAt = 28 * frame + 3;
 
-    assert.strictEqual(
-      soundOffsetMs(quiet, synthClip("pop").samples, 500, 150).score,
-      0
+    for (const [index, sample] of whoosh.entries()) {
+      track[whooshAt + index] = (track[whooshAt + index] ?? 0) + sample;
+    }
+
+    for (const [index, sample] of ding.entries()) {
+      track[dingAt + index] = (track[dingAt + index] ?? 0) + sample;
+    }
+
+    // The plan says the whoosh at frame 21 and the ding at frame 27: one frame late and one early.
+    const [first, second] = locateSounds(
+      track,
+      [
+        { expectedMs: (21 * 1000) / 30, reference: whoosh },
+        { expectedMs: (27 * 1000) / 30, reference: ding },
+      ],
+      150
     );
+
+    assert.approximately(first?.offsetMs ?? Number.NaN, -1000 / 30, 0.1);
+    assert.approximately(
+      second?.offsetMs ?? Number.NaN,
+      1000 / 30 + 3 / 48,
+      0.1
+    );
+    assert.isAbove(Math.min(first?.score ?? 0, second?.score ?? 0), 0.9);
+  });
+
+  it("does not find a sound that is not in the track", () => {
+    const quiet = new Float32Array(48_000);
+
+    const [found] = locateSounds(
+      quiet,
+      [{ expectedMs: 500, reference: synthClip("pop").samples }],
+      150
+    );
+
+    assert.strictEqual(found?.score, 0);
   });
 });

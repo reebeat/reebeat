@@ -23,7 +23,7 @@
 // stepping then would step the PREVIOUS slide), so it is commanded at the slide change instead and appears one frame
 // after its fire frame, inside the tolerance of F1.
 import type { Scene, TimedPlan, TimedScene } from "@reebeat/core";
-import { Array as Arr, Order } from "effect";
+import { Array as Arr, Option, Order } from "effect";
 
 export type CaptureCommand =
   | { readonly kind: "goToScene"; readonly sceneId: string }
@@ -58,25 +58,29 @@ const byFrame = Order.mapInput(
   (step: ScheduledCommand) => step.frame
 );
 
-/** The steps are not sound effects: a sound needs no command. */
-const verbsById = (plan: TimedPlan): ReadonlyMap<string, string> =>
-  new Map(
-    Arr.flatMap(plan.scenes, (scene) =>
-      Arr.map(scene.effects, (effect): [string, string] => [
-        effect.id,
-        effect.verb,
-      ])
+/** The effects of Scene `sceneId` that are sounds, by effect id: ids are unique per Scene, not in the story. */
+const soundsOf = (plan: TimedPlan, sceneId: string): ReadonlySet<string> =>
+  new Set(
+    Option.match(
+      Arr.findFirst(plan.scenes, (scene) => scene.id === sceneId),
+      {
+        onNone: () => [],
+        onSome: (scene) =>
+          Arr.flatMap(scene.effects, (effect) =>
+            effect.verb === "sound" ? [effect.id] : []
+          ),
+      }
     )
   );
 
 /** The fragment steps of one Scene: one per `show` or `focus` effect, in resolved-time order, none before `notBefore`. */
 const fragmentSteps = (
   scene: TimedScene,
-  verbs: ReadonlyMap<string, string>,
+  sounds: ReadonlySet<string>,
   notBefore: number
 ): readonly ScheduledCommand[] =>
   Arr.flatMap(scene.effects, (effect) =>
-    verbs.get(effect.effectId) === "sound"
+    sounds.has(effect.effectId)
       ? []
       : [
           {
@@ -107,14 +111,17 @@ const slideChange = (
 /** Every command of the capture, sorted by frame; commands of one frame keep their order in the story. */
 export const captureSchedule = (plan: TimedPlan): CaptureSchedule => {
   const slideChangeFor = slideChange(plan);
-  const verbs = verbsById(plan);
 
   const ordered = Arr.flatMap(plan.timeline.scenes, (timed, index) => {
     const change = index === 0 ? undefined : slideChangeFor(timed);
 
     return [
       ...(change === undefined ? [] : [change]),
-      ...fragmentSteps(timed, verbs, change?.frame ?? 0),
+      ...fragmentSteps(
+        timed,
+        soundsOf(plan, timed.sceneId),
+        change?.frame ?? 0
+      ),
     ];
   });
 

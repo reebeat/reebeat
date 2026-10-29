@@ -61,7 +61,9 @@ import type { Verdict } from "../src/index.ts";
 import { timedLines } from "../src/planParts.ts";
 
 /** The services the checks and the helpers run on: ffmpeg, the file system and hashing. */
-const services = MediaTools.layer.pipe(Layer.provideMerge(NodeServices.layer));
+export const services = MediaTools.layer.pipe(
+  Layer.provideMerge(NodeServices.layer)
+);
 
 /**
  * Two Sections, two Scenes: a show (0.1 s after "two"), a focus and a sound (a pop that rides on the focus's step) in the first, then an Auto-Animate

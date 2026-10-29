@@ -805,3 +805,41 @@ export const narrationFile = (fixture: FixtureData, lineId: string): string =>
 /** The catalogue sound `name` as a WAV beside the intact build: the build keeps only the sounds its Cues play. */
 export const soundFile = (fixture: FixtureData, name: string): string =>
   `${fixture.root}/sounds/${name}.wav`;
+
+/** The whoosh of the fixture story, anchored to the scene change into sc2. */
+export const whooshId = "sc2.l1.c1";
+
+/** The measured names of the whoosh: its offset from the planned frame, and from the scene change into sc2. */
+export const whooshPlanned = `${whooshId} sfx offset (frames)`;
+
+export const whooshMotion = `${whooshId} sfx onset vs the scene change into sc2 (frames)`;
+
+/**
+ * A copy of the build whose whoosh sounds three frames after its planned frame, the picture unchanged: F1 alone fails,
+ * naming the whoosh, three frames from its planned frame and from the motion. Returns every verdict.
+ */
+export const assertWhooshThreeFramesLate = Effect.fn(
+  "assertWhooshThreeFramesLate"
+)(function* late(name: string) {
+  const fixture = yield* Fixture;
+  const [, scene] = fixture.plan.timeline.scenes;
+
+  const verdicts = yield* control(
+    name,
+    (dir) =>
+      muxFrames(
+        dir,
+        Stream.fromIterable(fixture.frames),
+        moveFire(fixture.plan, whooshId, (scene?.slideFrame ?? 0) + 3)
+      ),
+    ["F1"]
+  );
+
+  const verdict = verdictOf(verdicts, "F1");
+
+  assert.include(verdict.detail, `${whooshId} sfx: whoosh`);
+  assert.approximately(reportedScore(verdict, whooshPlanned), 3, 1);
+  assert.approximately(reportedScore(verdict, whooshMotion), 3, 1);
+
+  return verdicts;
+});

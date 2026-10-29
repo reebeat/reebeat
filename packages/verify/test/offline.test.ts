@@ -2,22 +2,18 @@
 // has silent narration but audible sounds, so only F8 (narration onsets) is N/A; F1 still observes every `sfx` Cue and
 // the anchored whoosh against the motion. Without this, the sound anchoring would be unchecked on every offline build.
 import { assert, layer } from "@effect/vitest";
-import { Array as Arr, Effect, Stream } from "effect";
+import { Array as Arr, Effect } from "effect";
 
 import { exitCode } from "../src/index.ts";
 import {
   Fixture,
+  assertWhooshThreeFramesLate,
   checkDirectory,
-  control,
   failedIds,
   measuredOf,
-  moveFire,
-  muxFrames,
-  reportedScore,
   verdictOf,
+  whooshMotion,
 } from "./support.ts";
-
-const whooshId = "sc2.l1.c1";
 
 layer(Fixture.offlineLayer, {
   excludeTestServices: true,
@@ -30,6 +26,7 @@ layer(Fixture.offlineLayer, {
         const fixture = yield* Fixture;
         const verdicts = yield* checkDirectory(fixture.build);
         const f1 = verdictOf(verdicts, "F1");
+        const measured = measuredOf(f1);
 
         assert.strictEqual(verdictOf(verdicts, "F8").status, "na");
         assert.include(
@@ -38,9 +35,6 @@ layer(Fixture.offlineLayer, {
         );
         assert.strictEqual(f1.status, "pass", f1.detail);
         assert.strictEqual(f1.measured[0]?.[1], 4);
-
-        const measured = measuredOf(f1);
-
         assert.isTrue(
           Arr.some(measured, (row) =>
             row.startsWith("sc1.l1.c2 sfx match score")
@@ -48,11 +42,7 @@ layer(Fixture.offlineLayer, {
           "the pop is found in the track"
         );
         assert.isTrue(
-          Arr.some(measured, (row) =>
-            row.startsWith(
-              `${whooshId} sfx onset vs the scene change into sc2 (frames)`
-            )
-          ),
+          Arr.some(measured, (row) => row.startsWith(whooshMotion)),
           "the whoosh is compared with the motion"
         );
         assert.deepStrictEqual(failedIds(verdicts), []);
@@ -64,36 +54,10 @@ layer(Fixture.offlineLayer, {
     "control: the whoosh delayed by three frames in an offline build fails F1, three frames from its planned frame and from the motion",
     () =>
       Effect.gen(function* delayed() {
-        const fixture = yield* Fixture;
-        const [, scene] = fixture.plan.timeline.scenes;
-
-        const verdicts = yield* control(
-          "offline-whoosh-late",
-          (dir) =>
-            muxFrames(
-              dir,
-              Stream.fromIterable(fixture.frames),
-              moveFire(fixture.plan, whooshId, (scene?.slideFrame ?? 0) + 3)
-            ),
-          ["F1"]
+        const verdicts = yield* assertWhooshThreeFramesLate(
+          "offline-whoosh-late"
         );
 
-        const verdict = verdictOf(verdicts, "F1");
-
-        assert.include(verdict.detail, `${whooshId} sfx: whoosh`);
-        assert.approximately(
-          reportedScore(verdict, `${whooshId} sfx offset (frames)`),
-          3,
-          1
-        );
-        assert.approximately(
-          reportedScore(
-            verdict,
-            `${whooshId} sfx onset vs the scene change into sc2 (frames)`
-          ),
-          3,
-          1
-        );
         assert.strictEqual(verdictOf(verdicts, "F8").status, "na");
       })
   );

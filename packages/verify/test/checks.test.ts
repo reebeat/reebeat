@@ -47,6 +47,10 @@ import {
   shiftSlide,
   slideFrameOf,
   verdictOf,
+  assertWhooshThreeFramesLate,
+  whooshId,
+  whooshMotion,
+  whooshPlanned,
 } from "./support.ts";
 
 /** The pattern of the line of one fragment span of deck.html. */
@@ -66,13 +70,6 @@ const editedSource = Effect.fn("editedSource")(function* edited(name: string) {
 
   return target;
 });
-
-const whooshId = "sc2.l1.c1";
-
-/** The measured names of the whoosh: its offset from the planned frame, and from the scene change into sc2. */
-const whooshPlanned = `${whooshId} sfx offset (frames)`;
-
-const whooshMotion = `${whooshId} sfx onset vs the scene change into sc2 (frames)`;
 
 layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
   "the checks on a small built story",
@@ -237,28 +234,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
     it.effect(
       "F1: a whoosh delayed by three frames is observed three frames from its planned frame and from the motion",
-      () =>
-        Effect.gen(function* delayedSound() {
-          const fixture = yield* Fixture;
-          const [, scene] = fixture.plan.timeline.scenes;
-
-          const verdicts = yield* control(
-            "f1-whoosh-late",
-            (dir) =>
-              muxFrames(
-                dir,
-                Stream.fromIterable(fixture.frames),
-                moveFire(fixture.plan, whooshId, (scene?.slideFrame ?? 0) + 3)
-              ),
-            ["F1"]
-          );
-
-          const verdict = verdictOf(verdicts, "F1");
-
-          assert.include(verdict.detail, "sc2.l1.c1 sfx: whoosh");
-          assert.approximately(reportedScore(verdict, whooshPlanned), 3, 1);
-          assert.approximately(reportedScore(verdict, whooshMotion), 3, 1);
-        })
+      () => assertWhooshThreeFramesLate("f1-whoosh-late")
     );
 
     it.effect(

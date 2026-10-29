@@ -387,12 +387,9 @@ layer(platform)("reebeat build", (it) => {
           assert.strictEqual(stdout, "", name);
         }
 
-        assert.deepStrictEqual(
-          Arr.sort(
-            yield* fs.readDirectory(root, { recursive: true }),
-            Order.String
-          ),
-          Arr.sort(before, Order.String)
+        assert.sameMembers(
+          yield* fs.readDirectory(root, { recursive: true }),
+          before
         );
       })
   );

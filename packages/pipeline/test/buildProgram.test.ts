@@ -347,49 +347,6 @@ describe("buildProgram: failure is loud (F12)", () => {
   );
 
   it.effect(
-    "an interrupt in the middle of the capture leaves neither <out> nor <out>.partial, and removes an earlier build",
-    () =>
-      Effect.gen(function* interrupted() {
-        const fs = yield* FileSystem.FileSystem;
-        const capturing = yield* Deferred.make<boolean>();
-
-        // Three frames, then a capture that never ends: the build is in the middle of the mux when it is interrupted.
-        const hanging = fakeCapturer(() =>
-          Stream.concat(
-            tinyFrames(3),
-            Stream.fromEffect(
-              Effect.andThen(Deferred.succeed(capturing, true), Effect.never)
-            )
-          )
-        );
-
-        const good = yield* withWorld();
-
-        yield* good.run();
-
-        const stuck = yield* withWorld((seen) => ({
-          ...parts(seen),
-          capturer: hanging,
-        }));
-
-        yield* fs.copy(good.where.out, stuck.where.out);
-
-        const fiber = yield* Effect.forkChild(stuck.run());
-
-        yield* Deferred.await(capturing);
-        assert.isTrue(
-          yield* fs.exists(`${stuck.where.out}.partial`),
-          "the build is under way: its partial directory exists"
-        );
-
-        yield* Fiber.interrupt(fiber);
-
-        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)));
-        yield* absent(stuck.where.out, `${stuck.where.out}.partial`);
-      }).pipe(Effect.scoped, Effect.provide(platform))
-  );
-
-  it.effect(
     "a failing capture is its typed error, writes no output and removes an earlier build",
     () =>
       Effect.gen(function* capture() {
@@ -428,6 +385,49 @@ describe("buildProgram: failure is loud (F12)", () => {
   );
 
   it.effect(
+    "an interrupt in the middle of the capture leaves neither <out> nor <out>.partial, and removes an earlier build",
+    () =>
+      Effect.gen(function* interrupted() {
+        const capturing = yield* Deferred.make<boolean>();
+        const fs = yield* FileSystem.FileSystem;
+
+        // Three frames, then a capture that never ends: the build is in the middle of the mux when it is interrupted.
+        const hanging = fakeCapturer(() =>
+          Stream.concat(
+            tinyFrames(3),
+            Stream.fromEffect(
+              Effect.andThen(Deferred.succeed(capturing, true), Effect.never)
+            )
+          )
+        );
+
+        const good = yield* withWorld();
+
+        yield* good.run();
+
+        const stuck = yield* withWorld((seen) => ({
+          ...parts(seen),
+          capturer: hanging,
+        }));
+
+        yield* fs.copy(good.where.out, stuck.where.out);
+
+        const fiber = yield* Effect.forkChild(stuck.run());
+
+        yield* Deferred.await(capturing);
+        assert.isTrue(
+          yield* fs.exists(`${stuck.where.out}.partial`),
+          "the build is under way: its partial directory exists"
+        );
+
+        yield* Fiber.interrupt(fiber);
+
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)));
+        yield* absent(stuck.where.out, `${stuck.where.out}.partial`);
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+
+  it.effect(
     "refuses an output directory that is neither empty nor an earlier build, and leaves it alone",
     () =>
       Effect.gen(function* occupied() {
@@ -449,31 +449,11 @@ describe("buildProgram: failure is loud (F12)", () => {
   );
 
   it.effect(
-    "a secret-looking setting of any selected adapter stops the build before anything is kept",
-    () =>
-      Effect.gen(function* secret() {
-        const { run, where } = yield* withWorld((seen) => ({
-          ...parts(seen),
-          renderer: fakeRenderer({
-            egress: { kind: "local", sends: [] },
-            id: "fake-renderer@1",
-            settings: { apiToken: "x" },
-          }),
-        }));
-
-        const failure = yield* Effect.flip(run());
-
-        assert.isTrue(Predicate.isTagged(failure, "SecretLikeSetting"));
-        yield* absent(where.out, `${where.out}.partial`);
-      }).pipe(Effect.scoped, Effect.provide(platform))
-  );
-
-  it.effect(
     "a name that is not a plain file stem is InvalidOutputName before anything is written, anywhere",
     () =>
       Effect.gen(function* hostile() {
-        const fs = yield* FileSystem.FileSystem;
         const path = yield* Path.Path;
+        const fs = yield* FileSystem.FileSystem;
 
         // Two levels below a root the test owns: `<out>.partial/../../escaped` would land inside the root.
         const root = yield* fs.makeTempDirectoryScoped({
@@ -516,13 +496,30 @@ describe("buildProgram: failure is loud (F12)", () => {
           assert.isTrue(Predicate.isTagged(failure, "InvalidOutputName"), name);
         }
 
-        assert.deepStrictEqual(
-          Arr.sort(
-            yield* fs.readDirectory(root, { recursive: true }),
-            Order.String
-          ),
-          Arr.sort(before, Order.String)
+        assert.sameMembers(
+          yield* fs.readDirectory(root, { recursive: true }),
+          before
         );
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+
+  it.effect(
+    "a secret-looking setting of any selected adapter stops the build before anything is kept",
+    () =>
+      Effect.gen(function* secret() {
+        const { run, where } = yield* withWorld((seen) => ({
+          ...parts(seen),
+          renderer: fakeRenderer({
+            egress: { kind: "local", sends: [] },
+            id: "fake-renderer@1",
+            settings: { apiToken: "x" },
+          }),
+        }));
+
+        const failure = yield* Effect.flip(run());
+
+        assert.isTrue(Predicate.isTagged(failure, "SecretLikeSetting"));
+        yield* absent(where.out, `${where.out}.partial`);
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
 });

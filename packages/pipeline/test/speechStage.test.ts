@@ -4,6 +4,7 @@
 import { assert, layer } from "@effect/vitest";
 import { buildPlan, schedule } from "@reebeat/core";
 import { AssetCache, SpeechSynthesizer, WordAligner } from "@reebeat/services";
+import { contractLifecycle } from "@reebeat/services/contract";
 import {
   evenAligner,
   memoryCache,
@@ -45,7 +46,7 @@ const rateStory = (speed: number, middleHint: string) =>
       "",
       "# Part",
       "",
-      "INT. ONE",
+      "INT. ONE #sc1#",
       "",
       "NARRATOR",
       "One two three four five six seven eight nine ten.",
@@ -156,7 +157,9 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
           );
         }
 
-        assert.isDefined((yield* schedule(plan, aligned)).timeline);
+        assert.isDefined(
+          (yield* schedule(plan, aligned, contractLifecycle)).timeline
+        );
       })
   );
 

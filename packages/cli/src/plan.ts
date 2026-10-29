@@ -3,6 +3,7 @@
 import { buildPlan, encodePlan, reviewText, schedule } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { readSource, speechStage } from "@reebeat/pipeline";
+import { Renderer } from "@reebeat/services";
 import type { Selection } from "@reebeat/services";
 import { Effect } from "effect";
 
@@ -39,12 +40,20 @@ export const timedPlanText = Effect.fn("timedPlanText")(
   }) {
     const compose = yield* Composition;
     const { plan } = yield* readPlan(options.story);
+    const parts = compose(options.selection, options.run);
 
     const aligned = yield* Effect.provide(
       speechStage(plan, { refresh: false }),
-      speechServicesOf(compose(options.selection, options.run))
+      speechServicesOf(parts)
     );
 
-    return yield* present(yield* schedule(plan, aligned), options.json, true);
+    // The effects resolve against the selected renderer's own declaration of its slide change.
+    const { info } = yield* Effect.provide(Renderer, parts.renderer);
+
+    return yield* present(
+      yield* schedule(plan, aligned, info.lifecycle),
+      options.json,
+      true
+    );
   }
 );

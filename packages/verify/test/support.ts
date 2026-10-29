@@ -7,7 +7,12 @@ import { assert } from "@effect/vitest";
 import { fsAssetCache } from "@reebeat/cache-fs";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
 import { decodePlan, requireTimeline } from "@reebeat/core";
-import type { PlanJson, TimedCue, TimedPlan } from "@reebeat/core";
+import type {
+  PlanJson,
+  RendererLifecycle,
+  TimedEffect,
+  TimedPlan,
+} from "@reebeat/core";
 import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
 import type {
   InvalidOutputName,
@@ -25,6 +30,7 @@ import { revealRenderer } from "@reebeat/render-reveal";
 import {
   EmptyText,
   FrameCapturer,
+  Renderer,
   SpeechSynthesizer,
   localEgress,
 } from "@reebeat/services";
@@ -55,37 +61,52 @@ import type { Verdict } from "../src/index.ts";
 import { timedLines } from "../src/planParts.ts";
 
 /** The services the checks and the helpers run on: ffmpeg, the file system and hashing. */
-const services = MediaTools.layer.pipe(Layer.provideMerge(NodeServices.layer));
+export const services = MediaTools.layer.pipe(
+  Layer.provideMerge(NodeServices.layer)
+);
 
 /**
- * Two Sections, two Scenes: a Line with a `next` and an `sfx`, then an Auto-Animate Scene whose first Line opens with
- * a `whoosh` (anchored to the scene change) and in which one Element moves and changes class, one enters and one
- * exits, with a `focus`.
+ * Two Sections, two Scenes: a show (0.1 s after "two"), a focus and a sound (a pop that rides on the focus's step) in the first, then an Auto-Animate
+ * Scene in which one Element moves and changes class, one enters and one exits, with a whoosh anchored to the slide
+ * change, a ding anchored to the middle of the box's move and a focus. Every anchor kind F1 observes without a word:
+ * the transition and an Element's motion; the words carry offsets.
  */
 export const storyText = `Title: Fixture story
 Author: reebeat tests
 
 # Part one
 
-INT. ONE - DAY
+INT. ONE - DAY #sc1#
 
-Box {#a @tl .box}
-Later {#b @br .label hidden}
+Box {id=a cell=tl class=box}
+Later {id=b cell=bc class=label visible=false}
+
+[[effects
+  r1: show b at word("two").end +100ms
+  f0: focus a at word("three").end
+  p1: sound pop at word("four").end
+]]
 
 NARRATOR
-One two [[next]] three four. [[sfx: pop]]
+One two three four.
 
 # Part two
 
 > AUTO-ANIMATE
 
-INT. TWO - DAY
+INT. TWO - DAY #sc2#
 
-Box {#a @br .box .accent}
-Entering {#d @tl .label}
+Box {id=a cell=tr class=accent}
+Entering {id=d cell=mc class=label}
+
+[[effects
+  s1: sound whoosh at transition.start
+  s2: sound ding at a.move.50%
+  f1: focus a at word("six").end
+]]
 
 NARRATOR
-[[sfx: whoosh]] Five [[focus: a]] six seven.
+Five six seven.
 `;
 
 export const buildName = "story";
@@ -174,13 +195,35 @@ const recordingCapturer = (frames: Ref.Ref<readonly Uint8Array[]>) =>
     })
   ).pipe(Layer.provide(chromiumCapturer));
 
+/** The Renderer of the build: reveal.js as it is, or reveal.js declaring another lifecycle than it measured. */
+type RendererLayer = Layer.Layer<
+  Renderer,
+  never,
+  FileSystem.FileSystem | Path.Path
+>;
+
+/** reveal.js that declares `lifecycle` instead of its own: the Timeline is resolved against a declaration that is wrong. */
+export const decliningRenderer = (
+  lifecycle: RendererLifecycle
+): RendererLayer =>
+  Layer.effect(
+    Renderer,
+    Effect.map(Renderer, (inner) =>
+      Renderer.of({ ...inner, info: { ...inner.info, lifecycle } })
+    )
+  ).pipe(Layer.provide(revealRenderer));
+
 /** The real adapters of a build over the cache in `cacheDir`; the capturer records into `frames` when it is given. */
-const adapters = (cacheDir: string, frames?: Ref.Ref<readonly Uint8Array[]>) =>
+const adapters = (
+  cacheDir: string,
+  renderer: RendererLayer,
+  frames?: Ref.Ref<readonly Uint8Array[]>
+) =>
   Layer.mergeAll(
     noiseSynthesizer,
     evenAligner,
     synthSounds,
-    revealRenderer,
+    renderer,
     frames === undefined ? chromiumCapturer : recordingCapturer(frames),
     ffmpegEncoder,
     fsAssetCache(cacheDir)
@@ -220,49 +263,57 @@ export interface FixtureData {
 
 const timedOrDie = (plan: PlanJson) => Effect.fromResult(requireTimeline(plan));
 
-const buildFixture = Effect.gen(function* buildFixtureDirectory() {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-verify-" });
-  const sourcePath = path.join(root, "story", "story.fountain");
-  const cacheDir = path.join(root, "story", "speech-cache");
-  const build = path.join(root, "build");
-  const frames = yield* Ref.make<readonly Uint8Array[]>([]);
+/** Builds `story` end to end with the test narrator and `renderer`, into a temporary directory of the scope. */
+export const buildFixtureOf = (story: string, renderer: RendererLayer) =>
+  Effect.gen(function* buildFixtureDirectory() {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
 
-  yield* fs.makeDirectory(cacheDir, { recursive: true });
-  yield* fs.makeDirectory(path.join(root, "sounds"), { recursive: true });
-  yield* fs.writeFileString(sourcePath, storyText);
-  yield* Effect.forEach(
-    sfxNames,
-    (name) =>
-      fs.writeFile(path.join(root, "sounds", `${name}.wav`), sfxWav(name)),
-    { discard: true }
-  );
+    const root = yield* fs.makeTempDirectoryScoped({
+      prefix: "reebeat-verify-",
+    });
 
-  yield* Effect.provide(
-    buildProgram({
-      name: buildName,
-      out: build,
-      refreshSpeech: true,
-      story: sourcePath,
-    }),
-    adapters(cacheDir, frames)
-  );
+    const sourcePath = path.join(root, "story", "story.fountain");
+    const cacheDir = path.join(root, "story", "speech-cache");
+    const build = path.join(root, "build");
+    const frames = yield* Ref.make<readonly Uint8Array[]>([]);
 
-  const plan = yield* timedOrDie(
-    yield* decodePlan(yield* fs.readFileString(path.join(build, "plan.json")))
-  );
+    yield* fs.makeDirectory(cacheDir, { recursive: true });
+    yield* fs.makeDirectory(path.join(root, "sounds"), { recursive: true });
+    yield* fs.writeFileString(sourcePath, story);
+    yield* Effect.forEach(
+      sfxNames,
+      (name) =>
+        fs.writeFile(path.join(root, "sounds", `${name}.wav`), sfxWav(name)),
+      { discard: true }
+    );
 
-  return {
-    build,
-    cacheDir,
-    deckUrl: (yield* path.toFileUrl(path.join(build, "deck.html"))).href,
-    frames: yield* Ref.get(frames),
-    plan,
-    root,
-    sourcePath,
-  };
-});
+    yield* Effect.provide(
+      buildProgram({
+        name: buildName,
+        out: build,
+        refreshSpeech: true,
+        story: sourcePath,
+      }),
+      adapters(cacheDir, renderer, frames)
+    );
+
+    const plan = yield* timedOrDie(
+      yield* decodePlan(yield* fs.readFileString(path.join(build, "plan.json")))
+    );
+
+    return {
+      build,
+      cacheDir,
+      deckUrl: (yield* path.toFileUrl(path.join(build, "deck.html"))).href,
+      frames: yield* Ref.get(frames),
+      plan,
+      root,
+      sourcePath,
+    };
+  });
+
+const buildFixture = buildFixtureOf(storyText, revealRenderer);
 
 /** The small build, made once per test block. */
 export class Fixture extends Context.Service<Fixture, FixtureData>()(
@@ -486,36 +537,33 @@ type MutationServices =
   | MediaTools
   | Path.Path;
 
-/** The plan with `change` applied to the timed Cue `cueId`. */
-const changeCue = (
+/** The plan with `change` applied to the timed effect `effectId`. */
+const changeEffect = (
   plan: TimedPlan,
-  cueId: string,
-  change: (cue: TimedCue) => TimedCue
+  effectId: string,
+  change: (effect: TimedEffect) => TimedEffect
 ): TimedPlan => ({
   ...plan,
   timeline: {
     ...plan.timeline,
     scenes: Arr.map(plan.timeline.scenes, (scene) => ({
       ...scene,
-      lines: Arr.map(scene.lines, (line) => ({
-        ...line,
-        cues: Arr.map(line.cues, (cue) =>
-          cue.cueId === cueId ? change(cue) : cue
-        ),
-      })),
+      effects: Arr.map(scene.effects, (effect) =>
+        effect.effectId === effectId ? change(effect) : effect
+      ),
     })),
   },
 });
 
-/** The plan with the command frame of one Cue moved by `frames`. */
+/** The plan with the command frame of one effect moved by `frames`. */
 export const shiftCommand = (
   plan: TimedPlan,
-  cueId: string,
+  effectId: string,
   frames: number
 ): TimedPlan =>
-  changeCue(plan, cueId, (cue) => ({
-    ...cue,
-    commandFrame: cue.commandFrame + frames,
+  changeEffect(plan, effectId, (effect) => ({
+    ...effect,
+    commandFrame: effect.commandFrame + frames,
   }));
 
 /** The plan with the slide frame of one Scene moved by `frames`: its scene change is commanded that much later. */
@@ -535,14 +583,14 @@ export const shiftSlide = (
   },
 });
 
-/** The plan with the fire and command frames of one Cue set to `frame` (an `sfx` is mixed at its fire frame). */
+/** The plan with the fire and command frames of one effect set to `frame` (a sound is mixed at its fire frame). */
 export const moveFire = (
   plan: TimedPlan,
-  cueId: string,
+  effectId: string,
   frame: number
 ): TimedPlan =>
-  changeCue(plan, cueId, (cue) => ({
-    ...cue,
+  changeEffect(plan, effectId, (effect) => ({
+    ...effect,
     commandFrame: frame,
     fireFrame: frame,
   }));
@@ -754,6 +802,49 @@ export const narrationFile = (fixture: FixtureData, lineId: string): string =>
     ).audio.file
   }`;
 
-/** The catalogue sound `name` as a WAV beside the intact build: the build keeps only the sounds its Cues play. */
+/** The catalogue sound `name` as a WAV beside the intact build: the build keeps only the sounds its effects play. */
 export const soundFile = (fixture: FixtureData, name: string): string =>
   `${fixture.root}/sounds/${name}.wav`;
+
+/** The measured rows of a verdict as `name: value` text, to find one effect's row by what starts it. */
+export const rowOf = (verdict: Verdict, start: string): string =>
+  Option.getOrThrow(
+    Arr.findFirst(measuredOf(verdict), (row) => row.startsWith(start))
+  );
+
+/** The number in the `offset` group of a match of F1's row, or undefined when the row has none. */
+const offsetOf = (found: RegExpExecArray | null): number | undefined =>
+  found?.groups?.offset === undefined ? undefined : Number(found.groups.offset);
+
+/** The offsets F1 prints in an effect's row: of the observed anchor and of the effect itself, in frames; undefined when absent. */
+export const offsetsIn = (row: string) => ({
+  anchor: offsetOf(
+    /anchor observed [\d.]+, so [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
+  ),
+  own: offsetOf(
+    /(?:observed|sound onset) [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
+  ),
+});
+
+/** The frame an effect's row says its anchor was observed at. */
+export const anchorFrameIn = (row: string): number =>
+  Number(/anchor observed (?<frame>[\d.]+),/u.exec(row)?.groups?.frame);
+
+/** The match score F1 prints for a sound in its row; throws when the row has none. */
+export const matchIn = (row: string): number =>
+  Number(
+    Option.getOrThrow(
+      Option.fromNullishOr(
+        /match score (?<score>[\d.]+)/u.exec(row)?.groups?.score
+      )
+    )
+  );
+
+/** The resolved frame of effect `effectId` in the Timeline of `plan`; throws when there is none. */
+export const fireFrameOf = (plan: TimedPlan, effectId: string): number =>
+  Option.getOrThrow(
+    Arr.findFirst(
+      Arr.flatMap(plan.timeline.scenes, (scene) => scene.effects),
+      (effect) => effect.effectId === effectId
+    )
+  ).fireFrame;

@@ -10,7 +10,11 @@ import { registerClauses } from "./clause.ts";
 import type { Clause } from "./clause.ts";
 import { contractPlan } from "./fixture.ts";
 import type { FixtureError, PlanOptions } from "./fixture.ts";
-import { assertInfoDeclared, sameBytes } from "./support.ts";
+import {
+  assertInfoDeclared,
+  assertLifecycleDeclared,
+  sameBytes,
+} from "./support.ts";
 
 const bytesOf = (content: string | Uint8Array): Uint8Array =>
   Predicate.isString(content) ? new TextEncoder().encode(content) : content;
@@ -114,6 +118,14 @@ export const rendererClauses = (
         "info declares its id, its egress (local sends nothing) and non-secret settings",
       run: Effect.gen(function* clause() {
         assertInfoDeclared((yield* Renderer).info);
+      }),
+    },
+    {
+      id: "C6",
+      means:
+        "info declares the lifecycle of the slide change: positive durations, lags of at least 0, a cubic-bezier easing",
+      run: Effect.gen(function* clause() {
+        assertLifecycleDeclared((yield* Renderer).info.lifecycle);
       }),
     },
   ];

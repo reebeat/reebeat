@@ -1,49 +1,77 @@
-// What the Plan says each slide must contain. `renderDeck` writes these values into the page and `checkDeck`
-// compares the written page with them, so the generator and its checker share one derivation of the same facts.
 import type { PlanJson, Scene } from "@reebeat/core";
+// What the Plan says each slide must contain. `renderDeck` writes these values into the page and `checkDeck` compares
+// the written page with them, so the generator and its checker share one derivation of the same facts.
+//
+// A slide's steps and its sounds (spec 0002, "Deck: sounds ride along"): the `show` and `focus` effects of a Scene are
+// its fragment steps, in RESOLVED-TIME order; a `sound` is never a step, it is data (`data-sounds`) on the thing it plays
+// with. `@reebeat/core` says which (`stepsOf`, `soundsOf`: one definition for the Deck and for the check): a sound
+// anchored to the slide change, the Scene's start or an Element event of the transition rides on the slide; a sound
+// anchored to a `show` effect's Element enter, to a step, or later in time than a step rides on that step; a sound with
+// no step before it plays alone in the Scene, which a Deck can only do with the slide.
+import { soundsOf, stepsOf } from "@reebeat/core/steps";
 import { Array as Arr } from "effect";
 
-/** One fragment of a slide: the Cue it stands for, with the Element a `next` Cue reveals. */
+/** One fragment of a slide: the `show` or `focus` effect it stands for and the sounds that play with it. */
 export interface ExpectedFragment {
-  readonly arg: string;
-  readonly cueId: string;
+  readonly effectId: string;
   readonly index: number;
-  readonly kind: "next" | "focus" | "sfx";
-  readonly reveals: string;
+  /** The sound names that play when the step runs, in source order. */
+  readonly sounds: readonly string[];
+  /** The Element id the effect acts on. */
+  readonly target: string;
+  readonly verb: "focus" | "show";
+}
+
+/** What one slide must contain besides its Elements: the steps and the sounds of the slide itself. */
+export interface ExpectedSlide {
+  readonly fragments: readonly ExpectedFragment[];
+  /** The sound names that play when the slide is shown, in source order. */
+  readonly sounds: readonly string[];
 }
 
 /** The slide-level attributes of a Scene, derived from its own transition and the next Scene's. */
 export interface ExpectedMarks {
   /** The `data-auto-animate-id` of the chain of Auto-Animate scenes the slide belongs to, or null. */
   readonly autoAnimate: string | null;
+  /**
+   * The next Scene is a `> CUT`: this slide leaves at once. reveal.js takes the transition of the slide it LEAVES from
+   * the slide itself, so without this mark a cut would show the old slide fade out for 12 frames under the new one.
+   */
+  readonly cutAfter: boolean;
   /** `none` for a `> CUT`, else null (the deck default). */
   readonly transition: "none" | null;
 }
 
 /**
- * One fragment per Cue, in document order, indexed from 0. The k-th `next` Cue reveals the k-th hidden Element
- * (spec 0001: "the next `hidden` Element of this Scene, in document order"); a `next` with none left reveals
- * nothing here and is a plan error that the core reports.
+ * The steps and the sounds of a slide. `plan.timeline` supplies the resolved order; a Plan without one (`plan` output)
+ * gives source order.
  */
-export const expectedFragments = (
-  scene: Scene
-): readonly ExpectedFragment[] => {
-  const cues = Arr.flatMap(scene.lines, (line) => line.cues);
-  const hidden = Arr.filter(scene.elements, (element) => element.hidden);
+export const expectedSlide = (plan: PlanJson, scene: Scene): ExpectedSlide => {
+  const carried = soundsOf(plan, scene);
 
-  return Arr.map(cues, (cue, index) => ({
-    arg: cue.arg ?? "",
-    cueId: cue.id,
-    index,
-    kind: cue.kind,
-    reveals:
-      cue.kind === "next"
-        ? (hidden[
-            Arr.filter(Arr.take(cues, index), ({ kind }) => kind === "next")
-              .length
-          ]?.id ?? "")
-        : "",
-  }));
+  const namesOn = (effectId?: string): readonly string[] =>
+    Arr.flatMap(carried, ({ carrier, effect }) =>
+      effect.name !== undefined &&
+      (carrier.kind === "step"
+        ? carrier.effectId === effectId
+        : effectId === undefined)
+        ? [effect.name]
+        : []
+    );
+
+  return {
+    fragments: Arr.map(
+      stepsOf(plan, scene),
+      ({ effect }, index): ExpectedFragment => ({
+        effectId: effect.id,
+        index,
+        sounds: namesOn(effect.id),
+        target: effect.target ?? "",
+        verb: effect.verb === "focus" ? "focus" : "show",
+      })
+    ),
+    sounds: namesOn(),
+  };
 };
 
 /**
@@ -65,6 +93,7 @@ export const expectedMarks = (plan: PlanJson): readonly ExpectedMarks[] => {
       joinsPrevious(index) || joinsPrevious(index + 1)
         ? `aa${Arr.filter(Arr.range(0, index), startsChain).length}`
         : null,
+    cutAfter: plan.scenes[index + 1]?.transition === "cut",
     transition: scene.transition === "cut" ? "none" : null,
   }));
 };

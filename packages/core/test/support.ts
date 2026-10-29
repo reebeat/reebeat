@@ -5,6 +5,8 @@ import { assert } from "@effect/vitest";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
 import type { HeardWord } from "../src/align.ts";
+import type { PlanJson } from "../src/plan.ts";
+import type { AlignedLine } from "../src/schedule.ts";
 
 /** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
 export const fixtureSha256 =
@@ -74,3 +76,27 @@ export const perfectlyHeard = (
     startMs: index * 100,
     w,
   }));
+
+/** The audio file name of a Line `digit`: 64 hexadecimal digits and `.flac`. */
+export const audioOf = (digit: number) => ({
+  file: `${String(digit).repeat(64)}.flac`,
+  sha256: `hash-${digit}`,
+});
+
+/** Every Line of `plan` spoken evenly: `wordMs` per word, each word ending where the next starts. */
+export const evenlySpoken = (plan: PlanJson, wordMs: number): AlignedLine[] =>
+  Arr.flatMap(plan.scenes, (scene) =>
+    Arr.map(scene.lines, (line, index) => ({
+      audio: audioOf((index % 9) + 1),
+      durationMs: line.words.length * wordMs,
+      lineId: line.id,
+      words: Arr.map(line.words, (w, at) => ({
+        endMs: (at + 1) * wordMs,
+        startMs: at * wordMs,
+        w,
+      })),
+    }))
+  );
+
+/** The renderer lifecycle the tests schedule with. */
+export { referenceLifecycle as lifecycle } from "../src/plan.ts";

@@ -13,6 +13,7 @@ import type { RunOptions } from "./adapters.ts";
 import { buildStory, renderSummary } from "./build.ts";
 import { checkBuild } from "./check.ts";
 import { journey } from "./journey.ts";
+import { lintCommand } from "./lint.ts";
 import { planText, timedPlanText } from "./plan.ts";
 import { reportFailure } from "./report.ts";
 import { readSelection } from "./selection.ts";
@@ -100,7 +101,7 @@ const plan = Command.make(
   })
 ).pipe(
   Command.withDescription(
-    "Print the Plan of a story for review: scenes, elements, cues and the identity diff"
+    "Print the Plan of a story for review: scenes, elements, effects (intent and resolved frame with --timing) and the identity diff"
   ),
   Command.withExamples([
     {
@@ -284,7 +285,7 @@ const reebeat = Command.make("reebeat").pipe(
   Command.withDescription(
     "Explainer decks and videos from a Fountain screenplay"
   ),
-  Command.withSubcommands([plan, build, check, journeyCommand])
+  Command.withSubcommands([plan, build, check, journeyCommand, lintCommand])
 );
 
 /**

@@ -6,7 +6,17 @@ export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
 export { buildPlan, collectErrors } from "./build.ts";
 
+export {
+  formatAnchor,
+  formatEffect,
+  formatOffset,
+  formatWhen,
+  parseEffectLine,
+} from "./effects.ts";
+
 export * from "./errors.ts";
+
+export * from "./grammar.ts";
 
 export * from "./plan.ts";
 
@@ -18,8 +28,22 @@ export { AlignedLineSchema, schedule } from "./schedule.ts";
 
 export type { AlignedLine } from "./schedule.ts";
 
-export { cuesById, frameToMs, linesById, requireTimeline } from "./timed.ts";
+export { frameToMs, linesById, requireTimeline } from "./timed.ts";
 
 export type { TimedPlan } from "./timed.ts";
 
 export { audioClipToWav } from "./wav.ts";
+
+export { eventKind, hasWindow, showEffectOf } from "./events.ts";
+
+export type { EventKind } from "./events.ts";
+
+export { commandOf, timeOfProgress } from "./resolve.ts";
+
+export { soundsOf, stepsOf } from "./steps.ts";
+
+export type { CarriedSound, Carrier, Step } from "./steps.ts";
+
+export { findPhrase } from "./words.ts";
+
+export { grammarDocument } from "./grammarDoc.ts";

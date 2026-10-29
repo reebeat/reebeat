@@ -15,6 +15,7 @@ import type { FileSystem, Path } from "effect";
 import { assembleDeck } from "./assemble.ts";
 import { readAssets } from "./assets.ts";
 import type { DeckAssetMissing, DeckMismatch } from "./errors.ts";
+import { revealLifecycle } from "./lifecycle.ts";
 import { renderDeck } from "./render.ts";
 import { fontFaces, palette } from "./theme.ts";
 
@@ -64,6 +65,7 @@ export const revealRenderer: Layer.Layer<
       info: {
         egress: localEgress,
         id,
+        lifecycle: revealLifecycle,
         settings: {
           fonts: Arr.join(
             Arr.map(fontFaces, ({ file }) => file),

@@ -11,6 +11,7 @@ import {
 } from "effect";
 import type { PlatformError } from "effect";
 
+import { contractLifecycle } from "../contract/index.ts";
 import type { MuxProbe } from "../contract/index.ts";
 import { Encoder } from "../src/encoder.ts";
 import type { MuxRequest } from "../src/encoder.ts";
@@ -25,12 +26,23 @@ const info = (name: string) => ({
   settings: {},
 });
 
-/** A renderer that writes every Element id into `index.html`; `dropIds` shows none of them. */
-export const fakeRenderer = (flaw: { readonly dropIds?: boolean } = {}) =>
+/**
+ * A renderer that writes every Element id into `index.html`; `dropIds` shows none of them, `noShowTime` declares that a
+ * shown Element appears in no time.
+ */
+export const fakeRenderer = (
+  flaw: { readonly dropIds?: boolean; readonly noShowTime?: boolean } = {}
+) =>
   Layer.succeed(
     Renderer,
     Renderer.of({
-      info: info("fake-render"),
+      info: {
+        ...info("fake-render"),
+        lifecycle:
+          flaw.noShowTime === true
+            ? { ...contractLifecycle, showMs: 0 }
+            : contractLifecycle,
+      },
       render: (plan) =>
         Effect.succeed({
           entry: "index.html",

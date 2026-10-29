@@ -14,18 +14,27 @@ interface Reportable {
 // tags, so a new Plan error does not compile until it is listed here. A property named `line` is not enough to tell:
 // Bun puts the line of the throw site on every Error.
 const located: Record<PlanErrorTag, true> = {
+  AbsoluteNeedsReason: true,
+  AmbiguousWord: true,
+  BadEffect: true,
+  BadEffectsBlock: true,
   BadParenthetical: true,
+  BadPercent: true,
+  BadProperty: true,
+  BadSceneId: true,
+  BadShow: true,
   BadSpeed: true,
   BadTransition: true,
-  CueTargetMissing: true,
   DuplicateId: true,
+  EffectCycle: true,
   EmphasisInDialogue: true,
   EmptyStory: true,
   HiddenNeverRevealed: true,
   MissingId: true,
-  NextWithNothingHidden: true,
+  NoSuchEvent: true,
+  ReleaseOneForm: true,
   SceneBeforeSection: true,
-  UnknownCue: true,
+  UnknownReference: true,
   UnknownSfx: true,
   UnsupportedElement: true,
 };
@@ -33,7 +42,7 @@ const located: Record<PlanErrorTag, true> = {
 const hasLine = (failure: Reportable): failure is PlanError =>
   Predicate.hasProperty(located, failure._tag);
 
-/** One line: `UnknownCue (line 12): the message`, or `SpeechCacheMiss: the message` when there is no line. */
+/** One line: `UnknownReference (line 12): the message`, or `SpeechCacheMiss: the message` when there is no line. */
 const describeFailure = (failure: Reportable): string =>
   hasLine(failure)
     ? `${failure._tag} (line ${failure.line}): ${failure.message}`

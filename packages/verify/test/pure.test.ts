@@ -2,6 +2,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
+import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
 import { synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect } from "effect";
 
@@ -9,13 +10,13 @@ import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
-import { onsetIndex, withSilentLead } from "../src/wav.ts";
+import { locateSounds, onsetIndex } from "../src/wav.ts";
 import { storyText } from "./support.ts";
 
 const holds: Verdict = {
-  detail: "all 2 Cues hold",
+  detail: "all 2 effects hold",
   id: "F1",
-  measured: [["sc1.l1.c1 next offset (frames)", "0"]],
+  measured: [["sc1.r1 show b", "0"]],
   status: "pass",
 };
 
@@ -40,8 +41,8 @@ describe("renderVerdicts and exitCode", () => {
       renderVerdicts([holds, broken]),
       Arr.join(
         [
-          "F1  PASS  all 2 Cues hold",
-          "      sc1.l1.c1 next offset (frames): 0",
+          "F1  PASS  all 2 effects hold",
+          "      sc1.r1 show b: 0",
           "F8  FAIL  Line sc1.l1 starts +3 frames from its scheduled frame 30",
           "      Lines checked: 2",
           "1 of 2 falsifiers FAIL: F8",
@@ -52,7 +53,7 @@ describe("renderVerdicts and exitCode", () => {
     );
     assert.strictEqual(
       renderVerdicts([holds]),
-      "F1  PASS  all 2 Cues hold\n      sc1.l1.c1 next offset (frames): 0\n1 of 1 falsifiers hold\n"
+      "F1  PASS  all 2 effects hold\n      sc1.r1 show b: 0\n1 of 1 falsifiers hold\n"
     );
   });
 
@@ -61,8 +62,8 @@ describe("renderVerdicts and exitCode", () => {
       renderVerdicts([holds, skipped]),
       Arr.join(
         [
-          "F1  PASS  all 2 Cues hold",
-          "      sc1.l1.c1 next offset (frames): 0",
+          "F1  PASS  all 2 effects hold",
+          "      sc1.r1 show b: 0",
           "F8  N/A   N/A (silent stand-in): build.json lists the narrator silent@1-standin",
           "1 of 2 falsifiers hold; not applicable: F8",
           "",
@@ -134,6 +135,22 @@ describe("withinOneFrame", () => {
   });
 });
 
+/** A track of `length` samples with each clip added at its sample. */
+const mixed = (
+  length: number,
+  parts: readonly { readonly at: number; readonly clip: Float32Array }[]
+): Float32Array => {
+  const track = new Float32Array(length);
+
+  for (const { at, clip } of parts) {
+    for (const [index, sample] of clip.entries()) {
+      track[at + index] = (track[at + index] ?? 0) + sample;
+    }
+  }
+
+  return track;
+};
+
 describe("the signal helpers", () => {
   it("finds where a catalogue sound starts", () => {
     const { samples } = synthClip("pop");
@@ -143,11 +160,68 @@ describe("the signal helpers", () => {
     assert.strictEqual(onsetIndex(new Float32Array(10), 0.01), 0);
   });
 
-  it("puts silence before a clip", () => {
-    const padded = withSilentLead(Float32Array.of(1, 1), 1);
+  it("finds a ding under the tail of a whoosh by its amplitude, where normalised correlation takes its ringing for its start", () => {
+    const rate = 48_000;
+    const ding = synthClip("ding").samples;
 
-    assert.strictEqual(padded.length, 48 + 2);
-    assert.strictEqual(padded[47], 0);
-    assert.strictEqual(padded[48], 1);
+    const track = mixed(rate * 2, [
+      { at: 0, clip: synthClip("whoosh").samples },
+      { at: Math.round(0.3 * rate), clip: ding },
+    ]);
+
+    const [found] = locateSounds(
+      track,
+      [{ expectedMs: 300, reference: ding }],
+      150
+    );
+
+    const normalised = audioOffsetMs(track, ding, 300, 150);
+
+    assert.approximately(found?.offsetMs ?? Number.NaN, 0, 0.1);
+    assert.isAbove(found?.score ?? 0, 0.5);
+    // The control: the normalised correlation is the one that goes wrong, which is why catalogue sounds are not found with it.
+    assert.isAbove(Math.abs(normalised.offsetMs), 20);
+  });
+
+  it("finds a whoosh and the ding that sounds over its tail, each where it is, even when the plan puts them a frame off", () => {
+    const rate = 48_000;
+    const whoosh = synthClip("whoosh").samples;
+    const ding = synthClip("ding").samples;
+    const frame = rate / 30;
+
+    const track = mixed(rate * 3, [
+      { at: 20 * frame, clip: whoosh },
+      { at: 28 * frame + 3, clip: ding },
+    ]);
+
+    // The plan says the whoosh at frame 21 and the ding at frame 27: one frame late and one early.
+    const [first, second] = locateSounds(
+      track,
+      [
+        { expectedMs: (21 * 1000) / 30, reference: whoosh },
+        { expectedMs: (27 * 1000) / 30, reference: ding },
+      ],
+      150
+    );
+
+    assert.approximately(first?.offsetMs ?? Number.NaN, -1000 / 30, 0.1);
+    assert.approximately(
+      second?.offsetMs ?? Number.NaN,
+      1000 / 30 + 3 / 48,
+      0.1
+    );
+    assert.isAbove(Math.min(first?.score ?? 0, second?.score ?? 0), 0.9);
+  });
+
+  it("does not find a sound that is not in the track", () => {
+    const quiet = new Float32Array(48_000);
+
+    const [found] = locateSounds(
+      quiet,
+      [{ expectedMs: 500, reference: synthClip("pop").samples }],
+      150
+    );
+
+    assert.strictEqual(found?.score, 0);
   });
 });

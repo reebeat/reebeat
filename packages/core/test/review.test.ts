@@ -1,6 +1,6 @@
 // The review text of `reebeat plan`: deterministic, equal to the golden text, one row per Element per Scene with
-// `+ - ~` marks across auto-animate boundaries, the Cue markers written back into the narration, a summary
-// line, and frames with `--timing` once a timeline exists.
+// `+ - ~` marks across auto-animate boundaries, the effects as `intent -> frame`, a summary line, the absolute
+// times with their reasons and their count, and frames with `--timing` once a timeline exists.
 import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 
@@ -8,7 +8,7 @@ import { buildPlan } from "../src/build.ts";
 import { reviewText } from "../src/review.ts";
 import { schedule } from "../src/schedule.ts";
 import type { AlignedLine } from "../src/schedule.ts";
-import { asText, fixtureSha256, readFixture } from "./support.ts";
+import { asText, fixtureSha256, lifecycle, readFixture } from "./support.ts";
 
 const fixturePlan = Effect.flatMap(readFixture("boxes.fountain"), (source) =>
   buildPlan(source, fixtureSha256)
@@ -83,21 +83,33 @@ describe("reviewText", () => {
   );
 
   it.effect(
-    "writes the Cues back into the narration after the word they follow",
+    "lists the narration as spoken and each effect as what it does and when, as written",
     () =>
       Effect.gen(function* narration() {
         const text = reviewText(yield* fixturePlan);
 
         assert.include(
           text,
-          '"This box sits in the corner. [[next]] The caption says what it is."'
+          '"This box sits in the corner. The caption says what it is."'
         );
+        assert.include(text, "first.l1  (speed 0.99)");
+        assert.include(text, "second.l1  (pause 0.5 s)");
+        assert.include(text, '      r1  show cap   word("corner").end\n');
+        assert.include(text, "      s2  sound ding    box.move.50%\n");
+        assert.include(text, "      f1  focus new     r1.end +3f\n");
+      })
+  );
+
+  it.effect(
+    "lists every absolute time with its reason and ends with their count",
+    () =>
+      Effect.gen(function* absolute() {
+        const text = reviewText(yield* fixturePlan);
+
         assert.include(
           text,
-          '"Same id, new place. [[sfx: whoosh]] [[next]] A new element enters."'
+          '  fourth s2 (line 73): at 1.5s because "the title settles on a beat in the music"\n1 absolute time\n'
         );
-        assert.include(text, "sc1.l1  (speed 0.99)");
-        assert.include(text, "sc2.l1  (pause 0.5 s)");
       })
   );
 
@@ -114,7 +126,7 @@ describe("reviewText", () => {
     Effect.gen(function* summary() {
       assert.include(
         reviewText(yield* fixturePlan),
-        "\nPlan: 4 scenes, 5 lines, 6 cues; 1 to enter, 1 to exit, 3 to update\n"
+        "\nPlan: 4 scenes, 5 lines, 9 effects; 1 to enter, 1 to exit, 3 to update\n"
       );
     })
   );
@@ -127,8 +139,8 @@ const words = (...spoken: readonly string[]): AlignedLine["words"] =>
     w,
   }));
 
-/** The Plan of a one-Line story with `dialogue`, and the same Plan with a Timeline for a Line of "One two." (1000 ms). */
-const oneLine = (dialogue: string) =>
+/** The Plan of a one-Line story with the effects `rows`, and the same Plan with a Timeline for a Line of "One two." (1000 ms). */
+const oneLine = (rows: readonly string[]) =>
   Effect.gen(function* built() {
     const plan = yield* buildPlan(
       asText([
@@ -136,23 +148,31 @@ const oneLine = (dialogue: string) =>
         "",
         "# S",
         "",
-        "INT. A",
+        "INT. A #a#",
+        "",
+        "[[effects",
+        ...rows,
+        "]]",
         "",
         "NARRATOR",
-        dialogue,
+        "One two.",
         "",
       ]),
       fixtureSha256
     );
 
-    const withTimeline = yield* schedule(plan, [
-      {
-        audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
-        durationMs: 1000,
-        lineId: "sc1.l1",
-        words: words("One", "two."),
-      },
-    ]);
+    const withTimeline = yield* schedule(
+      plan,
+      [
+        {
+          audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
+          durationMs: 1000,
+          lineId: "a.l1",
+          words: words("One", "two."),
+        },
+      ],
+      lifecycle
+    );
 
     return { plan, withTimeline };
   });
@@ -169,7 +189,9 @@ describe("reviewText with timing", () => {
 
   it.effect("adds frames and the total once a timeline exists", () =>
     Effect.gen(function* timed() {
-      const { withTimeline } = yield* oneLine("One two. [[sfx: pop]]");
+      const { withTimeline } = yield* oneLine([
+        '  s1: sound pop at word("two").end',
+      ]);
 
       const text = reviewText(withTimeline, { timing: true });
 
@@ -179,28 +201,47 @@ describe("reviewText with timing", () => {
         "slide change at frame 0, frames 0-75 (0.00-2.50 s)"
       );
       assert.include(text, "frames 30-60 (1.00-2.00 s)");
-      assert.include(text, "cue sc1.l1.c1 fires at frame 42, command at 42");
+      assert.include(text, 'word("two").end  ->  frame 42');
       assert.include(text, "Timeline: 75 frames, 2.50 s at 30 fps");
       assert.notInclude(reviewText(withTimeline), "frames 30-60");
+      assert.notInclude(reviewText(withTimeline), "->  frame");
     })
   );
 
   it.effect(
-    "shows an sfx anchored to the transition start with its frame",
+    "shows an effect anchored to the transition start as intent and, with a timeline, its frame",
     () =>
       Effect.gen(function* anchored() {
-        const { plan, withTimeline } = yield* oneLine(
-          "[[sfx: whoosh]] One two."
-        );
+        const { plan, withTimeline } = yield* oneLine([
+          "  s1: sound whoosh at transition.start",
+        ]);
 
         assert.include(
           reviewText(plan),
-          "cue sc1.l1.c1 sfx whoosh  anchored to transition.start"
+          "      s1  sound whoosh  transition.start\n"
         );
         assert.include(
           reviewText(withTimeline, { timing: true }),
-          "cue sc1.l1.c1 sfx whoosh  transition.start -> frame 0, command at 0"
+          "      s1  sound whoosh  transition.start  ->  frame 0\n"
         );
       })
+  );
+
+  it.effect("lists each absolute time with its reason and counts them", () =>
+    Effect.gen(function* absolute() {
+      const { plan } = yield* oneLine([
+        '  s1: sound pop at 0.5s because "the drum hits here"',
+        '  s2: sound ding at 1s because "and again"',
+      ]);
+
+      const text = reviewText(plan);
+
+      assert.include(
+        text,
+        '  a s1 (line 8): at 0.5s because "the drum hits here"\n'
+      );
+      assert.include(text, '  a s2 (line 9): at 1s because "and again"\n');
+      assert.include(text, "\n2 absolute times\n");
+    })
   );
 });

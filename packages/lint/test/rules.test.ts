@@ -1,36 +1,38 @@
 // The lint rules, each with a control that shows the rule fails when the thing it guards is broken.
 import { assert, describe, it } from "@effect/vitest";
-import { PlanJsonSchema, encodePlan } from "@reebeat/core";
-import { Array as Arr, Effect, Exit, Schema } from "effect";
+import type { Effect as PlanEffect, PlanJson } from "@reebeat/core";
+import { Array as Arr, Effect } from "effect";
 
 import {
   absoluteTimesNeedReason,
   contrast,
   contrastRatio,
-  cueFragmentAgreement,
+  effectAgreement,
+  effectFragmentAgreement,
+  lintPlan,
 } from "../src/index.ts";
 import type { Fragment } from "../src/index.ts";
 import { plan } from "./support.ts";
 
-/** The fragments a faithful Rendering of the Plan in `support.ts` shows, written out: one per Cue, in order. */
+/** The fragments a faithful Rendering of the Plan in `support.ts` shows, written out: one per show and focus. */
 const faithful = (): readonly Fragment[] => [
-  { arg: "", cueId: "sc1.l1.c1", kind: "next", sceneId: "sc1" },
-  { arg: "a", cueId: "sc2.l1.c1", kind: "focus", sceneId: "sc2" },
-  { arg: "pop", cueId: "sc2.l1.c2", kind: "sfx", sceneId: "sc2" },
-  { arg: "ding", cueId: "sc3.l1.c1", kind: "sfx", sceneId: "sc3" },
+  { effectId: "r1", sceneId: "one", target: "b", verb: "show" },
+  { effectId: "f1", sceneId: "two", target: "a", verb: "focus" },
 ];
 
-const places = (diagnostics: ReturnType<typeof cueFragmentAgreement>) =>
+const places = (diagnostics: ReturnType<typeof effectFragmentAgreement>) =>
   Arr.map(diagnostics, ({ index, sceneId }) => [sceneId, index]);
 
-describe("cueFragmentAgreement", () => {
-  it.effect("holds for the fragments of the Plan's own Cues", () =>
-    Effect.gen(function* agrees() {
-      const given = yield* plan;
+describe("effectFragmentAgreement", () => {
+  it.effect(
+    "holds for the fragments of the Plan's own show and focus effects, sounds excluded",
+    () =>
+      Effect.gen(function* agrees() {
+        const given = yield* plan;
 
-      assert.strictEqual(faithful().length, 4);
-      assert.deepStrictEqual(cueFragmentAgreement(given, faithful()), []);
-    })
+        assert.strictEqual(faithful().length, 2);
+        assert.deepStrictEqual(effectFragmentAgreement(given, faithful()), []);
+      })
   );
 
   it.effect(
@@ -39,58 +41,50 @@ describe("cueFragmentAgreement", () => {
       Effect.gen(function* missing() {
         const given = yield* plan;
 
-        const fragments = Arr.filter(faithful(), ({ kind }) => kind !== "sfx");
-
-        const diagnostics = cueFragmentAgreement(given, fragments);
-
-        assert.deepStrictEqual(places(diagnostics), [
-          ["sc2", 1],
-          ["sc3", 0],
+        const diagnostics = effectFragmentAgreement(given, [
+          { effectId: "r1", sceneId: "one", target: "b", verb: "show" },
         ]);
-        assert.strictEqual(diagnostics[0]?.rule, "cue-fragment-agreement");
+
+        assert.deepStrictEqual(places(diagnostics), [["two", 0]]);
+        assert.strictEqual(diagnostics[0]?.rule, "effect-fragment-agreement");
         assert.include(
           diagnostics[0]?.message ?? "",
-          "scene sc2, fragment 1: the Plan says sc2.l1.c2 (sfx: pop), the fragments have no fragment"
+          "scene two, fragment 0: the Plan says f1 (focus a), the fragments have no fragment"
         );
         assert.isNumber(diagnostics[0]?.line);
       })
   );
 
   it.effect(
-    "control: an extra, a swapped, a re-kinded and a re-argued fragment each fail at their position",
+    "control: an extra, a re-verbed and a re-targeted fragment each fail at their position",
     () =>
       Effect.gen(function* broken() {
         const given = yield* plan;
-        const all = faithful();
-
-        const extra = [
-          ...all,
-          { arg: "", cueId: "sc3.l1.cX", kind: "next", sceneId: "sc3" },
-        ];
-
-        const [first, second, third, fourth] = all;
+        const [first, second] = faithful();
 
         assert.isDefined(first);
         assert.isDefined(second);
-        assert.isDefined(third);
-        assert.isDefined(fourth);
 
-        const swapped = [first, third, second, fourth];
-        const rekinded = [first, { ...second, kind: "sfx" }, third, fourth];
-        const reargued = [first, second, { ...third, arg: "b" }, fourth];
+        const extra = [
+          first,
+          second,
+          { effectId: "x", sceneId: "three", target: "c", verb: "show" },
+        ];
 
-        assert.deepStrictEqual(places(cueFragmentAgreement(given, extra)), [
-          ["sc3", 1],
+        const reverbed = [first, { ...second, verb: "show" }];
+        const retargeted = [first, { ...second, target: "b" }];
+
+        assert.deepStrictEqual(places(effectFragmentAgreement(given, extra)), [
+          ["three", 0],
         ]);
-        assert.deepStrictEqual(places(cueFragmentAgreement(given, swapped)), [
-          ["sc2", 0],
-        ]);
-        assert.deepStrictEqual(places(cueFragmentAgreement(given, rekinded)), [
-          ["sc2", 0],
-        ]);
-        assert.deepStrictEqual(places(cueFragmentAgreement(given, reargued)), [
-          ["sc2", 1],
-        ]);
+        assert.deepStrictEqual(
+          places(effectFragmentAgreement(given, reverbed)),
+          [["two", 0]]
+        );
+        assert.deepStrictEqual(
+          places(effectFragmentAgreement(given, retargeted)),
+          [["two", 0]]
+        );
       })
   );
 
@@ -98,10 +92,9 @@ describe("cueFragmentAgreement", () => {
     Effect.gen(function* several() {
       const given = yield* plan;
 
-      assert.deepStrictEqual(places(cueFragmentAgreement(given, [])), [
-        ["sc1", 0],
-        ["sc2", 0],
-        ["sc3", 0],
+      assert.deepStrictEqual(places(effectFragmentAgreement(given, [])), [
+        ["one", 0],
+        ["two", 0],
       ]);
     })
   );
@@ -145,32 +138,162 @@ describe("contrast", () => {
   });
 });
 
+/** The Plan with its Scene `sceneId` changed by `change`. */
+const withScene = (
+  given: PlanJson,
+  sceneId: string,
+  change: (scene: PlanJson["scenes"][number]) => PlanJson["scenes"][number]
+): PlanJson => ({
+  ...given,
+  scenes: Arr.map(given.scenes, (scene) =>
+    scene.id === sceneId ? change(scene) : scene
+  ),
+});
+
+/** The Plan with the effect `effectId` of Scene `sceneId` replaced by `change` of it. */
+const withEffect = (
+  given: PlanJson,
+  sceneId: string,
+  effectId: string,
+  change: (effect: PlanEffect) => PlanEffect
+): PlanJson =>
+  withScene(given, sceneId, (scene) => ({
+    ...scene,
+    effects: Arr.map(scene.effects, (effect) =>
+      effect.id === effectId ? change(effect) : effect
+    ),
+  }));
+
 describe("absoluteTimesNeedReason", () => {
-  it.effect("returns no diagnostic for a valid Plan", () =>
-    Effect.gen(function* none() {
-      assert.deepStrictEqual(absoluteTimesNeedReason(yield* plan), []);
+  it.effect(
+    "lists every absolute time with its reason as `info`, and flags none that has one",
+    () =>
+      Effect.gen(function* listed() {
+        const found = absoluteTimesNeedReason(yield* plan);
+
+        assert.deepStrictEqual(
+          Arr.map(found, ({ rule, severity, sceneId }) => [
+            rule,
+            severity,
+            sceneId,
+          ]),
+          [["absolute-time", "info", "three"]]
+        );
+        assert.include(
+          found[0]?.message ?? "",
+          'effect a1: absolute time 1s because "the beat of the music"'
+        );
+      })
+  );
+
+  it.effect("control: an absolute time whose reason is blank is an error", () =>
+    Effect.gen(function* blank() {
+      const broken = withEffect(yield* plan, "three", "a1", (effect) =>
+        "absoluteMs" in effect.when
+          ? { ...effect, when: { ...effect.when, reason: "  " } }
+          : effect
+      );
+
+      const [found, ...rest] = absoluteTimesNeedReason(broken);
+
+      assert.strictEqual(rest.length, 0);
+      assert.strictEqual(found?.rule, "absolute-times-need-a-reason");
+      assert.isUndefined(found?.severity);
+      assert.include(found?.message ?? "", "absolute time 1s has no reason");
+    })
+  );
+});
+
+describe("effectAgreement", () => {
+  it.effect("holds for a Plan the parser built", () =>
+    Effect.gen(function* holds() {
+      assert.deepStrictEqual(effectAgreement(yield* plan), []);
+    })
+  );
+
+  it.effect("control: a show of a visible Element fails", () =>
+    Effect.gen(function* visible() {
+      const broken = withEffect(yield* plan, "one", "r1", (effect) => ({
+        ...effect,
+        target: "a",
+      }));
+
+      const messages = Arr.map(
+        effectAgreement(broken),
+        ({ message }) => message
+      );
+
+      assert.deepStrictEqual(messages, [
+        'scene one: effect r1 shows Element "a", which is visible',
+        'scene one: Element "b" is visible=false and is shown 0 times: expected exactly one show effect',
+      ]);
+    })
+  );
+
+  it.effect("control: a focus on an Element the Scene lacks fails", () =>
+    Effect.gen(function* missing() {
+      const broken = withEffect(yield* plan, "two", "f1", (effect) => ({
+        ...effect,
+        target: "zz",
+      }));
+
+      assert.deepStrictEqual(
+        Arr.map(effectAgreement(broken), ({ message }) => message),
+        [
+          'scene two: effect f1 names Element "zz", which the Scene does not have',
+        ]
+      );
     })
   );
 
   it.effect(
-    "holds because no absolute time is representable in the Plan schema: a Cue with `at` does not decode",
+    "control: a sound with a target, a show with a name and a repeated id fail",
     () =>
-      Effect.gen(function* unrepresentable() {
-        const text = yield* Effect.flatMap(plan, encodePlan);
+      Effect.gen(function* mismatched() {
+        const given = yield* plan;
 
-        const withAt = text.replaceAll(
-          '"afterWord"',
-          '"at": 1500, "afterWord"'
+        const sound = withEffect(given, "two", "s1", (effect) => ({
+          ...effect,
+          target: "a",
+        }));
+
+        const show = withEffect(given, "one", "r1", (effect) => ({
+          ...effect,
+          name: "pop",
+        }));
+
+        const twice = withScene(given, "two", (scene) => ({
+          ...scene,
+          effects: [...scene.effects, ...Arr.take(scene.effects, 1)],
+        }));
+
+        assert.deepStrictEqual(
+          Arr.map(effectAgreement(sound), ({ message }) => message),
+          ["scene two: effect s1 is a sound: expected a name and no target"]
         );
-
-        const decode = Schema.decodeUnknownEffect(
-          Schema.fromJsonString(PlanJsonSchema),
-          { onExcessProperty: "error" }
+        assert.deepStrictEqual(
+          Arr.map(effectAgreement(show), ({ message }) => message),
+          [
+            "scene one: effect r1 is a show: expected an Element target and no sound name",
+          ]
         );
+        assert.deepStrictEqual(
+          Arr.map(effectAgreement(twice), ({ message }) => message),
+          ['scene two: effect id "f1" is used twice']
+        );
+      })
+  );
+});
 
-        assert.notStrictEqual(withAt, text);
-        assert.isTrue(Exit.isSuccess(yield* Effect.exit(decode(text))));
-        assert.isTrue(Exit.isFailure(yield* Effect.exit(decode(withAt))));
+describe("lintPlan", () => {
+  it.effect(
+    "runs the Plan rules: the information of a valid Plan is its absolute times",
+    () =>
+      Effect.gen(function* all() {
+        assert.deepStrictEqual(
+          Arr.map(lintPlan(yield* plan), ({ rule }) => rule),
+          ["absolute-time"]
+        );
       })
   );
 });

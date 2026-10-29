@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 
-// Every expected failure of the Plan stage names the 1-based source line it concerns and says what is wrong.
+// Every expected failure of the Plan stage names the 1-based source line it concerns and says what is wrong: what
+// was found, what was expected and, when there is a nearest valid form, `did you mean` (spec 0002, F2).
 const located = { line: Schema.Int, message: Schema.String };
 
 /** Dual dialogue, centred text, page breaks, lyrics, a character other than NARRATOR, and the like. */
@@ -9,37 +10,91 @@ export class UnsupportedElement extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()("UnsupportedElement", located) {}
 
-/** A `[[...]]` whose kind is not `next`, `focus: id` or `sfx: name`. */
-export class UnknownCue extends Schema.TaggedError<
-  UnknownCue,
-  { readonly brand: unique symbol }
->()("UnknownCue", located) {}
-
-/** Two Elements of one Scene share an `#id`. */
+/** Two Elements, Scenes or effects of one scope share an id. */
 export class DuplicateId extends Schema.TaggedError<
   DuplicateId,
   { readonly brand: unique symbol }
 >()("DuplicateId", located) {}
 
-/** An Element line without `#id`. */
+/** An Element line without `id=`. */
 export class MissingId extends Schema.TaggedError<
   MissingId,
   { readonly brand: unique symbol }
 >()("MissingId", located) {}
 
-/** `[[focus: id]]` names an id that is not an Element of its Scene. */
-export class CueTargetMissing extends Schema.TaggedError<
-  CueTargetMissing,
+/** An Element property that is unknown, repeated, missing or has a value outside its closed set. */
+export class BadProperty extends Schema.TaggedError<
+  BadProperty,
   { readonly brand: unique symbol }
->()("CueTargetMissing", located) {}
+>()("BadProperty", located) {}
 
-/** `[[next]]` in a Scene with no hidden Element left to reveal. */
-export class NextWithNothingHidden extends Schema.TaggedError<
-  NextWithNothingHidden,
+/** A Scene heading without a valid `#id#`. */
+export class BadSceneId extends Schema.TaggedError<
+  BadSceneId,
   { readonly brand: unique symbol }
->()("NextWithNothingHidden", located) {}
+>()("BadSceneId", located) {}
 
-/** A `hidden` Element that no `[[next]]` of its Scene reveals. */
+/** A release-1 form (`[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, a note in dialogue, `{#id @cell .class hidden}`). */
+export class ReleaseOneForm extends Schema.TaggedError<
+  ReleaseOneForm,
+  { readonly brand: unique symbol }
+>()("ReleaseOneForm", located) {}
+
+/** An `[[effects]]` block that is misplaced, repeated, unclosed or has a blank line inside. */
+export class BadEffectsBlock extends Schema.TaggedError<
+  BadEffectsBlock,
+  { readonly brand: unique symbol }
+>()("BadEffectsBlock", located) {}
+
+/** A line of an `[[effects]]` block that does not follow the line grammar (verb, event, edge, unit, offset...). */
+export class BadEffect extends Schema.TaggedError<
+  BadEffect,
+  { readonly brand: unique symbol }
+>()("BadEffect", located) {}
+
+/** An absolute time (`at 12.5s`) without `because "<reason>"`. */
+export class AbsoluteNeedsReason extends Schema.TaggedError<
+  AbsoluteNeedsReason,
+  { readonly brand: unique symbol }
+>()("AbsoluteNeedsReason", located) {}
+
+/** A reference to an Element, effect, word or phrase that this Scene does not have. */
+export class UnknownReference extends Schema.TaggedError<
+  UnknownReference,
+  { readonly brand: unique symbol }
+>()("UnknownReference", located) {}
+
+/** An Element event that does not happen in this Scene (`move` of an Element that does not change cell). */
+export class NoSuchEvent extends Schema.TaggedError<
+  NoSuchEvent,
+  { readonly brand: unique symbol }
+>()("NoSuchEvent", located) {}
+
+/** A `word("...")` phrase that occurs more than once in the Scene, with no occurrence number. */
+export class AmbiguousWord extends Schema.TaggedError<
+  AmbiguousWord,
+  { readonly brand: unique symbol }
+>()("AmbiguousWord", located) {}
+
+/** Effects that wait for each other. */
+export class EffectCycle extends Schema.TaggedError<
+  EffectCycle,
+  { readonly brand: unique symbol }
+>()("EffectCycle", located) {}
+
+/** A percent point or percent offset on an anchor that has no window. */
+export class BadPercent extends Schema.TaggedError<
+  BadPercent,
+  { readonly brand: unique symbol }
+>()("BadPercent", located) {}
+
+/** `show` of an Element that is not `visible=false`, or a second `show` of one Element. */
+export class BadShow extends Schema.TaggedError<
+  BadShow,
+  { readonly brand: unique symbol }
+>()("BadShow", located) {}
+
+/** A `visible=false` Element that no `show` effect of its Scene reveals. */
 export class HiddenNeverRevealed extends Schema.TaggedError<
   HiddenNeverRevealed,
   { readonly brand: unique symbol }
@@ -63,7 +118,7 @@ export class BadTransition extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()("BadTransition", located) {}
 
-/** `[[sfx: name]]` with a name outside the built-in catalogue. */
+/** A `sound` effect with a name outside the built-in catalogue. */
 export class UnknownSfx extends Schema.TaggedError<
   UnknownSfx,
   { readonly brand: unique symbol }
@@ -88,18 +143,27 @@ export class EmptyStory extends Schema.TaggedError<
 >()("EmptyStory", located) {}
 
 const planErrors = {
+  AbsoluteNeedsReason,
+  AmbiguousWord,
+  BadEffect,
+  BadEffectsBlock,
   BadParenthetical,
+  BadPercent,
+  BadProperty,
+  BadSceneId,
+  BadShow,
   BadSpeed,
   BadTransition,
-  CueTargetMissing,
   DuplicateId,
+  EffectCycle,
   EmphasisInDialogue,
   EmptyStory,
   HiddenNeverRevealed,
   MissingId,
-  NextWithNothingHidden,
+  NoSuchEvent,
+  ReleaseOneForm,
   SceneBeforeSection,
-  UnknownCue,
+  UnknownReference,
   UnknownSfx,
   UnsupportedElement,
 } as const;
@@ -132,19 +196,52 @@ export class SceneLeadTooShort extends Schema.TaggedError<
   transition: Schema.Finite,
 }) {}
 
-/** A Cue follows a word the Line does not have. */
-export class CueOutsideLine extends Schema.TaggedError<
-  CueOutsideLine,
+/** An effect resolves to a frame outside its Scene (or its command would fall before the slide change). */
+export class EffectOutsideScene extends Schema.TaggedError<
+  EffectOutsideScene,
   { readonly brand: unique symbol }
->()("CueOutsideLine", { cueId: Schema.String, message: Schema.String }) {}
+>()("EffectOutsideScene", {
+  effectId: Schema.String,
+  message: Schema.String,
+  sceneId: Schema.String,
+}) {}
+
+/** An effect anchors to a window the renderer's declared lifecycle makes empty (a percent on an instant). */
+export class EmptyWindow extends Schema.TaggedError<
+  EmptyWindow,
+  { readonly brand: unique symbol }
+>()("EmptyWindow", {
+  effectId: Schema.String,
+  message: Schema.String,
+  sceneId: Schema.String,
+}) {}
+
+/** The renderer's declared lifecycle disagrees with the Plan (`transitionMs["auto-animate"]` vs `settings.transition`). */
+export class LifecycleMismatch extends Schema.TaggedError<
+  LifecycleMismatch,
+  { readonly brand: unique symbol }
+>()("LifecycleMismatch", { message: Schema.String }) {}
+
+/** An anchor of a hand-made or stale Plan that does not resolve (a word the narration lacks, a missing effect, a cycle). */
+export class UnresolvedAnchor extends Schema.TaggedError<
+  UnresolvedAnchor,
+  { readonly brand: unique symbol }
+>()("UnresolvedAnchor", {
+  effectId: Schema.String,
+  message: Schema.String,
+  sceneId: Schema.String,
+}) {}
 
 /** Everything `schedule` can fail with. */
 export type ScheduleError =
   | AlignmentMismatch
   | SceneLeadTooShort
-  | CueOutsideLine;
+  | EffectOutsideScene
+  | EmptyWindow
+  | LifecycleMismatch
+  | UnresolvedAnchor;
 
-/** The Plan has no Timeline, or its Timeline names a Scene, Line or Cue the Plan does not have. */
+/** The Plan has no Timeline, or its Timeline names a Scene, Line or effect the Plan does not have. */
 export class PlanNotScheduled extends Schema.TaggedError<
   PlanNotScheduled,
   { readonly brand: unique symbol }

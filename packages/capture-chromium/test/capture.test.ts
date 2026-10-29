@@ -47,14 +47,14 @@ it.live(
       const changed = (from: number, to: number, box?: Region) =>
         firstChangedFrame(sliceClip(clip, from, to), box);
 
-      // `[[next]]` of sc1.l1: commanded at frame 46, its Element fades in from frame 47 (fireFrame).
+      // The show effect r1 of sc1: commanded at frame 46, its Element fades in from frame 47 (fireFrame).
       assert.strictEqual(changed(40, 60, boxB), 47);
       // Auto-Animate into sc2: commanded at its slide frame 81. The whole frame changes at once (the unmatched
       // Elements swap); the matched Element `a` starts moving two frames later (Reveal starts it in a
       // requestAnimationFrame), which the strip below its start box shows.
       assert.strictEqual(changed(70, 95), 81);
       assert.strictEqual(changed(70, 95, boxA), 83);
-      // `[[focus: a]]` of sc2.l1: commanded at 118. Reveal marks `a` as an Auto-Animate target and removes its CSS
+      // The focus effect f1 of sc2: commanded at 118. Reveal marks `a` as an Auto-Animate target and removes its CSS
       // transitions, so in this deck the ring shows at the command frame (118), not one frame later; F1's tolerance
       // of one frame around fireFrame 119 covers both.
       assert.strictEqual(changed(110, 130), 118);
@@ -80,9 +80,7 @@ it.live(
       const moved = {
         ...schedule,
         commands: Arr.map(schedule.commands, (step) =>
-          step.source === "sc1.l1.c1"
-            ? { ...step, frame: step.frame + 2 }
-            : step
+          step.source === "r1" ? { ...step, frame: step.frame + 2 } : step
         ),
       };
 

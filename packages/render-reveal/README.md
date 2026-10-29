@@ -2,7 +2,7 @@
 
 The reveal.js `Renderer` (spec 0001, design R3): a Plan in, a Deck out, all in memory: `deck.html`, the theme, the page
 runtime and the binary assets read from the installed packages (reveal.js, Inter). It reads the Plan, never the
-screenplay: its manifest depends on `@reebeat/core` (types only), `@reebeat/services`, `@reebeat/lint`, `effect`,
+screenplay: its manifest depends on `@reebeat/core` (types only, and the parser-free subpath `@reebeat/core/steps`), `@reebeat/services`, `@reebeat/lint`, `effect`,
 `reveal.js`, `@fontsource/inter` and `parse5`, and a test and a lint rule keep it that way (spec 0001, F11). Writing the
 files of a `RenderedDeck` to a directory is the pipeline's file-system work, not this package's.
 Spec: [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md).
@@ -17,18 +17,19 @@ PlanJson + deck.html text ──checkDeck──▶ void | DeckMismatch          
 
 | Export | What it is |
 | --- | --- |
-| `revealRenderer` | `Layer<Renderer, never, FileSystem \| Path>`; `info.id` is `reveal.js@<installed version>`, `info.settings` holds the theme (palette, fonts, Inter version), the egress is local. The layer reads the packages' files once, when it is built; a package that cannot be read does not stop the layer, `render` then fails with `AdapterUnavailable` (and `info.id` is `reveal.js@unavailable`). `render(plan)` is `assembleDeck(plan, renderDeck(plan), assets)`; a Deck that disagrees with its Plan fails as `RenderFailed` carrying the `DeckMismatch` |
+| `revealRenderer` | `Layer<Renderer, never, FileSystem \| Path>`; `info.id` is `reveal.js@<installed version>`, `info.settings` holds the theme (palette, fonts, Inter version), `info.lifecycle` is `revealLifecycle` (below), the egress is local. The layer reads the packages' files once, when it is built; a package that cannot be read does not stop the layer, `render` then fails with `AdapterUnavailable` (and `info.id` is `reveal.js@unavailable`). `render(plan)` is `assembleDeck(plan, renderDeck(plan), assets)`; a Deck that disagrees with its Plan fails as `RenderFailed` carrying the `DeckMismatch` |
 | `renderDeck(plan)` | `DeckBundle`: `html` is `deck.html`; `files` are `assets/theme.css` and `assets/deck.js`. Same Plan, same bytes |
 | `readAssets()` | `Effect<DeckAssets, DeckAssetMissing, FileSystem \| Path>`: the bytes of the reveal.js and Inter files and the two package versions |
 | `assembleDeck(plan, bundle, assets)` | `Effect<RenderedDeck, DeckMismatch>`: reads the page back with `checkDeck` and returns the files (`deck.html` is the entry) |
 | `readDeck(html)` | `DeckModel`: per slide the scene id, chapter id, notes paragraphs, fragments, Elements and marks; the two source hashes. Total: it never fails |
-| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index`. The Cue and fragment comparison is `@reebeat/lint`'s rule `cue-fragment-agreement`; the page's own checks (the Element a `next` reveals, the fragment index) stay here |
+| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index`. The effect and fragment comparison is `@reebeat/lint`'s rule `effect-fragment-agreement`; the page's own checks (the fragment index, the `data-sounds` of the slide and of each step, the Elements, the marks) stay here |
 
-`DeckMismatch.check` is one of `F3 notes` (note $k$ is the narration of Line $k$), `F4 fragments` (fragments equal Cues in
-kind, argument, revealed Element and order), `F5 source hash` (`<html data-source-sha256>` and the `reebeat:source-sha256`
-meta both equal `plan.sourceSha256`), `elements` (every Plan Element is on its slide with the same cell, classes, hidden
-flag and text, and nothing else is), `slides` (same scene ids and chapters in the same order) and `transitions`
-(`data-auto-animate`, `data-auto-animate-id`, `data-transition`).
+`DeckMismatch.check` is one of `F3 notes` (note $k$ is the narration of Line $k$), `F4 fragments` (one fragment per `show` or `focus` effect
+in resolved-time order with its verb and target, and the `data-sounds` of the slide and of every step equal the sounds the Plan
+carries there), `F5 source hash` (`<html data-source-sha256>` and the `reebeat:source-sha256`
+meta both equal `plan.sourceSha256`), `elements` (every Plan Element is on its slide with the same cell, class, `visible` flag and
+text, and nothing else is), `slides` (same scene ids and chapters in the same order) and `transitions` (`data-auto-animate`,
+`data-auto-animate-id`, `data-transition`, `data-cut-after`).
 
 ## The page
 
@@ -56,18 +57,62 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   proportionally larger type and spacing. The Plan contract pins 1280 x 720 today (`SettingsSchema` literals), so the tests
   exercise other sizes by calling `themeCss` and `runtimeJs` with other `DeckSettings` and, through `renderDeck`, other
   durations. The fade between two non-matched slides is reveal.js's own 0.5 s and is not a setting.
-- **Runtime.** `assets/deck.js` is plain JavaScript text generated by `src/runtime.ts`. `next` replaces `hidden` with
+- **Effects, steps and sounds** (spec 0002). The `show` and `focus` effects of a Scene are its fragment steps, in the order of
+  their resolved frames (`Timeline.scenes[].effects`, ties keep source order), each
+  `<span class="fragment effect" data-fragment-index data-effect-id data-effect-verb data-target>`. A `sound` is never a step:
+  it is `data-sounds="whoosh ding"` (names, in source order) on the thing it plays with, and `@reebeat/core/steps` (`stepsOf`,
+  `soundsOf`: the one definition the Deck and `@reebeat/verify` share) says which. A sound anchored to the slide change, the
+  Scene's start or an Element's lifecycle event of the transition rides on the `<section>` and plays when the slide is
+  shown; a sound anchored to a `show` effect's Element, to a step, or later than a step rides on that step and plays when it
+  runs; a sound with no step before it ("alone", for example an absolute time before any step) rides on the slide, because
+  a Deck has nothing else to play it with. Effects that are not steps are not in the notes: the notes are the narration.
+  Without a Timeline (`plan` output) the steps keep source order.
+- **Runtime.** `assets/deck.js` is plain JavaScript text generated by `src/runtime.ts`. `show` replaces `hidden` with
   `shown` (the CSS fades opacity in 0.2 s); `focus` puts `focused` (a ring and a scale of 1.04) on its target and takes it
-  from the previous focus; stepping back restores the previous focus and hides the Element again; `sfx` plays
-  `assets/sfx/<name>.wav` and ignores a rejection from a blocked autoplay. `reebeatDeck.ready` resolves when Reveal is
-  ready **and both Inter faces are loaded**, so a capture never shows a fallback font. `goToScene` throws for an unknown
-  id. reveal.js's notes plugin is loaded, so the arrow keys step through the Deck and `s` opens the speaker view.
-  Known interplay: `focused` is not cleared when the slide changes, so an Element still focused when an Auto-Animate
-  starts is measured with its scale of 1.04 and animates from that box.
+  from the previous focus; stepping back restores the previous focus and hides the Element again; sounds play
+  `assets/sfx/<name>.wav` on `fragmentshown` (the step's) and `slidechanged` (the slide's) and ignore a rejection from a
+  blocked autoplay. `reebeatDeck.ready` resolves when Reveal is ready **and both Inter faces are loaded**, so a capture never
+  shows a fallback font. `goToScene` throws for an unknown id. reveal.js's notes plugin is loaded, so the arrow keys step
+  through the Deck and `s` opens the speaker view. Known interplay: `focused` is not cleared when the slide changes, so an
+  Element still focused when an Auto-Animate starts is measured with its scale of 1.04 and animates from that box.
+- **A cut is a cut.** reveal.js takes the transition of the slide it LEAVES from that slide, so `data-transition="none"` on the
+  incoming slide still left the old slide fading out for 12 frames under the new one (found by the observer of
+  `@reebeat/verify`: the whole frame of a `> CUT` changed for 12 frames). The slide before a cut carries `data-cut-after` and
+  `theme.css` gives `section[data-cut-after].past` `transition: none`; the cut now changes the frame in one frame.
 - **Files.** `assets/reveal/{reveal.js,reveal.css,reset.css,plugin/notes.js,LICENSE}` and
   `assets/fonts/{inter-latin-400-normal.woff2,inter-latin-700-normal.woff2,LICENSE}` are read from the installed
   packages (found with `import.meta.resolve`); the licences travel with them. The Latin subset of Inter is bundled.
   The Deck loads only relative `file:` URLs: no CDN, no network. The sound files are written by the pipeline.
+
+## Lifecycle
+
+`info.lifecycle` is `revealLifecycle` (`src/lifecycle.ts`), the `RendererLifecycle` of spec 0002: when each Element event
+happens in the window of the slide change. `schedule` resolves every effect anchored to such an event from it (the pipeline
+hands it over, `build.json` records it under the Renderer), and `@reebeat/verify` observes the same events in the written video
+(F1), so a wrong number fails there. The numbers are **measured**, in frames of the capture at 30 fps, `s` being the Scene's
+slide frame; an event starts at the first frame in which 200 pixels of its region differ by more than 8 gray levels from the old
+picture (a box that moves: when the centre of its ink is 2 pixels from its old place) and is over at the first frame in which less
+than 1% of the change is left (a box: within half a pixel of its new place). Fresh build of `stories/same-id` and the probe
+story of `packages/verify/test/lifecycle.test.ts`, which anchors one effect to each event:
+
+| Event | Declared | Observed | Note |
+| --- | --- | --- | --- |
+| `auto-animate` transition, end | `s + 24` (`transitionMs` 800: the Plan's `transition`) | `s + 25` | the matched Element's animation is created one frame after the call |
+| matched Element `move`, start | `s + 2` (`matched.startLagFrames`) | `s + 2` | `ease` starts slowly: the first 2 pixels are 2 frames in; a one-pixel jump at `s` is not a motion |
+| matched Element `move`, end | `s + 24` | `s + 25` | |
+| matched Element `move`, 50% | frame where eased progress is 50% (`matched.easing` = the CSS `ease`) | `s + 8.04` on the box of `sc4` (524 px); resolved `s + 8` | position, not time: the box is half way at 8 frames, time is half way at 13 |
+| unmatched `enter` (an Element only in the new Scene) | `s + 8` to `s + 22` (`unmatched.enter`) | `s + 7` to `s + 21`, `s + 8` to `s + 22`, `s + 7` to `s + 22` (three Elements) | it fades in after the slide change, not with it |
+| `exit` (an Element only in the old Scene) | `s` | `s` | |
+| `default` fade, end (reveal.js `fade`, `opacity .5s`) | `s + 12` (`transitionMs.default` 400) | `s + 12` | the eased fade has less than 1% left after 12 of its 15 frames |
+| `cut`, end | `s` (`transitionMs.cut` 0) | `s` | before the `data-cut-after` fix: `s + 12`, the old slide fading out |
+| `show`, end (`showMs` 133) | fire frame + 4 | fire frame + 4 | `.el.shown` fades opacity in 0.2 s (6 frames), 4 of them are visible |
+
+The two `+ 1` differences are inside the one-frame tolerance of F1. A renderer whose declaration is wrong by two frames fails: the
+control of `packages/verify/test/checks.test.ts` declares `matched.startLagFrames` 0 and F1 reports the sound anchored to
+`a.move.start` 2 frames off its observed anchor. To measure again: `bun run reebeat build stories/same-id/story.fountain --out
+build/same-id` and `bun run reebeat check build/same-id --source stories/same-id/story.fountain` print each effect with its
+resolved and observed frame, and `cd packages/verify && bunx vp test run test/lifecycle.test.ts --silent=false` prints the table of
+the probes. Release 1 wrote "about 3 frames" for the matched Element; with the pixel rule above it is 2.
 
 ## HTML parser
 
@@ -94,12 +139,12 @@ against the slide background and against the box background. Inter is bundled
 
 | File | Proves |
 | --- | --- |
-| `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, cues (pure) |
-| `check.test.ts` | F3, F4, F5 and Element controls on the written file; `assembleDeck` fails on a bad bundle (pure) |
-| `renderer.test.ts` | the Renderer contract (`@reebeat/services/contract`) with two negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
+| `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, `data-cut-after`, one fragment per `show` or `focus` effect in resolved order, `data-sounds` on slides and steps (pure) |
+| `check.test.ts` | F3, F4, F5 and Element controls on the written file: a deleted, swapped, re-targeted fragment, a sound dropped, reordered or moved to another step; `assembleDeck` fails on a bad bundle (pure) |
+| `renderer.test.ts` | the Renderer contract (`@reebeat/services/contract`, C1 to C6 with the lifecycle clause) with negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
 | `theme.test.ts` | contrast of every class |
 | `boundaries.test.ts` | F11: the manifest and an import scan of `src` |
-| `browser.test.ts` | Chromium: `reebeatDeck`, each Cue's effect, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box |
+| `browser.test.ts` | Chromium: `reebeatDeck`, each step's effect, the sounds of a slide and of a step, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box |
 
 The browser tests use the real clock; the controlled clock belongs to `packages/capture-chromium`. The only suppression is the
 Promise adapter of `test/browser.ts` (`EX-0030` in `tools/quality/effect-exceptions.json`).

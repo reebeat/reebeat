@@ -3,7 +3,7 @@
 import { Array as Arr, Option, Result } from "effect";
 
 import { PlanNotScheduled } from "./errors.ts";
-import type { Cue, Line, PlanJson, Timeline } from "./plan.ts";
+import type { Line, PlanJson, Timeline } from "./plan.ts";
 
 /** The millisecond at which `frame` starts: `round(1000 * frame / fps)`. */
 export const frameToMs = (frame: number, fps: number): number =>
@@ -18,15 +18,6 @@ const planLines = (plan: PlanJson): readonly Line[] =>
 export const linesById = (plan: PlanJson): ReadonlyMap<string, Line> =>
   new Map(Arr.map(planLines(plan), (line): [string, Line] => [line.id, line]));
 
-/** Every Cue of the Plan by id. */
-export const cuesById = (plan: PlanJson): ReadonlyMap<string, Cue> =>
-  new Map(
-    Arr.map(
-      Arr.flatMap(planLines(plan), (line) => line.cues),
-      (cue): [string, Cue] => [cue.id, cue]
-    )
-  );
-
 const notScheduled = (
   message: string
 ): Result.Result<never, PlanNotScheduled> =>
@@ -38,12 +29,14 @@ const firstDisagreement = (
   timeline: Timeline
 ): string | undefined => {
   const lines = linesById(plan);
-  const cues = cuesById(plan);
-  const sceneIds = new Set(Arr.map(plan.scenes, (scene) => scene.id));
   const chapterIds = new Set(Arr.map(plan.chapters, (chapter) => chapter.id));
 
   for (const scene of timeline.scenes) {
-    if (!sceneIds.has(scene.sceneId)) {
+    const planned = Option.getOrUndefined(
+      Arr.findFirst(plan.scenes, (candidate) => candidate.id === scene.sceneId)
+    );
+
+    if (planned === undefined) {
       return `the Timeline has Scene ${scene.sceneId}, the Plan does not`;
     }
 
@@ -51,15 +44,16 @@ const firstDisagreement = (
       if (!lines.has(line.lineId)) {
         return `the Timeline has Line ${line.lineId}, the Plan does not`;
       }
+    }
 
-      const unknownCue = Arr.findFirst(
-        line.cues,
-        (cue) => !cues.has(cue.cueId)
-      );
+    const unknownEffect = Arr.findFirst(
+      scene.effects,
+      (timed) =>
+        !Arr.some(planned.effects, (effect) => effect.id === timed.effectId)
+    );
 
-      if (Option.isSome(unknownCue)) {
-        return `the Timeline has Cue ${unknownCue.value.cueId}, the Plan does not`;
-      }
+    if (Option.isSome(unknownEffect)) {
+      return `the Timeline has effect ${unknownEffect.value.effectId} in Scene ${scene.sceneId}, the Plan does not`;
     }
   }
 

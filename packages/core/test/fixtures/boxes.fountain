@@ -8,42 +8,55 @@ Author: Reebeat tests
 
 = One box, two screens.
 
-INT. FIRST SCREEN
+INT. FIRST SCREEN - DAY #first#
 
-A box {#box @tl .box}
-The caption {#cap @bc .muted hidden}
-Old news {#old @mr .label}
-Footer {#foot @bl .muted}
+A box {id=box cell=tl class=box}
+The caption {id=cap cell=bc class=muted visible=false}
+Old news {id=old cell=mr class=label}
+Footer {id=foot cell=bl class=muted}
+
+[[effects
+  r1: show   cap at word("corner").end
+  f1: focus  box at word("box", 2).start
+  s1: sound  pop at word("box", 2).end +100ms
+]]
 
 NARRATOR
 (slowly)
-This box sits in the corner. [[next]] The caption says what it is.
+This box sits in the corner. The caption says what it is.
 
 NARRATOR
-Look at the box. [[focus: box]] [[sfx: pop]]
+Look at the box.
 
 > AUTO-ANIMATE
 
-INT. SECOND SCREEN
+INT. SECOND SCREEN - DAY #second#
 
-A box {#box @mc .box .accent}
-The new caption {#cap @bc .muted}
-New arrival {#new @tr .title hidden}
-Footer {#foot @bl .muted}
+A box {id=box cell=mc class=accent}
+The new caption {id=cap cell=bc class=muted}
+New arrival {id=new cell=tr class=title visible=false}
+Footer {id=foot cell=bl class=muted}
+
+[[effects
+  s1: sound whoosh at transition.start
+  s2: sound ding at box.move.50%
+  r1: show new at word("enters").end
+  f1: focus new at r1.end +3f
+]]
 
 NARRATOR
 (pause 0.5)
-Same id, new place. [[sfx: whoosh]] [[next]] A new element enters.
+Same id, new place. A new element enters.
 
 # The cut
 
 > CUT
 
-INT. THIRD SCREEN
+INT. THIRD SCREEN - DAY #third#
 
-/* a note that is not a Cue */
+/* a note that is not an effects block */
 
-Fresh start {#fresh @mc .title}
+Fresh start {id=fresh cell=mc class=title}
 
 NARRATOR
 (quickly)
@@ -51,9 +64,14 @@ Nothing is matched across a cut.
 
 > AUTO-ANIMATE
 
-INT. FOURTH SCREEN
+INT. FOURTH SCREEN - DAY #fourth#
 
-Fresh start {#fresh @tc .title}
+Fresh start {id=fresh cell=tc class=title}
+
+[[effects
+  s1: sound ding at fresh.move.end -50ms
+  s2: sound pop at 1.5s because "the title settles on a beat in the music"
+]]
 
 NARRATOR
-[[sfx: ding]] The title moves up.
+The title moves up.

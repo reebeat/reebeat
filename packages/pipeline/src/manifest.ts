@@ -5,6 +5,7 @@
 // `@reebeat/verify` reads the same definition. No secret can be in it: `writeManifest` rejects a secret-looking
 // setting name (`rejectSecretSettings`), and the settings are what the adapters declare, never what they read from
 // the environment.
+import { RendererLifecycleSchema } from "@reebeat/core";
 import {
   EgressSchema,
   ProvenanceSchema,
@@ -18,10 +19,14 @@ import { sha256Hex } from "./hash.ts";
 
 export const manifestFile = "build.json";
 
-/** One selected adapter: the service it fills, its id, what it sends out and the settings that shape its output. */
+/**
+ * One selected adapter: the service it fills, its id, what it sends out and the settings that shape its output. The
+ * Renderer's record also holds the `lifecycle` it declared, which the Plan's effects were resolved against.
+ */
 export const AdapterRecordSchema = Schema.Struct({
   egress: EgressSchema,
   id: Schema.String,
+  lifecycle: Schema.optionalKey(RendererLifecycleSchema),
   service: Schema.Literals(serviceNames),
   settings: SettingsSchema,
 });

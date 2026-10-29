@@ -6,27 +6,18 @@ import type { TimedPlan } from "@reebeat/core";
 import { Array as Arr, Order } from "effect";
 
 import { captureSchedule, sceneChangeLag } from "../src/captureSchedule.ts";
-import { fixture } from "./fixturePlan.ts";
-
-const firstOf = <A>(items: readonly A[]): A => {
-  const [first] = items;
-
-  assert.isDefined(first);
-
-  return first;
-};
+import { fixture, sharedIds } from "./fixturePlan.ts";
 
 describe("captureSchedule", () => {
-  it("commands each slide change `lag` frames before its slide frame and each fragment at its Cue's command frame", () => {
+  it("commands each slide change `lag` frames before its slide frame and each fragment at its effect's command frame", () => {
     const { commands } = captureSchedule(fixture);
 
     assert.deepStrictEqual(
       Arr.map(commands, ({ frame, source }) => [frame, source]),
       [
-        [46, "sc1.l1.c1"],
-        [65, "sc1.l1.c2"],
+        [46, "r1"],
         [81 - sceneChangeLag["auto-animate"], "sc2"],
-        [118, "sc2.l1.c1"],
+        [118, "f1"],
         [156 - sceneChangeLag.cut, "sc3"],
       ]
     );
@@ -60,16 +51,14 @@ describe("captureSchedule", () => {
     );
   });
 
-  it("each next or focus command precedes its fire frame by one frame, and each slide change its slide frame by the measured lag (a fade 1 frame, a cut and an Auto-Animate 0)", () => {
+  it("each show or focus command precedes its fire frame by one frame, and each slide change its slide frame by the measured lag (a fade 1 frame, a cut and an Auto-Animate 0)", () => {
     const plan = fixture;
     const { commands } = captureSchedule(plan);
 
     const fires = new Map(
       Arr.map(
-        Arr.flatMap(plan.timeline.scenes, (scene) =>
-          Arr.flatMap(scene.lines, (line) => line.cues)
-        ),
-        (cue): [string, number] => [cue.cueId, cue.fireFrame]
+        Arr.flatMap(plan.timeline.scenes, (scene) => scene.effects),
+        (effect): [string, number] => [effect.effectId, effect.fireFrame]
       )
     );
 
@@ -90,9 +79,9 @@ describe("captureSchedule", () => {
     for (const step of commands) {
       const slide = slides.get(step.source);
 
-      if (slide === undefined && step.source !== "sc1.l1.c2") {
+      if (slide === undefined) {
         assert.strictEqual((fires.get(step.source) ?? 0) - step.frame, 1);
-      } else if (slide !== undefined) {
+      } else {
         assert.strictEqual(
           slide - step.frame,
           transitions.get(step.source) === "default" ? 1 : 0
@@ -101,43 +90,64 @@ describe("captureSchedule", () => {
     }
   });
 
-  it("keeps fragment steps in Cue order: an sfx before a next is commanded no later than the next", () => {
-    const plan = fixture;
-    const first = firstOf(plan.timeline.scenes);
-    const line = firstOf(first.lines);
+  it("gives a sound no command: it is mixed at its fire frame and changes no pixel", () => {
+    const { commands } = captureSchedule(fixture);
 
-    const swapped: TimedPlan = {
+    assert.deepStrictEqual(
+      Arr.filter(commands, (step) => step.source === "p1"),
+      []
+    );
+  });
+
+  it("tells a sound from a step by the effect of its own Scene: two Scenes may both have an `x1`", () => {
+    const steps = Arr.filter(
+      captureSchedule(sharedIds).commands,
+      (step) => step.source === "x1"
+    );
+
+    // The `x1` of sc1 is a pop (no command); the `x1` of sc2 is a focus (one command, one frame before its fire frame).
+    const [second] = Arr.drop(sharedIds.timeline.scenes, 1);
+    const focus = second?.effects[0];
+
+    assert.deepStrictEqual(
+      Arr.map(steps, ({ frame }) => frame),
+      [focus?.commandFrame]
+    );
+  });
+
+  it("never steps a fragment before its own slide change: an effect at the transition start is commanded with the slide", () => {
+    const plan = fixture;
+
+    const early: TimedPlan = {
       ...plan,
       timeline: {
         ...plan.timeline,
-        scenes: [
-          {
-            ...first,
-            lines: [
-              {
-                ...line,
-                cues: [
-                  { commandFrame: 47, cueId: "sc1.l1.c2", fireFrame: 47 },
-                  { commandFrame: 46, cueId: "sc1.l1.c1", fireFrame: 47 },
-                ],
-              },
-            ],
-          },
-          ...Arr.drop(plan.timeline.scenes, 1),
-        ],
+        scenes: Arr.map(plan.timeline.scenes, (scene) =>
+          scene.sceneId === "sc2"
+            ? {
+                ...scene,
+                effects: Arr.map(scene.effects, (effect) => ({
+                  ...effect,
+                  commandFrame: scene.slideFrame - 1,
+                  fireFrame: scene.slideFrame,
+                })),
+              }
+            : scene
+        ),
       },
     };
 
     const steps = Arr.filter(
-      captureSchedule(swapped).commands,
-      (step) => step.command.kind === "stepFragment"
+      captureSchedule(early).commands,
+      (step) => step.source === "sc2" || step.source === "f1"
     );
 
+    // One frame before its slide frame the step would run on the PREVIOUS slide: it runs after the slide change.
     assert.deepStrictEqual(
-      Arr.map(Arr.take(steps, 2), ({ frame, source }) => [frame, source]),
+      Arr.map(steps, ({ frame, source }) => [frame, source]),
       [
-        [46, "sc1.l1.c2"],
-        [46, "sc1.l1.c1"],
+        [81, "sc2"],
+        [81, "f1"],
       ]
     );
   });

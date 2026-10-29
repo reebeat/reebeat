@@ -17,7 +17,7 @@ export { encoderClauses, encoderContract } from "./encoder.ts";
 
 export type { EncoderOptions, MuxProbe } from "./encoder.ts";
 
-export { contractPlan } from "./fixture.ts";
+export { alignedLines, contractLifecycle, contractPlan } from "./fixture.ts";
 
 export type { PlanOptions } from "./fixture.ts";
 

@@ -27,11 +27,17 @@ screenshot. Measured on the real reveal.js page (`test/lags.test.ts`), the first
 | scene change, Auto-Animate | 0 (the matched Element's motion starts 2 to 3 frames later) | `slideFrame` |
 | scene change, cut | 0 | `slideFrame` |
 | scene change, default fade | 1 | `slideFrame - 1` |
-| `next` | 1 | `fireFrame - 1` |
-| `focus` | 1 (a `.box` shows a sub-pixel change at the call) | `fireFrame - 1` |
-| `sfx` | no pixels; the sound is mixed at `fireFrame` | `fireFrame` |
+| `show` effect | 1 | `fireFrame - 1` |
+| `focus` effect | 1 (a `.box` shows a sub-pixel change at the call) | `fireFrame - 1` |
+| `sound` effect | no pixels and no command; the sound is mixed at `fireFrame` | - |
 
-The commands of one Scene keep their Cue order (a fragment step is the same call for every Cue).
+The commands of one Scene are the Timeline's `show` and `focus` effects in resolved-time order (a fragment step is the same call
+for every effect, and the Deck's fragments are in that order). An effect is told apart from a sound by its own Scene: effect ids
+are unique per Scene, not in the story (two Scenes may each have an `s1`). A step is never commanded before its own Scene's slide
+change: an effect at `transition.start` has `commandFrame` one before the slide frame, which would step the previous slide, so it
+is commanded with the slide change (`max(commandFrame, slide command)`) and appears one frame after its fire frame, inside the
+tolerance of F1. The lags above are the capture's own: the lifecycle of the renderer's slide change (when its Elements move)
+is the Renderer's declaration (`revealLifecycle`), observed by `@reebeat/verify`.
 
 ## Settle wait
 
@@ -81,7 +87,7 @@ flaky): the first shot is not returned when the next two agree on another, a fra
 frame, a still frame is shot once, a transient failure is retried twice and no more.
 
 **Measured** (Chromium 155.0.8059.39, 30 fps, the real `stories/same-id` story of 1,735 frames; "windows" are the 392
-frames from 5 before to 25 after every command, which covers all scene changes and cues; per-frame SHA-256 of the PNGs
+frames from 5 before to 25 after every command, which covers all scene changes and effects; per-frame SHA-256 of the PNGs
 compared between launches). Loads: A none; B eight busy loops on all cores; C eight busy loops on cores 0 and 1 with
 the capture on the same two cores; D as C, with the capture started on cores 2 and 3 and every thread of its process
 tree moved to a random core among 0 to 3 every 150 ms (this moves threads against each other and is the load that

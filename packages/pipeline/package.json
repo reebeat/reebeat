@@ -1,6 +1,6 @@
 {
   "name": "@reebeat/pipeline",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "reebeat pipeline: the build program over the services, and the build manifest schema.",
   "license": "Apache-2.0",
   "type": "module",

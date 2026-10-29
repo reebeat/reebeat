@@ -526,7 +526,7 @@ describe("the Deck page", () => {
           `window.played = []; HTMLMediaElement.prototype.play = function () { window.played.push(this.getAttribute("src")); return Promise.resolve(); };`
         );
 
-        // sc4 carries the whoosh and the ding on the slide (anchored to the slide change and to the box's motion).
+        // sc4 carries the whoosh, the ding and the pop on the slide (anchored to the slide change, to the box's motion and to the moment the box and the tag settled).
         yield* evaluate(page, goTo("sc3"), Schema.Undefined);
         yield* evaluate(
           page,
@@ -536,13 +536,13 @@ describe("the Deck page", () => {
         yield* evaluate(page, goTo("sc4"), Schema.Undefined);
         assert.deepStrictEqual(
           yield* evaluate(page, "window.played", Strings),
-          ["assets/sfx/whoosh.wav", "assets/sfx/ding.wav"]
+          ["assets/sfx/whoosh.wav", "assets/sfx/ding.wav", "assets/sfx/pop.wav"]
         );
 
         yield* evaluate(page, step, Schema.Boolean);
         assert.deepStrictEqual(
           yield* evaluate(page, "window.played.length", Schema.Finite),
-          2
+          3
         );
       })
   );

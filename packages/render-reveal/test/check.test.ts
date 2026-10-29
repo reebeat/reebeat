@@ -194,15 +194,15 @@ describe("checkDeck", () => {
         const dropped = yield* failureOf(
           plan,
           html,
-          Str.replace(' data-sounds="whoosh ding"', "")(html)
+          Str.replace(' data-sounds="whoosh ding pop"', "")(html)
         );
 
         const reordered = yield* failureOf(
           plan,
           html,
           Str.replace(
-            'data-sounds="whoosh ding"',
-            'data-sounds="ding whoosh"'
+            'data-sounds="whoosh ding pop"',
+            'data-sounds="ding whoosh pop"'
           )(html)
         );
 
@@ -225,7 +225,7 @@ describe("checkDeck", () => {
         );
         assert.include(
           dropped.message,
-          "the Plan plays whoosh ding when the slide is shown, the page's data-sounds is no sound"
+          "the Plan plays whoosh ding pop when the slide is shown, the page's data-sounds is no sound"
         );
       })
   );

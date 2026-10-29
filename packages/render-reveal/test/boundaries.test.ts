@@ -110,7 +110,7 @@ describe("F11: packages/render-reveal reads the Plan, never the screenplay", () 
       'import type { PlanJson } from "@reebeat/core";',
       'import type {\n  Element,\n  Scene,\n} from "@reebeat/core";',
       'import * as Arr from "effect/Array";',
-      'import { cueFragmentAgreement } from "@reebeat/lint";',
+      'import { effectFragmentAgreement } from "@reebeat/lint";',
       'import { Renderer } from "@reebeat/services";',
     ]) {
       assert.deepStrictEqual(violations(good), [], good);

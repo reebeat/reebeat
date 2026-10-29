@@ -10,6 +10,7 @@
           "@effect/platform-node/NodeServices",
           "@effect/vitest",
           "effect/crypto/Digest",
+          "effect/encoding/Toml",
           "effect/cli",
           "effect/FileSystem",
           "effect/PlatformError",

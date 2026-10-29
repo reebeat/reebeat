@@ -12,7 +12,8 @@
     "@effect/platform-node": "catalog:",
     "@reebeat/core": "workspace:*",
     "effect": "catalog:",
-    "oxc-parser": "catalog:"
+    "oxc-parser": "catalog:",
+    "yaml": "2.9.1"
   },
   "devDependencies": {
     "@effect/tsgo": "catalog:",

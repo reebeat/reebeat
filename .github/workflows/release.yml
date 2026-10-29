@@ -1,12 +1,22 @@
 # Publishes the @reebeat/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
-# "Version Packages" commit (`bun run release:version`) has merged. No npm token exists anywhere: npm's trusted
-# publishing (OIDC) exchanges this job's identity for a short-lived publish credential, which is why this file's name,
-# `release.yml`, and the environment name `npm-release` are configured on npmjs.com for every package. Renaming either
-# breaks publishing until npmjs.com is changed.
+# "Version Packages" commit (`bun run release:version`) has merged, and chooses a mode:
+#   check    no publish: prints who the token is and what it can list, then stops (job `check`).
+#   publish  builds what is published and publishes it (job `publish`).
+# Authentication, for now: one granular npm token, the environment secret NPM_TOKEN of `npm-release` (declared in
+# secretspec.toml, the same name), given to the one step that runs npm as NODE_AUTH_TOKEN. The target is npm trusted
+# publishing (OIDC): npm tries the OIDC exchange first and uses the token only when the package has no trusted
+# publisher, so configuring one needs no change here; removing the token is the checklist of spec 0009, "Revisions".
+# This file's name, `release.yml`, and the environment name `npm-release` are what npmjs.com matches for OIDC.
 name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "check: print the token's identity and reach, publish nothing. publish: publish."
+        type: choice
+        options: [check, publish]
+        default: check
 
 permissions:
   contents: read
@@ -16,15 +26,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    # Reads only: no job step runs a publish command, and the publish job below does not run in this mode.
+    if: inputs.mode == 'check' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+    steps:
+      - name: npm credentials file (the token itself is never written)
+        shell: bash
+        run: |
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$RUNNER_TEMP/npmrc"
+      - name: Check the token (read-only, no publish)
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
+        run: |
+          status=pass
+          echo "npm $(npm --version), node $(node --version)"
+          echo "::group::npm whoami"
+          if user=$(npm whoami 2>&1); then echo "token user: $user"; else echo "FAIL npm whoami: $user"; status=fail; fi
+          echo "::endgroup::"
+          echo "::group::npm access list packages @reebeat"
+          if out=$(npm access list packages @reebeat --json 2>&1); then echo "$out"; else echo "no listing (a token that cannot read the scope, or no package exists yet): $out"; fi
+          echo "::endgroup::"
+          echo "::group::npm org ls reebeat"
+          if out=$(npm org ls reebeat --json 2>&1); then echo "$out"; else echo "no org listing (needs a token with access to the organisation): $out"; fi
+          echo "::endgroup::"
+          echo "token expiry: not shown. npm token management is an account action that a token cannot perform; read it on npmjs.com."
+          echo "write access to @reebeat: not shown. npm has no read-only write probe; only the publish proves it."
+          echo "result: $status"
+          test "$status" = pass
+
   publish:
     # Only the head of main is released; the check below ties the commit to a green `checks` run.
-    if: github.ref == 'refs/heads/main'
+    if: inputs.mode == 'publish' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: npm-release
     permissions:
       contents: read
       checks: read
-      id-token: write # npm trusted publishing (OIDC) and the provenance attestation
+      id-token: write # npm trusted publishing (OIDC) and the provenance attestation, with or without a token
     env:
       # A publish that cannot produce provenance fails instead of publishing without it.
       NPM_CONFIG_PROVENANCE: "true"
@@ -65,8 +109,16 @@ jobs:
         # Writes packages/*/dist: bundled ESM, declarations, a rewritten package.json, LICENSE, NOTICE. Fails when a
         # package would ship a file that is not built output.
         run: devenv shell -- bun run release:stage
+      - name: npm credentials file (the token itself is never written)
+        shell: bash
+        # npm expands ${NODE_AUTH_TOKEN} when it reads this file; the single quotes keep the shell from doing it.
+        run: |
+          printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$RUNNER_TEMP/npmrc"
       - name: Publish
         shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
         # `changeset publish` runs `npm publish packages/<name>/dist --tag alpha --access public` for each version the
         # registry lacks (the tag comes from .changeset/pre.json). npm refuses to run anywhere in a repository whose
         # root package.json has `devEngines.packageManager` for another tool (EBADDEVENGINES, bun here), so the field

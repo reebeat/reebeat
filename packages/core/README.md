@@ -52,7 +52,7 @@ An `sfx` Cue written **before the first word of the first Line of a Scene** is a
 `slideFrame`, the first frame of the transition, so `[[sfx: whoosh]] On the next screen, ...` sounds when the box starts
 to move, although the narration starts `sceneLead` later. A `(pause N)` before that Line does not move it. A Cue of
 another kind, or a Cue after a word, or before the first word of a later Line, keeps its meaning: the end of the word
-before it, or the start of its Line. `reebeat plan` shows the anchor (`sfx whoosh  transition.start -> frame 729`
+before it, or the start of its Line. `reebeat plan` shows the anchor (`sfx whoosh  transition.start -> frame 698`
 with `--timing`).
 
 ## Schedule arithmetic

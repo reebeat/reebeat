@@ -149,13 +149,17 @@ export const TimedWordSchema = Schema.Struct({
 
 export const TimedCueSchema = Schema.Struct({
   /**
-   * The frame at which the capture issues the cue's command: `fireFrame - 1` for `next` and `focus`, `fireFrame`
-   * for `sfx`. Scene changes are not cues: the video package commands them itself, an Auto-Animate or cut at the
-   * Scene's `slideFrame` (lag 0) and a default fade one frame earlier.
+   * The frame at which the capture (the `FrameCapturer` service) issues the cue's command: `fireFrame - 1` for `next`
+   * and `focus`, `fireFrame` for `sfx`. Scene changes are not cues: the capture commands them itself from the
+   * Scene's `slideFrame`, an Auto-Animate or cut at `slideFrame` (lag 0) and a default fade one frame earlier.
    */
   commandFrame: Frame,
   cueId: Id,
-  /** `round(fps * aligned word end)`; the start of the Line for `afterWord = -1`. */
+  /**
+   * The frame at which the cue takes effect, the frame F1 checks: `round(fps * aligned word end)` of the word before
+   * it (the start of the Line for `afterWord = -1`), or, for a Cue with `anchor: "transition-start"`, the `slideFrame`
+   * of its Scene. It is not when the capture commands it: see `commandFrame`.
+   */
   fireFrame: Frame,
 });
 

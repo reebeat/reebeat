@@ -1,9 +1,9 @@
 // F15, the offline pipeline, and the capture lags measured on the real deck (moved here from the capture adapter,
 // which must not depend on the Renderer): the whole build of a small story runs with no model, `--speech silent
 // --aligner even`, on the real reveal.js deck, the real Chromium and the real ffmpeg, and `reebeat check` on its
-// output passes F1 (the next and focus Cues), F2, F3, F4, F5, F7 and F9. F8, and the sound part of F1, compare audio
-// that is silent by construction: their verdict says `N/A (silent stand-in)`, which is only ever the case because
-// the build's own manifest lists a stand-in narrator.
+// output passes F1 (the next, focus and sfx Cues: the sounds are audible in an offline build), F2, F3, F4, F5, F7 and
+// F9. Only F8 compares narration audio that is silent by construction: its verdict says `N/A (silent stand-in)`,
+// which is only ever the case because the build's own manifest lists a stand-in narrator.
 //
 // `lags.fountain` has the mechanics of the committed story: a default fade, a CUT, two AUTO-ANIMATEs and focus, next
 // and sfx Cues. F1 and F7 observe the first changed frame of every Cue step and of every scene change within a frame
@@ -26,7 +26,7 @@ const statusOf = (table: string, id: string): string | undefined =>
 
 layer(platform)("the offline pipeline (F15)", (it) => {
   it.effect(
-    "builds a story with no model and passes every check that does not need audible narration; F8 says N/A (silent stand-in)",
+    "builds a story with no model and passes every check except the narration onsets; F8 says N/A (silent stand-in)",
     () =>
       Effect.gen(function* offline() {
         const fs = yield* FileSystem.FileSystem;
@@ -88,7 +88,7 @@ layer(platform)("the offline pipeline (F15)", (it) => {
           checked.stdout
         );
         assert.include(checked.stdout, "N/A (silent stand-in)");
-        assert.include(checked.stdout, "sfx cues: N/A (silent stand-in)");
+        assert.include(checked.stdout, "sfx offset (frames)");
         assert.include(checked.stdout, "not applicable: F8");
       }),
     { timeout: 600_000 }

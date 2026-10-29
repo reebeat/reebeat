@@ -34,7 +34,7 @@ import type {
   EncodeError,
   UnknownSound,
 } from "@reebeat/services";
-import { evenAligner } from "@reebeat/services/standins";
+import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";
 import { sfxNames, sfxWav, synthSounds } from "@reebeat/sounds-synth";
 import {
   Array as Arr,
@@ -86,6 +86,33 @@ Entering {#d @tl .label}
 
 NARRATOR
 [[sfx: whoosh]] Five [[focus: a]] six seven.
+`;
+
+/** Two Scenes joined by a `> CUT`: the picture changes at once or F7's cut check fails. */
+export const cutStoryText = `Title: Cut story
+Author: reebeat tests
+
+# Part one
+
+INT. ONE - DAY
+
+Box {#a @tl .box}
+Left {#b @ml .label}
+
+NARRATOR
+One two three four.
+
+# Part two
+
+> CUT
+
+INT. TWO - DAY
+
+Other {#d @br .title}
+Later {#e @bl .label hidden}
+
+NARRATOR
+Five [[next]] six seven.
 `;
 
 export const buildName = "story";
@@ -175,9 +202,13 @@ const recordingCapturer = (frames: Ref.Ref<readonly Uint8Array[]>) =>
   ).pipe(Layer.provide(chromiumCapturer));
 
 /** The real adapters of a build over the cache in `cacheDir`; the capturer records into `frames` when it is given. */
-const adapters = (cacheDir: string, frames?: Ref.Ref<readonly Uint8Array[]>) =>
+const adapters = (
+  cacheDir: string,
+  narrator: Layer.Layer<SpeechSynthesizer>,
+  frames?: Ref.Ref<readonly Uint8Array[]>
+) =>
   Layer.mergeAll(
-    noiseSynthesizer,
+    narrator,
     evenAligner,
     synthSounds,
     revealRenderer,
@@ -220,7 +251,10 @@ export interface FixtureData {
 
 const timedOrDie = (plan: PlanJson) => Effect.fromResult(requireTimeline(plan));
 
-const buildFixture = Effect.gen(function* buildFixtureDirectory() {
+const buildFixture = Effect.fnUntraced(function* buildFixtureDirectory(
+  narrator: Layer.Layer<SpeechSynthesizer>,
+  story: string
+) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-verify-" });
@@ -231,7 +265,7 @@ const buildFixture = Effect.gen(function* buildFixtureDirectory() {
 
   yield* fs.makeDirectory(cacheDir, { recursive: true });
   yield* fs.makeDirectory(path.join(root, "sounds"), { recursive: true });
-  yield* fs.writeFileString(sourcePath, storyText);
+  yield* fs.writeFileString(sourcePath, story);
   yield* Effect.forEach(
     sfxNames,
     (name) =>
@@ -246,7 +280,7 @@ const buildFixture = Effect.gen(function* buildFixtureDirectory() {
       refreshSpeech: true,
       story: sourcePath,
     }),
-    adapters(cacheDir, frames)
+    adapters(cacheDir, narrator, frames)
   );
 
   const plan = yield* timedOrDie(
@@ -268,9 +302,22 @@ const buildFixture = Effect.gen(function* buildFixtureDirectory() {
 export class Fixture extends Context.Service<Fixture, FixtureData>()(
   "@reebeat/verify/test/Fixture"
 ) {
-  static readonly layer = Layer.effect(Fixture, buildFixture).pipe(
-    Layer.provideMerge(services)
-  );
+  static readonly layer = Layer.effect(
+    Fixture,
+    buildFixture(noiseSynthesizer, storyText)
+  ).pipe(Layer.provideMerge(services));
+
+  /** The same story built offline: the silent stand-in narrates, so the narration is silent and the sounds are real. */
+  static readonly offlineLayer = Layer.effect(
+    Fixture,
+    buildFixture(silentSynthesizer, storyText)
+  ).pipe(Layer.provideMerge(services));
+
+  /** A story with a `> CUT` into its second Scene, built offline (only the scene change is under test). */
+  static readonly cutLayer = Layer.effect(
+    Fixture,
+    buildFixture(silentSynthesizer, cutStoryText)
+  ).pipe(Layer.provideMerge(services));
 }
 
 /**
@@ -550,8 +597,11 @@ export const moveFire = (
 /** The capturer the controls re-capture with: Chromium over the platform. */
 const capturing = chromiumCapturer.pipe(Layer.provide(NodeServices.layer));
 
-/** A new capture of the intact build's deck, commanded by the schedule of `plan`, as the frames to mux. */
-export const recapture = (plan: TimedPlan) =>
+/**
+ * A new capture of the intact build's deck (or of the deck in `deckDir`), commanded by the schedule of `plan`, as the
+ * frames to mux.
+ */
+export const recapture = (plan: TimedPlan, deckDir?: string) =>
   Stream.unwrap(
     Effect.gen(function* capture() {
       const fixture = yield* Fixture;
@@ -560,7 +610,7 @@ export const recapture = (plan: TimedPlan) =>
         Effect.flatMap(FrameCapturer, (capturer) =>
           Effect.scoped(
             Stream.runCollect(
-              capturer.capture({ deckDir: fixture.build, plan })
+              capturer.capture({ deckDir: deckDir ?? fixture.build, plan })
             )
           )
         ),

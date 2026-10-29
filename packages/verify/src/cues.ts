@@ -22,7 +22,7 @@ import {
   signedFrames,
   withinOneFrame,
 } from "./units.ts";
-import { fail, notApplicable, verdictOf } from "./verdict.ts";
+import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 import { soundMatchFloor, withSilentLead } from "./wav.ts";
 
@@ -144,14 +144,7 @@ export const cueTiming = (build: Build) =>
   guarded(
     "F1",
     Effect.gen(function* observe() {
-      const all = cueFacts(build);
-      const silent = Option.isSome(build.silentNarrator);
-
-      const skipped = silent
-        ? Arr.filter(all, (cue) => cue.kind === "sfx")
-        : [];
-
-      const facts = silent ? Arr.filter(all, (cue) => cue.kind !== "sfx") : all;
+      const facts = cueFacts(build);
       const { fps } = build.plan.settings;
 
       const track = hasSound(facts)
@@ -205,14 +198,6 @@ export const cueTiming = (build: Build) =>
 
       const measured: Measured = [
         ["cues checked", facts.length],
-        ...(skipped.length === 0
-          ? []
-          : ([
-              [
-                "sfx cues",
-                `N/A (silent stand-in): ${skipped.length} not observed`,
-              ],
-            ] as const)),
         ...Arr.flatMap(rows, ([cue, seen]): Measured => [
           [
             `${cue.cueId} ${cue.kind} offset (frames)`,
@@ -228,18 +213,12 @@ export const cueTiming = (build: Build) =>
       ];
 
       if (facts.length === 0) {
-        return skipped.length === 0
-          ? fail("F1", "the Timeline has no Cue to observe", measured)
-          : notApplicable(
-              "F1",
-              "N/A (silent stand-in): the only Cues are sfx and the narrator's track is silent by construction",
-              measured
-            );
+        return fail("F1", "the Timeline has no Cue to observe", measured);
       }
 
       return verdictOf(
         "F1",
-        `all ${facts.length} Cues are observed within one frame of their fire frame${skipped.length === 0 ? "" : `; the ${skipped.length} sfx Cues are N/A (silent stand-in)`}`,
+        `all ${facts.length} Cues are observed within one frame of their fire frame`,
         problems,
         measured
       );

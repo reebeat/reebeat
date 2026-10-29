@@ -4,9 +4,81 @@ export { alignWords, matchThreshold, normaliseWord } from "./align.ts";
 
 export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
-export { buildPlan, collectErrors } from "./build.ts";
+export { buildPlan, collectErrors, fountainImporter, planOf } from "./build.ts";
 
-export { formatAnchor, formatEffect, parseEffectLine } from "./effects.ts";
+export { validateGraph } from "./structure.ts";
+
+export type { Declared, Known } from "./structure.ts";
+
+export {
+  GraphSchema,
+  graphJsonSchema,
+  graphSchemaId,
+  graphVersion,
+  jsonCodec,
+} from "./graph.ts";
+
+export type {
+  ArtifactRenderer,
+  Graph,
+  GraphScene,
+  ImportErrors,
+  Importer,
+  IrCodec,
+} from "./graph.ts";
+
+export { formatAnchor } from "./anchors.ts";
+
+export {
+  formatEffect,
+  formatLet,
+  formatTiming,
+  parseEffectLine,
+} from "./effects.ts";
+
+export { anchorsOf, evaluator, refsOf, statesOf } from "./evaluate.ts";
+
+export type { Evaluate, Sources } from "./evaluate.ts";
+
+export { endsAfter, once } from "./combinators.ts";
+
+export type { Event, Occurrence, Window } from "./combinators.ts";
+
+export { formatEvent } from "./expr.ts";
+
+export {
+  machineWords,
+  machines,
+  progressKinds,
+  stateEventNames,
+  stateNames,
+  subjectKinds,
+  transitionNames,
+  vocabulary,
+} from "./machines.ts";
+
+export type { Form, Machine } from "./machines.ts";
+
+export { initialState } from "./events.ts";
+
+export {
+  lastFrameLeave,
+  occupancies,
+  stateEvent,
+  stateStart,
+} from "./occupancy.ts";
+
+export {
+  flicksOfFrames,
+  flicksOfMilliseconds,
+  flicksOfSeconds,
+  flicksPerSecond,
+  framesOfFlicks,
+  lifecycleFrames,
+  rateOf,
+} from "./time.ts";
+
+export type { LifecycleFrames, Rate } from "./time.ts";
 
 export * from "./errors.ts";
 
@@ -22,7 +94,11 @@ export { AlignedLineSchema, schedule } from "./schedule.ts";
 
 export type { AlignedLine } from "./schedule.ts";
 
-export { frameToMs, linesById, requireTimeline } from "./timed.ts";
+export { frameToMs, requireTimeline } from "./timed.ts";
+
+export { lineIdOf, placedLines, planLines, timedLines } from "./lines.ts";
+
+export type { PlacedLine, PlacedTimedLine } from "./lines.ts";
 
 export type { TimedPlan } from "./timed.ts";
 
@@ -38,6 +114,8 @@ export { soundsOf, stepsOf } from "./steps.ts";
 
 export type { CarriedSound, Carrier, Step } from "./steps.ts";
 
-export { findPhrase } from "./words.ts";
+export { findPhrase, wordsOf } from "./words.ts";
+
+export { sceneIdsOfChapter } from "./lookup.ts";
 
 export { grammarDocument } from "./grammarDoc.ts";

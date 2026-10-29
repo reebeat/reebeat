@@ -19,6 +19,9 @@ import {
   SceneLeadTooShort,
 } from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
+import { placedLines, planLines } from "./lines.ts";
+import type { PlacedLine } from "./lines.ts";
+import { sceneIdsOfChapter } from "./lookup.ts";
 import { AudioFileSchema } from "./plan.ts";
 import type {
   Line,
@@ -31,13 +34,21 @@ import type {
   Timeline,
 } from "./plan.ts";
 import { resolveEffects } from "./resolve.ts";
+import {
+  flicksOfMilliseconds,
+  flicksOfSeconds,
+  framesOfFlicks,
+  rateOf,
+} from "./time.ts";
+import { wordsOf } from "./words.ts";
 
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
-/** What speech provides for one Line: its audio and its words with aligned times; words align 1:1 to `Line.words`. */
+/** What speech provides for one Line: its audio and its words with aligned times; words align 1:1 to `wordsOf(Line.text)`. */
 export const AlignedLineSchema = Schema.Struct({
   audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   durationMs: Milliseconds,
+  /** Where the Line is, as `lineIdOf` writes it (`sc4.l2`): the key the aligned Lines are matched to the Plan by. */
   lineId: Schema.NonEmptyString,
   words: Schema.Array(
     Schema.Struct({
@@ -51,41 +62,42 @@ export const AlignedLineSchema = Schema.Struct({
 export type AlignedLine = typeof AlignedLineSchema.Type;
 
 const secondsToFrames = (settings: Settings, seconds: number): number =>
-  Math.round(settings.fps * seconds);
+  framesOfFlicks(rateOf(settings), flicksOfSeconds(seconds));
 
 const millisecondsToFrames = (settings: Settings, ms: number): number =>
-  Math.round((settings.fps * ms) / 1000);
+  framesOfFlicks(rateOf(settings), flicksOfMilliseconds(ms));
 
-const mismatch = (line: Line, message: string): AlignmentMismatch =>
-  new AlignmentMismatch({ lineId: line.id, message });
+const mismatch = (placed: PlacedLine, message: string): AlignmentMismatch =>
+  new AlignmentMismatch({ lineId: placed.id, message });
 
 /** The first problem between a Line and its aligned data, or undefined. */
 const checkLine = (
-  line: Line,
+  placed: PlacedLine,
   aligned: AlignedLine | undefined
 ): ScheduleError | undefined => {
   if (aligned === undefined) {
-    return mismatch(line, `no aligned data for Line ${line.id}`);
+    return mismatch(placed, `no aligned data for Line ${placed.id}`);
   }
 
   const spoken = Arr.map(aligned.words, (word) => word.w);
+  const words = wordsOf(placed.line.text);
 
-  if (spoken.length !== line.words.length) {
+  if (spoken.length !== words.length) {
     return mismatch(
-      line,
-      `Line ${line.id} has ${line.words.length} words but its alignment has ${spoken.length}`
+      placed,
+      `Line ${placed.id} has ${words.length} words but its alignment has ${spoken.length}`
     );
   }
 
   const differs = Arr.findFirstIndex(
-    line.words,
+    words,
     (word, index) => word !== spoken[index]
   );
 
   return Option.isSome(differs)
     ? mismatch(
-        line,
-        `Line ${line.id} word ${differs.value + 1} is "${line.words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
+        placed,
+        `Line ${placed.id} word ${differs.value + 1} is "${words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
       )
     : undefined;
 };
@@ -103,16 +115,16 @@ const pairScene = (
 ): Result.Result<readonly Paired[], ScheduleError> => {
   const paired: Paired[] = [];
 
-  for (const line of scene.lines) {
-    const found = aligned.get(line.id);
-    const problem = checkLine(line, found);
+  for (const placed of placedLines(scene)) {
+    const found = aligned.get(placed.id);
+    const problem = checkLine(placed, found);
 
     if (problem !== undefined) {
       return Result.fail(problem);
     }
 
     if (found !== undefined) {
-      paired.push({ aligned: found, line });
+      paired.push({ aligned: found, line: placed.line });
     }
   }
 
@@ -127,7 +139,6 @@ const timeLine = (
   audio: pair.aligned.audio,
   endFrame:
     startFrame + millisecondsToFrames(settings, pair.aligned.durationMs),
-  lineId: pair.line.id,
   startFrame,
   words: Arr.map(pair.aligned.words, (word) => ({
     endFrame: startFrame + millisecondsToFrames(settings, word.endMs),
@@ -164,9 +175,10 @@ const timeScene = (
 
   return Result.map(
     resolveEffects(scene, { endFrame, lines, slideFrame }, settings, lifecycle),
-    (effects): TimedScene => ({
+    ({ effects, events }): TimedScene => ({
       effects,
       endFrame,
+      events,
       lines,
       sceneId: scene.id,
       slideFrame,
@@ -213,9 +225,7 @@ const timelineOf = (
 
   const aligned = new Map(Arr.map(alignedLines, (line) => [line.lineId, line]));
 
-  const known = new Set(
-    Arr.flatMap(plan.scenes, (scene) => Arr.map(scene.lines, (line) => line.id))
-  );
+  const known = new Set(Arr.map(planLines(plan), ({ id }) => id));
 
   const extra = Arr.findFirst(alignedLines, (line) => !known.has(line.lineId));
 
@@ -257,7 +267,10 @@ const timelineOf = (
   return Result.succeed({
     chapters: Arr.flatMap(plan.chapters, (chapter) =>
       Option.match(
-        Arr.findFirst(scenes, (timed) => timed.sceneId === chapter.sceneIds[0]),
+        Arr.findFirst(
+          scenes,
+          (timed) => timed.sceneId === sceneIdsOfChapter(plan, chapter.id)[0]
+        ),
         {
           onNone: () => [],
           onSome: (first) => [

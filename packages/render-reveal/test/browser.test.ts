@@ -2,6 +2,7 @@
 // notes, and reveal.js Auto-Animate keeping the identity of a matched Element. These tests use the real clock; the
 // controlled clock belongs to packages/capture-chromium. One browser per test, closed with the test's scope.
 import { assert, describe, it } from "@effect/vitest";
+import { stepsOf } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Order, Schema, String as Str } from "effect";
 import type { Page } from "playwright-core";
@@ -20,6 +21,9 @@ import {
 import {
   asText,
   planOf,
+  reringSource,
+  ringSource,
+  takeoverSource,
   scheduledOf,
   scheduledStory,
   storyPlan,
@@ -67,6 +71,21 @@ const classesOf = (scene: string, id: string): string =>
 const classesIn = (page: Page, scene: string) => (id: string) =>
   evaluate(page, classesOf(scene, id), Schema.String);
 
+/** Runs a fragment command of the page (a step forward, `Reveal.prevFragment()`), then asserts which Elements carry the focus ring. */
+const focusAfter = (page: Page, command: string, ids: readonly string[]) =>
+  Effect.gen(function* moved() {
+    yield* evaluate(page, command, Schema.Boolean);
+
+    assert.deepStrictEqual(
+      yield* evaluate(
+        page,
+        `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
+        Strings
+      ),
+      ids
+    );
+  });
+
 const goTo = (scene: string): string => `reebeatDeck.goToScene("${scene}")`;
 
 /** Shows the next fragment through the page's own API; true when there was one. */
@@ -75,9 +94,33 @@ const step = "reebeatDeck.stepFragment()";
 const hasClass = (classes: string, name: string): boolean =>
   Str.split(classes, " ").includes(name);
 
-/** How many fragment steps a Scene has: one per `show` or `focus` effect. */
-const stepCount = (scene: PlanJson["scenes"][number]): number =>
-  Arr.filter(scene.effects, (effect) => effect.verb !== "sound").length;
+/**
+ * Steps through every fragment of the first Scene of `source`, asserting which Elements carry the ring after each step
+ * (`forward`), then that no step is left, then steps back through them (`back`).
+ */
+const walkRings = (
+  source: string,
+  forward: readonly (readonly string[])[],
+  back: readonly (readonly string[])[]
+) =>
+  Effect.gen(function* walk() {
+    const plan = yield* scheduledOf(source);
+    const { page } = yield* openDeck(yield* writtenDeck(plan));
+
+    for (const ringed of forward) {
+      yield* focusAfter(page, step, ringed);
+    }
+
+    assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
+
+    for (const ringed of back) {
+      yield* focusAfter(page, "Reveal.prevFragment()", ringed);
+    }
+  });
+
+/** How many fragment steps a Scene has: `stepsOf`, a start for each `show` and `focus` and an end for each ring that ends by its `until`. */
+const stepCount = (plan: PlanJson, scene: PlanJson["scenes"][number]): number =>
+  stepsOf(plan, scene).length;
 
 /** Three steps, in the order of their words, and a pop that rides on the last one. */
 const effectScreenplay = asText([
@@ -259,10 +302,10 @@ describe("the Deck page", () => {
   );
 
   it.live(
-    "steps exactly one fragment per show or focus effect in every scene, then reports none left",
+    "steps exactly one fragment per step (a start per show or focus, an end per ring that ends by its until) in every scene, then reports none left",
     () =>
       Effect.gen(function* stepping() {
-        const plan = yield* storyPlan;
+        const plan = yield* scheduledStory;
         const { page } = yield* openDeck(yield* writtenDeck(plan));
 
         const outcomes = yield* Effect.forEach(plan.scenes, (scene) =>
@@ -270,11 +313,11 @@ describe("the Deck page", () => {
             yield* evaluate(page, goTo(scene.id), Schema.Undefined);
 
             const steps = yield* Effect.forEach(
-              Arr.range(0, stepCount(scene)),
+              Arr.range(0, stepCount(plan, scene)),
               () => evaluate(page, step, Schema.Boolean)
             );
 
-            return { count: stepCount(scene), id: scene.id, steps };
+            return { count: stepCount(plan, scene), id: scene.id, steps };
           })
         );
 
@@ -446,20 +489,11 @@ describe("the Deck page", () => {
           `window.played = []; HTMLMediaElement.prototype.play = function () { window.played.push(this.getAttribute("src")); return Promise.resolve(); };`
         );
 
-        const focused = () =>
-          evaluate(
-            page,
-            `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
-            Strings
-          );
-
         const classOfC = () => classesIn(page, "sc1")("c");
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, step, ["a"]);
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["b"]);
+        yield* focusAfter(page, step, ["b"]);
 
         // The pop is anchored to the end of "Done", after the last step: it rides on that step (`r1`), not on a step of
         // its own, so no fragment stands for it and nothing plays before the step runs.
@@ -480,9 +514,25 @@ describe("the Deck page", () => {
         yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
         assert.isTrue(hasClass(yield* classOfC(), "hidden"));
 
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, "Reveal.prevFragment()", ["a"]);
       })
+  );
+
+  it.live(
+    "the end step takes the ring off its own target, stepping back puts it back, and the next focus is untouched",
+    // Three fragments: the start of `f1`, the end of `f1`, the start of `f2`.
+    () => walkRings(ringSource, [["a"], [], ["b"]], [[], ["a"], []])
+  );
+
+  it.live(
+    "a ring that a later focus on the same Element takes over has no end step: the later start keeps the ring, and stepping back restores it",
+    // Two fragments: the start of `f1`, the start of `f2` (the ring is its now).
+    () => walkRings(reringSource, [["a"], ["a"]], [["a"], []])
+  );
+
+  it.live(
+    "a ring that a later focus on another Element takes over has no end step: the later start moves the ring, and stepping back moves it back",
+    () => walkRings(takeoverSource, [["a"], ["b"]], [["a"], []])
   );
 
   it.live(
@@ -496,7 +546,7 @@ describe("the Deck page", () => {
           `window.played = []; HTMLMediaElement.prototype.play = function () { window.played.push(this.getAttribute("src")); return Promise.resolve(); };`
         );
 
-        // sc4 carries the whoosh and the ding on the slide (anchored to the slide change and to the box's motion).
+        // sc4 carries the whoosh, the ding and the pop on the slide (anchored to the slide change, to the box's motion and to the moment the box and the tag settled).
         yield* evaluate(page, goTo("sc3"), Schema.Undefined);
         yield* evaluate(
           page,
@@ -506,13 +556,13 @@ describe("the Deck page", () => {
         yield* evaluate(page, goTo("sc4"), Schema.Undefined);
         assert.deepStrictEqual(
           yield* evaluate(page, "window.played", Strings),
-          ["assets/sfx/whoosh.wav", "assets/sfx/ding.wav"]
+          ["assets/sfx/whoosh.wav", "assets/sfx/ding.wav", "assets/sfx/pop.wav"]
         );
 
         yield* evaluate(page, step, Schema.Boolean);
         assert.deepStrictEqual(
           yield* evaluate(page, "window.played.length", Schema.Finite),
-          2
+          3
         );
       })
   );

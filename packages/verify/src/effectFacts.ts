@@ -1,20 +1,19 @@
-// The effects of a build as F1 reads them: each effect of the Plan with its resolved frames from the Timeline, what
-// it is anchored to, and which part of the picture or the track shows that anchor. Pure: no decoding here.
+// The effects of a build as F1 reads them: each INSTANCE of an effect in the Timeline with its Plan effect, and what
+// the picture can show of it: its own change (`ownSubject`) and, for a focus ring that ends by its own `until`, the end
+// of the ring (`ringPlanOf`). What an effect is anchored to is an event expression: `leaves.ts` observes its sources.
+// Pure: no decoding here.
 import type {
-  Anchor,
   Effect as PlanEffect,
-  Point,
   Scene,
   TimedEffect,
   TimedPlan,
   TimedScene,
 } from "@reebeat/core";
-import { showEffectOf } from "@reebeat/core";
 import { Array as Arr, Option } from "effect";
 
 import type { Subject } from "./events.ts";
 
-/** One effect with everything F1 needs to find it again. */
+/** One effect instance with everything F1 needs to find it again. */
 export interface EffectFact {
   readonly effect: PlanEffect;
   readonly scene: Scene;
@@ -23,7 +22,7 @@ export interface EffectFact {
   readonly timedScene: TimedScene;
 }
 
-/** The effects of the Timeline in order, each with its Plan effect. */
+/** The instances of the Timeline in order, each with its Plan effect. */
 export const effectFacts = (plan: TimedPlan): readonly EffectFact[] =>
   Arr.flatMap(plan.timeline.scenes, (timedScene, sceneIndex) => {
     const scene = plan.scenes[sceneIndex];
@@ -46,9 +45,16 @@ export const effectFacts = (plan: TimedPlan): readonly EffectFact[] =>
         );
   });
 
-/** The id the Timeline and the checks use for an effect: its Scene and its own id. */
+/** The key of instance `instance` of effect `effectId` of Scene `sceneId`: `scene.effect#instance`. */
+export const instanceKey = (
+  sceneId: string,
+  effectId: string,
+  instance: number
+): string => `${sceneId}.${effectId}#${instance}`;
+
+/** The id the Timeline and the checks use for an effect instance: `scene.effect#instance` (instances count from 1). */
 export const effectKey = (fact: EffectFact): string =>
-  `${fact.scene.id}.${fact.effect.id}`;
+  instanceKey(fact.scene.id, fact.effect.id, fact.timed.instance);
 
 /** The observation of the effect's own change: a `show` or `focus` step in its target's cell. */
 export const ownSubject = (fact: EffectFact): Subject | undefined =>
@@ -61,130 +67,80 @@ export const ownSubject = (fact: EffectFact): Subject | undefined =>
         sceneIndex: fact.sceneIndex,
       };
 
-/** What an anchor looks at in the picture: a subject and how to read a point of it, or why there is none. */
-export type AnchorSource =
-  /** A word of the narration, or the end of the video: the frame is the Timeline's (F8 observes the Lines' onsets). */
-  | { readonly kind: "timeline" }
-  /** Frame 0, the first picture of the video: nothing to observe. */
-  | { readonly kind: "video-start" }
-  /** An event of the picture; `shift` frames are added to what is read (`scene.end` is the frame before the next change). */
-  | {
-      readonly kind: "event";
-      readonly point: Point;
-      readonly shift: number;
-      readonly subject: Subject;
-    }
-  /** Another effect of the Scene: its own observed start or end. */
-  | {
-      readonly edge: "end" | "start";
-      readonly id: string;
-      readonly kind: "effect";
-    };
+/**
+ * What the picture can say of where a focus ring ends (spec 0004, F5), by how the Timeline says the focus ended
+ * (`TimedEffect.endedBy`):
+ * - `none`: the effect has no ring (a `sound`, a `show`);
+ * - `slide-change`: the ring lasts to the slide change, which F7 observes, and no cell shows it apart from that;
+ * - `observe`: the ring ends in its target's cell, by its own `until` (`until`) or because a later `focus` of ANOTHER
+ *   Element took the one ring over (`replaced`: its end is that focus's fire frame); the cell shows the ring leaving;
+ * - `retaken`: a later `focus` rings the SAME Element again, so the ring never leaves its cell: there is no end to see
+ *   (the Deck's end step is a no-op there and the Timeline has no end step for it).
+ */
+export type RingPlan =
+  | { readonly tag: "none" }
+  | { readonly tag: "slide-change" }
+  | { readonly by: string; readonly frame: number; readonly tag: "retaken" }
+  | { readonly tag: "observe"; readonly subject: Subject };
 
-const eventSource = (
-  subject: Subject,
-  point: Point,
-  shift = 0
-): AnchorSource => ({ kind: "event", point, shift, subject });
+const noRing: RingPlan = { tag: "none" };
 
-const transitionOf = (sceneIndex: number, point: Point): AnchorSource =>
-  sceneIndex === 0
-    ? { kind: "video-start" }
-    : eventSource({ kind: "transition", sceneIndex }, point);
-
-/** The timed `show` effect of the Scene that reveals Element `id`, when the Element starts hidden. */
-const revealer = (fact: EffectFact, id: string): Option.Option<TimedEffect> =>
-  Option.flatMap(Option.fromNullishOr(showEffectOf(fact.scene, id)), (show) =>
-    Arr.findFirst(
-      fact.timedScene.effects,
-      (timed) => timed.effectId === show.id
-    )
-  );
-
-const elementSource = (
+/** The later `focus` of the Scene whose start is at `frame`: the one that took the ring over. */
+const takerAt = (
   fact: EffectFact,
-  anchor: Extract<Anchor, { readonly kind: "element" }>
-): AnchorSource => {
-  const element = Arr.findFirst(
-    fact.scene.elements,
-    ({ id }) => id === anchor.id
+  facts: readonly EffectFact[],
+  frame: number
+): Option.Option<EffectFact> =>
+  Arr.findFirst(
+    facts,
+    (other) =>
+      other.sceneIndex === fact.sceneIndex &&
+      other.effect.verb === "focus" &&
+      other.timed.fireFrame === frame &&
+      other !== fact
   );
 
-  const shown = Option.exists(element, ({ visible }) => !visible)
-    ? revealer(fact, anchor.id)
-    : Option.none();
+/** What the picture says of the end of the ring of `fact`; `facts` are the instances of the Timeline. */
+export const ringPlanOf = (
+  fact: EffectFact,
+  facts: readonly EffectFact[]
+): RingPlan => {
+  const { effect, timed } = fact;
+  const { endFrame, endedBy } = timed;
 
-  if (anchor.event === "enter" && Option.isSome(shown)) {
-    return eventSource(
-      {
-        fireFrame: shown.value.fireFrame,
-        id: anchor.id,
-        kind: "step",
-        sceneIndex: fact.sceneIndex,
-      },
-      anchor.at
-    );
+  if (
+    effect.verb !== "focus" ||
+    effect.target === undefined ||
+    endFrame === null
+  ) {
+    return noRing;
   }
 
-  return eventSource(
-    {
-      event: anchor.event,
-      id: anchor.id,
-      kind: "element",
+  if (endedBy === "slide-change") {
+    return { tag: "slide-change" };
+  }
+
+  const { target } = effect;
+
+  const observe: RingPlan = {
+    subject: {
+      endFrame,
+      id: target,
+      kind: "ring-end",
       sceneIndex: fact.sceneIndex,
     },
-    anchor.at
-  );
-};
+    tag: "observe",
+  };
 
-const sceneSource = (
-  anchor: Extract<Anchor, { readonly kind: "scene" }>,
-  sceneIndex: number,
-  sceneCount: number
-): AnchorSource => {
-  if (anchor.edge === "start") {
-    return transitionOf(sceneIndex, "start");
+  if (endedBy !== "replaced") {
+    return observe;
   }
 
-  // The Scene's last frame is the one before the next slide change; after the last Scene the video just ends.
-  return sceneIndex + 1 >= sceneCount
-    ? { kind: "timeline" }
-    : eventSource(
-        { kind: "transition", sceneIndex: sceneIndex + 1 },
-        "start",
-        -1
-      );
-};
-
-/** Where the picture (or another effect) shows the anchor of `fact`. */
-export const anchorSource = (
-  fact: EffectFact,
-  sceneCount: number
-): AnchorSource => {
-  const { when } = fact.effect;
-  const { sceneIndex } = fact;
-
-  if ("absoluteMs" in when) {
-    return transitionOf(sceneIndex, "start");
-  }
-
-  const { anchor } = when;
-
-  if (anchor.kind === "scene") {
-    return sceneSource(anchor, sceneIndex, sceneCount);
-  }
-
-  if (anchor.kind === "transition") {
-    return transitionOf(sceneIndex, anchor.at);
-  }
-
-  if (anchor.kind === "element") {
-    return elementSource(fact, anchor);
-  }
-
-  if (anchor.kind === "effect") {
-    return { edge: anchor.edge, id: anchor.id, kind: "effect" };
-  }
-
-  return { kind: "timeline" };
+  return Option.match(takerAt(fact, facts, endFrame), {
+    onNone: (): RingPlan => observe,
+    onSome: (other): RingPlan =>
+      other.effect.target === target
+        ? { by: effectKey(other), frame: endFrame, tag: "retaken" }
+        : observe,
+  });
 };

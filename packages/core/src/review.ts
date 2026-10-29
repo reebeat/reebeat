@@ -1,8 +1,14 @@
 // The review text of `reebeat plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
-// (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its effects as `intent -> frame` (spec 0002),
-// its Lines, and one summary line. Deterministic: the same Plan gives the same text. A plain function.
+// (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its derived events (`let`) and its effects
+// as `intent -> frame` (specs 0002 and 0004; with the Timeline: every instance, its time in seconds at the Plan's
+// rate, what ended each window), its Lines, and one summary line. Deterministic: the same Plan gives the same text.
+// A plain function.
 import { Array as Arr, Match, Option, String as Str } from "effect";
 
+import { formatTiming } from "./effects.ts";
+import { formatEvent } from "./expr.ts";
+import { placedLines } from "./lines.ts";
+import type { PlacedLine } from "./lines.ts";
 import type {
   Effect,
   Element,
@@ -10,11 +16,13 @@ import type {
   Line,
   PlanJson,
   Scene,
+  TimedEffect,
   TimedLine,
   TimedScene,
 } from "./plan.ts";
 import { soundsOf } from "./steps.ts";
 import type { Carrier } from "./steps.ts";
+import { rateOf } from "./time.ts";
 
 export interface ReviewOptions {
   /** Adds frames and seconds from the Timeline (`reebeat plan --timing`). */
@@ -150,8 +158,11 @@ const hintText = (plan: PlanJson, line: Line): string => {
   return parts.length === 0 ? "" : `  (${Arr.join(parts, ", ")})`;
 };
 
-const seconds = (plan: PlanJson, frames: number): string =>
-  (frames / plan.settings.fps).toFixed(2);
+const seconds = (plan: PlanJson, frames: number): string => {
+  const { den, num } = rateOf(plan.settings);
+
+  return ((frames * den) / num).toFixed(2);
+};
 
 const span = (plan: PlanJson, from: number, to: number): string =>
   `frames ${from}-${to} (${seconds(plan, from)}-${seconds(plan, to)} s)`;
@@ -166,10 +177,10 @@ const timedLineRows = (
 
 const lineRows = (
   plan: PlanJson,
-  line: Line,
+  { id, line }: PlacedLine,
   timed: TimedLine | undefined
 ): readonly string[] => [
-  `      ${line.id}${hintText(plan, line)}`,
+  `      ${id}${hintText(plan, line)}`,
   `        ${quote(line.text)}`,
   ...timedLineRows(plan, timed),
 ];
@@ -188,46 +199,157 @@ const carrierText = (carrier: Carrier): string =>
     })
   );
 
+/** How the window of an effect ended (`TimedEffect.endedBy`), as the row says it. */
+const endedByText: Readonly<
+  Record<NonNullable<TimedEffect["endedBy"]>, string>
+> = {
+  replaced: "by the next focus",
+  "slide-change": "interrupted by the slide change",
+  until: "by until",
+  window: "by its window",
+};
+
+/** `frame 66 (2.20 s)`: a frame and its time at the Plan's rate. */
+const frameText = (plan: PlanJson, frame: number): string =>
+  `frame ${frame} (${seconds(plan, frame)} s)`;
+
+/** The frames an event resolved to: one, several (`frames 10, 20 (0.33, 0.67 s)`), or none. */
+const framesText = (plan: PlanJson, frames: readonly number[]): string => {
+  const [only] = frames;
+
+  if (only === undefined) {
+    return "no occurrence";
+  }
+
+  return frames.length === 1
+    ? frameText(plan, only)
+    : `frames ${Arr.join(
+        Arr.map(frames, (frame) => `${frame}`),
+        ", "
+      )} (${Arr.join(
+        Arr.map(frames, (frame) => seconds(plan, frame)),
+        ", "
+      )} s)`;
+};
+
+/** One row of the Effects list: an effect, or one instance of it (an `each` makes several). */
+interface EffectRow {
+  readonly effect: Effect;
+  readonly instance: TimedEffect | undefined;
+  readonly label: string;
+}
+
+const effectRowsOf = (
+  scene: Scene,
+  timed: TimedScene | undefined
+): readonly EffectRow[] =>
+  Arr.flatMap(scene.effects, (effect): readonly EffectRow[] => {
+    const instances = Arr.filter(
+      timed?.effects ?? [],
+      (candidate) => candidate.effectId === effect.id
+    );
+
+    return Arr.isReadonlyArrayNonEmpty(instances)
+      ? Arr.map(instances, (instance) => ({
+          effect,
+          instance,
+          label:
+            instances.length > 1
+              ? `${effect.id}#${instance.instance}`
+              : effect.id,
+        }))
+      : [{ effect, instance: undefined, label: effect.id }];
+  });
+
+/** What ended the window of an instance: its end frame and how, on a row of its own. */
+const endRows = (
+  plan: PlanJson,
+  instance: TimedEffect | undefined
+): readonly string[] =>
+  instance === undefined ||
+  instance.endFrame === null ||
+  instance.endedBy === null
+    ? []
+    : [
+        `        ends ${frameText(plan, instance.endFrame)}, ${endedByText[instance.endedBy]}`,
+      ];
+
+const instanceKey = (effectId: string, instance: TimedEffect | undefined) =>
+  `${effectId}#${instance?.instance ?? 1}`;
+
 /**
- * One row per effect: `s1  sound whoosh  one.move.start  ->  frame 732` (the frame once the Timeline exists), and
- * for a sound, where the Deck plays it: `(rides the slide)`, `(rides step r1)` or `(plays alone)`. The carrier needs
- * the resolved times (the nearest step before a word), so it is printed with the frames only.
+ * One row per effect instance: `s1  sound whoosh  one.move.start  ->  frame 732 (24.40 s)` (the frame and its time once
+ * the Timeline exists; `s1#2` is the second instance of an effect whose event happens several times), the canonical
+ * form beside what was written when they differ, for a sound where the Deck plays it (`(rides the slide)`,
+ * `(rides step r1)` or `(plays alone)`), and for an effect with a window a row that says where it ended and what ended
+ * it (`until`, the slide change, or its own window). The carrier needs the resolved times (the nearest step before a
+ * word), so it is printed with the frames only.
  */
 const effectRows = (
   plan: PlanJson,
   scene: Scene,
   timed: TimedScene | undefined
 ): readonly string[] => {
-  const idWidth = Arr.reduce(scene.effects, 2, (width, effect) =>
-    Math.max(width, effect.id.length)
+  const rows = effectRowsOf(scene, timed);
+
+  const idWidth = Arr.reduce(rows, 2, (width, { label }) =>
+    Math.max(width, label.length)
   );
 
-  const doingWidth = Arr.reduce(scene.effects, 0, (width, effect) =>
+  const doingWidth = Arr.reduce(rows, 0, (width, { effect }) =>
     Math.max(width, doing(effect).length)
   );
 
   const carriers = new Map(
     timed === undefined
       ? []
-      : Arr.map(soundsOf(plan, scene), ({ carrier, effect }) => [
-          effect.id,
-          carrierText(carrier),
-        ])
+      : Arr.map(
+          soundsOf(plan, scene),
+          ({ carrier, effect, timed: instance }): [string, string] => [
+            instanceKey(effect.id, instance),
+            carrierText(carrier),
+          ]
+        )
   );
 
-  return Arr.map(scene.effects, (effect) => {
-    const fire = Option.getOrUndefined(
+  return Arr.flatMap(rows, ({ effect, instance, label }) => {
+    const carrier = carriers.get(instanceKey(effect.id, instance));
+    const when = `${Str.padEnd(doingWidth)(doing(effect))}  ${formatTiming(effect)}`;
+
+    const frame =
+      instance === undefined
+        ? ""
+        : `  ->  ${frameText(plan, instance.fireFrame)}`;
+
+    return [
+      `      ${Str.padEnd(idWidth)(label)}  ${when}${frame}${carrier === undefined ? "" : `  (${carrier})`}`,
+      ...endRows(plan, instance),
+    ];
+  });
+};
+
+/** One row per derived event (`let`): what was written, its canonical form, and the frames it resolved to. */
+const eventRows = (
+  plan: PlanJson,
+  scene: Scene,
+  timed: TimedScene | undefined
+): readonly string[] => {
+  const width = Arr.reduce(scene.events, 2, (longest, { name }) =>
+    Math.max(longest, name.length)
+  );
+
+  return Arr.map(scene.events, (derived) => {
+    const found = Option.getOrUndefined(
       Arr.findFirst(
-        timed?.effects ?? [],
-        (candidate) => candidate.effectId === effect.id
+        timed?.events ?? [],
+        (candidate) => candidate.name === derived.name
       )
-    )?.fireFrame;
+    );
 
-    const carrier = carriers.get(effect.id);
-    const when = `${Str.padEnd(doingWidth)(doing(effect))}  ${effect.written}`;
-    const frame = fire === undefined ? "" : `  ->  frame ${fire}`;
+    const frames =
+      found === undefined ? "" : `  ->  ${framesText(plan, found.frames)}`;
 
-    return `      ${Str.padEnd(idWidth)(effect.id)}  ${when}${frame}${carrier === undefined ? "" : `  (${carrier})`}`;
+    return `      ${Str.padEnd(width)(derived.name)}  ${formatEvent(derived.event)}${frames}`;
   });
 };
 
@@ -251,21 +373,15 @@ const sceneRows = (
         ]),
     "    Elements",
     ...elementRows(scene, previous),
+    ...(scene.events.length === 0
+      ? []
+      : ["    Events", ...eventRows(plan, scene, timed)]),
     ...(scene.effects.length === 0
       ? []
       : ["    Effects", ...effectRows(plan, scene, timed)]),
     "    Lines",
-    ...Arr.flatMap(scene.lines, (line) =>
-      lineRows(
-        plan,
-        line,
-        Option.getOrUndefined(
-          Arr.findFirst(
-            timed?.lines ?? [],
-            (candidate) => candidate.lineId === line.id
-          )
-        )
-      )
+    ...Arr.flatMap(placedLines(scene), (placed) =>
+      lineRows(plan, placed, timed?.lines[placed.position - 1])
     ),
   ];
 };
@@ -274,9 +390,9 @@ const sceneRows = (
 const absoluteRows = (plan: PlanJson): readonly string[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.flatMap(scene.effects, (effect) =>
-      "absoluteMs" in effect.when
+      "absoluteFlicks" in effect.when
         ? [
-            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${effect.written}`,
+            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${formatTiming(effect)}`,
           ]
         : []
     )
@@ -321,7 +437,7 @@ const absoluteSummary = (plan: PlanJson): readonly string[] => {
 const timingSummary = (plan: PlanJson): string =>
   plan.timeline === undefined
     ? "Timeline: none yet (it is added by build, once speech has aligned the Lines)"
-    : `Timeline: ${plan.timeline.totalFrames} frames, ${seconds(plan, plan.timeline.totalFrames)} s at ${plan.settings.fps} fps`;
+    : `Timeline: ${plan.timeline.totalFrames} frames, ${seconds(plan, plan.timeline.totalFrames)} s at ${plan.settings.fps}${plan.settings.ntsc ? " NTSC" : ""} fps`;
 
 const timedScene = (plan: PlanJson, sceneId: string): TimedScene | undefined =>
   Option.getOrUndefined(

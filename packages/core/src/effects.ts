@@ -1,12 +1,13 @@
-// One line of an `[[effects]]` block (spec 0002, "plan contract for effects"), read and written:
+// One line of an `[[effects]]` block (spec 0002, "plan contract for effects", and spec 0004), read and written:
 //
-//   <id>: <verb> <argument> at <when>
+//   <id>: <verb> <argument> at <when> [until <event>]
+//   let <name> = <event>
 //
-// The vocabulary comes from `plan.ts` and `grammar.ts`; this file owns the shape of the line. Every problem is a Plan
-// error with what was found, what was expected and the nearest valid form. Plain functions: no Effect, no service.
+// The vocabulary comes from `plan.ts`, `machines.ts` and `grammar.ts`; the events are read by `expr.ts`; this file owns
+// the shape of the two lines. Every problem is a Plan error with what was found, what was expected and the nearest
+// valid form. Plain functions: no Effect, no service.
 import {
   Array as Arr,
-  Match,
   Option,
   Result,
   Schema,
@@ -16,47 +17,33 @@ import {
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
+import { formatEvent, readEventPrefix } from "./expr.ts";
 import {
   absolutePattern,
   absoluteUnit,
-  anchorFormsText,
-  anchorWords,
   bodyPattern,
   didYouMean,
   effectLine,
-  keywords,
   lineForm,
   linePattern,
-  offsetExamples,
-  offsetPattern,
   oneOf,
-  percentPattern,
-  percentUnit,
   problem,
-  reservedIds,
-  sourceUnits,
+  idForm,
+  keywords,
   verbArguments,
-  wordPattern,
 } from "./grammar.ts";
 import {
-  EdgeSchema,
-  ElementEventSchema,
   SfxNameSchema,
   VerbSchema,
-  WhenSchema,
-  edges,
-  elementEvents,
   idPattern,
   sfxNames,
   verbs,
 } from "./plan.ts";
-import type { Anchor, Edge, Effect, Offset, Point, When } from "./plan.ts";
+import type { DerivedEvent, Effect, Until, When } from "./plan.ts";
+import { flicksPerSecond } from "./time.ts";
 
-const isEdge = Schema.is(EdgeSchema);
-const isEvent = Schema.is(ElementEventSchema);
 const isSfx = Schema.is(SfxNameSchema);
 const isVerb = Schema.is(VerbSchema);
-const decodeWhen = Schema.decodeUnknownResult(WhenSchema);
 
 const bad = (line: number, message: string): PlanError =>
   planError("BadEffect", line, message);
@@ -67,241 +54,6 @@ const collapse = (text: string): string =>
 /** `value` times `factor`, without the float noise of the product (`0.1 * 1000`). */
 const scaled = (value: number, factor: number): number =>
   Number((value * factor).toFixed(6));
-
-const edgeProblem = (found: string, line: number, context: string): PlanError =>
-  bad(
-    line,
-    problem(
-      `unknown edge "${found}" in ${context}`,
-      oneOf(edges),
-      didYouMean(found, edges)
-    )
-  );
-
-const readEdge = (
-  found: string,
-  line: number,
-  context: string
-): Result.Result<Edge, PlanError> =>
-  isEdge(found)
-    ? Result.succeed(found)
-    : Result.fail(edgeProblem(found, line, context));
-
-/** `start`, `end` or `N%` of the window of `context`. */
-const readPoint = (
-  found: string,
-  line: number,
-  context: string
-): Result.Result<Point, PlanError> => {
-  const percent = percentPattern.exec(found)?.groups?.value;
-
-  if (percent === undefined) {
-    return readEdge(found, line, context);
-  }
-
-  const value = Number(percent);
-
-  return value <= 100
-    ? Result.succeed({ percent: value })
-    : Result.fail(
-        planError(
-          "BadPercent",
-          line,
-          problem(
-            `${found} in ${context} is more than a whole window`,
-            "a percent from 0 to 100"
-          )
-        )
-      );
-};
-
-const wordAnchor = (
-  groups: Record<string, string | undefined>,
-  line: number
-): Result.Result<Anchor, PlanError> => {
-  const phrase = collapse(groups.phrase ?? "");
-  const occurrence = Number(groups.n ?? "1");
-
-  if (phrase === "") {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          'word("") names no word',
-          'a word or phrase of the narration, as word("matches")'
-        )
-      )
-    );
-  }
-
-  if (occurrence < 1) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `word("${phrase}", ${occurrence}) counts from 0`,
-          "an occurrence number from 1 (the first)"
-        )
-      )
-    );
-  }
-
-  return Result.map(
-    readEdge(groups.edge ?? "", line, `word("${phrase}")`),
-    (edge): Anchor => ({
-      edge,
-      kind: "word",
-      occurrence,
-      phrase,
-    })
-  );
-};
-
-const eventAnchor = (
-  parts: readonly string[],
-  line: number,
-  text: string
-): Result.Result<Anchor, PlanError> => {
-  const [id = "", event = "", at = ""] = parts;
-
-  if (!isEvent(event)) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `unknown event "${event}" in ${text}`,
-          oneOf(elementEvents),
-          didYouMean(event, elementEvents)
-        )
-      )
-    );
-  }
-
-  return Result.map(readPoint(at, line, text), (point): Anchor => ({
-    at: point,
-    event,
-    id,
-    kind: "element",
-  }));
-};
-
-const pathAnchor = (
-  text: string,
-  line: number
-): Result.Result<Anchor, PlanError> => {
-  const parts = Str.split(text, ".");
-  const [first, second = ""] = parts;
-
-  if (first === anchorWords.scene && parts.length === 2) {
-    return Result.map(readEdge(second, line, text), (edge): Anchor => ({
-      edge,
-      kind: "scene",
-    }));
-  }
-
-  if (first === anchorWords.transition && parts.length === 2) {
-    return Result.map(readPoint(second, line, text), (at): Anchor => ({
-      at,
-      kind: "transition",
-    }));
-  }
-
-  if (parts.length === 3) {
-    return eventAnchor(parts, line, text);
-  }
-
-  if (parts.length === 2 && isEvent(second)) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `${text} names an event but no point of it`,
-          `${text}.start, ${text}.end or ${text}.<N>%`
-        )
-      )
-    );
-  }
-
-  return parts.length === 2
-    ? Result.map(readEdge(second, line, text), (edge): Anchor => ({
-        edge,
-        id: first,
-        kind: "effect",
-      }))
-    : Result.fail(
-        bad(line, problem(`"${text}" is not an anchor`, anchorFormsText))
-      );
-};
-
-const readOffset = (
-  text: string,
-  line: number
-): Result.Result<readonly Offset[], PlanError> => {
-  if (text === "") {
-    return Result.succeed([]);
-  }
-
-  const groups = offsetPattern.exec(text)?.groups;
-
-  if (groups === undefined) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `"${text}" after the anchor is not an offset`,
-          `an offset such as ${oneOf(offsetExamples)}, or nothing`
-        )
-      )
-    );
-  }
-
-  const unit = Option.getOrUndefined(
-    Arr.findFirst(sourceUnits, (candidate) => candidate.token === groups.unit)
-  );
-
-  if (unit === undefined) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          groups.unit === ""
-            ? `offset "${text}" has no unit`
-            : `unknown unit "${groups.unit ?? ""}" in offset "${text}"`,
-          oneOf(Arr.map(sourceUnits, (known) => known.token)),
-          didYouMean(
-            groups.unit ?? "",
-            Arr.map(sourceUnits, (known) => known.token)
-          )
-        )
-      )
-    );
-  }
-
-  const magnitude = scaled(Number(groups.value), unit.factor);
-  const signed = groups.sign === "-" ? -magnitude : magnitude;
-
-  if (unit.stored === "f" && !Number.isInteger(signed)) {
-    // The nearest whole form rounds the SIGNED value, as the schedule does (halves toward +infinity): -1.5f is -1f.
-    const whole = Math.round(signed);
-
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `frame offset "${text}" is not a whole number of frames`,
-          "+Nf with an integer N, as +2f (seconds, milliseconds and percents may be decimal)",
-          `${whole < 0 ? "-" : "+"}${Math.abs(whole)}f`
-        )
-      )
-    );
-  }
-
-  return Result.succeed([
-    unit.stored === "percent"
-      ? { unit: "percent", value: signed }
-      : { unit: unit.stored, value: signed },
-  ]);
-};
 
 /** `12.5s because "reason"`; `AbsoluteNeedsReason` when the reason is missing (F5). */
 const absoluteWhen = (
@@ -331,72 +83,18 @@ const absoluteWhen = (
         line,
         problem(
           `absolute time "${text}" has no reason`,
-          `at ${groups.value ?? ""}${absoluteUnit.token} because "<why this moment is fixed>"`
+          `at ${groups.value ?? ""}${absoluteUnit.token} ${keywords.because} "<why this moment is fixed>"`
         )
       )
     );
   }
 
   return Result.succeed({
-    absoluteMs: Math.round(scaled(Number(groups.value), absoluteUnit.factor)),
+    absoluteFlicks: Math.round(
+      scaled(Number(groups.value), absoluteUnit.factor)
+    ),
     reason,
   });
-};
-
-/** The anchor and the text after it. */
-const splitAnchor = (
-  text: string,
-  line: number
-): Result.Result<{ anchor: Anchor; rest: string }, PlanError> => {
-  const word = wordPattern.exec(text)?.groups;
-
-  if (word !== undefined) {
-    return Result.map(wordAnchor(word, line), (anchor) => ({
-      anchor,
-      rest: Str.trim(word.rest ?? ""),
-    }));
-  }
-
-  if (Str.startsWith("word(")(text)) {
-    return Result.fail(
-      bad(
-        line,
-        problem(
-          `"${text}" is not a word anchor`,
-          'word("<phrase>"[, <n>]).start or .end'
-        )
-      )
-    );
-  }
-
-  const [token, ...others] = Str.split(text, /\s+/u);
-
-  return Result.map(pathAnchor(token, line), (anchor) => ({
-    anchor,
-    rest: Arr.join(others, " "),
-  }));
-};
-
-/** What follows `at`: an absolute time with its reason, or an anchor and an optional offset. */
-const parseWhen = (
-  text: string,
-  line: number
-): Result.Result<When, PlanError> => {
-  if (/^\d/u.test(text)) {
-    return absoluteWhen(text, line);
-  }
-
-  return Result.flatMap(splitAnchor(text, line), ({ anchor, rest }) =>
-    Result.flatMap(readOffset(rest, line), (offsets) =>
-      Result.mapError(
-        decodeWhen(
-          offsets[0] === undefined ? { anchor } : { anchor, offset: offsets[0] }
-        ),
-        (failure) =>
-          bad(line, problem(`"${text}": ${failure.message}`, anchorFormsText))
-      )
-    )
-  );
 };
 
 const readArgument = (
@@ -433,17 +131,98 @@ const readArgument = (
       );
 };
 
-export interface ParsedEffect {
-  readonly effect: Effect;
-  /** Whether a `word(...)` of the line wrote its occurrence number (`, 2`): only then may the phrase repeat. */
-  readonly explicitOccurrence: boolean;
+/** What follows `at`: an event or an absolute time, and the `until` clause after it, if any. */
+interface Timing {
+  readonly until: Until | undefined;
+  readonly when: When;
 }
 
-/** Reads one non-empty line of an `[[effects]]` block; `line` is its 1-based source line. */
+const untilClause = (
+  rest: string,
+  line: number
+): Result.Result<Until, PlanError> => {
+  const text = Str.trim(Str.slice(keywords.until.length)(rest));
+
+  return Result.flatMap(readEventPrefix(text, line), (read) =>
+    read.rest === text.length
+      ? Result.succeed({ event: read.event })
+      : Result.fail(
+          bad(
+            line,
+            problem(
+              `"${Str.slice(read.rest)(text)}" after the ${keywords.until} event`,
+              "the end of the line"
+            )
+          )
+        )
+  );
+};
+
+/** The text after `at`: an absolute time with its reason, or an event and an optional `until` event. */
+const timingOf = (
+  text: string,
+  line: number
+): Result.Result<Timing, PlanError> => {
+  if (/^\d/u.test(text)) {
+    return Result.map(absoluteWhen(text, line), (when) => ({
+      until: undefined,
+      when,
+    }));
+  }
+
+  return Result.flatMap(
+    readEventPrefix(text, line),
+    (read): Result.Result<Timing, PlanError> => {
+      const rest = Str.slice(read.rest)(text);
+
+      if (rest === "") {
+        return Result.succeed({
+          until: undefined,
+          when: { event: read.event },
+        });
+      }
+
+      if (!Str.startsWith(`${keywords.until} `)(rest)) {
+        return Result.fail(
+          bad(
+            line,
+            problem(
+              `"${rest}" after the event`,
+              `an offset, "${keywords.until} <event>" or the end of the line`
+            )
+          )
+        );
+      }
+
+      return Result.map(untilClause(rest, line), (until) => ({
+        until,
+        when: { event: read.event },
+      }));
+    }
+  );
+};
+
+/** Why a verb refuses an `until`, or `undefined` when it takes one. */
+const untilRefusal = (
+  verb: Effect["verb"],
+  until: Until | undefined,
+  line: number
+): PlanError | undefined =>
+  until === undefined || verbArguments[verb].until
+    ? undefined
+    : bad(
+        line,
+        problem(
+          `${keywords.until} on a ${verb}, which ${verb === "sound" ? "plays to its own end" : "stays shown"}`,
+          `${keywords.until} only on ${oneOf(Arr.filter(verbs, (known) => verbArguments[known].until))}`
+        )
+      );
+
+/** Reads one non-empty line of an `[[effects]]` block that is an effect; `line` is its 1-based source line. */
 export const parseEffectLine = (
   raw: string,
   line: number
-): Result.Result<ParsedEffect, PlanError> => {
+): Result.Result<Effect, PlanError> => {
   const text = collapse(raw);
   const head = linePattern.exec(text)?.groups;
   const body = bodyPattern.exec(head?.rest ?? "")?.groups;
@@ -457,15 +236,9 @@ export const parseEffectLine = (
   const id = head.id ?? "";
   const verb = body.verb ?? "";
 
-  if (!idPattern.test(id) || Arr.contains(reservedIds, id)) {
+  if (!idPattern.test(id)) {
     return Result.fail(
-      bad(
-        line,
-        problem(
-          `effect id "${id}" is not usable`,
-          `an identifier that is not ${oneOf(reservedIds)}`
-        )
-      )
+      bad(line, problem(`effect id "${id}" is not usable`, idForm))
     );
   }
 
@@ -480,43 +253,102 @@ export const parseEffectLine = (
 
   return Result.flatMap(
     readArgument(verb, body.argument ?? "", line),
-    (argument) => {
-      const written = body.when ?? "";
+    (argument) =>
+      Result.flatMap(timingOf(body.when ?? "", line), (timing) => {
+        const refused = untilRefusal(verb, timing.until, line);
 
-      return Result.map(parseWhen(written, line), (when): ParsedEffect => ({
-        effect: { id, line, verb, when, written, ...argument },
-        explicitOccurrence: wordPattern.exec(written)?.groups?.n !== undefined,
-      }));
-    }
+        if (refused !== undefined) {
+          return Result.fail(refused);
+        }
+
+        const base = {
+          id,
+          line,
+          verb,
+          when: timing.when,
+          ...argument,
+        };
+
+        return Result.succeed(
+          timing.until === undefined ? base : { ...base, until: timing.until }
+        );
+      })
   );
 };
 
-/** `start`, `end` or `N%`. */
-const formatPoint = (point: Point): string =>
-  isEdge(point) ? point : `${point.percent}${percentUnit.token}`;
+/** Whether a collapsed row of an `[[effects]]` block is a `let` line. */
+export const isLetLine = (raw: string): boolean =>
+  Str.startsWith(`${keywords.let} `)(collapse(raw));
+
+/** Reads one `let <name> = <event>` line: a derived event of the Scene. */
+export const parseLetLine = (
+  raw: string,
+  line: number
+): Result.Result<DerivedEvent, PlanError> => {
+  const text = collapse(raw);
+  const rest = Str.trim(Str.slice(keywords.let.length)(text));
+  const equals = Option.getOrElse(Str.indexOf("=")(rest), () => -1);
+  const name = Str.trim(Str.slice(0, Math.max(equals, 0))(rest));
+  const source = Str.trim(Str.slice(equals + 1)(rest));
+
+  if (equals === -1 || source === "") {
+    return Result.fail(
+      bad(
+        line,
+        problem(
+          `"${text}" is not a derived event`,
+          `${keywords.let} <name> = <event>`
+        )
+      )
+    );
+  }
+
+  if (!idPattern.test(name)) {
+    return Result.fail(
+      bad(line, problem(`derived event name "${name}" is not usable`, idForm))
+    );
+  }
+
+  return Result.flatMap(readEventPrefix(source, line), (read) =>
+    read.rest === source.length
+      ? Result.succeed({ event: read.event, line, name })
+      : Result.fail(
+          bad(
+            line,
+            problem(
+              `"${Str.slice(read.rest)(source)}" after the event of ${name}`,
+              "the end of the line"
+            )
+          )
+        )
+  );
+};
 
 /**
- * The anchor as written: `one.move.50%`, `word("matches").end`, `transition.start`. A word anchor omits its
- * occurrence when it is the first, unless `explicit` says the occurrence is to be written (a phrase that repeats).
+ * The timing of an effect as an author writes it after `at`: its event in the canonical form (`formatEvent`: a percent
+ * of a transition is the threshold of its progress, an offset in the whole unit that holds it) or its absolute time
+ * with its reason; the event of an `until` follows. The text is derived, never stored.
  */
-export const formatAnchor = (anchor: Anchor, explicit = false): string =>
-  Match.value(anchor).pipe(
-    Match.discriminatorsExhaustive("kind")({
-      effect: (found) => `${found.id}.${found.edge}`,
-      element: (found) => `${found.id}.${found.event}.${formatPoint(found.at)}`,
-      scene: (found) => `${anchorWords.scene}.${found.edge}`,
-      transition: (found) =>
-        `${anchorWords.transition}.${formatPoint(found.at)}`,
-      word: (found) =>
-        `${anchorWords.word}("${found.phrase}"${found.occurrence === 1 && !explicit ? "" : `, ${found.occurrence}`}).${found.edge}`,
-    })
-  );
+export const formatTiming = (effect: Effect): string => {
+  const when =
+    "event" in effect.when
+      ? formatEvent(effect.when.event)
+      : `${effect.when.absoluteFlicks / flicksPerSecond}${absoluteUnit.token} ${keywords.because} "${effect.when.reason}"`;
 
-/** The effect as one line of an `[[effects]]` block, its `when` as the author wrote it; `parseEffectLine` reads it back. */
+  return effect.until === undefined
+    ? when
+    : `${when} ${keywords.until} ${formatEvent(effect.until.event)}`;
+};
+
+/** The effect as one line of an `[[effects]]` block; `parseEffectLine` reads it back. */
 export const formatEffect = (effect: Effect): string =>
   effectLine(
     effect.id,
     effect.verb,
     effect.name ?? effect.target ?? "",
-    effect.written
+    formatTiming(effect)
   );
+
+/** The derived event as a `let` line. */
+export const formatLet = (derived: DerivedEvent): string =>
+  `${keywords.let} ${derived.name} = ${formatEvent(derived.event)}`;

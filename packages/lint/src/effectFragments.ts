@@ -1,8 +1,9 @@
-// Rule `effect-fragment-agreement` (spec 0002, F4 of the Deck): a Rendering shows one fragment per `show` or `focus`
-// effect of a Scene, in resolved-time order, with the effect's verb and target. A `sound` is not a fragment: it rides
-// along with a step or the slide (`stepsOf` and `soundsOf` of `@reebeat/core` say which). The rule compares the Plan
-// with a neutral list of the fragments a Rendering shows, so any Renderer's reader can use it; for the reveal.js
-// Deck, `readDeck` supplies the list.
+// Rule `effect-fragment-agreement` (spec 0002, F4 of the Deck; spec 0004, F5): a Rendering shows one fragment per step
+// of a Scene, in resolved-time order: a `start` fragment for each `show` or `focus`, and an `end` fragment for each
+// `focus` that ends by its own `until` before the Scene does (it takes the ring off). Each carries the effect's verb and
+// target. A `sound` is not a fragment: it rides along with a step or the slide (`stepsOf` and `soundsOf` of
+// `@reebeat/core` say which). The rule compares the Plan with a neutral list of the fragments a Rendering shows, so any
+// Renderer's reader can use it; for the reveal.js Deck, `readDeck` supplies the list.
 import { stepsOf } from "@reebeat/core";
 import type { PlanJson, Scene } from "@reebeat/core";
 import { Array as Arr } from "effect";
@@ -12,8 +13,12 @@ import { firstDifference } from "./difference.ts";
 
 export const effectFragmentAgreementRule = "effect-fragment-agreement";
 
-/** One fragment a Rendering shows: the Scene it is in, the effect it stands for, that effect's verb and its target. */
+/**
+ * One fragment a Rendering shows: the Scene it is in, the effect it stands for, whether it starts the effect or ends it
+ * (the end of a focus ring), that effect's verb and its target.
+ */
 export interface Fragment {
+  readonly edge: "end" | "start";
   readonly effectId: string;
   readonly sceneId: string;
   readonly target: string;
@@ -21,6 +26,7 @@ export interface Fragment {
 }
 
 interface Wanted {
+  readonly edge: "end" | "start";
   readonly effectId: string;
   readonly line: number;
   readonly target: string;
@@ -28,22 +34,32 @@ interface Wanted {
 }
 
 const wantedIn = (plan: PlanJson, scene: Scene): readonly Wanted[] =>
-  Arr.map(stepsOf(plan, scene), ({ effect }) => ({
+  Arr.map(stepsOf(plan, scene), ({ edge, effect }) => ({
+    edge,
     effectId: effect.id,
     line: effect.line,
     target: effect.target ?? "",
     verb: effect.verb,
   }));
 
+/** `f1 (focus a)` for a start, `f1 end (focus a)` for the end of a ring. */
 const describe = (
-  fragment: { effectId: string; target: string; verb: string } | undefined
+  fragment:
+    | {
+        edge: "end" | "start";
+        effectId: string;
+        target: string;
+        verb: string;
+      }
+    | undefined
 ): string =>
   fragment === undefined
     ? "no fragment"
-    : `${fragment.effectId} (${fragment.verb} ${fragment.target})`;
+    : `${fragment.effectId}${fragment.edge === "end" ? " end" : ""} (${fragment.verb} ${fragment.target})`;
 
 const same = (want: Wanted, have: Fragment): boolean =>
   want.effectId === have.effectId &&
+  want.edge === have.edge &&
   want.verb === have.verb &&
   want.target === have.target;
 
@@ -74,9 +90,9 @@ const diagnoseScene = (
 };
 
 /**
- * One diagnostic per Scene whose fragments differ from its `show` and `focus` effects, at the first difference: a
- * missing, extra, swapped, re-kinded or re-targeted fragment. Fragments of a Scene the Plan does not have are ignored
- * here (a Renderer's own check reports a page with the wrong slides).
+ * One diagnostic per Scene whose fragments differ from its steps, at the first difference: a missing, extra, swapped,
+ * re-kinded, re-targeted or re-edged fragment (a ring that is never taken off, or an end that has no ring). Fragments of
+ * a Scene the Plan does not have are ignored here (a Renderer's own check reports a page with the wrong slides).
  */
 export const effectFragmentAgreement = (
   plan: PlanJson,

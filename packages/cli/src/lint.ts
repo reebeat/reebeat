@@ -1,16 +1,18 @@
-// `reebeat lint <story>` (spec 0002, M2): every problem of the screenplay with its line, what was found, what was
-// expected and the nearest valid form, then the rules over the Plan (the absolute times and why they were written).
-// Needs no browser and no adapter that makes anything. When the speech cache of the story exists it also schedules the
-// Plan, so an effect that falls outside its Scene is an error with its line here too; without the cache that is left
-// to `plan --timing` and `build`, and a line of the output says which of the two happened. Exits non-zero when
-// anything is an error; an absolute time that has its reason is listed as information only.
-import { buildPlan, collectErrors } from "@reebeat/core";
+// `reebeat lint <story>` (spec 0002, M2; spec 0004): every problem of the screenplay with its line, what was found, what
+// was expected and the nearest valid form, then the rules over the Plan (the absolute times and why they were written,
+// the derived events nothing uses, an `until` that is its own fire). The screenplay is read by the Fountain importer
+// (`fountainImporter`: one way, Fountain into the IR, every error found in document order) and the Plan is a function of
+// the IR it returns. Needs no browser and no adapter that makes anything. When the speech cache of the story exists it
+// also schedules the Plan, so an effect that falls outside its Scene is an error with its line here too; without the
+// cache that is left to `plan --timing` and `build`, and a line of the output says which of the two happened. Exits
+// non-zero when anything is an error; an absolute time that has its reason is listed as information only.
+import { fountainImporter, planLines, planOf } from "@reebeat/core";
 import type { PlanError, PlanJson, ScheduleError } from "@reebeat/core";
 import { lintPlan } from "@reebeat/lint";
 import type { Diagnostic } from "@reebeat/lint";
 import { readSource } from "@reebeat/pipeline";
 import type { Selection } from "@reebeat/services";
-import { Array as Arr, Console, Effect, Option } from "effect";
+import { Array as Arr, Console, Effect, Option, Result } from "effect";
 
 import type { RunOptions } from "./adapters.ts";
 import { LintFailed } from "./errors.ts";
@@ -22,7 +24,7 @@ export interface LintTiming {
   readonly selection: Selection;
 }
 
-/** One problem as `file:line: tag: message`; a Plan error always has its line. */
+/** One problem the importer found as `file:line: tag: message`; a Plan error always has its line. */
 const planErrorRow = (file: string, error: PlanError): string =>
   `${file}:${error.line}: error ${error._tag}: ${error.message}`;
 
@@ -54,11 +56,8 @@ const lineOf = (
 
   return "lineId" in error
     ? Option.map(
-        Arr.findFirst(
-          Arr.flatMap(plan.scenes, (scene) => scene.lines),
-          (line) => line.id === error.lineId
-        ),
-        (line) => line.line
+        Arr.findFirst(planLines(plan), ({ id }) => id === error.lineId),
+        ({ line }) => line.line
       )
     : Option.none();
 };
@@ -111,12 +110,16 @@ export const lintStory = Effect.fn("lintStory")(function* lintStory(
   timing?: LintTiming
 ) {
   const source = yield* readSource(story);
-  const planErrors = collectErrors(source.text);
+  const imported = fountainImporter.import(source.text);
 
-  const plan =
-    planErrors.length > 0
-      ? undefined
-      : yield* buildPlan(source.text, source.sha256);
+  const planErrors = Result.match(imported, {
+    onFailure: (errors) => errors,
+    onSuccess: () => [],
+  });
+
+  const plan = Result.getOrUndefined(
+    Result.map(imported, (graph) => planOf(graph, source.sha256))
+  );
 
   const scheduled =
     plan === undefined || timing === undefined

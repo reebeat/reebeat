@@ -11,8 +11,12 @@ import type { PlanJson, Scene } from "@reebeat/core";
 import { soundsOf, stepsOf } from "@reebeat/core/steps";
 import { Array as Arr } from "effect";
 
-/** One fragment of a slide: the `show` or `focus` effect it stands for and the sounds that play with it. */
+/**
+ * One fragment of a slide: a step of a `show` or `focus` effect and the sounds that play with it. `edge` says which step:
+ * `start` shows the effect, `end` takes a `focus` ring off (`data-effect-edge="end"`; a start has no such attribute).
+ */
 export interface ExpectedFragment {
+  readonly edge: "end" | "start";
   readonly effectId: string;
   readonly index: number;
   /** The sound names that play when the step runs, in source order. */
@@ -61,10 +65,12 @@ export const expectedSlide = (plan: PlanJson, scene: Scene): ExpectedSlide => {
   return {
     fragments: Arr.map(
       stepsOf(plan, scene),
-      ({ effect }, index): ExpectedFragment => ({
+      ({ edge, effect }, index): ExpectedFragment => ({
+        edge,
         effectId: effect.id,
         index,
-        sounds: namesOn(effect.id),
+        // A sound plays with the step that STARTS an effect: the end of a ring carries none.
+        sounds: edge === "start" ? namesOn(effect.id) : [],
         target: effect.target ?? "",
         verb: effect.verb === "focus" ? "focus" : "show",
       })

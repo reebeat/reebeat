@@ -1,4 +1,4 @@
-// Dialogue text to narration text and words (spec 0002: dialogue is prose, byte for byte what is spoken and
+// Dialogue text to narration text (spec 0002: dialogue is prose, byte for byte what is spoken and
 // subtitled, so it contains no `[[...]]` at all). A note in dialogue is a release-1 cue: it is returned with its
 // position, and the Scene (`hints.ts`) turns it into an error that carries the replacement. A plain function.
 
@@ -7,6 +7,7 @@ import { Array as Arr, Option, String as Str, pipe } from "effect";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import { problem } from "./grammar.ts";
+import { wordsOf } from "./words.ts";
 
 /** A release-1 cue `[[...]]` in dialogue: what it says, where it stands, and how many words of its Line come before. */
 export interface LegacyCue {
@@ -20,7 +21,6 @@ export interface Narration {
   readonly cues: readonly LegacyCue[];
   readonly errors: readonly PlanError[];
   readonly text: string;
-  readonly words: readonly string[];
 }
 
 const notePattern = /\[\[(?<inner>[\s\S]*?)\]\]/gu;
@@ -33,9 +33,6 @@ const noteBracketLength = 4;
 
 const collapse = (text: string): string =>
   pipe(text, Str.replaceAll(/\s+/gu, " "), Str.trim);
-
-const wordsOf = (text: string): readonly string[] =>
-  text === "" ? [] : Str.split(text, " ");
 
 /** The 1-based source line of `offset` in a dialogue text whose first line is `firstLine`. */
 const lineAt = (text: string, offset: number, firstLine: number): number =>
@@ -104,5 +101,5 @@ export const parseNarration = (text: string, firstLine: number): Narration => {
 
   const narration = collapse(Str.replaceAll(notePattern, "")(text));
 
-  return { cues, errors, text: narration, words: wordsOf(narration) };
+  return { cues, errors, text: narration };
 };

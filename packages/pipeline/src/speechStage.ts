@@ -9,8 +9,8 @@
 //   miss, refresh        -> synthesize -> encodeAudio -> decodeAudio -> align -> put
 //
 // The aligner hears what the cache stores (the decoded FLAC), as the first release's whisper did.
-import { matchThreshold } from "@reebeat/core";
-import type { Line, PlanJson } from "@reebeat/core";
+import { matchThreshold, planLines, wordsOf } from "@reebeat/core";
+import type { Line, PlacedLine, PlanJson } from "@reebeat/core";
 import {
   AssetCache,
   Encoder,
@@ -89,19 +89,19 @@ const keyOf = Effect.fnUntraced(function* keyOf(line: Line, voice: string) {
 
 /** The aligned Line of a cached asset: its `flac` hashed, its `words.json` decoded. */
 const fromAsset = Effect.fnUntraced(function* fromAsset(
-  line: Line,
+  { id }: PlacedLine,
   key: string,
   asset: Asset
 ) {
   const invalid = (message: string, cause: unknown) =>
-    new SpeechAssetInvalid({ cause, key, lineId: line.id, message });
+    new SpeechAssetInvalid({ cause, key, lineId: id, message });
 
   const audio = Arr.findFirst(asset.files, (file) => file.name === audioName);
   const words = Arr.findFirst(asset.files, (file) => file.name === wordsName);
 
   if (Option.isNone(audio) || Option.isNone(words)) {
     return yield* invalid(
-      `the asset ${key} of Line ${line.id} lacks ${audioName} or ${wordsName}`,
+      `the asset ${key} of Line ${id} lacks ${audioName} or ${wordsName}`,
       Arr.map(asset.files, (file) => file.name)
     );
   }
@@ -112,21 +112,22 @@ const fromAsset = Effect.fnUntraced(function* fromAsset(
       invalid(`${wordsName} of the asset ${key} is not a words file`, cause)
   );
 
-  return toAlignedLine(line, key, yield* sha256Hex(audio.value.bytes), decoded);
+  return toAlignedLine(id, key, yield* sha256Hex(audio.value.bytes), decoded);
 });
 
 /** Makes the asset of a Line from the services, stores it and returns its aligned Line. */
 const narrate = Effect.fn("speechStage.narrate")(function* narrate(
-  line: Line,
+  placed: PlacedLine,
   voice: string,
   made: { readonly extra: Schema.Json; readonly key: string }
 ) {
+  const { id, line } = placed;
   const cache = yield* AssetCache;
   const synthesizer = yield* SpeechSynthesizer;
   const aligner = yield* WordAligner;
   const encoder = yield* Encoder;
 
-  yield* Effect.logInfo(`narrating ${line.id}: ${excerpt(line.text)}`);
+  yield* Effect.logInfo(`narrating ${id}: ${excerpt(line.text)}`);
 
   const { clip, words: hint } = yield* synthesizer.synthesize({
     speed: line.hints.speed,
@@ -136,7 +137,8 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
 
   const audio = yield* encoder.encodeAudio(clip);
 
-  const heard = { clip: yield* encoder.decodeAudio(audio), words: line.words };
+  const spoken = wordsOf(line.text);
+  const heard = { clip: yield* encoder.decodeAudio(audio), words: spoken };
 
   const { match, spans } = yield* aligner.align(
     hint === undefined ? heard : { ...heard, hint }
@@ -144,9 +146,9 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
 
   if (match < matchThreshold) {
     return yield* new AlignmentBelowThreshold({
-      lineId: line.id,
+      lineId: id,
       match,
-      message: `the aligner matched ${match.toFixed(3)} of the words of Line ${line.id} ("${line.text}"), below ${matchThreshold}`,
+      message: `the aligner matched ${match.toFixed(3)} of the words of Line ${id} ("${line.text}"), below ${matchThreshold}`,
       threshold: matchThreshold,
     });
   }
@@ -157,7 +159,7 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
     words: Arr.map(spans, (span, index) => ({
       endMs: span.endMs,
       startMs: span.startMs,
-      w: line.words[index] ?? "",
+      w: spoken[index] ?? "",
     })),
   };
 
@@ -179,32 +181,33 @@ const narrate = Effect.fn("speechStage.narrate")(function* narrate(
     provenance,
   });
 
-  return toAlignedLine(line, made.key, yield* sha256Hex(audio), words);
+  return toAlignedLine(id, made.key, yield* sha256Hex(audio), words);
 });
 
 const alignLine = Effect.fn("speechStage.alignLine")(function* alignLine(
-  line: Line,
+  placed: PlacedLine,
   options: SpeechStageOptions
 ) {
+  const { id, line } = placed;
   const cache = yield* AssetCache;
   const voice = options.voice ?? defaultVoice;
   const made = yield* keyOf(line, voice);
   const cached = yield* cache.get(made.key);
 
   if (Option.isSome(cached)) {
-    return yield* fromAsset(line, made.key, cached.value);
+    return yield* fromAsset(placed, made.key, cached.value);
   }
 
   if (!options.refresh) {
     return yield* new SpeechCacheMiss({
       key: made.key,
-      lineId: line.id,
-      message: `the speech cache has no asset ${made.key} for Line ${line.id} ("${excerpt(line.text)}"); build with refresh and the speech models present`,
+      lineId: id,
+      message: `the speech cache has no asset ${made.key} for Line ${id} ("${excerpt(line.text)}"); build with refresh and the speech models present`,
       textExcerpt: excerpt(line.text),
     });
   }
 
-  return yield* narrate(line, voice, made);
+  return yield* narrate(placed, voice, made);
 });
 
 /**
@@ -215,8 +218,7 @@ export const speechStage = Effect.fn("speechStage")(function* speechStage(
   plan: PlanJson,
   options: SpeechStageOptions
 ) {
-  return yield* Effect.forEach(
-    Arr.flatMap(plan.scenes, (scene) => scene.lines),
-    (line) => alignLine(line, options)
+  return yield* Effect.forEach(planLines(plan), (placed) =>
+    alignLine(placed, options)
   );
 });

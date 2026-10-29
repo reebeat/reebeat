@@ -3,7 +3,7 @@
 // (when `cell`, `class` or `text` differ) or stays the same. A plain function.
 import { Array as Arr, Option } from "effect";
 
-import type { Element, Identity } from "./plan.ts";
+import type { Element, Identity, Scene } from "./plan.ts";
 
 type Changes = Identity["update"][number]["changes"];
 
@@ -17,7 +17,7 @@ const changesOf = (before: Element, after: Element): Changes => [
 const idOf = (element: Element): string => element.id;
 
 /** Compares the Elements of `previous` with those of `current`. Ids keep the document order of their own Scene. */
-export const identityDiff = (
+const identityDiff = (
   previous: readonly Element[],
   current: readonly Element[]
 ): Identity => {
@@ -51,3 +51,19 @@ export const identityDiff = (
     update,
   };
 };
+
+/** The Scenes as declared with the identity diff each has against the Scene before it, where `> AUTO-ANIMATE` joins them. */
+export const withIdentity = (
+  scenes: readonly Omit<Scene, "identity">[]
+): readonly Scene[] =>
+  Arr.map(scenes, (scene, index): Scene => {
+    const previous = scenes[index - 1];
+
+    return {
+      ...scene,
+      identity:
+        scene.transition === "auto-animate" && previous !== undefined
+          ? identityDiff(previous.elements, scene.elements)
+          : null,
+    };
+  });

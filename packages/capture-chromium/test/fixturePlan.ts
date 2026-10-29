@@ -9,7 +9,13 @@
 // duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; an effect fires at `Line start + round(30 *
 // word end)`; `commandFrame` is `fireFrame - 1` for show and focus, `fireFrame` for a sound. `test/fixtures/deck/deck.html` is
 // the page that goes with it.
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
+import {
+  buildPlan,
+  lineIdOf,
+  requireTimeline,
+  schedule,
+  wordsOf,
+} from "@reebeat/core";
 import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
 import { contractLifecycle } from "@reebeat/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
@@ -75,16 +81,20 @@ const durations = new Map([
 
 const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene, sceneIndex) =>
-    Arr.map(scene.lines, (line) => ({
-      audio: { file: audioFile(sceneIndex + 1), sha256: `0${sceneIndex}` },
-      durationMs: durations.get(line.id) ?? 0,
-      lineId: line.id,
-      words: Arr.map(line.words, (w, index) => ({
-        endMs: line.id === "sc3.l1" ? 580 : index * 300 + 280,
-        startMs: index * 300,
-        w,
-      })),
-    }))
+    Arr.map(scene.lines, (line, position) => {
+      const id = lineIdOf(scene.id, position + 1);
+
+      return {
+        audio: { file: audioFile(sceneIndex + 1), sha256: `0${sceneIndex}` },
+        durationMs: durations.get(id) ?? 0,
+        lineId: id,
+        words: Arr.map(wordsOf(line.text), (w, index) => ({
+          endMs: id === "sc3.l1" ? 580 : index * 300 + 280,
+          startMs: index * 300,
+          w,
+        })),
+      };
+    })
   );
 
 /** The Plan of `text` with its Timeline checked against its Scenes. */
@@ -135,6 +145,39 @@ export const sharedIds: TimedPlan = await Effect.runPromise(
         "",
         "NARRATOR",
         "Five six seven.",
+        "",
+      ],
+      "\n"
+    )
+  )
+);
+
+/**
+ * One Scene with a ring that ends by its own `until` (`f1`, an end step), a ring that a later focus takes over (`f2`,
+ * replaced by `f3`: no end step, the start of `f3` moves the ring), and a sound with two instances (`p1`, no command).
+ */
+export const ended: TimedPlan = await Effect.runPromise(
+  timedOf(
+    Arr.join(
+      [
+        "Title: Ended",
+        "",
+        "# Part",
+        "",
+        "INT. ONE #sc1#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "Other {id=b cell=br class=box}",
+        "",
+        "[[effects",
+        '  f1: focus a at word("one").end until word("two").end',
+        '  f2: focus b at word("three").end',
+        '  f3: focus a at word("four").start',
+        '  p1: sound pop at each(word("one").end, word("two").end)',
+        "]]",
+        "",
+        "NARRATOR",
+        "One two three four.",
         "",
       ],
       "\n"

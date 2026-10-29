@@ -9,6 +9,7 @@ import {
   Effect,
   Exit,
   FileSystem,
+  Number as Num,
   Option,
   Path,
   String as Str,
@@ -30,18 +31,51 @@ import {
 /** The flags of the offline stand-ins for narration. */
 const offline = ["--speech", "silent", "--aligner", "even"] as const;
 
-layer(platform)("reebeat plan", (it) => {
-  it.effect("prints the review text of the committed story and exits 0", () =>
-    Effect.gen(function* review() {
-      const { exit, stdout } = yield* runCli(["plan", (yield* sameId).story]);
+/** The test story with a derived event, a sound that fires twice and a focus that ends by its own `until`. */
+const combinatorStory = Str.replace(
+  '  f1: focus a at word("seven").end',
+  '  f1: focus a at word("seven").end until word("eight").end'
+)(
+  Str.replace(
+    '  p1: sound pop at word("five").end',
+    Arr.join(
+      [
+        '  let settled = last(word("two").end, word("four").end)',
+        "  p1: sound pop at settled +0.1s",
+        '  p2: sound pop at each(word("one").end, word("five").end)',
+      ],
+      "\n"
+    )
+  )(storyText)
+);
 
-      assert.isTrue(Exit.isSuccess(exit));
-      assert.include(
-        stdout,
-        "Plan: 7 scenes, 12 lines, 11 effects; 3 to enter, 3 to exit, 4 to update"
-      );
-      assert.include(stdout, "Scene sc4  INT. THE NEXT SCREEN - DAY");
-    })
+layer(platform)("reebeat plan", (it) => {
+  it.effect(
+    "prints the review text of the committed story and exits 0, its summary counting what plan.json holds",
+    () =>
+      Effect.gen(function* review() {
+        const { story } = yield* sameId;
+        const { exit, stdout } = yield* runCli(["plan", story]);
+
+        const plan = yield* decodePlan(
+          (yield* runCli(["plan", story, "--json"])).stdout
+        );
+
+        const lines = Num.sumAll(
+          Arr.map(plan.scenes, (scene) => scene.lines.length)
+        );
+
+        const effects = Num.sumAll(
+          Arr.map(plan.scenes, (scene) => scene.effects.length)
+        );
+
+        assert.isTrue(Exit.isSuccess(exit));
+        assert.include(
+          stdout,
+          `Plan: ${plan.scenes.length} scenes, ${lines} lines, ${effects} effects; 3 to enter, 3 to exit, 4 to update`
+        );
+        assert.include(stdout, "Scene sc4  INT. THE NEXT SCREEN - DAY");
+      })
   );
 
   it.effect(
@@ -129,6 +163,45 @@ layer(platform)("reebeat plan", (it) => {
       assert.isTrue(Exit.isSuccess(exit));
       assert.include(stdout, "Timeline:");
     })
+  );
+
+  it.effect(
+    "--timing prints the intent and the resolved frames of a derived event, of each instance of an effect and of an until",
+    () =>
+      Effect.gen(function* combinators() {
+        const path = yield* Path.Path;
+        const story = yield* storyFile(combinatorStory);
+        const cacheDir = path.join(path.dirname(story), "speech-cache");
+
+        yield* fillCache(cacheDir, combinatorStory);
+
+        const timed = yield* runCli(["plan", story, "--timing", ...offline]);
+        const untimed = yield* runCli(["plan", story, ...offline]);
+
+        assert.isTrue(Exit.isSuccess(timed.exit));
+        assert.match(
+          timed.stdout,
+          /settled\s+last\(word\("two"\)\.end, word\("four"\)\.end\)\s+->\s+frame \d+/u
+        );
+        assert.match(
+          timed.stdout,
+          /p1\s+sound pop\s+settled \+100ms\s+->\s+frame \d+/u
+        );
+        assert.lengthOf(
+          Arr.filter(
+            Str.split("\n")(timed.stdout),
+            Str.includes("sound pop  each(")
+          ),
+          2
+        );
+        assert.match(
+          timed.stdout,
+          /f1\s+focus a\s+word\("seven"\)\.end until word\("eight"\)\.end[^\n]*->\s+frame \d+/u
+        );
+        assert.match(timed.stdout, /ends frame \d+[^\n]*by until/u);
+        assert.isTrue(Exit.isSuccess(untimed.exit));
+        assert.notInclude(untimed.stdout, "frame ");
+      })
   );
 
   it.effect(

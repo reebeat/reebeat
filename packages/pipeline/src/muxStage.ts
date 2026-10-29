@@ -54,6 +54,7 @@ export const muxStage = Effect.fn("muxStage")(function* muxStage(
       comment: `reebeat source-sha256 ${plan.sourceSha256}`,
       title: plan.title,
     },
+    ntsc: plan.settings.ntsc,
     outPath: path.join(target.outDir, `${target.name}.mp4`),
     totalMs: videoMs(plan),
     tracks: [...narration, ...sounds],

@@ -10,7 +10,7 @@ import type { PlanError } from "./errors.ts";
 import { eventKind, hasWindow, showEffectOf } from "./events.ts";
 import { didYouMean, oneOf, problem } from "./grammar.ts";
 import { effectOf, elementOf } from "./lookup.ts";
-import { EdgeSchema } from "./plan.ts";
+import { EdgeSchema, elementEvents } from "./plan.ts";
 import type { Anchor, Effect, ElementEvent, Offset, Scene } from "./plan.ts";
 import { findPhrase, narrationWords, phraseTokens } from "./words.ts";
 
@@ -189,7 +189,7 @@ const needs: Readonly<Record<ElementEvent, string>> = {
 
 const eventsOf = (scene: Scene, id: string): string => {
   const happening = Arr.filter(
-    ["enter", "exit", "move", "update"] as const,
+    elementEvents,
     (event) => eventKind(scene, id, event) !== undefined
   );
 

@@ -84,7 +84,7 @@ const PublishedManifestSchema = Schema.Struct({
   version: Schema.String,
 });
 
-export type PublishedManifest = typeof PublishedManifestSchema.Type;
+type PublishedManifest = typeof PublishedManifestSchema.Type;
 
 /** The root `package.json` text, decoded. */
 export const decodeRoot = Schema.decodeUnknownEffect(
@@ -119,13 +119,18 @@ export const readPackages = Effect.fnUntraced(function* readPackages(
 > {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const packages = path.join(root, "packages");
-  const directories = Arr.sort(yield* fs.readDirectory(packages), Order.String);
+
+  const directories = yield* Effect.map(
+    fs.readDirectory(path.join(root, "packages")),
+    (names) => Arr.sort(names, Order.String)
+  );
 
   return yield* Effect.forEach(directories, (directory) =>
     Effect.map(
       Effect.flatMap(
-        fs.readFileString(path.join(packages, directory, "package.json")),
+        fs.readFileString(
+          path.join(root, "packages", directory, "package.json")
+        ),
         decodeSource
       ),
       (manifest) => ({ directory, manifest })

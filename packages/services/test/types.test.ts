@@ -1,8 +1,9 @@
 // Type tests: the channels each service promises. Every method requires nothing, an error channel holds exactly the
-// tagged errors of its contract, and the two places that do require a service (the cache key's `Crypto`, the
+// tagged errors of its contract, and the two places that do require a service (the cache key's `Digest`, the
 // memory cache's Layer) say so. A requirement erased or an error widened changes a type and fails here at compile time.
 import { describe, expectTypeOf, it } from "@effect/vitest";
-import type { Crypto, Effect, Layer, Option, Stream, Scope } from "effect";
+import type { Effect, Layer, Option, Stream, Scope } from "effect";
+import type { Digest } from "effect/crypto";
 
 import type { AssetCache } from "../src/assetCache.ts";
 import type { assetKey } from "../src/cacheKey.ts";
@@ -72,9 +73,9 @@ describe("service channels", () => {
     >();
   });
 
-  it("the cache key requires Crypto and fails only with SecretLikeSetting", () => {
+  it("the cache key requires Digest and fails only with SecretLikeSetting", () => {
     expectTypeOf<ReturnType<typeof assetKey>>().toEqualTypeOf<
-      Effect.Effect<string, SecretLikeSetting, Crypto.Crypto>
+      Effect.Effect<string, SecretLikeSetting, Digest.Digest>
     >();
   });
 
@@ -86,7 +87,7 @@ describe("service channels", () => {
     expectTypeOf<Selection["aligner"]>().toEqualTypeOf<"whisper" | "even">();
   });
 
-  it("the stand-ins need nothing, except the memory cache, which needs Crypto", () => {
+  it("the stand-ins need nothing, except the memory cache, which needs Digest", () => {
     expectTypeOf<typeof silentSynthesizer>().toEqualTypeOf<
       Layer.Layer<SpeechSynthesizer>
     >();
@@ -97,7 +98,7 @@ describe("service channels", () => {
       Layer.Layer<SoundLibrary>
     >();
     expectTypeOf<typeof memoryCache>().toEqualTypeOf<
-      Layer.Layer<AssetCache, never, Crypto.Crypto>
+      Layer.Layer<AssetCache, never, Digest.Digest>
     >();
   });
 });

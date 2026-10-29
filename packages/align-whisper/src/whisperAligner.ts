@@ -12,14 +12,13 @@ import type { AlignRequest } from "@reebeat/services";
 import {
   Array as Arr,
   Config,
-  Crypto,
   Effect,
   FileSystem,
   Layer,
   Path,
   Schema,
 } from "effect";
-import { Hex } from "effect/encoding";
+import { Digest } from "effect/crypto";
 import { ChildProcessSpawner } from "effect/process";
 
 import { adapterId, alignFailure, runTool, unavailable } from "./tool.ts";
@@ -118,7 +117,7 @@ export const whisperAligner = Layer.effect(
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-    const crypto = yield* Crypto.Crypto;
+    const digest = yield* Digest.Digest;
 
     const fail = alignFailure("cannot move audio through a temporary file");
 
@@ -155,9 +154,7 @@ export const whisperAligner = Layer.effect(
         unavailable(`model ${modelFile}`, `cannot read the model ${model}`)
       );
 
-      const sha256 = Hex.encode(
-        yield* Effect.orDie(crypto.digest("SHA-256", bytes))
-      );
+      const sha256 = yield* digest.digestHex(Digest.sha256, bytes);
 
       if (sha256 !== modelSha256) {
         return yield* unavailable(

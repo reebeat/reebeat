@@ -1,8 +1,8 @@
-// assetKey: SHA-256 of the canonical JSON of { adapter id, settings, input, extra }, through the Crypto service,
+// assetKey: SHA-256 of the canonical JSON of { adapter id, settings, input, extra }, through the Digest service,
 // and a guard that keeps secrets out of keys.
 import { assert, describe, it, layer } from "@effect/vitest";
-import { Crypto, Effect } from "effect";
-import { Hex } from "effect/encoding";
+import { Effect } from "effect";
+import { Digest } from "effect/crypto";
 
 import { assetKey, secretLikeNames } from "../src/cacheKey.ts";
 import type { AdapterInfo } from "../src/types.ts";
@@ -15,13 +15,9 @@ const adapter: AdapterInfo = {
 };
 
 const sha256Of = (text: string) =>
-  Effect.gen(function* digest() {
-    const crypto = yield* Crypto.Crypto;
-
-    return Hex.encode(
-      yield* crypto.digest("SHA-256", new TextEncoder().encode(text))
-    );
-  });
+  Digest.Digest.use((digest) =>
+    digest.digestHex(Digest.sha256, new TextEncoder().encode(text))
+  );
 
 layer(platform)("assetKey", (suite) => {
   suite.effect(
@@ -33,6 +29,17 @@ layer(platform)("assetKey", (suite) => {
           yield* sha256Of(
             '{"adapter":"kokoro@1.2.1","extra":null,"input":"Names are cheap.","settings":{"speed":1,"voice":"af_heart"}}'
           )
+        );
+      })
+  );
+
+  suite.effect(
+    "is byte-identical to the SHA-256 that coreutils gives the canonical JSON, so an Effect upgrade cannot orphan the committed speech cache",
+    () =>
+      Effect.gen(function* pinned() {
+        assert.strictEqual(
+          yield* assetKey({ adapter, input: "Names are cheap." }),
+          "73e0ea22fb39f1f0b9fce86250d366915f000a966cf5912112db2c1f85dc5cc4"
         );
       })
   );

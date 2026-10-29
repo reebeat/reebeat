@@ -15,7 +15,8 @@ import {
   Result,
   Struct,
 } from "effect";
-import type { Crypto, PlatformError } from "effect";
+import type { PlatformError } from "effect";
+import type { Digest } from "effect/crypto";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
@@ -85,7 +86,7 @@ const fileProblem = (
   ): Effect.fn.Return<
     readonly string[],
     PlatformError.PlatformError,
-    Crypto.Crypto
+    Digest.Digest
   > {
     const read = yield* Effect.result(
       fs.readFile(path.join(build.buildDir, file.path))

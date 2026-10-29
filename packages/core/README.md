@@ -11,7 +11,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 | Export | What it is |
 | --- | --- |
-| `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Crypto` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
+| `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Digest` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
 | `schedule(plan, aligned)` | `Effect<PlanJson, ScheduleError>`; adds `timeline` |
 | `reviewText(plan, { timing })` | the review text, deterministic |

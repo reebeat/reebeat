@@ -14,7 +14,6 @@ import type { Asset, CacheError, Provenance } from "@reebeat/services";
 // swapped or hand-edited file is `CacheFailed`, never a silent hit. Foreign ABI: the platform `FileSystem`.
 import {
   Array as Arr,
-  Crypto,
   Effect,
   FileSystem,
   Layer,
@@ -23,7 +22,7 @@ import {
   Path,
   Schema,
 } from "effect";
-import { Hex } from "effect/encoding";
+import { Digest } from "effect/crypto";
 
 const provenanceSuffix = ".provenance.json";
 
@@ -99,10 +98,7 @@ export const fsAssetCache = (dir: string) =>
     Effect.gen(function* fsAssetCacheLayer() {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
-      const crypto = yield* Crypto.Crypto;
-
-      const sha256 = (bytes: Uint8Array) =>
-        Effect.map(crypto.digest("SHA-256", bytes), Hex.encode);
+      const digest = yield* Digest.Digest;
 
       const recordPath = (key: string) =>
         path.join(dir, `${key}${provenanceSuffix}`);
@@ -153,10 +149,7 @@ export const fsAssetCache = (dir: string) =>
               failure(key, "get", `cannot read ${where}`)
             );
 
-            const actual = yield* Effect.mapError(
-              sha256(bytes),
-              failure(key, "get", `cannot hash ${where}`)
-            );
+            const actual = yield* digest.digestHex(Digest.sha256, bytes);
 
             if (
               actual !== expected.sha256 ||
@@ -192,15 +185,12 @@ export const fsAssetCache = (dir: string) =>
           Arr.map(asset.files, ({ name }) => name)
         );
 
-        const record = yield* Effect.mapError(
-          Effect.forEach(asset.files, ({ bytes, name }) =>
-            Effect.map(sha256(bytes), (digest) => ({
-              bytes: bytes.byteLength,
-              name,
-              sha256: digest,
-            }))
-          ),
-          fail
+        const record = yield* Effect.forEach(asset.files, ({ bytes, name }) =>
+          Effect.map(digest.digestHex(Digest.sha256, bytes), (sha256) => ({
+            bytes: bytes.byteLength,
+            name,
+            sha256,
+          }))
         );
 
         const text = yield* Effect.mapError(
@@ -266,7 +256,7 @@ export const fsAssetCache = (dir: string) =>
           settings: { layout: "key.name" },
         },
         key: (request) =>
-          Effect.provideService(assetKey(request), Crypto.Crypto, crypto),
+          Effect.provideService(assetKey(request), Digest.Digest, digest),
         list: list(),
         put,
       });

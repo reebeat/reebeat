@@ -5,7 +5,8 @@ import type { PlanError, PlanJson, TimedPlan } from "@reebeat/core";
 import { decodeBuildManifest, sha256Hex } from "@reebeat/pipeline";
 import type { BuildManifest } from "@reebeat/pipeline";
 import { Array as Arr, Effect, FileSystem, Option, Path } from "effect";
-import type { Crypto, Result } from "effect";
+import type { Result } from "effect";
+import type { Digest } from "effect/crypto";
 
 import { BuildInvalid } from "./errors.ts";
 
@@ -102,7 +103,7 @@ export const loadBuild = Effect.fn("loadBuild")(function* load(
 ): Effect.fn.Return<
   Build,
   BuildInvalid,
-  FileSystem.FileSystem | Path.Path | Crypto.Crypto
+  FileSystem.FileSystem | Path.Path | Digest.Digest
 > {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

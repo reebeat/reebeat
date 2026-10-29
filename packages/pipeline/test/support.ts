@@ -1,6 +1,6 @@
 // Shared by the pipeline tests: the platform (for the cache's digest), a two-Line Plan, a tiny fake Encoder and
 // spies that count what the speech services were asked.
-import { NodeServices } from "@effect/platform-node";
+import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { buildPlan } from "@reebeat/core";
 import {
   Encoder,
@@ -11,7 +11,7 @@ import {
 import type { AudioClip } from "@reebeat/services";
 import { Array as Arr, Effect, Layer, Ref } from "effect";
 
-export const platform = NodeServices.layer;
+export const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
 
 const source = Arr.join(
   [

@@ -1,9 +1,9 @@
 // The one cache key (spec 0001, design R3): SHA-256, as lower-case hex, of the canonical JSON of
-// `{ adapter id, settings, input, extra }`, hashed through Effect's `Crypto` service. Canonical means every object
+// `{ adapter id, settings, input, extra }`, hashed through Effect's `Digest` service. Canonical means every object
 // key sorted, so equal requests written in any order give one key. A secret cannot enter: `settings` is by contract
 // non-secret, and a setting whose name looks like a credential is rejected here and in `AssetCache.put`.
-import { Array as Arr, Crypto, Effect, Order, Record, Schema } from "effect";
-import { Hex } from "effect/encoding";
+import { Array as Arr, Effect, Order, Record, Schema } from "effect";
+import { Digest } from "effect/crypto";
 
 import type { KeyRequest } from "./assetCache.ts";
 import { SecretLikeSetting } from "./errors.ts";
@@ -64,15 +64,15 @@ const sortKeys = (value: Schema.Json): Schema.Json => {
 const canonicalText = Schema.encodeEffect(Schema.fromJsonString(Schema.Json));
 
 /**
- * The cache key of `request`: 64 lower-case hex digits. Pure in its inputs; the digest comes from `Crypto`, whose
- * failure is a defect.
+ * The cache key of `request`: 64 lower-case hex digits. Pure in its inputs; the digest comes from `Digest`, which
+ * cannot fail on bytes.
  */
 export const assetKey = Effect.fnUntraced(function* assetKey(
   request: KeyRequest
-): Effect.fn.Return<string, SecretLikeSetting, Crypto.Crypto> {
+): Effect.fn.Return<string, SecretLikeSetting, Digest.Digest> {
   yield* rejectSecretSettings(request.adapter.id, request.adapter.settings);
 
-  const crypto = yield* Crypto.Crypto;
+  const digest = yield* Digest.Digest;
 
   const text = yield* Effect.orDie(
     canonicalText(
@@ -85,9 +85,5 @@ export const assetKey = Effect.fnUntraced(function* assetKey(
     )
   );
 
-  return Hex.encode(
-    yield* Effect.orDie(
-      crypto.digest("SHA-256", new TextEncoder().encode(text))
-    )
-  );
+  return yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(text));
 });

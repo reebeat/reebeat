@@ -1,6 +1,6 @@
-// Shared by the tests: the platform services (the tests' one runtime adapter: Crypto and the file system) and
+// Shared by the tests: the platform services (the tests' one runtime adapter: the digest and the file system) and
 // broken adapters, each built from a working one by one flaw so that exactly one contract clause fails.
-import { NodeServices } from "@effect/platform-node";
+import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { Array as Arr, Effect, Layer, Ref } from "effect";
 
 import { AssetCache } from "../src/assetCache.ts";
@@ -16,7 +16,7 @@ import {
   toneSounds,
 } from "../standins/index.ts";
 
-export const platform = NodeServices.layer;
+export const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
 
 /** `clip` with its first sample set to `value`: a different output from the same request. */
 const perturbed = (clip: AudioClip, value: number): AudioClip => {

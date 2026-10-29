@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 // The `reebeat` executable, the composition root of the CLI: the platform services (file system, path, child
-// processes, crypto) and the arguments from the `Stdio` service. The adapters are chosen per command, from the
-// selection (`src/adapters.ts`); nothing here names one.
-import { NodeRuntime, NodeServices } from "@effect/platform-node";
-import { Effect, Stdio } from "effect";
+// processes), the SHA-256 digest and the arguments from the `Stdio` service. The adapters are chosen per command,
+// from the selection (`src/adapters.ts`); nothing here names one.
+import { NodeCrypto, NodeRuntime, NodeServices } from "@effect/platform-node";
+import { Effect, Layer, Stdio } from "effect";
 
 import { run } from "../src/cli.ts";
 
@@ -14,6 +14,7 @@ const main = Effect.gen(function* main() {
 });
 
 // The failure is already printed (or is a usage error whose help is shown): the runner only sets the exit code.
-NodeRuntime.runMain(Effect.provide(main, NodeServices.layer), {
-  disableErrorReporting: true,
-});
+NodeRuntime.runMain(
+  Effect.provide(main, Layer.merge(NodeServices.layer, NodeCrypto.layerDigest)),
+  { disableErrorReporting: true }
+);

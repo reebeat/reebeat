@@ -2,7 +2,7 @@
 // (parse, schedule, reveal.js deck, capture in Chromium, mux with ffmpeg, a filesystem cache) into a build directory,
 // and the helpers that copy it, change one file of the copy and run the checks. The narrator is a test synthesiser
 // whose "speech" is seeded noise, so the narration is audible to the checks (the silent stand-in is not).
-import { NodeServices } from "@effect/platform-node";
+import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { fsAssetCache } from "@reebeat/cache-fs";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
@@ -52,8 +52,11 @@ import { renderVerdicts, runChecks } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { timedLines } from "../src/planParts.ts";
 
+/** The platform services and the SHA-256 digest the checks and the helpers run on. */
+const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
+
 /** The services the checks and the helpers run on: ffmpeg, the file system and hashing. */
-const services = MediaTools.layer.pipe(Layer.provideMerge(NodeServices.layer));
+const services = MediaTools.layer.pipe(Layer.provideMerge(platform));
 
 /**
  * Two Sections, two Scenes: a Line with a `next` and an `sfx`, then an Auto-Animate Scene whose first Line opens with
@@ -213,7 +216,7 @@ const adapters = (
     frames === undefined ? chromiumCapturer : recordingCapturer(frames),
     ffmpegEncoder,
     fsAssetCache(cacheDir)
-  ).pipe(Layer.provide(NodeServices.layer));
+  ).pipe(Layer.provide(platform));
 
 /** Every file below `dir`, relative to it, in name order. */
 const filesBelow = Effect.fnUntraced(function* filesBelow(dir: string) {
@@ -622,7 +625,7 @@ export const recapture = (plan: TimedPlan, deckDir?: string) =>
 /** What muxing frames under the intact build's Plan needs besides the platform: the sounds, ffmpeg and the cache. */
 const muxing = (cacheDir: string) =>
   Layer.mergeAll(synthSounds, ffmpegEncoder, fsAssetCache(cacheDir)).pipe(
-    Layer.provide(NodeServices.layer)
+    Layer.provide(platform)
   );
 
 /**

@@ -1,14 +1,15 @@
 // What a check may need, and the one place where an observation that cannot be made becomes a FAIL verdict.
 import type { MediaTools, MediaToolFailed } from "@reebeat/encode-ffmpeg";
 import { Effect } from "effect";
-import type { Crypto, FileSystem, Path, PlatformError } from "effect";
+import type { FileSystem, Path, PlatformError } from "effect";
+import type { Digest } from "effect/crypto";
 
 import { fail } from "./verdict.ts";
 import type { FalsifierId, Verdict } from "./verdict.ts";
 
 /** The services the checks run on: the written files, hashing and ffmpeg. */
 export type CheckServices =
-  | Crypto.Crypto
+  | Digest.Digest
   | FileSystem.FileSystem
   | MediaTools
   | Path.Path;

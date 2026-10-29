@@ -26,12 +26,12 @@ import {
   fakeCapturer,
   fakeRenderer,
   parts,
-  platform,
   storyText,
   tinyFrames,
   worldOf,
 } from "./buildSupport.ts";
 import type { Muxed, Parts } from "./buildSupport.ts";
+import { platform } from "./support.ts";
 
 /** A story file in a temporary directory; `out` is where the build goes. */
 const setup = Effect.gen(function* setup() {

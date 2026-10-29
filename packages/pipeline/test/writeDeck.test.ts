@@ -7,7 +7,7 @@ import { toneSounds } from "@reebeat/services/standins";
 import { Effect, FileSystem, Layer, Predicate } from "effect";
 
 import { writeRenderedDeck, writeSounds } from "../src/writeDeck.ts";
-import { platform } from "./buildSupport.ts";
+import { platform } from "./support.ts";
 
 const withSounds = Layer.provideMerge(toneSounds, platform);
 

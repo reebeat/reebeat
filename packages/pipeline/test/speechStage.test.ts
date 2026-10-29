@@ -9,16 +9,8 @@ import {
   memoryCache,
   silentSynthesizer,
 } from "@reebeat/services/standins";
-import {
-  Array as Arr,
-  Crypto,
-  Effect,
-  Layer,
-  Option,
-  Predicate,
-  Ref,
-} from "effect";
-import { Hex } from "effect/encoding";
+import { Array as Arr, Effect, Layer, Option, Predicate, Ref } from "effect";
+import { Digest } from "effect/crypto";
 
 import { speechStage } from "../src/speechStage.ts";
 import {
@@ -82,9 +74,7 @@ const linesOf = Effect.map(fixturePlan, (plan) =>
 );
 
 const sha256Of = (bytes: Uint8Array) =>
-  Effect.gen(function* digest() {
-    return Hex.encode(yield* (yield* Crypto.Crypto).digest("SHA-256", bytes));
-  });
+  Digest.Digest.use((digest) => digest.digestHex(Digest.sha256, bytes));
 
 layer(world)("speech stage: miss, refresh, hit", (it) => {
   it.effect(

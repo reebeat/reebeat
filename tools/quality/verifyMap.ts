@@ -1,9 +1,9 @@
-// The drift check of skill `verify-reebeat` (spec 0009): the feature map (`.agents/skills/verify-reebeat/features.md`) is held to
+// The drift check of skill `verify-reebeat` (spec 0010): the feature map (`.agents/skills/verify-reebeat/features.md`) is held to
 // the code and to the specs by plain functions over text. The map is the one list of what a viewer can observe; a spec points
 // into it with a `Verify skill:` line; the vocabulary of `@reebeat/core` must have a row for each of its members.
 import { Array as Arr, Option, String as Str, pipe } from "effect";
 
-/** A spec file: its name (`0009-review-and-verify-skills.md`) and its text. */
+/** A spec file: its name (`0010-review-and-verify-skills.md`) and its text. */
 export interface SpecFile {
   readonly name: string;
   readonly text: string;
@@ -29,7 +29,7 @@ export interface FeatureRow {
 }
 
 /** The first spec that must carry a `Verify skill:` line. Earlier ones are checked where the line exists. */
-const firstEnforcedSpec = 9;
+const firstEnforcedSpec = 10;
 
 const cellsPerRow = 5;
 const rowStart = "| `";

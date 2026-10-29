@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Provenance: copied from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888 (.agents/skills/review-pr/record-round.sh).
-# Deviation (spec 0009): the body file's header (Author, Reviewers, Checked) is validated by check-record.sh before anything is posted.
+# Deviation (spec 0010): the body file's header (Author, Reviewers, Checked) is validated by check-record.sh before anything is posted.
 # record-round.sh <pr> <round> <pass|changes> <body-file>
 # Posts one review round on the PR as a GitHub review (comment), headed by the marker that merge.sh requires.
 # The head is read from GitHub, so a record always names the commit that was reviewed.

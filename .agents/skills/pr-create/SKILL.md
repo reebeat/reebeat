@@ -7,7 +7,7 @@ description: "Open a reebeat pull request: the PR body is the report, in eight f
      and Merge Danger sections it reuses; the Summary's menu of visuals comes from Dex Horthy's `show-me` skill
      (https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md). New here: the eight
      sections and their order, the opening rule, and the `gh` command (spec 0000, "The PR body is the report").
-     Since spec 0009: the number rule, the verify-reebeat evidence and the reebeat falsifier controls. The rule that the PR
+     Since spec 0010: the number rule, the verify-reebeat evidence and the reebeat falsifier controls. The rule that the PR
      body ends with an empty `## Review rounds` which the lead fills is from spec 0000 (item 8 of "The PR body is the report"),
      not from the donor: phibkro/vektorprogrammet-reimagined @ a85bab0ec18553f4e681574bef5523152e904fdc has no pr-create
      skill, and its review-pr only says that the PR body lists the rounds. -->

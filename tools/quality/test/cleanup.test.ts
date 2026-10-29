@@ -1,4 +1,4 @@
-// `cleanup.sh` of skill `verify-reebeat` (spec 0009): it stops the process groups that `run.sh` and `observe.ts` recorded in `pids.txt`
+// `cleanup.sh` of skill `verify-reebeat` (spec 0010): it stops the process groups that `run.sh` and `observe.ts` recorded in `pids.txt`
 // and nothing it could find by name. Scenario 1: a recorded step group dies; an unrelated process whose command line names the run
 // directory and "chromium" survives; a live group leader whose recorded start time is not its own (a reused pid) survives.
 // Scenario 2: a step launches the real Chromium through Playwright (detached, a group of its own) and records it with `recordBrowser`;

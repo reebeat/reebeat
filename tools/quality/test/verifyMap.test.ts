@@ -1,5 +1,5 @@
-// The drift check of skill `verify-reebeat` (spec 0009, V3 and V4): controls on text, then the real map against the real specs
-// and the real vocabulary of `@reebeat/core`. A spec from 0009 on names the map's rows on a `Verify skill:` line; every effect verb,
+// The drift check of skill `verify-reebeat` (spec 0010, V3 and V4): controls on text, then the real map against the real specs
+// and the real vocabulary of `@reebeat/core`. A spec from 0010 on names the map's rows on a `Verify skill:` line; every effect verb,
 // sound, anchor kind, Element event and transition has a row.
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
@@ -137,7 +137,7 @@ describe("the Verify skill line of a spec", () => {
     );
   });
 
-  it("negative control: a spec from 0009 on without the line", () => {
+  it("negative control: a spec from 0010 on without the line", () => {
     assert.deepStrictEqual(specProblems([spec("0010-a.md", [])], ids), [
       '0010-a.md has no "Verify skill:" line',
     ]);

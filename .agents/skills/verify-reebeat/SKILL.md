@@ -6,7 +6,7 @@ description: "Build a reebeat story into a scratch directory and observe what a 
 <!-- Provenance: the structure (launch, check, drive from a feature map, evidence outside the worktree, clean up) is adapted from
      phibkro/vektorprogrammet-reimagined @ a85bab0ec18553f4e681574bef5523152e904fdc (.agents/skills/verify-vektorprogrammet/SKILL.md);
      the drift check (a test that pins the map to the code and the specs) from .agents/skills/verify-membership-writes. The scripts,
-     the feature map and the observations are new here (spec 0009). -->
+     the feature map and the observations are new here (spec 0010). -->
 
 # Verify reebeat
 

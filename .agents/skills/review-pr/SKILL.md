@@ -7,11 +7,11 @@ description: "The automated pull-request loop for reebeat: independent reviewers
      (.agents/skills/review-pr/SKILL.md). Deviations: the donor's database verification skills and formal-verification job are
      replaced by `verify-reebeat` and `bun run ready`; the falsifiers are observed in the rendered Video, audio and Deck; the
      record header (Author, Reviewers, Checked) and its check, the number rule, the worktree and memory rules are new here
-     (spec 0009, Revisions in specs 0000 and 0009). -->
+     (spec 0010, Revisions in specs 0000 and 0010). -->
 
 # Review and merge a pull request
 
-The lead (the session that owns merges) runs this loop. Reviewers and fixers are separate agents, so the one who judges a change never wrote it. The binding contracts are `docs/specs/0000-development-lifecycle.md` and `docs/specs/0009-review-and-verify-skills.md`.
+The lead (the session that owns merges) runs this loop. Reviewers and fixers are separate agents, so the one who judges a change never wrote it. The binding contracts are `docs/specs/0000-development-lifecycle.md` and `docs/specs/0010-review-and-verify-skills.md`.
 
 ```text
 round 1..n:

@@ -1,4 +1,4 @@
-// The header of a review record (spec 0009, V5): `check-record.sh`, which `record-round.sh` runs before it posts anything. Each
+// The header of a review record (spec 0010, V5): `check-record.sh`, which `record-round.sh` runs before it posts anything. Each
 // case writes a body file in a temporary directory and reads the script's exit code and reason. A review that the author
 // records about their own change is not independent, so a pass that lists the author among the reviewers is refused.
 import { NodeServices } from "@effect/platform-node";

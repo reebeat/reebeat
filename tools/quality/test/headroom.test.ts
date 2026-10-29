@@ -1,4 +1,4 @@
-// The admission check of skill `verify-reebeat` (spec 0009): `headroom.sh` reads a fake /proc written in a temporary directory. A
+// The admission check of skill `verify-reebeat` (spec 0010): `headroom.sh` reads a fake /proc written in a temporary directory. A
 // reading that is missing or not a number must be SHORT with its reason, never healthy: each gate has a control for a missing
 // file, an empty value and a value that is not a number, and for a reading over its limit.
 import { NodeServices } from "@effect/platform-node";

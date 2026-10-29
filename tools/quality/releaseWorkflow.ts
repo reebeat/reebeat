@@ -15,10 +15,10 @@ import { Toml } from "effect/encoding";
 import { parse as parseYaml } from "yaml";
 
 /** The one environment whose secret may carry the token. */
-export const releaseEnvironment = "npm-release";
+const releaseEnvironment = "npm-release";
 
 /** The one step variable npm reads the token from (`//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`). */
-export const tokenVariable = "NODE_AUTH_TOKEN";
+const tokenVariable = "NODE_AUTH_TOKEN";
 
 /** A workflow file: its name under `.github/workflows` and its text. */
 export interface WorkflowFile {

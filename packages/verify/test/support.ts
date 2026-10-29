@@ -870,19 +870,22 @@ export const rowOf = (verdict: Verdict, start: string): string =>
 const offsetOf = (found: RegExpExecArray | null): number | undefined =>
   found?.groups?.offset === undefined ? undefined : Number(found.groups.offset);
 
-/** The offsets F1 prints in an effect's row: of the observed anchor and of the effect itself, in frames; undefined when absent. */
+/**
+ * The offsets F1 prints in an effect's row, in frames: of the frame its event expression gives over the observed sources
+ * (`at <expression> observed B (+d)`) and of the effect itself (`; observed O (+d)`, `; sound onset O (+d)`); undefined when absent.
+ */
 export const offsetsIn = (row: string) => ({
   anchor: offsetOf(
-    /anchor observed [\d.]+, so [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
+    /; at .+? observed [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
   ),
   own: offsetOf(
-    /(?:observed|sound onset) [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
+    /; (?:observed|sound onset) [\d.]+ \((?<offset>[-+]?[\d.]+)\)/u.exec(row)
   ),
 });
 
-/** The frame an effect's row says its anchor was observed at. */
+/** The frame an effect's row says the observed sources put its event at. */
 export const anchorFrameIn = (row: string): number =>
-  Number(/anchor observed (?<frame>[\d.]+),/u.exec(row)?.groups?.frame);
+  Number(/; at .+? observed (?<frame>[\d.]+) \(/u.exec(row)?.groups?.frame);
 
 /** The match score F1 prints for a sound in its row; throws when the row has none. */
 export const matchIn = (row: string): number =>
@@ -904,10 +907,10 @@ export const fireFrameOf = (plan: TimedPlan, effectId: string): number =>
   ).fireFrame;
 
 /** The start of the row of the whoosh of the fixture story (`s1` of `sc2`), anchored to the slide change into sc2. */
-export const whooshRow = "sc2.s1 sound whoosh";
+export const whooshRow = "sc2.s1#1 sound whoosh";
 
 /** The row of the ding of the fixture story (`s2` of `sc2`), anchored to the middle of the box's move. */
-export const dingRow = "sc2.s2 sound ding";
+export const dingRow = "sc2.s2#1 sound ding";
 
 /**
  * A copy of the build whose whoosh sounds three frames after its resolved frame, the picture unchanged: F1 alone fails,
@@ -934,7 +937,7 @@ export const assertWhooshThreeFramesLate = Effect.fn(
   const verdict = verdictOf(verdicts, "F1");
   const offsets = offsetsIn(rowOf(verdict, whooshRow));
 
-  assert.include(verdict.detail, "sc2.s1 sound whoosh");
+  assert.include(verdict.detail, "sc2.s1#1 sound whoosh");
   assert.approximately(offsets.own ?? Number.NaN, 3, 1);
   assert.approximately(offsets.anchor ?? Number.NaN, 0, 1);
 

@@ -226,7 +226,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             assert.strictEqual(verdictOf(verdicts, "F1").status, "fail");
             assert.include(
               verdictOf(verdicts, "F1").detail,
-              "sc1.p1 sound pop"
+              "sc1.p1#1 sound pop"
             );
             assert.include(
               verdictOf(verdicts, "F1").detail,
@@ -237,7 +237,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const scores = {
             drowned: reportedMatch(verdictOf(drowned, "F1").detail),
             quieter: matchIn(
-              rowOf(verdictOf(quieter, "F1"), "sc1.p1 sound pop")
+              rowOf(verdictOf(quieter, "F1"), "sc1.p1#1 sound pop")
             ),
             wrong: reportedMatch(verdictOf(wrong, "F1").detail),
           };

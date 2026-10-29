@@ -42,7 +42,7 @@ layer(Fixture.offlineLayer, {
           Arr.some(
             measured,
             (row) =>
-              Str.startsWith("sc1.p1 sound pop")(row) &&
+              Str.startsWith("sc1.p1#1 sound pop")(row) &&
               Str.includes("sound onset")(row) &&
               Str.includes("match score")(row)
           ),

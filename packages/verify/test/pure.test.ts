@@ -1,24 +1,21 @@
 // The pure parts: the table and exit code, the Plan comparison, the signal helpers.
 import { assert, describe, it } from "@effect/vitest";
-import {
-  buildPlan,
-  referenceLifecycle,
-  requireTimeline,
-  schedule,
-} from "@reebeat/core";
+import { buildPlan, referenceLifecycle } from "@reebeat/core";
 import type { PlanJson, RendererLifecycle } from "@reebeat/core";
 import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
 import { synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect, Option, String as Str } from "effect";
 
-import { heardAs, judge } from "../src/effects.ts";
 import { observationRange } from "../src/events.ts";
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
+import { judge } from "../src/judge.ts";
+import { heardAs } from "../src/own.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
 import { locateSounds, onsetIndex, soundMatchFloor } from "../src/wav.ts";
 import { cutStoryText, storyText } from "./support.ts";
+import { timedWith } from "./timed.ts";
 
 const holds: Verdict = {
   detail: "all 2 effects hold",
@@ -282,7 +279,11 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
     const timed = {
       commandFrame: 100,
       effectId: "s1",
+      endCommandFrame: null,
+      endFrame: null,
+      endedBy: null,
       fireFrame: 100,
+      instance: 1,
       intent: "transition.start",
     };
 
@@ -295,19 +296,30 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
         timedScene: {
           effects: [timed],
           endFrame: 200,
+          events: [],
           lines: [],
           sceneId: "sc2",
           slideFrame: 100,
         },
       },
       {
-        end: 100 + soundFrames,
-        reason: "",
-        score: 1,
-        start: 100 + soundFrames,
-      },
-      { frame: 100 + change, length: undefined, tag: "found" },
-      30
+        anchored: {
+          count: 1,
+          expression: "transition.start",
+          frame: 100 + change,
+          instances: 1,
+          tag: "found",
+        },
+        ending: { tag: "none" },
+        leaves: "",
+        own: {
+          end: 100 + soundFrames,
+          reason: "",
+          ring: { tag: "none" },
+          score: 1,
+          start: 100 + soundFrames,
+        },
+      }
     ).problems;
   });
 
@@ -341,30 +353,6 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
   );
 });
 
-/** The fixture story spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */
-const timedWith = (lifecycle: RendererLifecycle, text: string = storyText) =>
-  Effect.gen(function* timed() {
-    const plan = yield* buildPlan(text, Str.repeat(64)("0"));
-
-    const aligned = Arr.flatMap(plan.scenes, (scene) =>
-      Arr.map(scene.lines, (line) => ({
-        audio: { file: `${Str.repeat(64)("a")}.flac`, sha256: "x" },
-        durationMs: line.words.length * 300,
-        lineId: line.id,
-        words: Arr.map(line.words, (w, at) => ({
-          endMs: (at + 1) * 300,
-          startMs: at * 300,
-          w,
-        })),
-      }))
-    );
-
-    return yield* Effect.flatMap(
-      schedule(plan, aligned, lifecycle),
-      (scheduled) => Effect.fromResult(requireTimeline(scheduled))
-    );
-  });
-
 const slow = (lifecycle: RendererLifecycle): RendererLifecycle => ({
   ...lifecycle,
   showMs: 1000,
@@ -376,7 +364,7 @@ describe("observationRange", () => {
     "ends a step's window at the declared show time plus the margin, and follows a renderer that declares a longer show",
     () =>
       Effect.gen(function* step() {
-        const plan = yield* timedWith(referenceLifecycle);
+        const plan = yield* timedWith(referenceLifecycle, storyText);
 
         const subject = {
           fireFrame: 40,
@@ -402,7 +390,7 @@ describe("observationRange", () => {
     "ends a slide change's window at the longest of the Plan's transition and the declared one plus the margin",
     () =>
       Effect.gen(function* settle() {
-        const plan = yield* timedWith(referenceLifecycle);
+        const plan = yield* timedWith(referenceLifecycle, storyText);
         const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
         const own = { kind: "transition", sceneIndex: 1 } as const;
         const last = plan.timeline.totalFrames - 1;

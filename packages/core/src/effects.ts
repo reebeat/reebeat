@@ -271,6 +271,20 @@ const readOffset = (
   }
 
   const value = scaled(Number(groups.value), unit.factor);
+
+  if (unit.stored === "f" && !Number.isInteger(value)) {
+    return Result.fail(
+      bad(
+        line,
+        problem(
+          `frame offset "${text}" is not a whole number of frames`,
+          "+Nf with an integer N, as +2f (seconds, milliseconds and percents may be decimal)",
+          `${groups.sign}${Math.round(value)}f`
+        )
+      )
+    );
+  }
+
   const signed = groups.sign === "-" ? -value : value;
 
   return Result.succeed([

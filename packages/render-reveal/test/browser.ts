@@ -1,6 +1,6 @@
 /* oxlint-disable typescript/promise-function-async -- EX-0030: Playwright returns Promises; every call goes through one of the helpers of this file */
 // The browser boundary of the tests: the only module that imports Playwright. ABI: Playwright's Promise API driving
-// the Chromium named by `REEBEAT_CHROMIUM` (1280x720, software rendering flags). Each `openDeck` launches a fresh
+// the Chromium named by `REEBEAT_CHROMIUM` (1280x720, no determinism flags: see `launchFlags`). Each `openDeck` launches a fresh
 // browser in the caller's Scope and closes it when the Scope closes. The page records every request that is not a
 // `file:` URL (the Deck must make none).
 // Retirement trigger: an Effect-native browser driver in the installed Effect packages.
@@ -9,14 +9,12 @@ import { Config, Effect, Path, Schema } from "effect";
 import { chromium } from "playwright-core";
 import type { Browser, Page } from "playwright-core";
 
-/** The Chromium flags of the capture (spec 0001, "Risks": fixed rendering). */
-const renderingFlags = [
-  "--force-color-profile=srgb",
-  "--disable-gpu",
-  "--font-render-hinting=none",
-  "--disable-lcd-text",
-  "--hide-scrollbars",
-];
+/**
+ * A deck STRUCTURE test, not a capture test: it needs no deterministic rendering, so it does not copy the capture's
+ * flags (they live in `packages/capture-chromium`, which an adapter must not import, and a copy drifts: this one once
+ * lacked `--disable-threaded-animation`). Only the scrollbars are hidden so the 1280x720 viewport is the slide.
+ */
+const launchFlags = ["--hide-scrollbars"];
 
 const launch = Effect.gen(function* launching() {
   const executablePath = yield* Config.String("REEBEAT_CHROMIUM");
@@ -29,9 +27,7 @@ const launch = Effect.gen(function* launching() {
     Effect.promise(() =>
       chromium.launch({
         args:
-          noSandbox === "1"
-            ? [...renderingFlags, "--no-sandbox"]
-            : renderingFlags,
+          noSandbox === "1" ? [...launchFlags, "--no-sandbox"] : launchFlags,
         executablePath,
         headless: true,
       })

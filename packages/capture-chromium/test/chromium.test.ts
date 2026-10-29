@@ -92,6 +92,19 @@ describe("chromiumCapturer", () => {
   );
 
   it.effect(
+    "declares --disable-threaded-animation in its flags, so the build manifest records the determinism fix",
+    () =>
+      Effect.gen(function* flagged() {
+        const { info: declared } = yield* FrameCapturer;
+
+        assert.include(
+          String(declared.settings.flags).split(" "),
+          "--disable-threaded-animation"
+        );
+      }).pipe(Effect.provide(adapter))
+  );
+
+  it.effect(
     "frames(plan) is the Timeline's total, and a Plan without a Timeline has none",
     () =>
       Effect.gen(function* count() {

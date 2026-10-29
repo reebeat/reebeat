@@ -1,8 +1,8 @@
 // build.json v2 and the silent stand-in (spec 0001, F5, F15 and F16). F5 reads the manifest's adapters and assets: a
 // Line without the provenance of its audio, a service without an adapter, a local adapter that sends something and a
-// secret-looking setting each fail it, naming what is wrong. F8 and the sound part of F1 are not applicable when, and
-// only when, the manifest lists a stand-in narrator: the same silenced track under a manifest that lists a real
-// narrator still fails both.
+// secret-looking setting each fail it, naming what is wrong. F8 is not applicable when, and only when, the manifest
+// lists a stand-in narrator (F1 still observes the sounds: `offline.test.ts`): the same silenced track under a manifest
+// that lists a real narrator still fails both.
 import { assert, layer } from "@effect/vitest";
 import { decodeBuildManifest, encodeBuildManifest } from "@reebeat/pipeline";
 import type { BuildManifest } from "@reebeat/pipeline";
@@ -176,24 +176,19 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
     );
 
     it.effect(
-      "F8 and the sound part of F1 are N/A when the manifest lists a stand-in narrator over a silent track, and the exit code holds",
+      "F8 is N/A when the manifest lists a stand-in narrator, and F1 still observes the sounds: a silenced track fails it",
       () =>
         Effect.gen(function* standin() {
           const dir = yield* silencedCopy("standin-silent", "silent@1-standin");
 
           const verdicts = yield* checkDirectory(dir);
           const f8 = verdictOf(verdicts, "F8");
-          const f1 = verdictOf(verdicts, "F1");
 
           assert.strictEqual(f8.status, "na");
           assert.include(f8.detail, "N/A (silent stand-in)");
-          assert.strictEqual(f1.status, "pass", f1.detail);
-          assert.include(
-            measuredOf(f1),
-            "sfx cues: N/A (silent stand-in): 2 not observed"
-          );
-          assert.deepStrictEqual(failedIds(verdicts), []);
-          assert.strictEqual(exitCode(verdicts), 0);
+          assert.deepStrictEqual(failedIds(verdicts), ["F1"]);
+          assert.include(verdictOf(verdicts, "F1").detail, "sfx");
+          assert.strictEqual(exitCode(verdicts), 1);
         })
     );
 

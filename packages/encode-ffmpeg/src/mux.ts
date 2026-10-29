@@ -5,12 +5,13 @@
 // none that a check could accept.
 //
 // Determinism flags: `-fflags +bitexact -flags:v +bitexact -flags:a +bitexact -map_metadata:g -1` (`settings.ts`).
+import { requireOutputName } from "@reebeat/services";
 import type { MuxRequest } from "@reebeat/services";
 import { Array as Arr, Effect, FileSystem, Path, Ref, Stream } from "effect";
 
 import { audioMix } from "./audioMix.ts";
 import type { AudioMixPlan } from "./audioMix.ts";
-import { InvalidOutputName, MediaToolFailed } from "./errors.ts";
+import { MediaToolFailed } from "./errors.ts";
 import { ffmetadata } from "./ffmetadata.ts";
 import { MediaTools } from "./mediaTools.ts";
 import {
@@ -99,20 +100,6 @@ export const muxArgs = (
   ];
 };
 
-/** A plain file name: it starts with a letter or digit and holds letters, digits, `.`, `_` and `-` only. */
-const stemPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
-
-/** The name as a plain file name, or why it is not one. `..` inside a name is refused too. */
-const requireStem = (name: string): Effect.Effect<string, InvalidOutputName> =>
-  stemPattern.test(name) && !name.includes("..")
-    ? Effect.succeed(name)
-    : Effect.fail(
-        new InvalidOutputName({
-          message: `the output name ${JSON.stringify(name)} is not a plain file name (letters, digits, ".", "_" and "-", starting with a letter or digit, no "..")`,
-          stem: name,
-        })
-      );
-
 const bytesOf = (samples: Float32Array): Uint8Array =>
   new Uint8Array(samples.buffer, samples.byteOffset, samples.byteLength);
 
@@ -156,7 +143,7 @@ export const muxMedia = Effect.fn("muxMedia")(function* muxMedia(
   const path = yield* Path.Path;
   const tools = yield* MediaTools;
 
-  yield* requireStem(path.basename(request.outPath));
+  yield* requireOutputName(path.basename(request.outPath));
   yield* fs.makeDirectory(path.dirname(request.outPath), { recursive: true });
   yield* fs.remove(request.outPath, { force: true });
 

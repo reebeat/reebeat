@@ -42,7 +42,7 @@ export const narration = (build: Build) =>
       if (Option.isSome(build.silentNarrator)) {
         return notApplicable(
           "F8",
-          `N/A (silent stand-in): build.json lists the narrator ${build.silentNarrator.value}, whose audio is silent by construction, so no Line has an onset to find`,
+          `N/A (silent stand-in): build.json lists the narrator ${build.silentNarrator.value}, whose narration is silent by construction (its sounds are audible and F1 checks them), so no Line has an onset to find`,
           [["Lines not observed", lines.length]]
         );
       }

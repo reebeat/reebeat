@@ -71,7 +71,7 @@ export interface MotionResult {
 }
 
 /** How far the sound starts from the first changed frame of its scene change, and the problem when that is over a frame. */
-const motionCheck = ({
+export const motionCheck = ({
   anchor,
   changes,
   cueId,

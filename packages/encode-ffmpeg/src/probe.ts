@@ -102,14 +102,15 @@ export const sliceClip = (
 
 const text = (bytes: Uint8Array): string => new TextDecoder().decode(bytes);
 
-const defaultFrameSize: FrameSize = { height: 720, width: 1280 };
-
-/** Frames `fromFrame` to `toFrame` (inclusive, counted from 0) of the video stream of `file`, as gray pixels. */
+/**
+ * Frames `fromFrame` to `toFrame` (inclusive, counted from 0) of the video stream of `file`, as gray pixels. `size` is
+ * the size of the video (the Plan's `settings`): the raw pixels carry no header, so the caller says where a row ends.
+ */
 export const decodeGrayFrames = Effect.fn("decodeGrayFrames")(function* decode(
   file: string,
   fromFrame: number,
   toFrame: number,
-  size: FrameSize = defaultFrameSize
+  size: FrameSize
 ) {
   const tools = yield* MediaTools;
 

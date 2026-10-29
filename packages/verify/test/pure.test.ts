@@ -7,6 +7,7 @@ import { Array as Arr, Effect } from "effect";
 
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
+import { motionCheck } from "../src/motionSounds.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
 import { onsetIndex, withSilentLead } from "../src/wav.ts";
@@ -149,5 +150,41 @@ describe("the signal helpers", () => {
     assert.strictEqual(padded.length, 48 + 2);
     assert.strictEqual(padded[47], 0);
     assert.strictEqual(padded[48], 1);
+  });
+});
+
+describe("the motion comparison of an anchored sound", () => {
+  const anchor = { first: false, sceneId: "sc2", slideFrame: 100 } as const;
+
+  /** The problems of a sound `soundFrames` from its fire frame 100, when the scene change into sc2 shows at `100 + change`. */
+  const problemsOf = (soundFrames: number, change: number) =>
+    motionCheck({
+      anchor,
+      changes: new Map([["sc2", change]]),
+      cueId: "sc2.l1.c1",
+      fireFrame: 100,
+      label: "sc2.l1.c1 sfx: whoosh at frame 100",
+      soundFrames,
+    }).problems;
+
+  it("passes a sound 0.99 frame from the first changed frame and fails 1.02 frames, on both sides and with the motion moved", () => {
+    // The sound is where its Cue says (0.99 frame late), the picture changes at the slide frame.
+    assert.deepStrictEqual(problemsOf(0.99, 0), []);
+    assert.deepStrictEqual(problemsOf(-0.99, 0), []);
+    // The picture changes one frame late or early (F7 allows it): the sound is then a frame from the motion, no more.
+    assert.deepStrictEqual(problemsOf(0, 1), []);
+    assert.deepStrictEqual(problemsOf(0, -1), []);
+    assert.deepStrictEqual(problemsOf(0.01, 1), []);
+
+    for (const [soundFrames, change, shown] of [
+      [1.02, 0, "+1.02"],
+      [-1.02, 0, "-1.02"],
+      [-0.02, 1, "-1.02"],
+      [0.02, -1, "+1.02"],
+    ] as const) {
+      const [problem] = problemsOf(soundFrames, change);
+
+      assert.include(problem ?? "", `the sound starts ${shown} frames`);
+    }
   });
 });

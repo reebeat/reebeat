@@ -386,6 +386,43 @@ layer(platform)("speech stage: the key and determinism", (it) => {
   );
 
   it.effect(
+    "a secret-looking setting of the aligner, nested in the key's extra, is refused before any key or asset exists",
+    () =>
+      Effect.gen(function* secret() {
+        const plan = yield* fixturePlan;
+
+        const leaky = Layer.provideMerge(
+          Layer.mergeAll(
+            silentSynthesizer,
+            withSettings(evenAligner, { apiToken: "canary-value" }),
+            fakeEncoder,
+            memoryCache
+          ),
+          platform
+        );
+
+        const { failure, listed } = yield* Effect.provide(
+          Effect.gen(function* attempt() {
+            const flipped = yield* Effect.flip(
+              speechStage(plan, { refresh: true })
+            );
+
+            return {
+              failure: flipped,
+              listed: yield* (yield* AssetCache).list,
+            };
+          }),
+          leaky
+        );
+
+        assert.isTrue(Predicate.isTagged(failure, "SecretLikeSetting"));
+        assert.include(failure.message, "apiToken");
+        assert.notInclude(failure.message, "canary-value");
+        assert.deepStrictEqual(listed, []);
+      })
+  );
+
+  it.effect(
     "another speech rate is another key: no rate reuses the audio of another",
     () =>
       Effect.gen(function* rated() {

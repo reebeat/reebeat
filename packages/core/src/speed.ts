@@ -1,6 +1,6 @@
-// The speech rate (spec 0001, Revision "feedback round 2"): a story default from the title page key `Speed:`, a
-// per-Line `(speed N)`, and the presets `(slowly)` and `(quickly)` relative to the default. Plain functions: a rate is
-// a number in [`minSpeed`, `maxSpeed`] and nothing else.
+// The speech rate (spec 0001, Revision "operator feedback after viewing the video"): a story default from the title
+// page key `Speed:`, a per-Line `(speed N)`, and the presets `(slowly)` and `(quickly)` relative to the default.
+// Plain functions: a rate is a number in [`minSpeed`, `maxSpeed`] and nothing else.
 import { Result } from "effect";
 
 /** The slowest and the fastest rate the narrator is asked for. */

@@ -16,7 +16,7 @@ export type Measured = readonly (readonly [string, string | number])[];
 
 /**
  * `pass` and `fail` are what a check observed. `na` says the check cannot observe anything on this build and names
- * why (the build's own manifest lists a silent stand-in for the narrator): it is never a skip, it is printed, and it
+ * why (the build's own manifest lists a silent stand-in for the narrator, so F8 has no narration to find): it is never a skip, it is printed, and it
  * does not fail the exit code.
  */
 export type Status = "fail" | "na" | "pass";

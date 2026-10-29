@@ -6,7 +6,10 @@ import { decodePlan, frameToMs, requireTimeline } from "@reebeat/core";
 import { CaptureError } from "@reebeat/services";
 import {
   Array as Arr,
+  Deferred,
   Effect,
+  Exit,
+  Fiber,
   FileSystem,
   Layer,
   Option,
@@ -382,6 +385,49 @@ describe("buildProgram: failure is loud (F12)", () => {
   );
 
   it.effect(
+    "an interrupt in the middle of the capture leaves neither <out> nor <out>.partial, and removes an earlier build",
+    () =>
+      Effect.gen(function* interrupted() {
+        const capturing = yield* Deferred.make<boolean>();
+        const fs = yield* FileSystem.FileSystem;
+
+        // Three frames, then a capture that never ends: the build is in the middle of the mux when it is interrupted.
+        const hanging = fakeCapturer(() =>
+          Stream.concat(
+            tinyFrames(3),
+            Stream.fromEffect(
+              Effect.andThen(Deferred.succeed(capturing, true), Effect.never)
+            )
+          )
+        );
+
+        const good = yield* withWorld();
+
+        yield* good.run();
+
+        const stuck = yield* withWorld((seen) => ({
+          ...parts(seen),
+          capturer: hanging,
+        }));
+
+        yield* fs.copy(good.where.out, stuck.where.out);
+
+        const fiber = yield* Effect.forkChild(stuck.run());
+
+        yield* Deferred.await(capturing);
+        assert.isTrue(
+          yield* fs.exists(`${stuck.where.out}.partial`),
+          "the build is under way: its partial directory exists"
+        );
+
+        yield* Fiber.interrupt(fiber);
+
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)));
+        yield* absent(stuck.where.out, `${stuck.where.out}.partial`);
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+
+  it.effect(
     "refuses an output directory that is neither empty nor an earlier build, and leaves it alone",
     () =>
       Effect.gen(function* occupied() {
@@ -399,6 +445,61 @@ describe("buildProgram: failure is loud (F12)", () => {
           "mine"
         );
         yield* absent(`${where.out}.partial`);
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+
+  it.effect(
+    "a name that is not a plain file stem is InvalidOutputName before anything is written, anywhere",
+    () =>
+      Effect.gen(function* hostile() {
+        const path = yield* Path.Path;
+        const fs = yield* FileSystem.FileSystem;
+
+        // Two levels below a root the test owns: `<out>.partial/../../escaped` would land inside the root.
+        const root = yield* fs.makeTempDirectoryScoped({
+          prefix: "reebeat-build-",
+        });
+
+        const dir = path.join(root, "a", "b");
+        const story = path.join(dir, "story.fountain");
+
+        yield* fs.makeDirectory(dir, { recursive: true });
+        yield* fs.writeFileString(story, storyText);
+
+        const context = yield* Layer.build(
+          worldOf(parts(yield* Ref.make<readonly Muxed[]>([])))
+        );
+
+        const before = yield* fs.readDirectory(root, { recursive: true });
+
+        for (const name of [
+          "../../escaped",
+          "..",
+          "x/y",
+          "a b",
+          ".hidden",
+          "",
+          "/etc/passwd",
+        ]) {
+          const failure = yield* Effect.flip(
+            Effect.provideContext(
+              buildProgram({
+                name,
+                out: path.join(dir, "out"),
+                refreshSpeech: true,
+                story,
+              }),
+              context
+            )
+          );
+
+          assert.isTrue(Predicate.isTagged(failure, "InvalidOutputName"), name);
+        }
+
+        assert.sameMembers(
+          yield* fs.readDirectory(root, { recursive: true }),
+          before
+        );
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
 

@@ -23,7 +23,7 @@ In one sentence for a reader who does not write code: you declare the story's be
 ```mermaid
 flowchart LR
   subgraph L1["1. Model"]
-    M["Statechart: scenes, states, beats<br/>FRP and SMIL time<br/>cycles are allowed"]
+    M["Statechart: scenes, states, transitions<br/>FRP and SMIL time<br/>cycles are allowed"]
   end
   subgraph L2["2. Plan (one today; one per artifact is the design)"]
     P1["Video: a linear timeline"]
@@ -145,7 +145,7 @@ React's reconciler and scheduler were considered as the core of the compiler. Th
 | Verdict on the persistent format, and the construct catalogue | Written | [spec 0007](../specs/0007-scxml-persistent-ir-spike.md) |
 | reebeat's own transitions, curves, a closed expression language | Being planned (not written yet) | spec 0005 |
 | XState as the build-time interpreter | Recommended, not a dependency | spec 0007 |
-| Extension architecture (adapters and plugins) | Being written | spec 0012 (in progress) |
+| Extension architecture (adapters and plugins) | Written, ADR proposed | [spec 0012](../specs/0012-extension-architecture.md), [ADR-0000](../decisions/0000-extension-architecture.md) |
 | Incremental build graph with early cutoff and persistent traces | Roadmap | [#9](https://github.com/reebeat/reebeat/issues/9) |
 | Captions with sound descriptions, audio description, reduced motion | Roadmap | [#12](https://github.com/reebeat/reebeat/issues/12) |
 | Interactive website artifact | Roadmap | [#19](https://github.com/reebeat/reebeat/issues/19) |

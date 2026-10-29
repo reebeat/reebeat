@@ -3,8 +3,10 @@
 // records about their own change is not independent, so a pass that lists the author among the reviewers is refused.
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, FileSystem, Path } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { Array as Arr, Effect } from "effect";
+import { ChildProcess } from "effect/process";
+
+import { scratch, skillScript } from "./skillScripts.ts";
 
 const body = (header: readonly string[]): string =>
   Arr.join([...header, "", "No findings."], "\n");
@@ -16,24 +18,12 @@ const outcome = Effect.fn("outcome")(function* outcome(
   verdict: string,
   text: string
 ) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const dir = yield* fs.makeTempDirectoryScoped();
+  const { dir, fs, path, spawner } = yield* scratch;
   const file = path.join(dir, "body.md");
 
   yield* fs.writeFileString(file, text);
 
-  const script = path.resolve(
-    import.meta.dirname,
-    "..",
-    "..",
-    "..",
-    ".agents",
-    "skills",
-    "review-pr",
-    "check-record.sh"
-  );
+  const script = skillScript(path, "review-pr", "check-record.sh");
 
   return yield* spawner.string(
     ChildProcess.make("bash", [

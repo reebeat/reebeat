@@ -3,15 +3,10 @@
 // file, an empty value and a value that is not a number, and for a reading over its limit.
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import {
-  Array as Arr,
-  Effect,
-  FileSystem,
-  Path,
-  Record,
-  String as Str,
-} from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { Array as Arr, Effect, Record, String as Str } from "effect";
+import { ChildProcess } from "effect/process";
+
+import { scratch, skillScript } from "./skillScripts.ts";
 
 /** The files of a healthy machine: 8 threads, 40 GB of 64 GB available, no swap-in, no pressure. */
 const healthy: Readonly<Record<string, string>> = {
@@ -29,10 +24,7 @@ const headroom = Effect.fn("headroom")(function* headroom(
   changes: Readonly<Record<string, string | null>>,
   env: Readonly<Record<string, string>> = {}
 ) {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const dir = yield* fs.makeTempDirectoryScoped();
+  const { dir, fs, path, spawner } = yield* scratch;
   const files = { ...healthy, ...changes };
 
   yield* Effect.forEach(Record.toEntries(files), ([name, text]) =>
@@ -46,17 +38,7 @@ const headroom = Effect.fn("headroom")(function* headroom(
         })
   );
 
-  const script = path.resolve(
-    import.meta.dirname,
-    "..",
-    "..",
-    "..",
-    ".agents",
-    "skills",
-    "verify-reebeat",
-    "scripts",
-    "headroom.sh"
-  );
+  const script = skillScript(path, "verify-reebeat", "scripts", "headroom.sh");
 
   return yield* spawner.string(
     ChildProcess.make(

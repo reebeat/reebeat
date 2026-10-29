@@ -93,7 +93,7 @@ const valid: readonly Example[] = [
   },
   {
     source: story([
-      "INT. THE FIRST SCREEN - DAY #first#",
+      "INT. THE FIRST SCREEN - DAY #sc5#",
       "",
       "Box one {id=one cell=ml class=box}",
       "Every box has a name {id=tag cell=tc class=label}",
@@ -101,7 +101,7 @@ const valid: readonly Example[] = [
       "",
       "> AUTO-ANIMATE",
       "",
-      "INT. THE NEXT SCREEN - DAY #next#",
+      "INT. THE NEXT SCREEN - DAY #sc6#",
       "",
       "Box one {id=one cell=mc class=box}",
       "Every box has a name {id=tag cell=tc class=accent}",
@@ -282,6 +282,16 @@ const propertyRows = Arr.map(elementProperties, (property) => [
   property.summary,
 ]);
 
+const unitMeaning = (stored: string, factor: number): string => {
+  if (stored === "percent") {
+    return "a share of the anchored window (only with an anchor that has one)";
+  }
+
+  return stored === "f"
+    ? "output frames at the Plan's declared frame rate (a frame exists only at render time)"
+    : `an exact time, stored as ${factor.toLocaleString("en-US")} flicks (1/705,600,000 s each) per unit`;
+};
+
 const widest = Arr.reduce(productions, 0, (width, { name }) =>
   Math.max(width, name.length + 1)
 );
@@ -424,9 +434,7 @@ export const grammarDocument = (): string =>
         ["unit", "means"],
         Arr.map(sourceUnits, ({ factor, stored, token }) => [
           code(token),
-          stored === "percent"
-            ? "a share of the anchored window (only with an anchor that has one)"
-            : `${stored === "f" ? "frames" : "milliseconds"}${factor === 1 ? "" : `, written in seconds (x ${factor})`}`,
+          unitMeaning(stored, factor),
         ])
       ),
       "### Absolute times",

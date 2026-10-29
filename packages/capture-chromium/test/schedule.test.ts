@@ -232,7 +232,7 @@ describe("captureSchedule", () => {
     it("accepts the rate the lags were measured at and nothing else", () => {
       assert.isUndefined(unsupportedRate({ fps: capturedFps, ntsc: false }));
       assert.include(
-        unsupportedRate({ fps: 25, ntsc: false }) ?? "",
+        unsupportedRate({ fps: 24, ntsc: false }) ?? "",
         "settings.fps"
       );
       assert.include(

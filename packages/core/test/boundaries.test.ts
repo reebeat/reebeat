@@ -68,6 +68,47 @@ const allowed = /^(?:\.{1,2}\/|effect(?:\/|$)|fountain-js$)/u;
 const forbidden =
   /^(?:node:|playwright|@playwright\/|puppeteer|reveal\.js|react(?:-dom)?(?:\/|$)|remotion|@remotion\/|fluent-ffmpeg|ffmpeg|@ffmpeg\/|fs|path|child_process|os|crypto|http|https|net|stream|url|util|zlib|worker_threads|readline|buffer|events|assert|process|module|vm|tty|dns|perf_hooks|timers|v8)(?:\/|$)/u;
 
+/** The modules of `src` that read the source text, check it, schedule it or build it: the steps subpath reaches none. */
+const parserModules = [
+  "anchors.ts",
+  "build.ts",
+  "effects.ts",
+  "elements.ts",
+  "expr.ts",
+  "grammar.ts",
+  "grammarDoc.ts",
+  "hints.ts",
+  "parse.ts",
+  "resolve.ts",
+  "schedule.ts",
+  "story.ts",
+  "validate.ts",
+];
+
+/** Every module of `src` that `start` imports, directly or not, `start` included. */
+const reachable = (
+  byName: ReadonlyMap<string, string>,
+  start: string
+): string[] => {
+  const seen = new Set([start]);
+  const queue = [start];
+
+  for (const name of queue) {
+    for (const specifier of specifiersOf(byName.get(name) ?? "")) {
+      const next = Str.startsWith("./")(specifier)
+        ? Str.slice(2)(specifier)
+        : undefined;
+
+      if (next !== undefined && !seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+
+  return [...seen];
+};
+
 const violations = (text: string): readonly string[] =>
   Arr.filter(
     specifiersOf(text),
@@ -126,35 +167,37 @@ describe("F11: packages/core is pure", () => {
   );
 
   it.effect(
-    "the `@reebeat/core/steps` subpath reaches no parser: steps.ts and what it imports read only effect and the Plan types",
+    "the `@reebeat/core/steps` subpath reaches no parser: what steps.ts imports, all the way down, reads only effect and the Plan's data and algebra",
     () =>
       Effect.gen(function* subpath() {
-        const files = yield* readSources;
-
         const byName = new Map(
-          Arr.map(files, ({ name, text }) => [name, text])
+          Arr.map(yield* readSources, ({ name, text }) => [name, text])
         );
 
-        const reach = (name: string): readonly string[] =>
-          Arr.filter(
-            specifiersOf(byName.get(name) ?? ""),
-            (specifier) =>
-              !/^effect(?:\/|$)|^\.\/(?:lookup|plan|speed)\.ts$/u.test(
-                specifier
-              )
-          );
+        const reached = reachable(byName, "steps.ts");
 
-        // steps.ts, lookup.ts, plan.ts and speed.ts: nothing else (no parse, story, grammar, build).
+        // The walk finds the modules steps.ts really needs (control) ...
+        assert.includeMembers(reached, [
+          "evaluate.ts",
+          "plan.ts",
+          "machines.ts",
+        ]);
+        // ... and none of the parser, the story reader, the grammar, the scheduler or the builder.
         assert.deepStrictEqual(
-          Arr.flatMap(["steps.ts", "lookup.ts", "plan.ts", "speed.ts"], reach),
+          Arr.filter(reached, (name) => Arr.contains(parserModules, name)),
           []
         );
         assert.deepStrictEqual(
-          Arr.filter(specifiersOf(byName.get("steps.ts") ?? ""), (specifier) =>
-            Str.startsWith(".")(specifier)
+          Arr.flatMap(reached, (name) =>
+            Arr.filter(
+              specifiersOf(byName.get(name) ?? ""),
+              (specifier) => !/^effect(?:\/|$)|^\.\//u.test(specifier)
+            )
           ),
-          ["./lookup.ts", "./plan.ts"]
+          []
         );
+        // Control: from build.ts the same walk does reach the parser.
+        assert.includeMembers(reachable(byName, "build.ts"), ["story.ts"]);
       })
   );
 

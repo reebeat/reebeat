@@ -121,7 +121,10 @@ const carrierOf = (
     }
   );
 
-/** The kinds of subject the sources of an event name (a derived event is followed): `scene`, `element`, `effect`, `state`, `beat` or `word`. */
+/**
+ * The kinds of subject the sources of an event name: `scene`, `element`, `state`, `beat` or `word`. A derived event is
+ * followed, and so is an effect the event anchors to (a sound anchored to a sound plays where that sound plays).
+ */
 const kindsOf = (
   scene: Scene,
   expr: EventExpr,
@@ -132,15 +135,35 @@ const kindsOf = (
   ),
   ...(depth > 10
     ? []
-    : Arr.flatMap(refsOf(expr), (name) =>
-        Option.match(
-          Arr.findFirst(scene.events, (derived) => derived.name === name),
-          {
-            onNone: () => [],
-            onSome: (derived) => kindsOf(scene, derived.event, depth + 1),
+    : [
+        ...Arr.flatMap(refsOf(expr), (name) =>
+          Option.match(
+            Arr.findFirst(scene.events, (derived) => derived.name === name),
+            {
+              onNone: () => [],
+              onSome: (derived) => kindsOf(scene, derived.event, depth + 1),
+            }
+          )
+        ),
+        ...Arr.flatMap(anchorsOf(expr), (anchor) => {
+          if (anchor.kind === "word" || anchor.subject.kind !== "effect") {
+            return [];
           }
-        )
-      )),
+
+          const { id } = anchor.subject;
+
+          return Option.match(
+            Arr.findFirst(scene.effects, (effect) => effect.id === id),
+            {
+              onNone: () => [],
+              onSome: (effect) =>
+                "absoluteFlicks" in effect.when
+                  ? []
+                  : kindsOf(scene, effect.when.event, depth + 1),
+            }
+          );
+        }),
+      ]),
 ];
 
 const sourceKinds = (scene: Scene, effect: Effect): readonly string[] =>

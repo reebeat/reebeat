@@ -95,7 +95,11 @@ describe("requireTimeline", () => {
                 {
                   commandFrame: 1,
                   effectId: "ghost",
+                  endCommandFrame: null,
+                  endFrame: null,
+                  endedBy: null,
                   fireFrame: 1,
+                  instance: 1,
                   intent: "x",
                 },
               ],

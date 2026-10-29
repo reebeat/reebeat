@@ -226,6 +226,18 @@ const noMoment = (path: string, line: number, head: Head): PlanError => {
   );
 };
 
+/** The dotted path of an anchor; a decimal percent (`12.5%`) is one token, not two. */
+const decimalPercentTail = /^(?<rest>.+)\.(?<percent>\d+\.\d+%)$/u;
+
+const splitPath = (path: string): readonly string[] => {
+  const found = decimalPercentTail.exec(path);
+  const percent = found?.groups?.percent;
+
+  return found?.groups?.rest === undefined || percent === undefined
+    ? Str.split(path, ".")
+    : [...Str.split(found.groups.rest, "."), percent];
+};
+
 /**
  * Reads a dotted path as an anchor through the generated vocabulary. `progress` says that the path ends in the
  * behaviour of a transition (`one.move.progress`), which only `when(... >= N%)` accepts; its percent is read there.
@@ -235,7 +247,7 @@ export const readAnchorPath = (
   line: number,
   progress = false
 ): Result.Result<Anchor, PlanError> => {
-  const [headToken = "", ...tail] = expandAlias(Str.split(path, "."));
+  const [headToken = "", ...tail] = expandAlias(splitPath(path));
   const head = headOf(headToken);
 
   const found = Arr.head(
@@ -246,8 +258,22 @@ export const readAnchorPath = (
 
   return Option.match(found, {
     onNone: () => Result.fail(noMoment(path, line, head)),
-    onSome: (form) =>
-      Result.succeed(anchorOf(head, form, percentOf(tail.at(-1) ?? ""))),
+    onSome: (form) => {
+      const percent = percentOf(tail.at(-1) ?? "");
+
+      return percent !== undefined && percent > 100
+        ? Result.fail(
+            planError(
+              "BadPercent",
+              line,
+              problem(
+                `${tail.at(-1) ?? ""} in ${path} is more than a whole window`,
+                "a percent from 0 to 100"
+              )
+            )
+          )
+        : Result.succeed(anchorOf(head, form, percent));
+    },
   });
 };
 

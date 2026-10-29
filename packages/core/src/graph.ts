@@ -11,11 +11,11 @@
 //
 // An artifact has no `decode` and an importer has no `encode`, so nothing can be read back that is not a codec. A change
 // of the IR is a new `version`, and a migration is a codec between two versions. Plain data and plain functions.
-import { Schema, Struct } from "effect";
-import type { Array as Arr, Result } from "effect";
+import { JsonSchema, Result, Schema, Struct } from "effect";
+import type { Array as Arr } from "effect";
 
 import type { PlanError } from "./errors.ts";
-import { ChapterSchema, SceneSchema, SpeedSchema } from "./plan.ts";
+import { ChapterSchema, SceneSchema, SpeedSchema, construct } from "./plan.ts";
 
 /** The version of the IR this build reads and writes. */
 export const graphVersion = 1;
@@ -23,6 +23,13 @@ export const graphVersion = 1;
 /** A Scene as declared: its Elements, Lines, effects and derived events. Its identity diff is derived, not declared. */
 export const GraphSceneSchema = SceneSchema.mapFields(
   Struct.omit(["identity"])
+).annotate(
+  construct(
+    "GraphScene",
+    "Harel 1987, depth (a Scene is a compound State, a superstate of its States); SCXML compound <state>; SMIL 3.0 timing, a time container whose end ends its children",
+    "A Scene as declared: its Elements, Lines, effects and derived events.",
+    "The States inside a Scene are not declared: the engine derives them from the step frames; the identity diff against the previous Scene is derived, not declared; a Scene is left at its last frame, which ends every effect running in it."
+  )
 );
 
 /** The IR of a Story: closed (an unknown key is a decode error) and versioned. */
@@ -34,7 +41,14 @@ export const GraphSchema = Schema.Struct({
   speed: SpeedSchema,
   title: Schema.String,
   version: Schema.Literal(graphVersion),
-});
+}).annotate(
+  construct(
+    "Graph",
+    "SCXML 1.0, <scxml> root; Harel 1987, statecharts (a hierarchy of States with orthogonal regions)",
+    "The IR of a Story: the state and beat graph, as a closed, versioned document.",
+    "Closed (an excess key is a decode error) and versioned (an other version is a decode error); the machines are declared once in the engine, a Story declares only its Scenes, Elements, Lines and effects."
+  )
+);
 
 export type Graph = typeof GraphSchema.Type;
 
@@ -67,4 +81,36 @@ const graphJson = Schema.fromJsonString(GraphSchema, { space: 2 });
 export const jsonCodec: IrCodec<string> = {
   decode: Schema.decodeUnknownResult(graphJson, { onExcessProperty: "error" }),
   encode: Schema.encodeResult(graphJson),
+};
+
+/** The `$id` of the JSON Schema of this version of the IR. */
+export const graphSchemaId = `https://github.com/reebeat/reebeat/schema/ir/${graphVersion}`;
+
+const jsonText = Schema.encodeResult(
+  Schema.fromJsonString(Schema.Unknown, { space: 2 })
+);
+
+/**
+ * The JSON Schema (draft 2020-12) of the IR, as the text of `docs/schema/reebeat-ir.schema.json`: a pure function of
+ * `GraphSchema` (spec 0004). Every construct is a named definition; its provenance annotations `origin` and `deviation`
+ * are emitted as extra keywords of its definition, beside `description`. The document is closed, as the decoder is.
+ */
+export const graphJsonSchema = (): Result.Result<
+  string,
+  Schema.SchemaError
+> => {
+  const document = Schema.toJsonSchemaDocument(GraphSchema, {
+    includeAnnotationKey: (key) => key === "origin" || key === "deviation",
+    onExcessProperty: "error",
+  });
+
+  return Result.map(
+    jsonText({
+      $id: graphSchemaId,
+      $schema: JsonSchema.META_SCHEMA_URI_DRAFT_2020_12,
+      ...document.schema,
+      $defs: document.definitions,
+    }),
+    (text) => `${text}\n`
+  );
 };

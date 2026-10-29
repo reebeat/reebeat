@@ -37,7 +37,7 @@ import {
   keywords,
   reservedIds,
 } from "./grammar.ts";
-import { EdgeSchema, edges } from "./plan.ts";
+import { EdgeSchema, edges, idPattern } from "./plan.ts";
 import type { Duration, EventExpr, Offset } from "./plan.ts";
 import { flicksPerSecond } from "./time.ts";
 
@@ -69,7 +69,7 @@ const skipSpaces = (text: string, at: number): number => {
   return position;
 };
 
-const identifierPattern = /^[A-Za-z][A-Za-z0-9_-]*/u;
+const identifierPattern = new RegExp(Str.slice(0, -1)(idPattern.source), "u");
 
 const wordOf = (text: string, at: number): string =>
   identifierPattern.exec(Str.slice(at)(text))?.[0] ?? "";
@@ -552,7 +552,7 @@ const readWithin = (
   );
 
 const whenPattern = new RegExp(
-  String.raw`^${combinatorWords.when}\(\s*(?<path>[^\s>)]+)\s*>=\s*(?<value>\d+(?:\.\d+)?)\s*${percentUnit.token}\s*\)`,
+  String.raw`^${combinatorWords.when}\(\s*(?<path>(?:[A-Za-z]+\(\d+\))?[^\s>()]*)\s*>=\s*(?<value>\d+(?:\.\d+)?)\s*${percentUnit.token}\s*\)`,
   "u"
 );
 

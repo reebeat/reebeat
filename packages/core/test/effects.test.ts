@@ -1,5 +1,5 @@
-// The effects line (spec 0002): each form reads into the Plan's types, and what is written back reads into the same
-// effect (the law: `parseEffectLine(formatEffect(effect))` is `effect`, with seconds stored as milliseconds).
+// The effects line (spec 0002, spec 0004): each form reads into the Plan's types, and what is written back reads into
+// the same effect (the law: `parseEffectLine(formatEffect(effect))` is `effect`, with seconds stored as exact flicks).
 import { assert, describe, it } from "@effect/vitest";
 import {
   Array as Arr,
@@ -10,9 +10,17 @@ import {
   pipe,
 } from "effect";
 
+import { formatAnchor } from "../src/anchors.ts";
 import { buildPlan } from "../src/build.ts";
-import { formatAnchor, formatEffect, parseEffectLine } from "../src/effects.ts";
-import type { Effect as PlanEffect } from "../src/plan.ts";
+import {
+  formatEffect,
+  formatLet,
+  isLetLine,
+  parseEffectLine,
+  parseLetLine,
+} from "../src/effects.ts";
+import { formatEvent } from "../src/expr.ts";
+import type { Anchor, Effect as PlanEffect, EventExpr } from "../src/plan.ts";
 import { reviewText } from "../src/review.ts";
 import { schedule } from "../src/schedule.ts";
 import { asText, evenlySpoken, fixtureSha256, lifecycle } from "./support.ts";
@@ -24,7 +32,7 @@ const read = (text: string): PlanEffect => {
     assert.fail(`${text}: ${parsed.failure.message}`);
   }
 
-  return parsed.success.effect;
+  return parsed.success;
 };
 
 const failure = (text: string) => {
@@ -33,8 +41,36 @@ const failure = (text: string) => {
   return Result.isFailure(parsed) ? parsed.failure : undefined;
 };
 
+/** The event an effect is timed by; absolute times have none. */
+const eventOf = (text: string): EventExpr | undefined => {
+  const { when } = read(text);
+
+  return "event" in when ? when.event : undefined;
+};
+
+const anchored = (anchor: Anchor): EventExpr => ({ anchor, kind: "anchor" });
+
+/** Whether the word the effect line is timed by wrote its occurrence. */
+const explicit = (text: string): boolean | undefined => {
+  const event = eventOf(text);
+
+  return event?.kind === "anchor" && event.anchor.kind === "word"
+    ? event.anchor.explicit
+    : undefined;
+};
+
+/** The canonical form of the event an effect line is timed by. */
+const canonical = (text: string): string => {
+  const found = eventOf(text);
+
+  return found === undefined ? "" : formatEvent(found);
+};
+
+/** The flicks of one second (1/705,600,000 s each): the literal numbers below are written out, never computed. */
+const secondInFlicks = 705_600_000;
+
 describe("reading an effect line", () => {
-  it("reads a sound at a word of the narration, with the occurrence and an offset in seconds", () => {
+  it("reads a sound at a word of the narration, with the occurrence and an offset in seconds as exact flicks", () => {
     assert.deepStrictEqual(
       read('s1: sound ding at word("big idea", 2).end +0.1s'),
       {
@@ -43,83 +79,230 @@ describe("reading an effect line", () => {
         name: "ding",
         verb: "sound",
         when: {
-          anchor: {
-            edge: "end",
-            kind: "word",
-            occurrence: 2,
-            phrase: "big idea",
+          event: {
+            kind: "shift",
+            of: anchored({
+              edge: "end",
+              explicit: true,
+              kind: "word",
+              occurrence: 2,
+              phrase: "big idea",
+            }),
+            offset: { unit: "flicks", value: 70_560_000 },
           },
-          offset: { unit: "ms", value: 100 },
         },
         written: 'word("big idea", 2).end +0.1s',
       }
     );
   });
 
-  it("reads every anchor kind", () => {
-    const anchors = Arr.map(
+  it("reads every kind of anchor: a word, an edge of a machine, a state event, and the aliases of the Scene", () => {
+    assert.deepStrictEqual(
+      Arr.map(
+        [
+          'a: sound pop at word("x").start',
+          "a: sound pop at scene.end",
+          "a: sound pop at scene.start",
+          "a: sound pop at transition.50%",
+          "a: sound pop at box.update.end",
+          "a: sound pop at b.start",
+          "a: sound pop at box.moving.leave",
+          "a: sound pop at state(2).enter",
+          "a: sound pop at beat(1).end",
+          "a: sound pop at beat(1).50%",
+        ],
+        eventOf
+      ),
       [
-        'a: sound pop at word("x").start',
-        "a: sound pop at scene.end",
-        "a: sound pop at transition.50%",
-        "a: sound pop at box.update.end",
-        "a: sound pop at b.start",
-      ],
-      (text) => {
-        const { when } = read(text);
-
-        return "anchor" in when ? when.anchor : undefined;
-      }
+        anchored({
+          edge: "start",
+          explicit: false,
+          kind: "word",
+          occurrence: 1,
+          phrase: "x",
+        }),
+        anchored({
+          event: "leave",
+          kind: "occupancy",
+          state: "shown",
+          subject: { kind: "scene" },
+        }),
+        anchored({
+          event: "leave",
+          kind: "occupancy",
+          state: "before",
+          subject: { kind: "scene" },
+        }),
+        anchored({
+          at: { percent: 50 },
+          kind: "edge",
+          subject: { kind: "scene" },
+          transition: "transition",
+        }),
+        anchored({
+          at: "end",
+          kind: "edge",
+          subject: { id: "box", kind: "element" },
+          transition: "update",
+        }),
+        anchored({
+          at: "start",
+          kind: "edge",
+          subject: { id: "b", kind: "effect" },
+          transition: "run",
+        }),
+        anchored({
+          event: "leave",
+          kind: "occupancy",
+          state: "moving",
+          subject: { id: "box", kind: "element" },
+        }),
+        anchored({
+          event: "enter",
+          kind: "occupancy",
+          state: "dwell",
+          subject: { kind: "state", n: 2 },
+        }),
+        anchored({
+          at: "end",
+          kind: "edge",
+          subject: { kind: "beat", n: 1 },
+          transition: "change",
+        }),
+        anchored({
+          at: { percent: 50 },
+          kind: "edge",
+          subject: { kind: "beat", n: 1 },
+          transition: "change",
+        }),
+      ]
     );
-
-    assert.deepStrictEqual(anchors, [
-      { edge: "start", kind: "word", occurrence: 1, phrase: "x" },
-      { edge: "end", kind: "scene" },
-      { at: { percent: 50 }, kind: "transition" },
-      { at: "end", event: "update", id: "box", kind: "element" },
-      { edge: "start", id: "b", kind: "effect" },
-    ]);
   });
 
-  it("reads an offset in each unit with its sign: seconds and milliseconds as milliseconds, frames, a percent", () => {
+  it("reads `N%` as the threshold of the progress behaviour: the two spellings are one anchor", () => {
+    assert.deepStrictEqual(
+      eventOf("a: sound pop at when(box.move.progress >= 50%)"),
+      eventOf("a: sound pop at box.move.50%")
+    );
+  });
+
+  it("reads an offset in each unit with its sign: seconds and milliseconds as flicks, frames, a percent", () => {
     const offsets = Arr.map(
       ["+0.1s", "-0.2s", "+250ms", "-3f", "+50%", "-12.5%", "+1.5s"],
       (offset) => {
-        const { when } = read(`a: sound pop at scene.start ${offset}`);
+        const event = eventOf(`a: sound pop at scene.start ${offset}`);
 
-        return "anchor" in when ? when.offset : undefined;
+        return event?.kind === "shift" ? event.offset : undefined;
       }
     );
 
     assert.deepStrictEqual(offsets, [
-      { unit: "ms", value: 100 },
-      { unit: "ms", value: -200 },
-      { unit: "ms", value: 250 },
+      { unit: "flicks", value: 70_560_000 },
+      { unit: "flicks", value: -141_120_000 },
+      { unit: "flicks", value: 176_400_000 },
       { unit: "f", value: -3 },
       { unit: "percent", value: 50 },
       { unit: "percent", value: -12.5 },
-      { unit: "ms", value: 1500 },
+      { unit: "flicks", value: 1_058_400_000 },
     ]);
   });
 
-  it("reads an absolute time with its reason, in milliseconds", () => {
+  it("reads the combinators, the options of each, and an until event", () => {
+    const stagger = 211_680_000;
+
+    assert.deepStrictEqual(
+      read(
+        'f1: focus box at each(word("a").end, settled, stagger=0.3s, throttle=5f) until first(word("b").start, scene.end)'
+      ),
+      {
+        id: "f1",
+        line: 3,
+        target: "box",
+        until: {
+          event: {
+            kind: "first",
+            of: [
+              anchored({
+                edge: "start",
+                explicit: false,
+                kind: "word",
+                occurrence: 1,
+                phrase: "b",
+              }),
+              anchored({
+                event: "leave",
+                kind: "occupancy",
+                state: "shown",
+                subject: { kind: "scene" },
+              }),
+            ],
+          },
+          written: 'first(word("b").start, scene.end)',
+        },
+        verb: "focus",
+        when: {
+          event: {
+            kind: "each",
+            of: [
+              anchored({
+                edge: "end",
+                explicit: false,
+                kind: "word",
+                occurrence: 1,
+                phrase: "a",
+              }),
+              { kind: "ref", name: "settled" },
+            ],
+            stagger: { unit: "flicks", value: stagger },
+            throttle: { unit: "f", value: 5 },
+          },
+        },
+        written: 'each(word("a").end, settled, stagger=0.3s, throttle=5f)',
+      }
+    );
+  });
+
+  it("reads within as the occurrences of an event inside a State, and all as the last of its operands", () => {
+    assert.deepStrictEqual(
+      Arr.map(
+        [
+          'a: sound pop at within(word("x").end, state(2))',
+          "a: sound pop at all(box.move.end, tag.update.end)",
+        ],
+        (text) => eventOf(text)?.kind
+      ),
+      ["within", "all"]
+    );
+  });
+
+  it("reads an absolute time with its reason, in flicks", () => {
     assert.deepStrictEqual(
       read('a: sound pop at 12.5s because "the beat   drops here"').when,
-      { absoluteMs: 12_500, reason: "the beat drops here" }
+      { absoluteFlicks: 12.5 * secondInFlicks, reason: "the beat drops here" }
+    );
+  });
+
+  it("reads a let line as a derived event with the text it was written as", () => {
+    assert.isTrue(isLetLine("  let settled   = all(a.end, b.end)"));
+    assert.isFalse(isLetLine("s1: sound pop at a.end"));
+
+    const parsed = parseLetLine("let settled   = all(a.end,  b.end)", 4);
+
+    assert.isTrue(Result.isSuccess(parsed));
+    assert.deepStrictEqual(
+      Result.isSuccess(parsed)
+        ? [parsed.success.name, parsed.success.line, parsed.success.written]
+        : [],
+      ["settled", 4, "all(a.end, b.end)"]
     );
   });
 
   it("marks whether a phrase wrote its occurrence", () => {
-    const written = parseEffectLine('a: sound pop at word("x", 1).end', 3);
-    const left = parseEffectLine('a: sound pop at word("x").end', 3);
-
-    assert.isTrue(
-      Result.isSuccess(written) && written.success.explicitOccurrence
-    );
-    assert.isTrue(Result.isSuccess(left) && !left.success.explicitOccurrence);
+    assert.isTrue(explicit('a: sound pop at word("x", 1).end'));
+    assert.isFalse(explicit('a: sound pop at word("x").end'));
   });
 
-  it("refuses a percent above 100, an occurrence of 0 and a phrase of nothing", () => {
+  it("refuses a percent above 100, an occurrence of 0, a phrase of nothing, and a percent on a point that is not a window", () => {
     assert.strictEqual(
       failure("a: sound pop at transition.101%")?._tag,
       "BadPercent"
@@ -133,6 +316,25 @@ describe("reading an effect line", () => {
       "BadEffect"
     );
     assert.strictEqual(failure("a: sound pop at scene.50%")?._tag, "BadEffect");
+    assert.strictEqual(
+      failure("a: sound pop at when(box.move.progress >= 120%)")?._tag,
+      "BadEffect"
+    );
+  });
+
+  it("refuses an until on a sound or a show, and a combinator that is not one", () => {
+    assert.strictEqual(
+      failure("a: sound pop at scene.start until scene.end")?._tag,
+      "BadEffect"
+    );
+    assert.strictEqual(
+      failure("a: show box at scene.start until scene.end")?._tag,
+      "BadEffect"
+    );
+    assert.strictEqual(
+      failure('a: sound pop at alll(word("x").end, scene.end)')?._tag,
+      "BadEffect"
+    );
   });
 });
 
@@ -141,12 +343,20 @@ describe("writing an effect line", () => {
     's1: sound whoosh at word("matches").end +100ms',
     's5: sound whoosh at word("matches", 1).end +0.1s',
     "s2: sound ding at one.move.50%",
+    "s6: sound ding at when(one.move.progress >= 50%)",
     'f1: focus hint at word("slides", 2).start -200ms',
     'f2: focus hint at word("slides", 2).start -0.2s',
+    'f3: focus hint at word("slides").start -0.2s until first(word("leaves").start, scene.end)',
     "r1: show note at transition.end -3f",
     "s3: sound pop at r1.end +50%",
     'a1: sound pop at 12.5s because "a reason"',
     "s4: sound pop at scene.end",
+    "s7: sound pop at all(one.move.end, tag.update.end) +0.1s",
+    'f4: focus hint at each(word("a").end, word("b").end, throttle=5f, stagger=0.3s)',
+    'f5: focus hint at within(word("a").end, state(2))',
+    "s8: sound pop at settled",
+    "s9: sound pop at one.moving.leave",
+    "s10: sound pop at beat(2).start",
   ];
 
   it("reads back what it writes, effect for effect", () => {
@@ -157,7 +367,7 @@ describe("writing an effect line", () => {
     }
   });
 
-  it("writes the author's own form: the occurrence and the unit stay as written", () => {
+  it("writes the author's own form: the occurrence, the unit and the spelling stay as written", () => {
     assert.deepStrictEqual(
       Arr.map(lines, (line) => formatEffect(read(line))),
       lines
@@ -171,12 +381,45 @@ describe("writing an effect line", () => {
     );
   });
 
-  it("writes an anchor on its own", () => {
-    const { when } = read('a: sound pop at word("x y", 2).end -3f');
+  it("writes an anchor on its own, through the aliases of the Scene", () => {
+    const event = eventOf('a: sound pop at word("x y", 2).end -3f');
+    const shifted = event?.kind === "shift" ? event.of : undefined;
 
     assert.strictEqual(
-      "anchor" in when ? formatAnchor(when.anchor) : "",
+      shifted?.kind === "anchor" ? formatAnchor(shifted.anchor) : "",
       'word("x y", 2).end'
+    );
+    assert.deepStrictEqual(
+      Arr.map(
+        ["scene.end", "scene.start", "transition.50%", "box.update.end"],
+        (path) => {
+          const found = eventOf(`a: sound pop at ${path}`);
+
+          return found?.kind === "anchor" ? formatAnchor(found.anchor) : "";
+        }
+      ),
+      ["scene.end", "scene.start", "transition.50%", "box.update.end"]
+    );
+  });
+
+  it("writes an event in its canonical form: a percent is the threshold of the progress behaviour", () => {
+    assert.strictEqual(
+      canonical("a: sound pop at one.move.50% +2f"),
+      "when(one.move.progress >= 50%) +2f"
+    );
+    assert.strictEqual(
+      canonical("a: sound pop at all(one.move.50%, tag.update.end)"),
+      "all(when(one.move.progress >= 50%), tag.update.end)"
+    );
+    assert.strictEqual(canonical("a: sound pop at scene.end"), "scene.end");
+  });
+
+  it("writes a let line back", () => {
+    const parsed = parseLetLine("let settled = all(a.end, b.end)", 4);
+
+    assert.strictEqual(
+      Result.isSuccess(parsed) ? formatLet(parsed.success) : "",
+      "let settled = all(a.end, b.end)"
     );
   });
 });

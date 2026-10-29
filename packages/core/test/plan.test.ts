@@ -69,7 +69,7 @@ describe("buildPlan of the fixture", () => {
         assert.deepStrictEqual(
           Arr.map(plan.chapters, (chapter) => [chapter.id, chapter.sceneIds]),
           [
-            ["ch1", ["first", "second"]],
+            ["ch1", ["opening", "second"]],
             ["ch2", ["third", "fourth"]],
           ]
         );
@@ -77,7 +77,7 @@ describe("buildPlan of the fixture", () => {
           Arr.flatMap(plan.scenes, (scene) =>
             Arr.map(scene.lines, (line) => line.id)
           ),
-          ["first.l1", "first.l2", "second.l1", "third.l1", "fourth.l1"]
+          ["opening.l1", "opening.l2", "second.l1", "third.l1", "fourth.l1"]
         );
       })
   );
@@ -164,11 +164,15 @@ describe("buildPlan of the fixture", () => {
               "show",
               "cap",
               {
-                anchor: {
-                  edge: "end",
-                  kind: "word",
-                  occurrence: 1,
-                  phrase: "corner",
+                event: {
+                  anchor: {
+                    edge: "end",
+                    explicit: false,
+                    kind: "word",
+                    occurrence: 1,
+                    phrase: "corner",
+                  },
+                  kind: "anchor",
                 },
               },
             ],
@@ -177,11 +181,15 @@ describe("buildPlan of the fixture", () => {
               "focus",
               "box",
               {
-                anchor: {
-                  edge: "start",
-                  kind: "word",
-                  occurrence: 2,
-                  phrase: "box",
+                event: {
+                  anchor: {
+                    edge: "start",
+                    explicit: true,
+                    kind: "word",
+                    occurrence: 2,
+                    phrase: "box",
+                  },
+                  kind: "anchor",
                 },
               },
             ],
@@ -190,19 +198,26 @@ describe("buildPlan of the fixture", () => {
               "sound",
               "pop",
               {
-                anchor: {
-                  edge: "end",
-                  kind: "word",
-                  occurrence: 2,
-                  phrase: "box",
+                event: {
+                  kind: "shift",
+                  of: {
+                    anchor: {
+                      edge: "end",
+                      explicit: true,
+                      kind: "word",
+                      occurrence: 2,
+                      phrase: "box",
+                    },
+                    kind: "anchor",
+                  },
+                  offset: { unit: "flicks", value: 70_560_000 },
                 },
-                offset: { unit: "ms", value: 100 },
               },
             ],
           ]
         );
         assert.deepStrictEqual(plan.scenes[3]?.effects[1]?.when, {
-          absoluteMs: 1500,
+          absoluteFlicks: 1_058_400_000,
           reason: "the title settles on a beat in the music",
         });
       })
@@ -221,7 +236,7 @@ describe("the identity diff", () => {
           scene.identity !== null,
         ]),
         [
-          ["first", "default", false],
+          ["opening", "default", false],
           ["second", "auto-animate", true],
           ["third", "cut", false],
           ["fourth", "auto-animate", true],
@@ -261,16 +276,17 @@ const decodeWithAudioFile = (file: string) =>
           {
             effects: [],
             endFrame: 1,
+            events: [],
             lines: [
               {
                 audio: { file: goodAudioFile, sha256: "x" },
                 endFrame: 1,
-                lineId: "first.l1",
+                lineId: "opening.l1",
                 startFrame: 0,
                 words: [],
               },
             ],
-            sceneId: "first",
+            sceneId: "opening",
             slideFrame: 0,
           },
         ],

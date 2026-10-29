@@ -318,7 +318,7 @@ const progressSpelling = (
   transition: Transition
 ): AnchorSpelling => ({
   form: `${combinatorWords.when}(${Arr.join([head, ...Arr.dropRight(edge.tail, 1), progressWord], ".")} >= ${percentToken})`,
-  meaning: `the first frame the progress of the transition reaches N percent (${transition.progress === "eased" ? "by the renderer's declared easing" : "linear in time"}); the sugar \`${spelled(head, edge)}\` means the same`,
+  meaning: `the first frame the progress of the transition reaches N percent (${transition.progress === "eased" ? "by the renderer's declared easing" : "linear in time"}); the sugar \`${Arr.join([head, ...Arr.dropRight(edge.tail, 1), percentToken], ".")}\` means the same`,
 });
 
 const machineSpellings = (machine: Machine): readonly AnchorSpelling[] => {
@@ -393,28 +393,24 @@ export const anchorSpellings: readonly AnchorSpelling[] = [
 
 /**
  * The anchor shapes for the messages that say what is expected: the word, and for each kind of subject its head and
- * the transitions and states it has (`<id>.<enter|exit|move|update|...>`).
+ * the first word after it that every generated form of the subject starts with (`<id>.<enter|exit|move|...>`).
  */
 export const anchorFormsText: string = Arr.join(
   [
     wordSpelling.form,
     ...Arr.map(subjectKinds, (subject) => {
-      const own = Arr.filter(
-        machines,
-        (machine) => machine.subject === subject
+      const starts = Arr.dedupe(
+        Arr.flatMap(
+          Arr.filter(
+            vocabulary,
+            (form) =>
+              form.machine.subject === subject && form.kind !== "progress"
+          ),
+          (form: Form) => Arr.take(form.tail, 1)
+        )
       );
 
-      return `${headPlaceholder[subject]}.<${Arr.join(
-        Arr.dedupe(
-          Arr.flatMap(own, (machine) => [
-            ...Arr.map(machine.transitions, ({ name }) => name),
-            ...(machine.stateElided
-              ? []
-              : Arr.map(machine.states, ({ name }) => name)),
-          ])
-        ),
-        "|"
-      )}>...`;
+      return `${headPlaceholder[subject]}.<${Arr.join(starts, "|")}>...`;
     }),
   ],
   ", "
@@ -516,6 +512,7 @@ export const productions: readonly Production[] = [
       "transition.50%",
       "settled",
       `${combinatorWords.first}(word("one").end, word("two").end)`,
+      `${combinatorWords.within}(word("one").end, ${anchorWords.state}(2))`,
     ],
     name: "term",
     rule: `anchor | name | ${Arr.join(

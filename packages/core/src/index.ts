@@ -6,7 +6,13 @@ export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
 export { buildPlan, collectErrors, fountainImporter, planOf } from "./build.ts";
 
-export { GraphSchema, graphVersion, jsonCodec } from "./graph.ts";
+export {
+  GraphSchema,
+  graphJsonSchema,
+  graphSchemaId,
+  graphVersion,
+  jsonCodec,
+} from "./graph.ts";
 
 export type {
   ArtifactRenderer,
@@ -31,7 +37,15 @@ export type { Event, Occurrence, Window } from "./combinators.ts";
 
 export { formatEvent } from "./expr.ts";
 
-export { machines, vocabulary } from "./machines.ts";
+export {
+  machines,
+  progressKinds,
+  stateEventNames,
+  stateNames,
+  subjectKinds,
+  transitionNames,
+  vocabulary,
+} from "./machines.ts";
 
 export type { Form, Machine } from "./machines.ts";
 

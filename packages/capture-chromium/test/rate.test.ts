@@ -11,7 +11,7 @@ import { nodeServices } from "./support.ts";
 
 const adapter = chromiumCapturer.pipe(Layer.provideMerge(nodeServices));
 
-const refusal = (settings: { readonly fps: 25 | 30; readonly ntsc: boolean }) =>
+const refusal = (settings: { readonly fps: 24 | 30; readonly ntsc: boolean }) =>
   Effect.gen(function* refused() {
     const capturer = yield* FrameCapturer;
 
@@ -30,12 +30,12 @@ describe("chromiumCapturer, frame rates", () => {
     "refuses a nominal rate its lags were not measured at, naming settings.fps",
     () =>
       Effect.gen(function* fps() {
-        const error = yield* refusal({ fps: 25, ntsc: false });
+        const error = yield* refusal({ fps: 24, ntsc: false });
 
         assert.instanceOf(error, AdapterUnavailable);
         assert.strictEqual(error.service, "FrameCapturer");
         assert.include(error.requirement, "settings.fps 30");
-        assert.include(error.message, "settings.fps 25");
+        assert.include(error.message, "settings.fps 24");
       })
   );
 

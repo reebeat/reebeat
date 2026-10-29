@@ -5,7 +5,7 @@
       "id": "ch1",
       "line": 7,
       "sceneIds": [
-        "first",
+        "opening",
         "second"
       ],
       "synopsis": "One box, two screens.",
@@ -31,11 +31,15 @@
           "target": "cap",
           "verb": "show",
           "when": {
-            "anchor": {
-              "edge": "end",
-              "kind": "word",
-              "occurrence": 1,
-              "phrase": "corner"
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "corner"
+              },
+              "kind": "anchor"
             }
           },
           "written": "word(\"corner\").end"
@@ -46,11 +50,15 @@
           "target": "box",
           "verb": "focus",
           "when": {
-            "anchor": {
-              "edge": "start",
-              "kind": "word",
-              "occurrence": 2,
-              "phrase": "box"
+            "event": {
+              "anchor": {
+                "edge": "start",
+                "explicit": true,
+                "kind": "word",
+                "occurrence": 2,
+                "phrase": "box"
+              },
+              "kind": "anchor"
             }
           },
           "written": "word(\"box\", 2).start"
@@ -61,15 +69,22 @@
           "name": "pop",
           "verb": "sound",
           "when": {
-            "anchor": {
-              "edge": "end",
-              "kind": "word",
-              "occurrence": 2,
-              "phrase": "box"
-            },
-            "offset": {
-              "unit": "ms",
-              "value": 100
+            "event": {
+              "kind": "shift",
+              "of": {
+                "anchor": {
+                  "edge": "end",
+                  "explicit": true,
+                  "kind": "word",
+                  "occurrence": 2,
+                  "phrase": "box"
+                },
+                "kind": "anchor"
+              },
+              "offset": {
+                "unit": "flicks",
+                "value": 70560000
+              }
             }
           },
           "written": "word(\"box\", 2).end +100ms"
@@ -109,8 +124,9 @@
           "visible": true
         }
       ],
+      "events": [],
       "heading": "INT. FIRST SCREEN - DAY",
-      "id": "first",
+      "id": "opening",
       "identity": null,
       "line": 11,
       "lines": [
@@ -119,7 +135,7 @@
             "pauseBefore": 0,
             "speed": 0.99
           },
-          "id": "first.l1",
+          "id": "opening.l1",
           "line": 26,
           "text": "This box sits in the corner. The caption says what it is.",
           "words": [
@@ -142,7 +158,7 @@
             "pauseBefore": 0,
             "speed": 1.1
           },
-          "id": "first.l2",
+          "id": "opening.l2",
           "line": 29,
           "text": "Look at the box.",
           "words": [
@@ -164,9 +180,16 @@
           "name": "whoosh",
           "verb": "sound",
           "when": {
-            "anchor": {
-              "at": "start",
-              "kind": "transition"
+            "event": {
+              "anchor": {
+                "at": "start",
+                "kind": "edge",
+                "subject": {
+                  "kind": "scene"
+                },
+                "transition": "transition"
+              },
+              "kind": "anchor"
             }
           },
           "written": "transition.start"
@@ -177,13 +200,19 @@
           "name": "ding",
           "verb": "sound",
           "when": {
-            "anchor": {
-              "at": {
-                "percent": 50
+            "event": {
+              "anchor": {
+                "at": {
+                  "percent": 50
+                },
+                "kind": "edge",
+                "subject": {
+                  "id": "box",
+                  "kind": "element"
+                },
+                "transition": "move"
               },
-              "event": "move",
-              "id": "box",
-              "kind": "element"
+              "kind": "anchor"
             }
           },
           "written": "box.move.50%"
@@ -194,11 +223,15 @@
           "target": "new",
           "verb": "show",
           "when": {
-            "anchor": {
-              "edge": "end",
-              "kind": "word",
-              "occurrence": 1,
-              "phrase": "enters"
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "enters"
+              },
+              "kind": "anchor"
             }
           },
           "written": "word(\"enters\").end"
@@ -209,14 +242,24 @@
           "target": "new",
           "verb": "focus",
           "when": {
-            "anchor": {
-              "edge": "end",
-              "id": "r1",
-              "kind": "effect"
-            },
-            "offset": {
-              "unit": "f",
-              "value": 3
+            "event": {
+              "kind": "shift",
+              "of": {
+                "anchor": {
+                  "at": "end",
+                  "kind": "edge",
+                  "subject": {
+                    "id": "r1",
+                    "kind": "effect"
+                  },
+                  "transition": "run"
+                },
+                "kind": "anchor"
+              },
+              "offset": {
+                "unit": "f",
+                "value": 3
+              }
             }
           },
           "written": "r1.end +3f"
@@ -256,6 +299,7 @@
           "visible": true
         }
       ],
+      "events": [],
       "heading": "INT. SECOND SCREEN - DAY",
       "id": "second",
       "identity": {
@@ -321,6 +365,7 @@
           "visible": true
         }
       ],
+      "events": [],
       "heading": "INT. THIRD SCREEN - DAY",
       "id": "third",
       "identity": null,
@@ -355,15 +400,24 @@
           "name": "ding",
           "verb": "sound",
           "when": {
-            "anchor": {
-              "at": "end",
-              "event": "move",
-              "id": "fresh",
-              "kind": "element"
-            },
-            "offset": {
-              "unit": "ms",
-              "value": -50
+            "event": {
+              "kind": "shift",
+              "of": {
+                "anchor": {
+                  "at": "end",
+                  "kind": "edge",
+                  "subject": {
+                    "id": "fresh",
+                    "kind": "element"
+                  },
+                  "transition": "move"
+                },
+                "kind": "anchor"
+              },
+              "offset": {
+                "unit": "flicks",
+                "value": -35280000
+              }
             }
           },
           "written": "fresh.move.end -50ms"
@@ -374,7 +428,7 @@
           "name": "pop",
           "verb": "sound",
           "when": {
-            "absoluteMs": 1500,
+            "absoluteFlicks": 1058400000,
             "reason": "the title settles on a beat in the music"
           },
           "written": "1.5s because \"the title settles on a beat in the music\""
@@ -390,6 +444,7 @@
           "visible": true
         }
       ],
+      "events": [],
       "heading": "INT. FOURTH SCREEN - DAY",
       "id": "fourth",
       "identity": {
@@ -431,6 +486,7 @@
     "fps": 30,
     "height": 720,
     "lineGap": 0.5,
+    "ntsc": false,
     "sceneLead": 1,
     "sceneTail": 0.5,
     "speed": 1.1,

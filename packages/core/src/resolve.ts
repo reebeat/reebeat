@@ -603,10 +603,11 @@ const stateWindow = (
       );
     }
 
-    const first = Option.match(Arr.get(beats, n - 2), {
-      onNone: () => context.timing.slideFrame,
-      onSome: (beat) => beat.end,
-    });
+    const first = Arr.reduce(
+      Arr.take(beats, n - 1),
+      context.timing.slideFrame,
+      (earliest, beat) => Math.max(earliest, beat.end)
+    );
 
     return Result.succeed({
       end: Option.match(Arr.get(beats, n - 1), {

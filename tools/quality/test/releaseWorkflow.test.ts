@@ -309,9 +309,10 @@ const readRepositoryFile = (name: string) =>
   Effect.gen(function* reading() {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const top = yield* path.fromFileUrl(new URL("../../..", import.meta.url));
 
-    return yield* fs.readFileString(path.join(top, name));
+    return yield* fs.readFileString(
+      yield* path.fromFileUrl(new URL(`../../../${name}`, import.meta.url))
+    );
   });
 
 describe("the real files", () => {

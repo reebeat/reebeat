@@ -16,6 +16,7 @@ import {
   Encoder,
   SpeechSynthesizer,
   WordAligner,
+  rejectSecretSettings,
 } from "@reebeat/services";
 import type { Asset, Egress, Provenance } from "@reebeat/services";
 import type { Schema } from "effect";
@@ -65,6 +66,10 @@ const keyOf = Effect.fnUntraced(function* keyOf(line: Line, voice: string) {
   const cache = yield* AssetCache;
   const synthesizer = yield* SpeechSynthesizer;
   const aligner = yield* WordAligner;
+
+  // `cache.key` and `cache.put` read the names of the synthesiser's settings; the aligner's travel inside `extra`,
+  // which they do not, so a secret-looking name is refused here, before a key or an asset exists.
+  yield* rejectSecretSettings(aligner.info.id, aligner.info.settings);
 
   const extra = {
     aligner: aligner.info,

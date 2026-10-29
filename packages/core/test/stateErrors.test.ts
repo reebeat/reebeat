@@ -5,12 +5,8 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect } from "effect";
 
-import {
-  errorsOf,
-  scheduledAt,
-  statesSource,
-  stepRows,
-} from "./stateStories.ts";
+import { collectErrors } from "../src/build.ts";
+import { scheduledAt, statesSource, stepRows } from "./stateStories.ts";
 import { lineOf } from "./support.ts";
 
 /** `[tag, the row the error is on, the message]`. */
@@ -300,7 +296,7 @@ describe("nonsense is a Plan error with a message an author can act on", () => {
       const source = statesSource([...stepRows, ...rows]);
 
       assert.deepStrictEqual(
-        Arr.map(errorsOf(source), ({ _tag, line, message }) => [
+        Arr.map(collectErrors(source), ({ _tag, line, message }) => [
           _tag,
           line,
           message,
@@ -332,7 +328,7 @@ describe("nonsense is a Plan error with a message an author can act on", () => {
   });
 
   it("reads the story with none of the mutations, so each error is the mutation's", () => {
-    assert.deepStrictEqual(errorsOf(statesSource(stepRows)), []);
+    assert.deepStrictEqual(collectErrors(statesSource(stepRows)), []);
   });
 });
 

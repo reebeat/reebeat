@@ -387,8 +387,12 @@ const optionOf = (text: string, at: number): string | undefined =>
     Str.startsWith(`${word}=`)(Str.slice(at)(text))
   ).pipe(Option.getOrUndefined);
 
-// The parser below is mutually recursive: an event holds terms, and a term may hold events.
-/* oxlint-disable typescript/no-use-before-define */
+/** Reads one event; the parser passes `readEvent` down to the readers of the terms that hold events. */
+type EventReader = (
+  text: string,
+  at: number,
+  line: number
+) => Parsed<EventExpr>;
 
 const readOption = (
   text: string,
@@ -405,17 +409,42 @@ const readOption = (
   );
 };
 
+/** After an argument: the close of the call, or a comma and the next argument (`more`). */
+const afterArgument = (
+  text: string,
+  at: number,
+  line: number,
+  name: string,
+  found: Arguments,
+  more: (position: number, found: Arguments) => Parsed<Arguments>
+): Parsed<Arguments> => {
+  const position = skipSpaces(text, at);
+  const next = charAt(text, position);
+
+  if (next === ")") {
+    return Result.succeed([{ ...found, end: position + 1 }, position + 1]);
+  }
+
+  return next === ","
+    ? more(position + 1, found)
+    : Result.fail(closeProblem(text, position, line, name));
+};
+
 const nextArgument = (
   text: string,
   at: number,
   line: number,
   name: string,
-  found: Arguments
+  found: Arguments,
+  read: EventReader
 ): Parsed<Arguments> => {
   const start = skipSpaces(text, at);
 
   const option =
     name === combinatorWords.each ? optionOf(text, start) : undefined;
+
+  const more = (position: number, args: Arguments): Parsed<Arguments> =>
+    nextArgument(text, position, line, name, args, read);
 
   if (option !== undefined) {
     return Result.flatMap(
@@ -428,44 +457,32 @@ const nextArgument = (
           name,
           option === optionWords.throttle
             ? { ...found, throttle: duration }
-            : { ...found, stagger: duration }
+            : { ...found, stagger: duration },
+          more
         )
     );
   }
 
-  return Result.flatMap(readEvent(text, start, line), ([event, end]) =>
-    afterArgument(text, end, line, name, {
-      ...found,
-      events: [...found.events, event],
-    })
+  return Result.flatMap(read(text, start, line), ([event, end]) =>
+    afterArgument(
+      text,
+      end,
+      line,
+      name,
+      { ...found, events: [...found.events, event] },
+      more
+    )
   );
-};
-
-const afterArgument = (
-  text: string,
-  at: number,
-  line: number,
-  name: string,
-  found: Arguments
-): Parsed<Arguments> => {
-  const position = skipSpaces(text, at);
-  const next = charAt(text, position);
-
-  if (next === ")") {
-    return Result.succeed([{ ...found, end: position + 1 }, position + 1]);
-  }
-
-  return next === ","
-    ? nextArgument(text, position + 1, line, name, found)
-    : Result.fail(closeProblem(text, position, line, name));
 };
 
 const readArguments = (
   text: string,
   at: number,
   line: number,
-  name: string
-): Parsed<Arguments> => nextArgument(text, at, line, name, emptyArguments(at));
+  name: string,
+  read: EventReader
+): Parsed<Arguments> =>
+  nextArgument(text, at, line, name, emptyArguments(at), read);
 
 const needsTwo = (
   name: string,
@@ -488,10 +505,11 @@ const readGroup = (
   text: string,
   at: number,
   line: number,
-  name: "all" | "each" | "first"
+  name: "all" | "each" | "first",
+  read: EventReader
 ): Parsed<EventExpr> =>
   Result.flatMap(
-    readArguments(text, at + name.length + 1, line, name),
+    readArguments(text, at + name.length + 1, line, name, read),
     ([parsed, end]) =>
       Result.flatMap(
         needsTwo(name, line, parsed.events.length),
@@ -519,10 +537,11 @@ const readGroup = (
 const readWithin = (
   text: string,
   at: number,
-  line: number
+  line: number,
+  read: EventReader
 ): Parsed<EventExpr> =>
   Result.flatMap(
-    readEvent(text, at + combinatorWords.within.length + 1, line),
+    read(text, at + combinatorWords.within.length + 1, line),
     ([inner, afterEvent]) => {
       const comma = skipSpaces(text, afterEvent);
       const stateAt = skipSpaces(text, comma + 1);
@@ -618,7 +637,8 @@ const unknownCall = (name: string, line: number): PlanError =>
 const readTerm = (
   text: string,
   at: number,
-  line: number
+  line: number,
+  read: EventReader
 ): Parsed<EventExpr> => {
   const name = wordOf(text, at);
   const call = charAt(text, at + name.length) === "(";
@@ -628,19 +648,19 @@ const readTerm = (
   }
 
   if (isCall(text, at, combinatorWords.all)) {
-    return readGroup(text, at, line, combinatorWords.all);
+    return readGroup(text, at, line, combinatorWords.all, read);
   }
 
   if (isCall(text, at, combinatorWords.first)) {
-    return readGroup(text, at, line, combinatorWords.first);
+    return readGroup(text, at, line, combinatorWords.first, read);
   }
 
   if (isCall(text, at, combinatorWords.each)) {
-    return readGroup(text, at, line, combinatorWords.each);
+    return readGroup(text, at, line, combinatorWords.each, read);
   }
 
   if (isCall(text, at, combinatorWords.within)) {
-    return readWithin(text, at, line);
+    return readWithin(text, at, line, read);
   }
 
   if (isCall(text, at, combinatorWords.when)) {
@@ -653,24 +673,28 @@ const readTerm = (
 };
 
 /** `term [ offset ]`: an offset is a sign, a number and a unit after a space. */
-const readEvent = (text: string, at: number, line: number): Parsed<EventExpr> =>
-  Result.flatMap(readTerm(text, skipSpaces(text, at), line), ([term, end]) => {
-    const start = skipSpaces(text, end);
+const readEvent: EventReader = (text, at, line) =>
+  Result.flatMap(
+    readTerm(text, skipSpaces(text, at), line, readEvent),
+    ([term, end]) => {
+      const start = skipSpaces(text, end);
 
-    if (charAt(text, start) !== "+" && charAt(text, start) !== "-") {
-      return Result.succeed([term, end] as const);
+      if (charAt(text, start) !== "+" && charAt(text, start) !== "-") {
+        return Result.succeed([term, end] as const);
+      }
+
+      const stop = pathEnd(text, start);
+
+      return Result.map(
+        readOffset(Str.slice(start, stop)(text), line),
+        (offset) =>
+          [
+            { kind: "shift", of: term, offset } satisfies EventExpr,
+            stop,
+          ] as const
+      );
     }
-
-    const stop = pathEnd(text, start);
-
-    return Result.map(
-      readOffset(Str.slice(start, stop)(text), line),
-      (offset) =>
-        [{ kind: "shift", of: term, offset } satisfies EventExpr, stop] as const
-    );
-  });
-
-/* oxlint-enable typescript/no-use-before-define */
+  );
 
 /** An event and the text it was written as (whitespace collapsed), and what follows it. */
 export interface ReadEvent {
@@ -707,7 +731,7 @@ const formatFlicks = (flicks: number): string => {
 };
 
 /** `+100ms`, `-3f`, `+50%`: an offset as it is written (a time in the whole unit that holds it, else decimal seconds). */
-export const formatOffset = (offset: Offset): string => {
+const formatOffset = (offset: Offset): string => {
   const sign = offset.value < 0 ? "-" : "+";
 
   if (offset.unit === "percent") {

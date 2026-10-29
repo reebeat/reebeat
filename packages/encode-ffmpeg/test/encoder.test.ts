@@ -48,7 +48,7 @@ const inTemp = Effect.gen(function* temp() {
     prefix: "reebeat-enc-",
   });
 
-  return { directory, path };
+  return { directory, fs, out: path.join(directory, "out.mp4"), path };
 });
 
 layer(Layer.merge(encoder, toolbox))("ffmpeg encoder", (it) => {
@@ -71,10 +71,8 @@ layer(Layer.merge(encoder, toolbox))("ffmpeg encoder", (it) => {
     "refuses the NTSC fraction of a frame rate, naming settings.ntsc, before it writes anything",
     () =>
       Effect.gen(function* ntsc() {
-        const fs = yield* FileSystem.FileSystem;
-        const { directory, path } = yield* inTemp;
+        const { fs, out } = yield* inTemp;
         const encoderService = yield* Encoder;
-        const out = path.join(directory, "out.mp4");
 
         const failure = yield* Effect.flip(
           encoderService.mux({
@@ -94,10 +92,8 @@ layer(Layer.merge(encoder, toolbox))("ffmpeg encoder", (it) => {
     "a failing frame stream fails the mux unchanged and leaves nothing behind",
     () =>
       Effect.gen(function* failing() {
-        const fs = yield* FileSystem.FileSystem;
-        const { directory, path } = yield* inTemp;
+        const { directory, fs, out } = yield* inTemp;
         const encoderService = yield* Encoder;
-        const out = path.join(directory, "out.mp4");
         const frame = yield* solidPng("red", 64);
         yield* fs.writeFileString(out, "an earlier build");
 

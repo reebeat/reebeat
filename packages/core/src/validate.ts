@@ -33,8 +33,7 @@ import {
   verbArguments,
 } from "./grammar.ts";
 import { effectOf, elementOf } from "./lookup.ts";
-import { elementEvents, machines } from "./machines.ts";
-import type { Machine } from "./machines.ts";
+import { elementEvents, elementMachineOf } from "./machines.ts";
 import { occupancies, reaches } from "./occupancy.ts";
 import { EdgeSchema } from "./plan.ts";
 import type { Anchor, Effect, EventExpr, Scene } from "./plan.ts";
@@ -275,26 +274,9 @@ const missing = (
   return planError("NoSuchEvent", place.line, problem(found, expected));
 };
 
-const machineOf = (
-  name: string,
-  by: "state" | "transition"
-): Machine | undefined =>
-  Option.getOrUndefined(
-    Arr.findFirst(
-      Arr.filter(machines, (machine) => machine.subject === "element"),
-      (machine) =>
-        by === "transition"
-          ? Arr.some(
-              machine.transitions,
-              (transition) => transition.name === name
-            )
-          : Arr.some(machine.states, (state) => state.name === name)
-    )
-  );
-
 /** Whether an Element's machine reaches `state` in the Scene: which transitions happen, in declaration order. */
 const reachesState = (scene: Scene, id: string, state: string): boolean => {
-  const machine = machineOf(state, "state");
+  const machine = elementMachineOf(state, "state");
 
   if (machine === undefined) {
     return false;

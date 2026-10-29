@@ -15,13 +15,12 @@ import { Array as Arr, Effect, Result } from "effect";
 
 import { fountainImporter, planOf } from "../src/build.ts";
 import type { RenderRate } from "../src/build.ts";
-import type { PlanError } from "../src/errors.ts";
 import type { PlanJson, TimedEffect, TimedScene } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
 import { asText, evenlySpoken, fixtureSha256, lifecycle } from "./support.ts";
 
 /** The time each word takes: 300 ms, 9 frames at 30 fps. */
-export const wordMs = 300;
+const wordMs = 300;
 
 /** The steps every story of the walk has: a `show` of `note` (frames 120 to 124) and a `focus` of `box` (frame 138 to its `until` at 156). */
 export const stepRows: readonly string[] = [
@@ -64,13 +63,6 @@ export const statesSource = (rows: readonly string[]): string =>
   ]);
 
 const rate30: RenderRate = { fps: 30, ntsc: false };
-
-/** The errors the importer reports for the source, in document order; empty when it reads. */
-export const errorsOf = (source: string): readonly PlanError[] =>
-  Result.match(fountainImporter.import(source), {
-    onFailure: (errors) => errors,
-    onSuccess: () => [],
-  });
 
 /** The Plan of the source at a frame rate, or the first error in document order. */
 const planAt = (source: string, rate: RenderRate) =>

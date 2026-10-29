@@ -85,6 +85,23 @@ const withoutOrigin = (
     );
   });
 
+/** Asserts that each construct `expected` names has the words the table gives in its keyword (`origin`, `deviation`). */
+const assertKeyword = (
+  definitions: Readonly<Record<string, unknown>>,
+  expected: Readonly<Record<string, string>>,
+  keyword: string
+): void => {
+  for (const [name, words] of Record.toEntries(expected)) {
+    const found = definitions[name];
+
+    assert.isTrue(Predicate.isObject(found), name);
+
+    if (Predicate.isObject(found)) {
+      assert.include(String(found[keyword]), words, name);
+    }
+  }
+};
+
 const isJson = Schema.is(Schema.Json);
 
 /** The paths of every schema of type object below `node`. */
@@ -168,19 +185,15 @@ describe("the JSON Schema of the IR", () => {
         );
 
         assert.sameMembers(Record.keys(definitions), Record.keys(origins));
+        assertKeyword(definitions, origins, "origin");
 
-        for (const name of Record.keys(origins)) {
-          const found = definitions[name];
-
-          assert.isTrue(Predicate.isObject(found), name);
-
-          if (Predicate.isObject(found)) {
-            assert.include(String(found.origin), origins[name] ?? "", name);
-            assert.isTrue(
-              Predicate.isString(found.description) && found.description !== "",
-              name
-            );
-          }
+        for (const [name, found] of Record.toEntries(definitions)) {
+          assert.isTrue(
+            Predicate.isObject(found) &&
+              Predicate.isString(found.description) &&
+              found.description !== "",
+            name
+          );
         }
       })
   );
@@ -189,23 +202,11 @@ describe("the JSON Schema of the IR", () => {
     "says where the meaning differs, for the constructs that differ",
     () =>
       Effect.gen(function* differs() {
-        const definitions = definitionsOf(
-          yield* Effect.flatMap(checkedIn, documentOf)
+        assertKeyword(
+          definitionsOf(yield* Effect.flatMap(checkedIn, documentOf)),
+          deviations,
+          "deviation"
         );
-
-        for (const name of Record.keys(deviations)) {
-          const found = definitions[name];
-
-          assert.isTrue(Predicate.isObject(found), name);
-
-          if (Predicate.isObject(found)) {
-            assert.include(
-              String(found.deviation),
-              deviations[name] ?? "",
-              name
-            );
-          }
-        }
       })
   );
 

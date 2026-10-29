@@ -34,7 +34,7 @@ import { eventKind, initialState, isStep, showEffectOf } from "./events.ts";
 import type { EventKind } from "./events.ts";
 import { verbArguments } from "./grammar.ts";
 import { effectOf } from "./lookup.ts";
-import { machines } from "./machines.ts";
+import { elementMachineOf, machines } from "./machines.ts";
 import type { Machine } from "./machines.ts";
 import { occupancies, reaches, stateEvent } from "./occupancy.ts";
 import type {
@@ -288,24 +288,6 @@ const wordEvent = (
   );
 };
 
-/** The machine of an Element that has the transition or the state `name`. */
-const elementMachine = (
-  name: string,
-  by: "state" | "transition"
-): Machine | undefined =>
-  Option.getOrUndefined(
-    Arr.findFirst(
-      Arr.filter(machines, (machine) => machine.subject === "element"),
-      (machine) =>
-        by === "transition"
-          ? Arr.some(
-              machine.transitions,
-              (transition) => transition.name === name
-            )
-          : Arr.some(machine.states, (state) => state.name === name)
-    )
-  );
-
 const progressOf = (machine: Machine | undefined, name: string): boolean =>
   Option.match(Option.fromNullishOr(machine), {
     onNone: () => false,
@@ -341,7 +323,7 @@ const elementEdge = (
         window,
         anchor.at,
         progressOf(
-          elementMachine(anchor.transition, "transition"),
+          elementMachineOf(anchor.transition, "transition"),
           anchor.transition
         )
       ),
@@ -361,7 +343,7 @@ const elementState = (
   id: string,
   tools: Tools
 ): Result.Result<Event, ScheduleError> => {
-  const machine = elementMachine(anchor.state, "state");
+  const machine = elementMachineOf(anchor.state, "state");
 
   if (machine === undefined) {
     return Result.fail(
@@ -415,37 +397,46 @@ const effectNamed = (
     onSome: Result.succeed,
   });
 
+/** The effect `id` of the Scene and its runs, for what reads a moment of that effect. */
+const withRuns = (
+  context: Context,
+  id: string,
+  tools: Tools,
+  use: (
+    other: Effect,
+    runs: readonly Run[]
+  ) => Result.Result<Event, ScheduleError>
+): Result.Result<Event, ScheduleError> =>
+  Result.flatMap(effectNamed(context, id), (other) =>
+    Result.flatMap(tools.runs(other), (runs) => use(other, runs))
+  );
+
 const effectEdge = (
   context: Context,
   anchor: Extract<Anchor, { kind: "edge" }>,
   id: string,
   tools: Tools
 ): Result.Result<Event, ScheduleError> =>
-  Result.flatMap(effectNamed(context, id), (other) =>
-    Result.flatMap(tools.runs(other), (runs) => {
-      if (anchor.at !== "start" && other.verb === "sound") {
-        return Result.fail(
-          unresolved(
-            context,
-            `${id} is a sound: it has no end; use ${id}.start`
-          )
-        );
-      }
-
-      return Result.map(
-        Result.all(
-          Arr.map(runs, (run) =>
-            Result.map(
-              pointFrame(context, runWindow(run), anchor.at, false),
-              (frame) => ({ frame, window: runWindow(run) })
-            )
-          )
-        ),
-        (occurrences) =>
-          Arr.flatMap(occurrences, ({ frame, window }) => once(frame, window))
+  withRuns(context, id, tools, (other, runs) => {
+    if (anchor.at !== "start" && other.verb === "sound") {
+      return Result.fail(
+        unresolved(context, `${id} is a sound: it has no end; use ${id}.start`)
       );
-    })
-  );
+    }
+
+    return Result.map(
+      Result.all(
+        Arr.map(runs, (run) =>
+          Result.map(
+            pointFrame(context, runWindow(run), anchor.at, false),
+            (frame) => ({ frame, window: runWindow(run) })
+          )
+        )
+      ),
+      (occurrences) =>
+        Arr.flatMap(occurrences, ({ frame, window }) => once(frame, window))
+    );
+  });
 
 const effectState = (
   context: Context,
@@ -453,34 +444,31 @@ const effectState = (
   id: string,
   tools: Tools
 ): Result.Result<Event, ScheduleError> =>
-  Result.flatMap(effectNamed(context, id), (other) =>
-    Result.flatMap(tools.runs(other), (runs) => {
-      const machine = Arr.findFirst(
-        machines,
-        ({ subject }) => subject === "effect"
-      );
+  withRuns(context, id, tools, (_other, runs) => {
+    const machine = Arr.findFirst(
+      machines,
+      ({ subject }) => subject === "effect"
+    );
 
-      return Option.match(machine, {
-        onNone: () =>
-          Result.fail(unresolved(context, "no machine for effects")),
-        onSome: (found) =>
-          Result.succeed(
-            Arr.flatMap(runs, (run) =>
-              stateEvent(
-                occupancies(
-                  found,
-                  found.initial,
-                  [{ name: "run", window: runWindow(run) }],
-                  sceneWindow(context)
-                ),
-                anchor.state,
-                anchor.event
-              )
+    return Option.match(machine, {
+      onNone: () => Result.fail(unresolved(context, "no machine for effects")),
+      onSome: (found) =>
+        Result.succeed(
+          Arr.flatMap(runs, (run) =>
+            stateEvent(
+              occupancies(
+                found,
+                found.initial,
+                [{ name: "run", window: runWindow(run) }],
+                sceneWindow(context)
+              ),
+              anchor.state,
+              anchor.event
             )
-          ),
-      });
-    })
-  );
+          )
+        ),
+    });
+  });
 
 const sceneEdge = (
   context: Context,
@@ -667,47 +655,60 @@ const beatEdge = (
     )
   );
 
+/** What a reader of an anchor does for each kind of subject (the number is a Beat's or a State's, the id an Element's or an effect's). */
+interface SubjectReaders {
+  readonly beat: (n: number) => Result.Result<Event, ScheduleError>;
+  readonly effect: (id: string) => Result.Result<Event, ScheduleError>;
+  readonly element: (id: string) => Result.Result<Event, ScheduleError>;
+  readonly scene: () => Result.Result<Event, ScheduleError>;
+  readonly state: (n: number) => Result.Result<Event, ScheduleError>;
+}
+
+const bySubject = (
+  subject: Extract<Anchor, { kind: "occupancy" }>["subject"],
+  on: SubjectReaders
+): Result.Result<Event, ScheduleError> =>
+  Match.value(subject).pipe(
+    Match.discriminatorsExhaustive("kind")({
+      beat: ({ n }) => on.beat(n),
+      effect: ({ id }) => on.effect(id),
+      element: ({ id }) => on.element(id),
+      scene: on.scene,
+      state: ({ n }) => on.state(n),
+    })
+  );
+
 const edgeEvent = (
   context: Context,
   anchor: Extract<Anchor, { kind: "edge" }>,
   tools: Tools
-): Result.Result<Event, ScheduleError> => {
-  const { subject } = anchor;
-
-  return Match.value(subject).pipe(
-    Match.discriminatorsExhaustive("kind")({
-      beat: (found) => beatEdge(context, anchor, found.n, tools),
-      effect: (found) => effectEdge(context, anchor, found.id, tools),
-      element: (found) => elementEdge(context, anchor, found.id, tools),
-      scene: () => sceneEdge(context, anchor),
-      state: () =>
-        Result.fail(
-          unresolved(
-            context,
-            `a State holds, it has no transition ${anchor.transition}`
-          )
-        ),
-    })
-  );
-};
+): Result.Result<Event, ScheduleError> =>
+  bySubject(anchor.subject, {
+    beat: (n) => beatEdge(context, anchor, n, tools),
+    effect: (id) => effectEdge(context, anchor, id, tools),
+    element: (id) => elementEdge(context, anchor, id, tools),
+    scene: () => sceneEdge(context, anchor),
+    state: () =>
+      Result.fail(
+        unresolved(
+          context,
+          `a State holds, it has no transition ${anchor.transition}`
+        )
+      ),
+  });
 
 const stateOf = (
   context: Context,
   anchor: Extract<Anchor, { kind: "occupancy" }>,
   tools: Tools
-): Result.Result<Event, ScheduleError> => {
-  const { subject } = anchor;
-
-  return Match.value(subject).pipe(
-    Match.discriminatorsExhaustive("kind")({
-      beat: (found) => numberedState(context, anchor, found.n, tools),
-      effect: (found) => effectState(context, anchor, found.id, tools),
-      element: (found) => elementState(context, anchor, found.id, tools),
-      scene: () => sceneState(context, anchor),
-      state: (found) => numberedState(context, anchor, found.n, tools),
-    })
-  );
-};
+): Result.Result<Event, ScheduleError> =>
+  bySubject(anchor.subject, {
+    beat: (n) => numberedState(context, anchor, n, tools),
+    effect: (id) => effectState(context, anchor, id, tools),
+    element: (id) => elementState(context, anchor, id, tools),
+    scene: () => sceneState(context, anchor),
+    state: (n) => numberedState(context, anchor, n, tools),
+  });
 
 /** The frame at which the capture issues the effect: one before a visible change, the fire frame for a sound. */
 export const commandOf = (effect: Effect, fire: number): number =>

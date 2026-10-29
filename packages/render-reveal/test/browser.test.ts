@@ -69,6 +69,21 @@ const classesOf = (scene: string, id: string): string =>
 const classesIn = (page: Page, scene: string) => (id: string) =>
   evaluate(page, classesOf(scene, id), Schema.String);
 
+/** Runs a fragment command of the page (a step forward, `Reveal.prevFragment()`), then asserts which Elements carry the focus ring. */
+const focusAfter = (page: Page, command: string, ids: readonly string[]) =>
+  Effect.gen(function* moved() {
+    yield* evaluate(page, command, Schema.Boolean);
+
+    assert.deepStrictEqual(
+      yield* evaluate(
+        page,
+        `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
+        Strings
+      ),
+      ids
+    );
+  });
+
 const goTo = (scene: string): string => `reebeatDeck.goToScene("${scene}")`;
 
 /** Shows the next fragment through the page's own API; true when there was one. */
@@ -448,20 +463,11 @@ describe("the Deck page", () => {
           `window.played = []; HTMLMediaElement.prototype.play = function () { window.played.push(this.getAttribute("src")); return Promise.resolve(); };`
         );
 
-        const focused = () =>
-          evaluate(
-            page,
-            `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
-            Strings
-          );
-
         const classOfC = () => classesIn(page, "sc1")("c");
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, step, ["a"]);
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["b"]);
+        yield* focusAfter(page, step, ["b"]);
 
         // The pop is anchored to the end of "Done", after the last step: it rides on that step (`r1`), not on a step of
         // its own, so no fragment stands for it and nothing plays before the step runs.
@@ -482,8 +488,7 @@ describe("the Deck page", () => {
         yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
         assert.isTrue(hasClass(yield* classOfC(), "hidden"));
 
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, "Reveal.prevFragment()", ["a"]);
       })
   );
 
@@ -494,32 +499,19 @@ describe("the Deck page", () => {
         const plan = yield* scheduledOf(ringSource);
         const { page } = yield* openDeck(yield* writtenDeck(plan));
 
-        const focused = () =>
-          evaluate(
-            page,
-            `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
-            Strings
-          );
-
         // Three fragments: the start of `f1`, the end of `f1`, the start of `f2`.
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, step, ["a"]);
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), []);
+        yield* focusAfter(page, step, []);
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["b"]);
+        yield* focusAfter(page, step, ["b"]);
         assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
 
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), []);
+        yield* focusAfter(page, "Reveal.prevFragment()", []);
 
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), ["a"]);
+        yield* focusAfter(page, "Reveal.prevFragment()", ["a"]);
 
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
-        assert.deepStrictEqual(yield* focused(), []);
+        yield* focusAfter(page, "Reveal.prevFragment()", []);
       })
   );
 

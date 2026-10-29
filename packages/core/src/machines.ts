@@ -6,7 +6,7 @@
 // here: for an Element it comes from the identity diff (`events.ts`), for an effect from its own timing and for the
 // Scene from the sequence of Scenes; WHEN they happen comes from the renderer's declared lifecycle (`plan.ts`).
 // Plain data and plain functions.
-import { Array as Arr } from "effect";
+import { Array as Arr, Option } from "effect";
 
 /** What has a machine: an Element, an effect, the Scene (its slide change), a State of a Scene, a Beat between States. */
 export const subjectKinds = [
@@ -25,7 +25,7 @@ export type SubjectKind = (typeof subjectKinds)[number];
  */
 export const progressKinds = ["time", "eased"] as const;
 
-export type ProgressKind = (typeof progressKinds)[number];
+type ProgressKind = (typeof progressKinds)[number];
 
 /** A timed edge: it starts when the machine leaves `from`, spends its window in `during` and ends in `to`. */
 export interface Transition {
@@ -48,7 +48,7 @@ export interface Alias {
 }
 
 /** A state of a machine and what being in it means. */
-export interface State {
+interface State {
   readonly means: string;
   readonly name: string;
 }
@@ -283,7 +283,7 @@ export const elementEvents: readonly string[] = Arr.flatMap(
 /** The enter and the leave of a state, as the machines call them. */
 export const stateEventNames = ["enter", "leave"] as const;
 
-export type StateEventName = (typeof stateEventNames)[number];
+type StateEventName = (typeof stateEventNames)[number];
 
 /** One spelling generated from a machine. */
 export type Form =
@@ -406,3 +406,21 @@ export const stateNames = Arr.dedupe(
     Arr.map(machine.states, ({ name }) => name)
   )
 );
+
+/** The machine of an Element that has the transition or the state `name`, if any. */
+export const elementMachineOf = (
+  name: string,
+  by: "state" | "transition"
+): Machine | undefined =>
+  Option.getOrUndefined(
+    Arr.findFirst(
+      Arr.filter(machines, (machine) => machine.subject === "element"),
+      (machine) =>
+        by === "transition"
+          ? Arr.some(
+              machine.transitions,
+              (transition) => transition.name === name
+            )
+          : Arr.some(machine.states, (state) => state.name === name)
+    )
+  );

@@ -427,67 +427,41 @@ describe("observationRange", () => {
       })
   );
 
-  it.effect(
-    "widens a default Scene's window to the declared default fade: 2 s is 60 frames, plus the margin",
-    () =>
-      Effect.gen(function* fade() {
-        const declared: RendererLifecycle = {
-          ...referenceLifecycle,
-          transitionMs: { ...referenceLifecycle.transitionMs, default: 2000 },
-        };
+  for (const { kind, sceneIndex, story } of [
+    { kind: "default", sceneIndex: 0, story: storyText },
+    { kind: "cut", sceneIndex: 1, story: cutStoryText },
+  ] as const) {
+    it.effect(
+      `widens a ${kind} Scene's window to the declared ${kind} time: 2 s is 60 frames, plus the margin`,
+      () =>
+        Effect.gen(function* declaredLonger() {
+          const declared: RendererLifecycle = {
+            ...referenceLifecycle,
+            transitionMs: { ...referenceLifecycle.transitionMs, [kind]: 2000 },
+          };
 
-        const plan = yield* timedWith(declared);
-        const own = { kind: "transition", sceneIndex: 0 } as const;
-        const slide = plan.timeline.scenes[0]?.slideFrame ?? -1;
-        const last = plan.timeline.totalFrames - 1;
+          const plan = yield* timedWith(declared, story);
+          const own = { kind: "transition", sceneIndex } as const;
+          const slide = plan.timeline.scenes[sceneIndex]?.slideFrame ?? -1;
+          const last = plan.timeline.totalFrames - 1;
 
-        // Scene one has the default transition: 60 frames from the declaration beat the Plan's 24 and the lags.
-        assert.strictEqual(plan.scenes[0]?.transition, "default");
-        assert.isAbove(
-          last,
-          slide + 70,
-          "the Timeline is long enough to show it"
-        );
-        assert.strictEqual(
-          observationRange(plan, declared, own).to,
-          slide + 60 + 10
-        );
-        // The reference declares 400 ms: the Plan's 24 frames decide.
-        assert.strictEqual(
-          observationRange(plan, referenceLifecycle, own).to,
-          slide + 24 + 10
-        );
-      })
-  );
-
-  it.effect(
-    "widens a `> CUT` Scene's window to the declared cut time: 2 s is 60 frames, plus the margin",
-    () =>
-      Effect.gen(function* cut() {
-        const declared: RendererLifecycle = {
-          ...referenceLifecycle,
-          transitionMs: { ...referenceLifecycle.transitionMs, cut: 2000 },
-        };
-
-        const plan = yield* timedWith(declared, cutStoryText);
-        const own = { kind: "transition", sceneIndex: 1 } as const;
-        const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
-        const last = plan.timeline.totalFrames - 1;
-
-        assert.strictEqual(plan.scenes[1]?.transition, "cut");
-        assert.isAbove(
-          last,
-          slide + 70,
-          "the Timeline is long enough to show it"
-        );
-        assert.strictEqual(
-          observationRange(plan, declared, own).to,
-          slide + 60 + 10
-        );
-        assert.strictEqual(
-          observationRange(plan, referenceLifecycle, own).to,
-          slide + 24 + 10
-        );
-      })
-  );
+          assert.strictEqual(plan.scenes[sceneIndex]?.transition, kind);
+          assert.isAbove(
+            last,
+            slide + 70,
+            "the Timeline is long enough to show it"
+          );
+          // 60 frames from the declaration beat the Plan's 24 and the lags.
+          assert.strictEqual(
+            observationRange(plan, declared, own).to,
+            slide + 60 + 10
+          );
+          // The reference declares 400 ms (default) or none (cut): the Plan's 24 frames decide.
+          assert.strictEqual(
+            observationRange(plan, referenceLifecycle, own).to,
+            slide + 24 + 10
+          );
+        })
+    );
+  }
 });

@@ -18,6 +18,7 @@
     "@reebeat/capture-chromium": "workspace:*",
     "@reebeat/core": "workspace:*",
     "@reebeat/encode-ffmpeg": "workspace:*",
+    "@reebeat/lint": "workspace:*",
     "@reebeat/pipeline": "workspace:*",
     "@reebeat/render-reveal": "workspace:*",
     "@reebeat/services": "workspace:*",

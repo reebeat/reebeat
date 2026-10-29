@@ -45,3 +45,5 @@ export { soundsOf, stepsOf } from "./steps.ts";
 export type { CarriedSound, Carrier, Step } from "./steps.ts";
 
 export { findPhrase } from "./words.ts";
+
+export { grammarDocument } from "./grammarDoc.ts";

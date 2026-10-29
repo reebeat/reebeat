@@ -4,14 +4,15 @@ import { assert, describe, it } from "@effect/vitest";
 import { Array as Arr, Effect, Result } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import type { PlanJson } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
 import { frameToMs, requireTimeline } from "../src/timed.ts";
-import { asText, fixtureSha256 } from "./support.ts";
+import { asText, fixtureSha256, lifecycle } from "./support.ts";
 
 const source = asText([
   "# Part",
   "",
-  "INT. ONE",
+  "INT. ONE #one#",
   "",
   "NARRATOR",
   "One two.",
@@ -21,17 +22,21 @@ const source = asText([
 const scheduled = Effect.gen(function* build() {
   const plan = yield* buildPlan(source, fixtureSha256);
 
-  return yield* schedule(plan, [
-    {
-      audio: { file: `${"1".repeat(64)}.flac`, sha256: "hash" },
-      durationMs: 1000,
-      lineId: "sc1.l1",
-      words: [
-        { endMs: 400, startMs: 0, w: "One" },
-        { endMs: 1000, startMs: 400, w: "two." },
-      ],
-    },
-  ]);
+  return yield* schedule(
+    plan,
+    [
+      {
+        audio: { file: `${"1".repeat(64)}.flac`, sha256: "hash" },
+        durationMs: 1000,
+        lineId: "one.l1",
+        words: [
+          { endMs: 400, startMs: 0, w: "One" },
+          { endMs: 1000, startMs: 400, w: "two." },
+        ],
+      },
+    ],
+    lifecycle
+  );
 });
 
 describe("frameToMs", () => {
@@ -69,6 +74,43 @@ describe("requireTimeline", () => {
 
       assert.isTrue(Result.isFailure(requireTimeline(emptied)));
     })
+  );
+
+  it.effect(
+    "fails when the Timeline names an effect the Plan does not have",
+    () =>
+      Effect.gen(function* stale() {
+        const { timeline } = yield* scheduled;
+        const built = yield* scheduled;
+
+        assert.isDefined(timeline);
+
+        const stray: PlanJson = {
+          ...built,
+          timeline: {
+            ...(timeline ?? { chapters: [], scenes: [], totalFrames: 0 }),
+            scenes: Arr.map(timeline?.scenes ?? [], (scene) => ({
+              ...scene,
+              effects: [
+                {
+                  commandFrame: 1,
+                  effectId: "ghost",
+                  fireFrame: 1,
+                  intent: "x",
+                },
+              ],
+            })),
+          },
+        };
+
+        const result = requireTimeline(stray);
+
+        assert.isTrue(Result.isFailure(result));
+        assert.include(
+          Result.isFailure(result) ? result.failure.message : "",
+          "effect ghost"
+        );
+      })
   );
 
   it.effect("returns a scheduled Plan with its Timeline", () =>

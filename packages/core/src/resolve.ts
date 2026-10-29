@@ -105,6 +105,10 @@ export const timeOfProgress = (
   easing: RendererLifecycle["matched"]["easing"],
   progress: number
 ): number => {
+  if (progress <= 0 || progress >= 1) {
+    return Math.min(1, Math.max(0, progress));
+  }
+
   const [x1, y1, x2, y2] = easing;
   let low = 0;
   let high = 1;

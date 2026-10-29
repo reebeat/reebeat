@@ -27,3 +27,9 @@ export class ChecksFailed extends Schema.TaggedError<
   failed: Schema.Array(Schema.String),
   message: Schema.String,
 }) {}
+
+/** `reebeat lint` found at least one error in the story. */
+export class LintFailed extends Schema.TaggedError<
+  LintFailed,
+  { readonly brand: unique symbol }
+>()("LintFailed", { errors: Schema.Int, message: Schema.String }) {}

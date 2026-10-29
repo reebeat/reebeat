@@ -54,7 +54,7 @@ describe("buildPlan of the fixture", () => {
   );
 
   it.effect(
-    "numbers chapters, scenes, lines and cues from 1 in document order",
+    "numbers chapters and lines from 1 in document order and keeps the Scene ids the author wrote",
     () =>
       Effect.gen(function* ids() {
         const plan = yield* fixturePlan;
@@ -62,30 +62,15 @@ describe("buildPlan of the fixture", () => {
         assert.deepStrictEqual(
           Arr.map(plan.chapters, (chapter) => [chapter.id, chapter.sceneIds]),
           [
-            ["ch1", ["sc1", "sc2"]],
-            ["ch2", ["sc3", "sc4"]],
+            ["ch1", ["first", "second"]],
+            ["ch2", ["third", "fourth"]],
           ]
         );
         assert.deepStrictEqual(
           Arr.flatMap(plan.scenes, (scene) =>
-            Arr.flatMap(scene.lines, (line) => [
-              line.id,
-              ...Arr.map(line.cues, (cue) => cue.id),
-            ])
+            Arr.map(scene.lines, (line) => line.id)
           ),
-          [
-            "sc1.l1",
-            "sc1.l1.c1",
-            "sc1.l2",
-            "sc1.l2.c1",
-            "sc1.l2.c2",
-            "sc2.l1",
-            "sc2.l1.c1",
-            "sc2.l1.c2",
-            "sc3.l1",
-            "sc4.l1",
-            "sc4.l1.c1",
-          ]
+          ["first.l1", "first.l2", "second.l1", "third.l1", "fourth.l1"]
         );
       })
   );
@@ -105,7 +90,7 @@ describe("buildPlan of the fixture", () => {
   );
 
   it.effect(
-    "turns dialogue into narration text, words and cues anchored to a word",
+    "turns dialogue into narration text and words, byte for byte what is spoken",
     () =>
       Effect.gen(function* narration() {
         const plan = yield* fixturePlan;
@@ -118,26 +103,6 @@ describe("buildPlan of the fixture", () => {
         assert.strictEqual(line?.words.length, 12);
         // (slowly) is the story default 1.1 times 0.9.
         assert.deepStrictEqual(line?.hints, { pauseBefore: 0, speed: 0.99 });
-        assert.deepStrictEqual(
-          Arr.map(line?.cues ?? [], (cue) => [
-            cue.kind,
-            cue.arg,
-            cue.afterWord,
-          ]),
-          [["next", null, 5]]
-        );
-        // `[[sfx: whoosh]] [[next]]` both follow word 3 ("place,") of sc2.l1; a cue before any word would be -1.
-        assert.deepStrictEqual(
-          Arr.map(plan.scenes[1]?.lines[0]?.cues ?? [], (cue) => [
-            cue.kind,
-            cue.arg,
-            cue.afterWord,
-          ]),
-          [
-            ["sfx", "whoosh", 3],
-            ["next", null, 3],
-          ]
-        );
         assert.deepStrictEqual(plan.scenes[1]?.lines[0]?.hints, {
           pauseBefore: 0.5,
           speed: 1.1,
@@ -151,25 +116,88 @@ describe("buildPlan of the fixture", () => {
   );
 
   it.effect(
-    "anchors only an sfx before the first word of a Scene's first Line to the transition start",
+    "keeps the Elements as written: key=value properties, visible=false for a hidden one",
     () =>
-      Effect.gen(function* anchors() {
+      Effect.gen(function* elements() {
         const plan = yield* fixturePlan;
 
-        const anchored = Arr.flatMap(plan.scenes, (scene) =>
-          Arr.flatMap(scene.lines, (line) =>
-            Arr.map(line.cues, (cue) => [cue.id, cue.anchor, cue.afterWord])
-          )
+        assert.deepStrictEqual(
+          Arr.map(plan.scenes[0]?.elements ?? [], (element) => [
+            element.id,
+            element.cell,
+            element.class,
+            element.visible,
+          ]),
+          [
+            ["box", "tl", "box", true],
+            ["cap", "bc", "muted", false],
+            ["old", "mr", "label", true],
+            ["foot", "bl", "muted", true],
+          ]
         );
+      })
+  );
 
-        assert.deepStrictEqual(anchored, [
-          ["sc1.l1.c1", "word", 5],
-          ["sc1.l2.c1", "word", 3],
-          ["sc1.l2.c2", "word", 3],
-          ["sc2.l1.c1", "word", 3],
-          ["sc2.l1.c2", "word", 3],
-          ["sc4.l1.c1", "transition-start", -1],
-        ]);
+  it.effect(
+    "keeps each effect with its `when` as the author wrote it, in source order",
+    () =>
+      Effect.gen(function* effects() {
+        const plan = yield* fixturePlan;
+
+        assert.deepStrictEqual(
+          Arr.map(plan.scenes[0]?.effects ?? [], (effect) => [
+            effect.id,
+            effect.verb,
+            effect.name ?? effect.target,
+            effect.when,
+          ]),
+          [
+            [
+              "r1",
+              "show",
+              "cap",
+              {
+                anchor: {
+                  edge: "end",
+                  kind: "word",
+                  occurrence: 1,
+                  phrase: "corner",
+                },
+              },
+            ],
+            [
+              "f1",
+              "focus",
+              "box",
+              {
+                anchor: {
+                  edge: "start",
+                  kind: "word",
+                  occurrence: 2,
+                  phrase: "box",
+                },
+              },
+            ],
+            [
+              "s1",
+              "sound",
+              "pop",
+              {
+                anchor: {
+                  edge: "end",
+                  kind: "word",
+                  occurrence: 2,
+                  phrase: "box",
+                },
+                offset: { unit: "ms", value: 100 },
+              },
+            ],
+          ]
+        );
+        assert.deepStrictEqual(plan.scenes[3]?.effects[1]?.when, {
+          absoluteMs: 1500,
+          reason: "the title settles on a beat in the music",
+        });
       })
   );
 });
@@ -186,10 +214,10 @@ describe("the identity diff", () => {
           scene.identity !== null,
         ]),
         [
-          ["sc1", "default", false],
-          ["sc2", "auto-animate", true],
-          ["sc3", "cut", false],
-          ["sc4", "auto-animate", true],
+          ["first", "default", false],
+          ["second", "auto-animate", true],
+          ["third", "cut", false],
+          ["fourth", "auto-animate", true],
         ]
       );
       assert.deepStrictEqual(plan.scenes[1]?.identity, {
@@ -197,7 +225,7 @@ describe("the identity diff", () => {
         exit: ["old"],
         same: ["foot"],
         update: [
-          { changes: ["cell", "classes"], id: "box" },
+          { changes: ["cell", "class"], id: "box" },
           { changes: ["text"], id: "cap" },
         ],
       });
@@ -224,18 +252,18 @@ const decodeWithAudioFile = (file: string) =>
         chapters: [],
         scenes: [
           {
+            effects: [],
             endFrame: 1,
             lines: [
               {
                 audio: { file: goodAudioFile, sha256: "x" },
-                cues: [],
                 endFrame: 1,
-                lineId: "sc1.l1",
+                lineId: "first.l1",
                 startFrame: 0,
                 words: [],
               },
             ],
-            sceneId: "sc1",
+            sceneId: "first",
             slideFrame: 0,
           },
         ],

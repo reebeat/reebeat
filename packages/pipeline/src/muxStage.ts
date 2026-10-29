@@ -1,4 +1,4 @@
-// The mux stage: the captured frames, the narration of every Line at its start, the sound of every `sfx` Cue at its
+// The mux stage: the captured frames, the narration of every Line at its start, the sound of every `sound` effect at its
 // fire frame, the WebVTT subtitles and the chapters become `<name>.mp4` (through `Encoder.mux`) and `<name>.vtt`
 // beside it. The Encoder owns the scope its frame stream needs.
 import type { TimedPlan } from "@reebeat/core";

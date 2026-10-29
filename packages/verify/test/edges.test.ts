@@ -28,6 +28,9 @@ import {
   slideFrameOf,
   soundFile,
   verdictOf,
+  fireFrameOf,
+  matchIn,
+  rowOf,
 } from "./support.ts";
 
 /** The best match that a failure sentence reports: `(best match 0.04, at least 0.8 needed)`. */
@@ -203,7 +206,12 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             { file: narrationFile(fixture, "sc2.l1"), startMs: frameMs(111) },
             { file: soundFile(fixture, "pop"), gain: pop, startMs: at },
             { file: soundFile(fixture, "whoosh"), gain: whoosh, startMs: at },
-            // The whoosh of sc2 sounds at the scene change, where its Cue is anchored.
+            // The ding of sc2 sounds where its effect resolved.
+            {
+              file: soundFile(fixture, "ding"),
+              startMs: frameMs(fireFrameOf(fixture.plan, "s2")),
+            },
+            // The whoosh of sc2 sounds at the slide change, where its effect is anchored.
             {
               file: soundFile(fixture, "whoosh"),
               startMs: frameMs(slideFrameOf(fixture.plan, "sc2")),
@@ -218,15 +226,18 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             assert.strictEqual(verdictOf(verdicts, "F1").status, "fail");
             assert.include(
               verdictOf(verdicts, "F1").detail,
-              "sc1.l1.c2 sfx: pop at frame 65: the sound is not found within 150 ms"
+              "sc1.p1 sound pop"
+            );
+            assert.include(
+              verdictOf(verdicts, "F1").detail,
+              "the sound is not found within 150 ms"
             );
           }
 
           const scores = {
             drowned: reportedMatch(verdictOf(drowned, "F1").detail),
-            quieter: reportedScore(
-              verdictOf(quieter, "F1"),
-              "sc1.l1.c2 sfx match score"
+            quieter: matchIn(
+              rowOf(verdictOf(quieter, "F1"), "sc1.p1 sound pop")
             ),
             wrong: reportedMatch(verdictOf(wrong, "F1").detail),
           };

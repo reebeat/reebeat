@@ -3,7 +3,7 @@
 import type { Element, PlanJson, Scene } from "@reebeat/core";
 import { Array as Arr, String as Str, pipe } from "effect";
 
-import { expectedFragments, expectedMarks } from "./expected.ts";
+import { expectedMarks, expectedSlide } from "./expected.ts";
 import type { ExpectedFragment, ExpectedMarks } from "./expected.ts";
 import { runtimeJs } from "./runtime.ts";
 import { cellOrder, themeCss } from "./theme.ts";
@@ -36,7 +36,7 @@ const attribute = (name: string, value: string): string =>
 
 const elementHtml = (element: Element): string => {
   const classes = Arr.join(
-    ["el", ...element.classes, ...(element.hidden ? ["hidden"] : [])],
+    ["el", element.class, ...(element.visible ? [] : ["hidden"])],
     " "
   );
 
@@ -64,8 +64,12 @@ const gridHtml = (scene: Scene): string => {
   return `<div class="grid">\n      ${Arr.join(cells, "\n      ")}\n    </div>`;
 };
 
+/** `data-sounds="whoosh ding"`; nothing when no sound rides along. */
+const soundsAttribute = (sounds: readonly string[]): string =>
+  sounds.length === 0 ? "" : attribute("data-sounds", Arr.join(sounds, " "));
+
 const fragmentHtml = (fragment: ExpectedFragment): string =>
-  `<span class="fragment cue"${attribute("data-fragment-index", String(fragment.index))}${attribute("data-cue-id", fragment.cueId)}${attribute("data-cue-kind", fragment.kind)}${attribute("data-cue-arg", fragment.arg)}${attribute("data-reveals", fragment.reveals)}></span>`;
+  `<span class="fragment effect"${attribute("data-fragment-index", String(fragment.index))}${attribute("data-effect-id", fragment.effectId)}${attribute("data-effect-verb", fragment.verb)}${attribute("data-target", fragment.target)}${soundsAttribute(fragment.sounds)}></span>`;
 
 const notesHtml = (scene: Scene): string =>
   `<aside class="notes">${Arr.join(
@@ -73,7 +77,13 @@ const notesHtml = (scene: Scene): string =>
     ""
   )}</aside>`;
 
-const sectionHtml = (scene: Scene, marks: ExpectedMarks): string => {
+const sectionHtml = (
+  plan: PlanJson,
+  scene: Scene,
+  marks: ExpectedMarks
+): string => {
+  const slide = expectedSlide(plan, scene);
+
   const autoAnimate =
     marks.autoAnimate === null
       ? ""
@@ -85,11 +95,11 @@ const sectionHtml = (scene: Scene, marks: ExpectedMarks): string => {
       : attribute("data-transition", marks.transition);
 
   const fragments = Arr.map(
-    expectedFragments(scene),
+    slide.fragments,
     (fragment) => `    ${fragmentHtml(fragment)}\n`
   );
 
-  return `  <section${attribute("data-scene", scene.id)}${attribute("data-chapter", scene.chapterId)}${autoAnimate}${transition}>
+  return `  <section${attribute("data-scene", scene.id)}${attribute("data-chapter", scene.chapterId)}${autoAnimate}${transition}${soundsAttribute(slide.sounds)}>
     ${gridHtml(scene)}
 ${Arr.join(fragments, "")}    ${notesHtml(scene)}
   </section>`;
@@ -101,6 +111,7 @@ const pageHtml = (plan: PlanJson): string => {
   const sections = Arr.join(
     Arr.map(plan.scenes, (scene, index) =>
       sectionHtml(
+        plan,
         scene,
         marks[index] ?? { autoAnimate: null, transition: null }
       )

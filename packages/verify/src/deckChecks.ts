@@ -1,10 +1,11 @@
-// F3 (notes equal dialogue) and F4 (fragments equal cues) on the written `deck.html`, read with the deck's own
-// `readDeck` and compared with the Plan the source builds. Each is computed on its own, so a fault in a slide's
+// F3 (notes equal dialogue) and F4 (fragments equal the `show` and `focus` effects, sounds equal `data-sounds`) on the
+// written `deck.html`, read with the deck's own `readDeck` and compared with the Plan the source builds, resolved by
+// the Timeline of `plan.json` (the order of the fragments is the order in time). Each is computed on its own, so a fault in a slide's
 // fragments never hides one in a later slide's notes. `checkDeck` then covers what these two do not compare (the
 // revealed Element of a fragment, the Elements, the slide marks, the slide order); its findings go to F4, because
 // they are about what the slides show, not what they say.
 import type { PlanJson, Scene } from "@reebeat/core";
-import { cueFragmentAgreement, firstDifference } from "@reebeat/lint";
+import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
 import type { Fragment } from "@reebeat/lint";
 import { checkDeck, readDeck } from "@reebeat/render-reveal";
 import type { DeckModel, DeckSlide } from "@reebeat/render-reveal";
@@ -46,10 +47,10 @@ const notesProblem = (
 const fragmentsOf = (model: DeckModel): readonly Fragment[] =>
   Arr.flatMap(model.slides, (slide) =>
     Arr.map(slide.fragments, (fragment) => ({
-      arg: fragment.arg,
-      cueId: fragment.cueId,
-      kind: fragment.kind,
+      effectId: fragment.effectId,
       sceneId: slide.sceneId,
+      target: fragment.target,
+      verb: fragment.verb,
     }))
   );
 
@@ -76,32 +77,46 @@ const pageMismatch = (plan: PlanJson, model: DeckModel, html: string) =>
 export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
   build: Build
 ): Effect.fn.Return<readonly [Verdict, Verdict]> {
-  const plan = rebuiltPlan(build);
+  const rebuilt = rebuiltPlan(build);
 
-  if (Result.isFailure(plan)) {
-    return [fail("F3", plan.failure), fail("F4", plan.failure)];
+  if (Result.isFailure(rebuilt)) {
+    return [fail("F3", rebuilt.failure), fail("F4", rebuilt.failure)];
   }
 
-  const model = readDeck(build.deckHtml);
-  const mismatch = yield* pageMismatch(plan.success, model, build.deckHtml);
+  // The rebuilt Plan has no Timeline; the order of the steps and the carrier of each sound come from the written one.
+  const plan: PlanJson = {
+    ...rebuilt.success,
+    timeline: build.plan.timeline,
+  };
 
-  const checked = Arr.map(plan.success.scenes, (scene) => ({
+  const model = readDeck(build.deckHtml);
+  const mismatch = yield* pageMismatch(plan, model, build.deckHtml);
+
+  const checked = Arr.map(plan.scenes, (scene) => ({
     scene,
     slide: slideOf(model, scene),
   }));
 
   const noteCount = Arr.reduce(
-    plan.success.scenes,
+    plan.scenes,
     0,
     (sum, scene) => sum + scene.lines.length
   );
 
-  const cueCount = Arr.reduce(
-    plan.success.scenes,
+  const effectCount = Arr.reduce(
+    plan.scenes,
     0,
     (sum, scene) =>
       sum +
-      Arr.reduce(scene.lines, 0, (inner, line) => inner + line.cues.length)
+      Arr.filter(scene.effects, (effect) => effect.verb !== "sound").length
+  );
+
+  const soundCount = Arr.reduce(
+    plan.scenes,
+    0,
+    (sum, scene) =>
+      sum +
+      Arr.filter(scene.effects, (effect) => effect.verb === "sound").length
   );
 
   const unmatched = Result.isFailure(mismatch) ? mismatch.failure : undefined;
@@ -116,7 +131,7 @@ export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
 
   const fragments = [
     ...Arr.map(
-      cueFragmentAgreement(plan.success, fragmentsOf(model)),
+      effectFragmentAgreement(plan, fragmentsOf(model)),
       (diagnostic) => diagnostic.message
     ),
     ...(unmatched !== undefined &&
@@ -138,11 +153,12 @@ export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
     ),
     verdictOf(
       "F4",
-      `every slide has one fragment per Cue of its Scene, in order, and shows the Plan's Elements and marks`,
+      `every slide has one fragment per show or focus effect of its Scene in resolved order, carries the sounds of the Plan in data-sounds, and shows the Plan's Elements and marks`,
       fragments,
       [
         ["slides", model.slides.length],
-        ["fragments compared", cueCount],
+        ["fragments compared", effectCount],
+        ["sounds carried", soundCount],
       ]
     ),
   ];

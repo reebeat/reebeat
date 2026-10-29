@@ -38,6 +38,32 @@ describe("parseFountain: token fidelity", () => {
     ]);
   });
 
+  it("reads a multi-line [[effects]] block as one Action token of its own, with its first line and the scene id", () => {
+    const source = asText([
+      "INT. ROOM - DAY #room#",
+      "",
+      "Box {id=a cell=mc class=box}",
+      "",
+      "[[effects",
+      '  s1: sound pop at word("box").end',
+      "]]",
+      "",
+      "NARRATOR",
+      "A box.",
+    ]);
+
+    const tokens = parseFountain(source);
+
+    assert.deepStrictEqual(summary(tokens), [
+      ["scene_heading", "INT. ROOM - DAY", 1],
+      ["action", "Box {id=a cell=mc class=box}", 3],
+      ["action", '[[effects\n  s1: sound pop at word("box").end\n]]', 5],
+      ["character", "NARRATOR", 9],
+      ["dialogue", "A box.", 10],
+    ]);
+    assert.strictEqual(tokens[0]?.sceneNumber, "room");
+  });
+
   it("splits a dialogue block at a parenthetical in the middle", () => {
     const source = asText(["NARRATOR", "One.", "(pause 1)", "Two."]);
 
@@ -130,7 +156,15 @@ describe("parseFountain: token fidelity", () => {
 });
 
 describe("the five unsupported constructs are flagged on their line", () => {
-  const head = ["# Part", "", "INT. ROOM", "", "Box {#a}", ""];
+  const head = [
+    "# Part",
+    "",
+    "INT. ROOM #room#",
+    "",
+    "Box {id=a cell=mc class=box}",
+    "",
+  ];
+
   const tail = ["", "NARRATOR", "Hello."];
 
   it.each([
@@ -172,8 +206,17 @@ const chunks: readonly Chunk[] = [
   { lines: ["= An outline"], tokens: [["synopsis", "An outline", 0]] },
   { lines: ["INT. ROOM"], tokens: [["scene_heading", "INT. ROOM", 0]] },
   {
-    lines: ["Box {#a @tl .box}", "Other {#b hidden}"],
-    tokens: [["action", "Box {#a @tl .box}\nOther {#b hidden}", 0]],
+    lines: [
+      "Box {id=a cell=tl class=box}",
+      "Other {id=b cell=mc class=box visible=false}",
+    ],
+    tokens: [
+      [
+        "action",
+        "Box {id=a cell=tl class=box}\nOther {id=b cell=mc class=box visible=false}",
+        0,
+      ],
+    ],
   },
   {
     lines: ["NARRATOR", "(slowly)", "Hello [[next]] there.", "Second line."],

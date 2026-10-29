@@ -1,10 +1,10 @@
 // What the mux needs of a scheduled Plan, as plain functions: where each narration clip and each sound starts, the
 // chapters in milliseconds and the length of the Video. No I/O: the build program fetches the clips and hands the
 // results to `Encoder.mux`.
-import { cuesById, frameToMs } from "@reebeat/core";
-import type { TimedCue, TimedPlan } from "@reebeat/core";
+import { frameToMs } from "@reebeat/core";
+import type { TimedPlan } from "@reebeat/core";
 import type { MuxRequest } from "@reebeat/services";
-import { Array as Arr, String as Str } from "effect";
+import { Array as Arr, Option, String as Str } from "effect";
 
 import { audioName } from "./speechAsset.ts";
 
@@ -16,8 +16,8 @@ export interface NarrationStart {
 }
 
 export interface SfxStart {
-  readonly cueId: string;
-  /** The name the Cue asked the `SoundLibrary` for. */
+  readonly effectId: string;
+  /** The name the effect asked the `SoundLibrary` for. */
   readonly name: string;
   readonly startMs: number;
 }
@@ -33,29 +33,44 @@ export const narrationStarts = (plan: TimedPlan): readonly NarrationStart[] =>
     })
   );
 
-/** The start of each `sfx` Cue's sound: the Cue's fire frame in milliseconds, in timeline order. */
-export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] => {
-  const cues = cuesById(plan);
+/**
+ * The start of each `sound` effect's sound: the effect's fire frame in milliseconds, in timeline order. Effect ids are
+ * unique per Scene, not in the story (two Scenes may each have an `s1`), so an effect is looked up in its own Scene.
+ */
+export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] =>
+  Arr.flatMap(plan.timeline.scenes, (timedScene) => {
+    const scene = Arr.findFirst(
+      plan.scenes,
+      (candidate) => candidate.id === timedScene.sceneId
+    );
 
-  const timedCues: readonly TimedCue[] = Arr.flatMap(
-    plan.timeline.scenes,
-    (scene) => Arr.flatMap(scene.lines, (line) => line.cues)
-  );
+    const sounds = new Map(
+      Arr.flatMap(
+        Option.match(scene, {
+          onNone: () => [],
+          onSome: (found) => found.effects,
+        }),
+        (effect) =>
+          effect.verb === "sound" && effect.name !== undefined
+            ? [[effect.id, effect.name] as const]
+            : []
+      )
+    );
 
-  return Arr.flatMap(timedCues, (timed) => {
-    const cue = cues.get(timed.cueId);
+    return Arr.flatMap(timedScene.effects, (timed) => {
+      const name = sounds.get(timed.effectId);
 
-    return cue?.kind === "sfx"
-      ? [
-          {
-            cueId: cue.id,
-            name: cue.arg ?? "",
-            startMs: frameToMs(timed.fireFrame, plan.settings.fps),
-          },
-        ]
-      : [];
+      return name === undefined
+        ? []
+        : [
+            {
+              effectId: timed.effectId,
+              name,
+              startMs: frameToMs(timed.fireFrame, plan.settings.fps),
+            },
+          ];
+    });
   });
-};
 
 /** One chapter per Section, titled with the Section's text, each ending where the next starts and the last at the end. */
 export const muxChapters = (plan: TimedPlan): MuxRequest["chapters"] => {

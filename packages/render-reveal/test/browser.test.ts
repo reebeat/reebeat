@@ -17,7 +17,14 @@ import {
   speakerViewNotes,
   waitUntil,
 } from "./browser.ts";
-import { asText, planOf, storyPlan, writtenDeck } from "./support.ts";
+import {
+  asText,
+  planOf,
+  scheduledOf,
+  scheduledStory,
+  storyPlan,
+  writtenDeck,
+} from "./support.ts";
 
 const Strings = Schema.Array(Schema.String);
 
@@ -68,54 +75,62 @@ const step = "reebeatDeck.stepFragment()";
 const hasClass = (classes: string, name: string): boolean =>
   Str.split(classes, " ").includes(name);
 
-/** The cue ids of a Scene, in order. */
-const cueCount = (scene: PlanJson["scenes"][number]): number =>
-  Arr.flatMap(scene.lines, (line) => line.cues).length;
+/** How many fragment steps a Scene has: one per `show` or `focus` effect. */
+const stepCount = (scene: PlanJson["scenes"][number]): number =>
+  Arr.filter(scene.effects, (effect) => effect.verb !== "sound").length;
 
-const cueScreenplay = asText([
-  "# Cues",
+/** Three steps, in the order of their words, and a pop that rides on the last one. */
+const effectScreenplay = asText([
+  "# Effects",
   "",
-  "INT. ROOM - DAY",
+  "INT. ROOM - DAY #sc1#",
   "",
-  "First {#a @ml .box}",
-  "Second {#b @mc .box}",
-  "Third {#c @mr .box hidden}",
+  "First {id=a cell=ml class=box}",
+  "Second {id=b cell=mc class=box}",
+  "Third {id=c cell=mr class=box visible=false}",
+  "",
+  "[[effects",
+  '  f1: focus a at word("here").end',
+  '  f2: focus b at word("there").end',
+  '  r1: show c at word("more").end',
+  '  s1: sound pop at word("done").end',
+  "]]",
   "",
   "NARRATOR",
-  "Look here. [[focus: a]] Then there. [[focus: b]] And more. [[next]] Done. [[sfx: pop]]",
+  "Look here. Then there. And more. Done.",
 ]);
 
 const chainsScreenplay = asText([
   "# Chains",
   "",
-  "INT. A - DAY",
+  "INT. A - DAY #sc1#",
   "",
-  "Box {#x @ml .box}",
+  "Box {id=x cell=ml class=box}",
   "",
   "NARRATOR",
   "One.",
   "",
   "> AUTO-ANIMATE",
   "",
-  "INT. B - DAY",
+  "INT. B - DAY #sc2#",
   "",
-  "Box {#x @mr .box}",
+  "Box {id=x cell=mr class=box}",
   "",
   "NARRATOR",
   "Two.",
   "",
-  "INT. C - DAY",
+  "INT. C - DAY #sc3#",
   "",
-  "Box {#x @mc .box}",
+  "Box {id=x cell=mc class=box}",
   "",
   "NARRATOR",
   "Three.",
   "",
   "> AUTO-ANIMATE",
   "",
-  "INT. D - DAY",
+  "INT. D - DAY #sc4#",
   "",
-  "Box {#x @bl .box}",
+  "Box {id=x cell=bl class=box}",
   "",
   "NARRATOR",
   "Four.",
@@ -244,7 +259,7 @@ describe("the Deck page", () => {
   );
 
   it.live(
-    "steps exactly one fragment per Cue in every scene, then reports none left",
+    "steps exactly one fragment per show or focus effect in every scene, then reports none left",
     () =>
       Effect.gen(function* stepping() {
         const plan = yield* storyPlan;
@@ -255,17 +270,21 @@ describe("the Deck page", () => {
             yield* evaluate(page, goTo(scene.id), Schema.Undefined);
 
             const steps = yield* Effect.forEach(
-              Arr.range(0, cueCount(scene)),
+              Arr.range(0, stepCount(scene)),
               () => evaluate(page, step, Schema.Boolean)
             );
 
-            return { cues: cueCount(scene), id: scene.id, steps };
+            return { count: stepCount(scene), id: scene.id, steps };
           })
         );
 
-        for (const { cues, id, steps } of outcomes) {
-          assert.strictEqual(steps.length, cues + 1, id);
-          assert.strictEqual(steps.indexOf(false), cues, `${id}: ${cues} Cues`);
+        for (const { count, id, steps } of outcomes) {
+          assert.strictEqual(steps.length, count + 1, id);
+          assert.strictEqual(
+            steps.indexOf(false),
+            count,
+            `${id}: ${count} steps`
+          );
         }
       })
   );
@@ -299,9 +318,9 @@ describe("the Deck page", () => {
           asText([
             "# Plain",
             "",
-            "INT. QUIET - DAY",
+            "INT. QUIET - DAY #sc1#",
             "",
-            "Only regular text {#note @mc .muted}",
+            "Only regular text {id=note cell=mc class=muted}",
             "",
             "NARRATOR",
             "One face is enough here.",
@@ -358,7 +377,7 @@ describe("the Deck page", () => {
   );
 
   it.live(
-    "a next Cue shows the right hidden Element; a focus Cue puts the ring on its target",
+    "a show step reveals its hidden Element; a focus step puts the ring on its target",
     () =>
       Effect.gen(function* revealing() {
         const plan = yield* storyPlan;
@@ -370,12 +389,12 @@ describe("the Deck page", () => {
         assert.isTrue(hasClass(yield* classes("twin"), "hidden"));
         assert.isFalse(hasClass(yield* classes("box"), "focused"));
 
-        // sc2.l1.c1 is [[focus: box]]
+        // the first step of sc2 is f1, the focus on box
         assert.isTrue(yield* evaluate(page, step, Schema.Boolean));
         assert.isTrue(hasClass(yield* classes("box"), "focused"));
         assert.isTrue(hasClass(yield* classes("twin"), "hidden"));
 
-        // sc2.l2.c1 is [[next]], which reveals `twin`
+        // the second is r1, which shows `twin`
         assert.isTrue(yield* evaluate(page, step, Schema.Boolean));
 
         const shown = yield* classes("twin");
@@ -391,34 +410,36 @@ describe("the Deck page", () => {
       })
   );
 
-  it.live("two next Cues reveal the hidden Elements in document order", () =>
-    Effect.gen(function* ordered() {
-      const plan = yield* storyPlan;
-      const { page } = yield* openDeck(yield* writtenDeck(plan));
+  it.live(
+    "two show steps reveal their hidden Elements in the order of the steps",
+    () =>
+      Effect.gen(function* ordered() {
+        const plan = yield* storyPlan;
+        const { page } = yield* openDeck(yield* writtenDeck(plan));
 
-      const classes = classesIn(page, "sc6");
+        const classes = classesIn(page, "sc6");
 
-      yield* evaluate(page, goTo("sc6"), Schema.Undefined);
-      yield* evaluate(page, step, Schema.Boolean);
+        yield* evaluate(page, goTo("sc6"), Schema.Undefined);
+        yield* evaluate(page, step, Schema.Boolean);
 
-      assert.deepStrictEqual(
-        [
-          hasClass(yield* classes("new"), "shown"),
-          hasClass(yield* classes("gone"), "hidden"),
-        ],
-        [true, true]
-      );
+        assert.deepStrictEqual(
+          [
+            hasClass(yield* classes("new"), "shown"),
+            hasClass(yield* classes("gone"), "hidden"),
+          ],
+          [true, true]
+        );
 
-      yield* evaluate(page, step, Schema.Boolean);
-      assert.isTrue(hasClass(yield* classes("gone"), "shown"));
-    })
+        yield* evaluate(page, step, Schema.Boolean);
+        assert.isTrue(hasClass(yield* classes("gone"), "shown"));
+      })
   );
 
   it.live(
-    "focus moves from one Element to the next and back; sfx plays assets/sfx/<name>.wav",
+    "focus moves from one Element to the next and back; a sound plays assets/sfx/<name>.wav with the step it rides on",
     () =>
-      Effect.gen(function* cues() {
-        const plan = yield* planOf(cueScreenplay);
+      Effect.gen(function* effects() {
+        const plan = yield* scheduledOf(effectScreenplay);
 
         const { page } = yield* openDeck(
           yield* writtenDeck(plan),
@@ -440,17 +461,22 @@ describe("the Deck page", () => {
         yield* evaluate(page, step, Schema.Boolean);
         assert.deepStrictEqual(yield* focused(), ["b"]);
 
-        yield* evaluate(page, step, Schema.Boolean);
-        assert.isTrue(hasClass(yield* classOfC(), "shown"));
+        // The pop is anchored to the end of "Done", after the last step: it rides on that step (`r1`), not on a step of
+        // its own, so no fragment stands for it and nothing plays before the step runs.
+        assert.deepStrictEqual(
+          yield* evaluate(page, "window.played", Strings),
+          []
+        );
 
         yield* evaluate(page, step, Schema.Boolean);
+        assert.isTrue(hasClass(yield* classOfC(), "shown"));
         assert.deepStrictEqual(
           yield* evaluate(page, "window.played", Strings),
           ["assets/sfx/pop.wav"]
         );
+        assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
 
         // Backwards: the fragments hide again, the ring returns to the previous focus.
-        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
         yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
         assert.isTrue(hasClass(yield* classOfC(), "hidden"));
 
@@ -459,16 +485,48 @@ describe("the Deck page", () => {
       })
   );
 
+  it.live(
+    "plays the sounds of a slide when the slide is shown, not when its steps run",
+    () =>
+      Effect.gen(function* slideSounds() {
+        const plan = yield* scheduledStory;
+
+        const { page } = yield* openDeck(
+          yield* writtenDeck(plan),
+          `window.played = []; HTMLMediaElement.prototype.play = function () { window.played.push(this.getAttribute("src")); return Promise.resolve(); };`
+        );
+
+        // sc4 carries the whoosh and the ding on the slide (anchored to the slide change and to the box's motion).
+        yield* evaluate(page, goTo("sc3"), Schema.Undefined);
+        yield* evaluate(
+          page,
+          "(window.played = [], undefined)",
+          Schema.Undefined
+        );
+        yield* evaluate(page, goTo("sc4"), Schema.Undefined);
+        assert.deepStrictEqual(
+          yield* evaluate(page, "window.played", Strings),
+          ["assets/sfx/whoosh.wav", "assets/sfx/ding.wav"]
+        );
+
+        yield* evaluate(page, step, Schema.Boolean);
+        assert.deepStrictEqual(
+          yield* evaluate(page, "window.played.length", Schema.Finite),
+          2
+        );
+      })
+  );
+
   it.live("a blocked sound does not raise an error", () =>
     Effect.gen(function* blocked() {
-      const plan = yield* planOf(cueScreenplay);
+      const plan = yield* scheduledOf(effectScreenplay);
 
       const { page, pageErrors } = yield* openDeck(
         yield* writtenDeck(plan),
         `HTMLMediaElement.prototype.play = function () { return Promise.reject(new DOMException("blocked", "NotAllowedError")); };`
       );
 
-      yield* Effect.forEach(Arr.range(1, 4), () =>
+      yield* Effect.forEach(Arr.range(1, 3), () =>
         evaluate(page, step, Schema.Boolean)
       );
 
@@ -653,32 +711,32 @@ describe("Auto-Animate between matched scenes", () => {
 const cutScreenplay = asText([
   "# Cut",
   "",
-  "INT. A - DAY",
+  "INT. A - DAY #sc1#",
   "",
-  "Box {#x @mc .box}",
+  "Box {id=x cell=mc class=box}",
   "",
   "NARRATOR",
   "One.",
   "",
   "> CUT",
   "",
-  "INT. B - DAY",
+  "INT. B - DAY #sc2#",
   "",
-  "Box {#y @mc .box}",
+  "Box {id=y cell=mc class=box}",
   "",
   "NARRATOR",
   "Two.",
   "",
-  "INT. C - DAY",
+  "INT. C - DAY #sc3#",
   "",
-  "Box {#z @mc .box}",
+  "Box {id=z cell=mc class=box}",
   "",
   "NARRATOR",
   "Three.",
   "",
-  "INT. D - DAY",
+  "INT. D - DAY #sc4#",
   "",
-  "Box {#w @mc .box}",
+  "Box {id=w cell=mc class=box}",
   "",
   "NARRATOR",
   "Four.",

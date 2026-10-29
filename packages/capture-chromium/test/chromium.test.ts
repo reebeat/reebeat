@@ -9,6 +9,7 @@ import {
   localEgress,
 } from "@reebeat/services";
 import {
+  contractLifecycle,
   failingClauses,
   frameCapturerClauses,
   frameCapturerContract,
@@ -60,7 +61,12 @@ const fixtureRenderer = Layer.effect(
     };
 
     return Renderer.of({
-      info: { egress: localEgress, id: "fixture-deck@1", settings: {} },
+      info: {
+        egress: localEgress,
+        id: "fixture-deck@1",
+        lifecycle: contractLifecycle,
+        settings: {},
+      },
       render: () => Effect.succeed(deck),
     });
   })

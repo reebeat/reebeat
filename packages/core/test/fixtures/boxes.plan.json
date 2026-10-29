@@ -5,18 +5,18 @@
       "id": "ch1",
       "line": 7,
       "sceneIds": [
-        "sc1",
-        "sc2"
+        "first",
+        "second"
       ],
       "synopsis": "One box, two screens.",
       "title": "The same box"
     },
     {
       "id": "ch2",
-      "line": 38,
+      "line": 51,
       "sceneIds": [
-        "sc3",
-        "sc4"
+        "third",
+        "fourth"
       ],
       "title": "The cut"
     }
@@ -24,70 +24,103 @@
   "scenes": [
     {
       "chapterId": "ch1",
+      "effects": [
+        {
+          "id": "r1",
+          "line": 19,
+          "target": "cap",
+          "verb": "show",
+          "when": {
+            "anchor": {
+              "edge": "end",
+              "kind": "word",
+              "occurrence": 1,
+              "phrase": "corner"
+            }
+          },
+          "written": "word(\"corner\").end"
+        },
+        {
+          "id": "f1",
+          "line": 20,
+          "target": "box",
+          "verb": "focus",
+          "when": {
+            "anchor": {
+              "edge": "start",
+              "kind": "word",
+              "occurrence": 2,
+              "phrase": "box"
+            }
+          },
+          "written": "word(\"box\", 2).start"
+        },
+        {
+          "id": "s1",
+          "line": 21,
+          "name": "pop",
+          "verb": "sound",
+          "when": {
+            "anchor": {
+              "edge": "end",
+              "kind": "word",
+              "occurrence": 2,
+              "phrase": "box"
+            },
+            "offset": {
+              "unit": "ms",
+              "value": 100
+            }
+          },
+          "written": "word(\"box\", 2).end +100ms"
+        }
+      ],
       "elements": [
         {
           "cell": "tl",
-          "classes": [
-            "box"
-          ],
-          "hidden": false,
+          "class": "box",
           "id": "box",
           "line": 13,
-          "text": "A box"
+          "text": "A box",
+          "visible": true
         },
         {
           "cell": "bc",
-          "classes": [
-            "muted"
-          ],
-          "hidden": true,
+          "class": "muted",
           "id": "cap",
           "line": 14,
-          "text": "The caption"
+          "text": "The caption",
+          "visible": false
         },
         {
           "cell": "mr",
-          "classes": [
-            "label"
-          ],
-          "hidden": false,
+          "class": "label",
           "id": "old",
           "line": 15,
-          "text": "Old news"
+          "text": "Old news",
+          "visible": true
         },
         {
           "cell": "bl",
-          "classes": [
-            "muted"
-          ],
-          "hidden": false,
+          "class": "muted",
           "id": "foot",
           "line": 16,
-          "text": "Footer"
+          "text": "Footer",
+          "visible": true
         }
       ],
-      "heading": "INT. FIRST SCREEN",
-      "id": "sc1",
+      "heading": "INT. FIRST SCREEN - DAY",
+      "id": "first",
       "identity": null,
       "line": 11,
       "lines": [
         {
-          "cues": [
-            {
-              "afterWord": 5,
-              "anchor": "word",
-              "arg": null,
-              "id": "sc1.l1.c1",
-              "kind": "next",
-              "line": 20
-            }
-          ],
           "hints": {
             "pauseBefore": 0,
             "speed": 0.99
           },
-          "id": "sc1.l1",
-          "line": 20,
+          "id": "first.l1",
+          "line": 26,
           "text": "This box sits in the corner. The caption says what it is.",
           "words": [
             "This",
@@ -105,30 +138,12 @@
           ]
         },
         {
-          "cues": [
-            {
-              "afterWord": 3,
-              "anchor": "word",
-              "arg": "box",
-              "id": "sc1.l2.c1",
-              "kind": "focus",
-              "line": 23
-            },
-            {
-              "afterWord": 3,
-              "anchor": "word",
-              "arg": "pop",
-              "id": "sc1.l2.c2",
-              "kind": "sfx",
-              "line": 23
-            }
-          ],
           "hints": {
             "pauseBefore": 0,
             "speed": 1.1
           },
-          "id": "sc1.l2",
-          "line": 23,
+          "id": "first.l2",
+          "line": 29,
           "text": "Look at the box.",
           "words": [
             "Look",
@@ -142,51 +157,107 @@
     },
     {
       "chapterId": "ch1",
+      "effects": [
+        {
+          "id": "s1",
+          "line": 41,
+          "name": "whoosh",
+          "verb": "sound",
+          "when": {
+            "anchor": {
+              "at": "start",
+              "kind": "transition"
+            }
+          },
+          "written": "transition.start"
+        },
+        {
+          "id": "s2",
+          "line": 42,
+          "name": "ding",
+          "verb": "sound",
+          "when": {
+            "anchor": {
+              "at": {
+                "percent": 50
+              },
+              "event": "move",
+              "id": "box",
+              "kind": "element"
+            }
+          },
+          "written": "box.move.50%"
+        },
+        {
+          "id": "r1",
+          "line": 43,
+          "target": "new",
+          "verb": "show",
+          "when": {
+            "anchor": {
+              "edge": "end",
+              "kind": "word",
+              "occurrence": 1,
+              "phrase": "enters"
+            }
+          },
+          "written": "word(\"enters\").end"
+        },
+        {
+          "id": "f1",
+          "line": 44,
+          "target": "new",
+          "verb": "focus",
+          "when": {
+            "anchor": {
+              "edge": "end",
+              "id": "r1",
+              "kind": "effect"
+            },
+            "offset": {
+              "unit": "f",
+              "value": 3
+            }
+          },
+          "written": "r1.end +3f"
+        }
+      ],
       "elements": [
         {
           "cell": "mc",
-          "classes": [
-            "box",
-            "accent"
-          ],
-          "hidden": false,
+          "class": "accent",
           "id": "box",
-          "line": 29,
-          "text": "A box"
+          "line": 35,
+          "text": "A box",
+          "visible": true
         },
         {
           "cell": "bc",
-          "classes": [
-            "muted"
-          ],
-          "hidden": false,
+          "class": "muted",
           "id": "cap",
-          "line": 30,
-          "text": "The new caption"
+          "line": 36,
+          "text": "The new caption",
+          "visible": true
         },
         {
           "cell": "tr",
-          "classes": [
-            "title"
-          ],
-          "hidden": true,
+          "class": "title",
           "id": "new",
-          "line": 31,
-          "text": "New arrival"
+          "line": 37,
+          "text": "New arrival",
+          "visible": false
         },
         {
           "cell": "bl",
-          "classes": [
-            "muted"
-          ],
-          "hidden": false,
+          "class": "muted",
           "id": "foot",
-          "line": 32,
-          "text": "Footer"
+          "line": 38,
+          "text": "Footer",
+          "visible": true
         }
       ],
-      "heading": "INT. SECOND SCREEN",
-      "id": "sc2",
+      "heading": "INT. SECOND SCREEN - DAY",
+      "id": "second",
       "identity": {
         "enter": [
           "new"
@@ -201,7 +272,7 @@
           {
             "changes": [
               "cell",
-              "classes"
+              "class"
             ],
             "id": "box"
           },
@@ -213,33 +284,15 @@
           }
         ]
       },
-      "line": 27,
+      "line": 33,
       "lines": [
         {
-          "cues": [
-            {
-              "afterWord": 3,
-              "anchor": "word",
-              "arg": "whoosh",
-              "id": "sc2.l1.c1",
-              "kind": "sfx",
-              "line": 36
-            },
-            {
-              "afterWord": 3,
-              "anchor": "word",
-              "arg": null,
-              "id": "sc2.l1.c2",
-              "kind": "next",
-              "line": 36
-            }
-          ],
           "hints": {
             "pauseBefore": 0.5,
             "speed": 1.1
           },
-          "id": "sc2.l1",
-          "line": 36,
+          "id": "second.l1",
+          "line": 49,
           "text": "Same id, new place. A new element enters.",
           "words": [
             "Same",
@@ -257,31 +310,29 @@
     },
     {
       "chapterId": "ch2",
+      "effects": [],
       "elements": [
         {
           "cell": "mc",
-          "classes": [
-            "title"
-          ],
-          "hidden": false,
+          "class": "title",
           "id": "fresh",
-          "line": 46,
-          "text": "Fresh start"
+          "line": 59,
+          "text": "Fresh start",
+          "visible": true
         }
       ],
-      "heading": "INT. THIRD SCREEN",
-      "id": "sc3",
+      "heading": "INT. THIRD SCREEN - DAY",
+      "id": "third",
       "identity": null,
-      "line": 42,
+      "line": 55,
       "lines": [
         {
-          "cues": [],
           "hints": {
             "pauseBefore": 0,
             "speed": 1.21
           },
-          "id": "sc3.l1",
-          "line": 50,
+          "id": "third.l1",
+          "line": 63,
           "text": "Nothing is matched across a cut.",
           "words": [
             "Nothing",
@@ -297,20 +348,50 @@
     },
     {
       "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "s1",
+          "line": 72,
+          "name": "ding",
+          "verb": "sound",
+          "when": {
+            "anchor": {
+              "at": "end",
+              "event": "move",
+              "id": "fresh",
+              "kind": "element"
+            },
+            "offset": {
+              "unit": "ms",
+              "value": -50
+            }
+          },
+          "written": "fresh.move.end -50ms"
+        },
+        {
+          "id": "s2",
+          "line": 73,
+          "name": "pop",
+          "verb": "sound",
+          "when": {
+            "absoluteMs": 1500,
+            "reason": "the title settles on a beat in the music"
+          },
+          "written": "1.5s because \"the title settles on a beat in the music\""
+        }
+      ],
       "elements": [
         {
           "cell": "tc",
-          "classes": [
-            "title"
-          ],
-          "hidden": false,
+          "class": "title",
           "id": "fresh",
-          "line": 56,
-          "text": "Fresh start"
+          "line": 69,
+          "text": "Fresh start",
+          "visible": true
         }
       ],
-      "heading": "INT. FOURTH SCREEN",
-      "id": "sc4",
+      "heading": "INT. FOURTH SCREEN - DAY",
+      "id": "fourth",
       "identity": {
         "enter": [],
         "exit": [],
@@ -324,25 +405,15 @@
           }
         ]
       },
-      "line": 54,
+      "line": 67,
       "lines": [
         {
-          "cues": [
-            {
-              "afterWord": -1,
-              "anchor": "transition-start",
-              "arg": "ding",
-              "id": "sc4.l1.c1",
-              "kind": "sfx",
-              "line": 59
-            }
-          ],
           "hints": {
             "pauseBefore": 0,
             "speed": 1.1
           },
-          "id": "sc4.l1",
-          "line": 59,
+          "id": "fourth.l1",
+          "line": 77,
           "text": "The title moves up.",
           "words": [
             "The",

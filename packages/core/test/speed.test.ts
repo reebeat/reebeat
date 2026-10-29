@@ -18,7 +18,7 @@ const story = (
     "",
     "# Part",
     "",
-    "INT. ONE",
+    "INT. ONE #one#",
     "",
     ...Arr.flatMap(lines, (rows) => ["NARRATOR", ...rows, ""]),
   ]);

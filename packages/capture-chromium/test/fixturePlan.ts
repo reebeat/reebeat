@@ -1,16 +1,17 @@
 // A small scheduled Plan: three Scenes at 30 fps, about 7 s, built by the real core from a screenplay and an
 // alignment worked out by hand (words of 300 ms, each spoken for 280 ms).
 //
-//   sc1  default, slide frame 0    "One two three four."  [[next]] after "two", [[sfx: pop]] after "four."
-//   sc2  auto-animate, frame 81    "Five six seven."      [[focus: a]] after "Five"
+//   sc1  default, slide frame 0    "One two three four."  r1 show b at the end of "two", p1 pop at the end of "four"
+//   sc2  auto-animate, frame 81    "Five six seven."      f1 focus a at the end of "five"
 //   sc3  cut, frame 156            "Done."
 //
 // The frames follow the core's rules: a Line starts `sceneLead` (1 s) after its slide frame; a Line ends its audio
-// duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; a Cue fires at `Line start + round(30 * word
-// end)`; `commandFrame` is `fireFrame - 1` for next and focus, `fireFrame` for sfx. `test/fixtures/deck/deck.html` is
+// duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; an effect fires at `Line start + round(30 *
+// word end)`; `commandFrame` is `fireFrame - 1` for show and focus, `fireFrame` for a sound. `test/fixtures/deck/deck.html` is
 // the page that goes with it.
 import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
 import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
+import { contractLifecycle } from "@reebeat/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
@@ -19,31 +20,40 @@ const source = Arr.join(
     "",
     "# Part one",
     "",
-    "INT. ONE",
+    "INT. ONE #sc1#",
     "",
-    "Box {#a @tl .box}",
-    "Later {#b @br .label hidden}",
+    "Box {id=a cell=tl class=box}",
+    "Later {id=b cell=br class=label visible=false}",
+    "",
+    "[[effects",
+    '  r1: show b at word("two").end',
+    '  p1: sound pop at word("four").end',
+    "]]",
     "",
     "NARRATOR",
-    "One two [[next]] three four. [[sfx: pop]]",
+    "One two three four.",
     "",
     "> AUTO-ANIMATE",
     "",
-    "INT. TWO",
+    "INT. TWO #sc2#",
     "",
-    "Box {#a @br .box .accent}",
-    "Entering {#d @tl .label}",
+    "Box {id=a cell=br class=accent}",
+    "Entering {id=d cell=tl class=label}",
+    "",
+    "[[effects",
+    '  f1: focus a at word("five").end',
+    "]]",
     "",
     "NARRATOR",
-    "Five [[focus: a]] six seven.",
+    "Five six seven.",
     "",
     "# Part two",
     "",
     "> CUT",
     "",
-    "INT. THREE",
+    "INT. THREE #sc3#",
     "",
-    "Done {#c @mc .title}",
+    "Done {id=c cell=mc class=title}",
     "",
     "NARRATOR",
     "Done.",
@@ -77,13 +87,57 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
-/** The fixture Plan with its Timeline checked against its Scenes. A module value: the tests read it as data. */
-export const fixture: TimedPlan = await Effect.runPromise(
+/** The Plan of `text` with its Timeline checked against its Scenes. */
+const timedOf = (text: string) =>
   Effect.gen(function* timedFixturePlan() {
-    const plan = yield* buildPlan(source, Str.repeat(8)("5ca1ab1e"));
+    const plan = yield* buildPlan(text, Str.repeat(8)("5ca1ab1e"));
 
     return yield* Effect.fromResult(
-      requireTimeline(yield* schedule(plan, alignedLines(plan)))
+      requireTimeline(
+        yield* schedule(plan, alignedLines(plan), contractLifecycle)
+      )
     );
-  })
+  });
+
+/** The fixture Plan with its Timeline checked against its Scenes. A module value: the tests read it as data. */
+export const fixture: TimedPlan = await Effect.runPromise(timedOf(source));
+
+/**
+ * Two Scenes whose effects are both called `x1`: a sound in the first, a focus in the second. Effect ids are unique per
+ * Scene, not in the story.
+ */
+export const sharedIds: TimedPlan = await Effect.runPromise(
+  timedOf(
+    Arr.join(
+      [
+        "Title: Shared",
+        "",
+        "# Part",
+        "",
+        "INT. ONE #sc1#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "",
+        "[[effects",
+        '  x1: sound pop at word("two").end',
+        "]]",
+        "",
+        "NARRATOR",
+        "One two three four.",
+        "",
+        "INT. TWO #sc2#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "",
+        "[[effects",
+        '  x1: focus a at word("five").end',
+        "]]",
+        "",
+        "NARRATOR",
+        "Five six seven.",
+        "",
+      ],
+      "\n"
+    )
+  )
 );

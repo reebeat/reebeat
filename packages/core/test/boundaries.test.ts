@@ -125,6 +125,39 @@ describe("F11: packages/core is pure", () => {
       })
   );
 
+  it.effect(
+    "the `@reebeat/core/steps` subpath reaches no parser: steps.ts and what it imports read only effect and the Plan types",
+    () =>
+      Effect.gen(function* subpath() {
+        const files = yield* readSources;
+
+        const byName = new Map(
+          Arr.map(files, ({ name, text }) => [name, text])
+        );
+
+        const reach = (name: string): readonly string[] =>
+          Arr.filter(
+            specifiersOf(byName.get(name) ?? ""),
+            (specifier) =>
+              !/^effect(?:\/|$)|^\.\/(?:lookup|plan|speed)\.ts$/u.test(
+                specifier
+              )
+          );
+
+        // steps.ts, lookup.ts, plan.ts and speed.ts: nothing else (no parse, story, grammar, build).
+        assert.deepStrictEqual(
+          Arr.flatMap(["steps.ts", "lookup.ts", "plan.ts", "speed.ts"], reach),
+          []
+        );
+        assert.deepStrictEqual(
+          Arr.filter(specifiersOf(byName.get("steps.ts") ?? ""), (specifier) =>
+            Str.startsWith(".")(specifier)
+          ),
+          ["./lookup.ts", "./plan.ts"]
+        );
+      })
+  );
+
   it("control: the scan flags each forbidden import in a scratch source", () => {
     for (const bad of [
       'import "playwright";',

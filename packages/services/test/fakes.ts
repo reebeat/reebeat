@@ -1,3 +1,4 @@
+import type { RendererLifecycle } from "@reebeat/core";
 // Test-only adapters for the three services that have no stand-in (Renderer, FrameCapturer, Encoder). They are small
 // but real: they pass the contract suites, so the suites themselves are exercised here, and each takes a flaw that
 // breaks exactly one clause, so the suites are seen to fail (the negative controls).
@@ -12,6 +13,7 @@ import {
 } from "effect";
 import type { PlatformError } from "effect";
 
+import { contractLifecycle } from "../contract/index.ts";
 import type { MuxProbe } from "../contract/index.ts";
 import { Encoder } from "../src/encoder.ts";
 import type { MuxRequest } from "../src/encoder.ts";
@@ -26,12 +28,23 @@ const info = (name: string) => ({
   settings: {},
 });
 
-/** A renderer that writes every Element id into `index.html`; `dropIds` shows none of them. */
-export const fakeRenderer = (flaw: { readonly dropIds?: boolean } = {}) =>
+/**
+ * A renderer that writes every Element id into `index.html`; `dropIds` shows none of them, `lifecycle` declares another
+ * lifecycle than the contract's (one that breaks one clause of C6).
+ */
+export const fakeRenderer = (
+  flaw: {
+    readonly dropIds?: boolean;
+    readonly lifecycle?: RendererLifecycle;
+  } = {}
+) =>
   Layer.succeed(
     Renderer,
     Renderer.of({
-      info: info("fake-render"),
+      info: {
+        ...info("fake-render"),
+        lifecycle: flaw.lifecycle ?? contractLifecycle,
+      },
       render: (plan) =>
         Effect.succeed({
           entry: "index.html",

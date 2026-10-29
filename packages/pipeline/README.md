@@ -3,10 +3,10 @@
 The build program over services only (design R3): `buildProgram` takes a story to a finished build directory and nothing else. It imports `@reebeat/core`, `@reebeat/subtitles` and `@reebeat/services`; it names no model, binary, directory or vendor, and the tier gate (`tools/quality/tiers.ts`) keeps it that way. The composition root (`@reebeat/cli`) picks the adapters.
 
 ```text
-story ─hash─▶ Plan ─speechStage─▶ aligned Lines ─schedule─▶ Timeline ─▶ plan.json
+story ─hash─▶ Plan ─speechStage─▶ aligned Lines ─schedule(…, Renderer.info.lifecycle)─▶ Timeline ─▶ plan.json
   Renderer.render ─▶ writeRenderedDeck (deck.html, assets)          SoundLibrary ─▶ assets/sfx/<name>.wav (core audioClipToWav)
   FrameCapturer.capture ─▶ muxStage: Encoder.mux { frames, tracks: narration clips (decoded from the cached FLACs) at each Line's start
-                                                    + sound clips at each sfx Cue's fire frame, WebVTT, chapters, title, source hash }
+                                                    + sound clips at each `sound` effect's fire frame, WebVTT, chapters, title, source hash }
   ─▶ <name>.mp4, <name>.vtt ─▶ build.json (schema 2: files, adapters with egress, provenance of every asset used) written last
 ```
 
@@ -14,7 +14,7 @@ Everything is written into `<out>.partial` and renamed to `<out>` once `build.js
 
 | Export | What it is |
 | --- | --- |
-| `buildProgram(options)` | the build above; needs the seven services, `FileSystem`, `Path` and `Digest`; returns the summary (files, frames, sizes, seconds, the adapters) |
+| `buildProgram(options)` | the build above; effects are resolved against the `lifecycle` the selected Renderer declares (`info.lifecycle`), which `build.json` records on the Renderer's adapter record; needs the seven services, `FileSystem`, `Path` and `Digest`; returns the summary (files, frames, sizes, seconds, the adapters) |
 | `muxStage(plan, frames, { name, outDir })` | the narration, sounds, subtitles and chapters of a Plan muxed with a given frame stream: what the verify tests use to re-mux a changed capture |
 | `writeRenderedDeck`, `writeSounds` | the Renderer's files and the sounds under one directory (a path that leaves it is refused) |
 | `manifestFile`, `BuildManifestSchema`, `writeManifest` | `build.json` |
@@ -63,4 +63,4 @@ The Kokoro model is fetched by model id without a pinned revision, and the key n
 
 ## Tests
 
-`bun run test` (no model, no browser, no network): the speech stage over the stand-ins (`silentSynthesizer`, `evenAligner`, `memoryCache`) and a tiny fake `Encoder`: a hit, a miss (F12), a refresh, a match below the threshold, an invalid words file, the provenance, key sensitivity and determinism. The build program over the stand-ins, a fake `Renderer`, a fake `FrameCapturer` and a recording fake `Encoder` (`buildProgram.test.ts`): the files of a finished build and `build.json` last, what `Encoder.mux` is asked (narration at each Line's start, each sound at its Cue's fire frame, chapters, source hash), manifest v2 (seven adapters with egress, provenance of each asset used), a rebuild from the cache alone writing the same manifest, and F12 (a miss, a failing capture, a refused output directory, a secret-named setting) leaving no output. The committed cache against the committed story, with the real adapters' declarations, is `packages/cli/test/speechCache.test.ts`.
+`bun run test` (no model, no browser, no network): the speech stage over the stand-ins (`silentSynthesizer`, `evenAligner`, `memoryCache`) and a tiny fake `Encoder`: a hit, a miss (F12), a refresh, a match below the threshold, an invalid words file, the provenance, key sensitivity and determinism. The build program over the stand-ins, a fake `Renderer`, a fake `FrameCapturer` and a recording fake `Encoder` (`buildProgram.test.ts`): the files of a finished build and `build.json` last, what `Encoder.mux` is asked (narration at each Line's start, each sound at its effect's fire frame, chapters, source hash), manifest v2 (seven adapters with egress, provenance of each asset used), a rebuild from the cache alone writing the same manifest, and F12 (a miss, a failing capture, a refused output directory, a secret-named setting) leaving no output. The committed cache against the committed story, with the real adapters' declarations, is `packages/cli/test/speechCache.test.ts`.

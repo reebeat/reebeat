@@ -5,6 +5,7 @@
 import { assert, layer } from "@effect/vitest";
 import { schedule } from "@reebeat/core";
 import { speechStage } from "@reebeat/pipeline";
+import { revealLifecycle } from "@reebeat/render-reveal";
 import { AssetCache } from "@reebeat/services";
 import {
   Array as Arr,
@@ -81,7 +82,7 @@ layer(platform)("the committed speech cache", (it) => {
           adapters(cache)
         );
 
-        const scheduled = yield* schedule(plan, aligned);
+        const scheduled = yield* schedule(plan, aligned, revealLifecycle);
 
         assert.strictEqual(aligned.length, 12);
         assert.strictEqual(scheduled.timeline?.totalFrames, 1664);

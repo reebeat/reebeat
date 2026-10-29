@@ -1,5 +1,6 @@
 // Plain helpers the clauses share: comparisons of clips and spans, and the checks every adapter's `info` passes.
 import { assert } from "@effect/vitest";
+import type { RendererLifecycle } from "@reebeat/core";
 import { Array as Arr, Effect } from "effect";
 
 import { secretLikeNames } from "../src/cacheKey.ts";
@@ -81,6 +82,35 @@ export const assertInfoDeclared = (info: AdapterInfo): void => {
     [],
     "settings hold no secret"
   );
+};
+
+/**
+ * Asserts a renderer's lifecycle declaration is sane: the transitions that animate and the `show` fade last a positive
+ * time, an instant `cut` is not negative, the matched Element's start lag is not negative, and the easing is a CSS
+ * cubic-bezier (the x of both control points inside [0, 1], so progress is a function of time).
+ */
+export const assertLifecycleDeclared = (lifecycle: RendererLifecycle): void => {
+  const { matched, showMs, transitionMs, unmatched } = lifecycle;
+
+  assert.isAbove(transitionMs["auto-animate"], 0, "auto-animate takes time");
+  assert.isAbove(transitionMs.default, 0, "the default fade takes time");
+  assert.isAtLeast(transitionMs.cut, 0, "a cut is instant, not negative");
+  assert.isAbove(showMs, 0, "a shown Element takes time to appear");
+  assert.isAtLeast(matched.startLagFrames, 0, "a lag is not negative");
+  assert.isAtLeast(
+    unmatched.enter.endLagFrames,
+    unmatched.enter.startLagFrames,
+    "an unmatched Element does not finish entering before it starts"
+  );
+
+  const [x1, , x2] = matched.easing;
+
+  for (const x of [x1, x2]) {
+    assert.isTrue(
+      x >= 0 && x <= 1,
+      `easing control point x=${x} is inside [0, 1]`
+    );
+  }
 };
 
 /**

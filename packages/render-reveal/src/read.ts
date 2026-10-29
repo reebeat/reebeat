@@ -9,22 +9,28 @@ type Node = DefaultTreeAdapterMap["node"];
 
 type Element = DefaultTreeAdapterMap["element"];
 
-/** One Element of a slide as written: `class="el box hidden"` reads as classes `["box"]` and `hidden: true`. */
+/**
+ * One Element of a slide as written: `class="el box hidden"` reads as class `box` and `visible: false`. An Element
+ * written with no class besides `el` and `hidden` reads as the empty class.
+ */
 export interface DeckElement {
   readonly cell: string;
-  readonly classes: readonly string[];
-  readonly hidden: boolean;
+  readonly class: string;
   readonly id: string;
   readonly text: string;
+  readonly visible: boolean;
 }
 
-/** One fragment of a slide; an absent attribute reads as the empty string. */
+/** One fragment of a slide; an absent attribute reads as the empty string or the empty list. */
 export interface DeckFragment {
-  readonly arg: string;
-  readonly cueId: string;
+  readonly effectId: string;
   readonly index: string;
-  readonly kind: string;
-  readonly reveals: string;
+  /** `data-sounds`: the sounds that play when the step runs. */
+  readonly sounds: readonly string[];
+  /** `data-target`: the Element id the step acts on. */
+  readonly target: string;
+  /** `data-effect-verb`: `show` or `focus`. */
+  readonly verb: string;
 }
 
 /** One `<section data-scene>`. */
@@ -37,6 +43,8 @@ export interface DeckSlide {
   /** The text of each `<p>` of the slide's `<aside class="notes">`, in order. */
   readonly notes: readonly string[];
   readonly sceneId: string;
+  /** `data-sounds` of the `<section>`: the sounds that play when the slide is shown. */
+  readonly sounds: readonly string[];
   /** The value of `data-transition`, or null. */
   readonly transition: string | null;
 }
@@ -82,16 +90,26 @@ const withClass =
   (element: Element): boolean =>
     classesOf(element).includes(name);
 
+/** `data-sounds="whoosh ding"` as a list; absent reads as none. */
+const soundsOf = (attributes: Readonly<Record<string, string>>) =>
+  Arr.filter(
+    Str.split(attributes["data-sounds"] ?? "", /\s+/u),
+    (name) => name !== ""
+  );
+
 const readElement = (element: Element): DeckElement => {
   const attributes = attributesOf(element);
   const classes = classesOf(element);
 
   return {
     cell: attributes["data-cell"] ?? "",
-    classes: Arr.filter(classes, (name) => name !== "el" && name !== "hidden"),
-    hidden: classes.includes("hidden"),
+    class: Arr.join(
+      Arr.filter(classes, (name) => name !== "el" && name !== "hidden"),
+      " "
+    ),
     id: attributes["data-id"] ?? "",
     text: textOf(element),
+    visible: !classes.includes("hidden"),
   };
 };
 
@@ -99,11 +117,11 @@ const readFragment = (element: Element): DeckFragment => {
   const attributes = attributesOf(element);
 
   return {
-    arg: attributes["data-cue-arg"] ?? "",
-    cueId: attributes["data-cue-id"] ?? "",
+    effectId: attributes["data-effect-id"] ?? "",
     index: attributes["data-fragment-index"] ?? "",
-    kind: attributes["data-cue-kind"] ?? "",
-    reveals: attributes["data-reveals"] ?? "",
+    sounds: soundsOf(attributes),
+    target: attributes["data-target"] ?? "",
+    verb: attributes["data-effect-verb"] ?? "",
   };
 };
 
@@ -133,12 +151,14 @@ const readSlide = (section: Element): DeckSlide => {
     fragments: Arr.map(
       Arr.filter(
         inside,
-        (element) => withClass("fragment")(element) && withClass("cue")(element)
+        (element) =>
+          withClass("fragment")(element) && withClass("effect")(element)
       ),
       readFragment
     ),
     notes,
     sceneId: attributes["data-scene"] ?? "",
+    sounds: soundsOf(attributes),
     transition: attributes["data-transition"] ?? null,
   };
 };

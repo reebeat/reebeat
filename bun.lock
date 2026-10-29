@@ -83,6 +83,7 @@
         "@reebeat/capture-chromium": "workspace:*",
         "@reebeat/core": "workspace:*",
         "@reebeat/encode-ffmpeg": "workspace:*",
+        "@reebeat/lint": "workspace:*",
         "@reebeat/pipeline": "workspace:*",
         "@reebeat/render-reveal": "workspace:*",
         "@reebeat/services": "workspace:*",
@@ -271,6 +272,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@effect/platform-node": "catalog:",
+        "@reebeat/core": "workspace:*",
         "effect": "catalog:",
         "oxc-parser": "catalog:",
       },

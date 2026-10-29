@@ -4,8 +4,8 @@
 import { Effect } from "effect";
 
 import { chapters } from "./chapters.ts";
-import { cueTiming } from "./cues.ts";
 import { deckVerdicts } from "./deckChecks.ts";
+import { effectTiming } from "./effects.ts";
 import type { BuildInvalid } from "./errors.ts";
 import type { CheckServices } from "./guard.ts";
 import { loadBuild } from "./load.ts";
@@ -24,7 +24,7 @@ export const runChecks = Effect.fn("runChecks")(function* run(
   options: CheckOptions
 ): Effect.fn.Return<readonly Verdict[], BuildInvalid, CheckServices> {
   const build = yield* loadBuild(options);
-  const cues = yield* cueTiming(build);
+  const effects = yield* effectTiming(build);
   const subtitle = yield* subtitles(build);
   const [notes, fragments] = yield* deckVerdicts(build);
   const source = yield* oneSource(build);
@@ -33,7 +33,7 @@ export const runChecks = Effect.fn("runChecks")(function* run(
   const container = yield* chapters(build);
 
   return [
-    cues,
+    effects,
     subtitle,
     notes,
     fragments,

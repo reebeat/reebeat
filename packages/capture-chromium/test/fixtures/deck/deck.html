@@ -32,14 +32,13 @@ html, body { margin: 0; background: #101820; }
   <div class="el box" data-id="a" data-cell="tl">Box</div>
   <div class="el label hidden" data-id="b" data-cell="br">Later</div>
   <aside class="notes"><p>One two three four.</p></aside>
-  <span class="fragment cue" data-fragment-index="0" data-cue-id="sc1.l1.c1" data-cue-kind="next" data-cue-arg="" data-reveals="b"></span>
-  <span class="fragment cue" data-fragment-index="1" data-cue-id="sc1.l1.c2" data-cue-kind="sfx" data-cue-arg="pop" data-reveals=""></span>
+  <span class="fragment effect" data-fragment-index="0" data-effect-id="r1" data-effect-verb="show" data-target="b" data-sounds="pop"></span>
 </section>
 <section data-scene="sc2" data-chapter="ch1" data-auto-animate>
-  <div class="el box accent" data-id="a" data-cell="br">Box</div>
+  <div class="el accent" data-id="a" data-cell="br">Box</div>
   <div class="el label" data-id="d" data-cell="tl">Entering</div>
   <aside class="notes"><p>Five six seven.</p></aside>
-  <span class="fragment cue" data-fragment-index="0" data-cue-id="sc2.l1.c1" data-cue-kind="focus" data-cue-arg="a" data-reveals=""></span>
+  <span class="fragment effect" data-fragment-index="0" data-effect-id="f1" data-effect-verb="focus" data-target="a"></span>
 </section>
 <section data-scene="sc3" data-chapter="ch2" data-transition="none">
   <div class="el title" data-id="c" data-cell="mc">Done</div>
@@ -50,18 +49,19 @@ html, body { margin: 0; background: #101820; }
 <script>
 (() => {
   const sceneIds = [...document.querySelectorAll(".slides > section")].map((section) => section.dataset.scene);
-  const target = (cue) => cue.closest("section").querySelector('[data-id="' + cue.dataset.cueArg + '"]');
-  const revealed = (cue) => cue.closest("section").querySelector('[data-id="' + cue.dataset.reveals + '"]');
-  const apply = (cue) => {
-    const kind = cue.dataset.cueKind;
+  const target = (effect) => effect.closest("section").querySelector('[data-id="' + effect.dataset.target + '"]');
+  const apply = (effect) => {
+    const verb = effect.dataset.effectVerb;
 
-    if (kind === "next") {
-      revealed(cue).classList.replace("hidden", "shown");
-    } else if (kind === "focus") {
-      for (const previous of cue.closest("section").querySelectorAll(".focused")) previous.classList.remove("focused");
-      target(cue).classList.add("focused");
+    if (verb === "show") {
+      target(effect).classList.replace("hidden", "shown");
     } else {
-      new Audio("assets/sfx/" + cue.dataset.cueArg + ".wav").play().catch(() => undefined);
+      for (const previous of effect.closest("section").querySelectorAll(".focused")) previous.classList.remove("focused");
+      target(effect).classList.add("focused");
+    }
+
+    for (const name of (effect.dataset.sounds || "").split(" ")) {
+      if (name) new Audio("assets/sfx/" + name + ".wav").play().catch(() => undefined);
     }
   };
   const ready = Reveal.initialize({
@@ -71,7 +71,7 @@ html, body { margin: 0; background: #101820; }
   }).then(() => undefined);
 
   Reveal.on("fragmentshown", (event) => {
-    for (const fragment of event.fragments) if (fragment.classList.contains("cue")) apply(fragment);
+    for (const fragment of event.fragments) if (fragment.classList.contains("effect")) apply(fragment);
   });
   window.reebeatDeck = {
     sceneIds,

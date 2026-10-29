@@ -1,13 +1,14 @@
 // F15, the offline pipeline, and the capture lags measured on the real deck (moved here from the capture adapter,
 // which must not depend on the Renderer): the whole build of a small story runs with no model, `--speech silent
 // --aligner even`, on the real reveal.js deck, the real Chromium and the real ffmpeg, and `reebeat check` on its
-// output passes F1 (the next, focus and sfx Cues: the sounds are audible in an offline build), F2, F3, F4, F5, F7 and
-// F9. Only F8 compares narration audio that is silent by construction: its verdict says `N/A (silent stand-in)`,
-// which is only ever the case because the build's own manifest lists a stand-in narrator.
+// output passes F1 (the show and focus effects, every anchor in the picture, and the sounds, which are audible in an
+// offline build), F2, F3, F4, F5, F7 and F9. Only F8 compares narration audio that is silent by construction: its
+// verdict says `N/A (silent stand-in)`, which is only ever the case because the build's own manifest lists a stand-in
+// narrator.
 //
-// `lags.fountain` has the mechanics of the committed story: a default fade, a CUT, two AUTO-ANIMATEs and focus, next
-// and sfx Cues. F1 and F7 observe the first changed frame of every Cue step and of every scene change within a frame
-// of the Timeline, which is the measurement the capture lags were chosen by.
+// `lags.fountain` has the mechanics of the committed story: a default fade, a CUT, two AUTO-ANIMATEs and focus, show
+// and sound effects. F1 and F7 observe the first changed frame of every step, of every anchor in the picture and of every
+// scene change within a frame of the Timeline, which is the measurement the capture lags were chosen by.
 import { assert, layer } from "@effect/vitest";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
 import { MediaTools } from "@reebeat/encode-ffmpeg";
@@ -88,7 +89,8 @@ layer(platform)("the offline pipeline (F15)", (it) => {
           checked.stdout
         );
         assert.include(checked.stdout, "N/A (silent stand-in)");
-        assert.include(checked.stdout, "sfx offset (frames)");
+        assert.include(checked.stdout, "sound onset");
+        assert.notInclude(checked.stdout, "sound N/A");
         assert.include(checked.stdout, "not applicable: F8");
       }),
     { timeout: 600_000 }

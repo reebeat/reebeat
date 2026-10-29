@@ -1,7 +1,12 @@
 // What every check reads: the written files of a build directory and the source, loaded once. Nothing here comes
 // from the pipeline that wrote them; the Plan is rebuilt from the source with the core's `buildPlan`.
 import { buildPlan, decodePlan, requireTimeline } from "@reebeat/core";
-import type { PlanError, PlanJson, TimedPlan } from "@reebeat/core";
+import type {
+  PlanError,
+  PlanJson,
+  RendererLifecycle,
+  TimedPlan,
+} from "@reebeat/core";
 import { decodeBuildManifest, sha256Hex } from "@reebeat/pipeline";
 import type { BuildManifest } from "@reebeat/pipeline";
 import {
@@ -42,6 +47,8 @@ export interface Build {
   /** The speech cache directory: `audio.file` of every Line is relative to it. */
   readonly cacheDir: string;
   readonly deckHtml: string;
+  /** The lifecycle the Renderer declared (from `build.json`): how long its events may take. */
+  readonly lifecycle: RendererLifecycle;
   readonly manifest: BuildManifest;
   /** The path of `<name>.mp4`. */
   readonly mp4: string;
@@ -106,6 +113,31 @@ const readText = (fs: FileSystem.FileSystem, path: string, what: string) =>
 // A byte-order mark stays in the text, as in the CLI's read, so the hash of the bytes is the hash of the string.
 const utf8 = new TextDecoder("utf-8", { ignoreBOM: true });
 
+/** The lifecycle the build's Renderer declared, which its Timeline was resolved against (`build.json` keeps it). */
+const rendererLifecycleOf = (
+  manifest: BuildManifest,
+  manifestPath: string
+): Effect.Effect<RendererLifecycle, BuildInvalid> =>
+  Effect.fromOption(
+    Option.flatMap(
+      Arr.findFirst(
+        manifest.adapters,
+        (adapter) => adapter.service === "Renderer"
+      ),
+      (adapter) => Option.fromNullishOr(adapter.lifecycle)
+    )
+  ).pipe(
+    Effect.mapError(
+      () =>
+        new BuildInvalid({
+          cause: undefined,
+          message:
+            "build.json lists no lifecycle for the Renderer: the events cannot be looked for where it declared them",
+          path: manifestPath,
+        })
+    )
+  );
+
 /** Loads the build directory and the source; fails with `BuildInvalid` when the directory cannot be checked. */
 export const loadBuild = Effect.fn("loadBuild")(function* load(
   options: CheckOptions
@@ -169,11 +201,14 @@ export const loadBuild = Effect.fn("loadBuild")(function* load(
   const text = utf8.decode(bytes);
   const rebuilt = yield* Effect.result(buildPlan(text, sha256));
 
+  const lifecycle = yield* rendererLifecycleOf(manifest, manifestPath);
+
   return {
     buildDir,
     cacheDir:
       options.cacheDir ?? path.join(path.dirname(sourcePath), "speech-cache"),
     deckHtml,
+    lifecycle,
     manifest,
     mp4,
     plan,

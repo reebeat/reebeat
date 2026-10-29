@@ -1,6 +1,7 @@
 // What the build program's tests run on: the stand-ins of the services, a fake Renderer, a fake FrameCapturer and a
 // fake Encoder that records what `mux` was asked and writes a placeholder file. No model, browser or binary: the
 // tests prove what the program does with the services, not what an adapter does (the contract suites do that).
+import type { RendererLifecycle } from "@reebeat/core";
 import {
   CaptureError,
   Encoder,
@@ -16,6 +17,7 @@ import type {
   SpeechSynthesizer,
   WordAligner,
 } from "@reebeat/services";
+import { contractLifecycle } from "@reebeat/services/contract";
 import {
   evenAligner,
   memoryCache,
@@ -42,7 +44,7 @@ const localInfo = (id: string): AdapterInfo => ({
   settings: {},
 });
 
-/** A story of two Sections, a CUT and an AUTO-ANIMATE, with a `next`, a `focus` and an `sfx`. */
+/** A story of two Sections and an AUTO-ANIMATE, with a `show`, a `focus` and a `sound`. */
 export const storyText = Arr.join(
   [
     "Title: Build",
@@ -50,24 +52,33 @@ export const storyText = Arr.join(
     "",
     "# One",
     "",
-    "INT. ONE",
+    "INT. ONE #sc1#",
     "",
-    "Box {#a @mc .box}",
-    "Later {#b @bc .label hidden}",
+    "Box {id=a cell=mc class=box}",
+    "Later {id=b cell=bc class=label visible=false}",
+    "",
+    "[[effects",
+    '  r1: show b at word("three").end',
+    '  p1: sound pop at word("five").end',
+    "]]",
     "",
     "NARRATOR",
-    "One two three. [[next]] Four five. [[sfx: pop]]",
+    "One two three. Four five.",
     "",
     "# Two",
     "",
     "> AUTO-ANIMATE",
     "",
-    "INT. TWO",
+    "INT. TWO #sc2#",
     "",
-    "Box {#a @tl .box}",
+    "Box {id=a cell=tl class=box}",
+    "",
+    "[[effects",
+    '  f1: focus a at word("seven").end',
+    "]]",
     "",
     "NARRATOR",
-    "Six seven. [[focus: a]] Eight.",
+    "Six seven. Eight.",
     "",
   ],
   "\n"
@@ -75,12 +86,13 @@ export const storyText = Arr.join(
 
 /** A Renderer that writes two files: the page and one binary asset in a subdirectory. */
 export const fakeRenderer = (
-  adapter: AdapterInfo = localInfo("fake-renderer@1-standin")
+  adapter: AdapterInfo = localInfo("fake-renderer@1-standin"),
+  lifecycle: RendererLifecycle = contractLifecycle
 ) =>
   Layer.succeed(
     Renderer,
     Renderer.of({
-      info: adapter,
+      info: { ...adapter, lifecycle },
       render: (plan) =>
         Effect.succeed({
           entry: "deck.html",

@@ -11,6 +11,7 @@ bun run reebeat plan    <story> [--json] [--timing] [--cache-dir <dir>] [selecti
 bun run reebeat build   <story> --out <dir> [--cache-dir <dir>] [--refresh-speech] [--name <n>] [--capture-timeout <s>] [selection flags]
 bun run reebeat check   <dir> --source <story> [--cache-dir <dir>] [selection flags]
 bun run reebeat journey <story> [--out-root <dir>] [--cache-dir <dir>] [--refresh-speech] [selection flags]
+bun run reebeat lint    <story> [--cache-dir <dir>] [selection flags]
 bun run journey         # reebeat journey stories/same-id/story.fountain: build, check, build again, compare the two builds (F6)
 ```
 
@@ -20,10 +21,11 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 
 | Command | What it does |
 | --- | --- |
-| `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan, so it shows frames |
+| `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan against the `lifecycle` the selected Renderer declares, so it shows each effect's intent and resolved frame |
 | `build` | `buildProgram` on the selected adapters, then the summary: files, frames, sizes, and every adapter with its egress |
 | `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@reebeat/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
 | `journey` | build, `check`, build again, F6 compare; the first failure stops it |
+| `lint` | `collectErrors` (every problem of the screenplay, in document order, each `file:line: error Tag: message` with what was found, what was expected and the nearest valid form), then `lintPlan` (the absolute times, listed with their reasons as `info`). When the story's speech cache exists under the selected adapters (`--cache-dir` and the selection flags say which) it also schedules the Plan, so an effect outside its Scene is an error with its line; without the cache that is **not checked**: `plan --timing` or `build` finds it, not `lint`, and the last output line says which happened. Needs no browser; exits 1 when anything is an error |
 
 ## Selection
 
@@ -63,7 +65,7 @@ seconds (default: 120 plus 0.2 per frame; it does not change a frame, so it is n
 <out>/plan.json   <out>/deck.html   <out>/assets/**   <out>/<name>.mp4   <out>/<name>.vtt   <out>/build.json
 ```
 
-`assets/sfx/<name>.wav` holds only the sounds the Plan's Cues play; the speech cache's FLACs are **not** part of a build.
+`assets/sfx/<name>.wav` holds only the sounds the Plan's effects play; the speech cache's FLACs are **not** part of a build.
 `build.json` (schema 2, `@reebeat/pipeline`) lists every other file, the hash of the `.fountain` bytes, the adapters with
 egress and settings, and the provenance of each cache asset used. It is written last. Failure is loud (F12): the build
 writes into `<out>.partial`, and any failure leaves no directory that `check` accepts (see the pipeline README).
@@ -92,7 +94,7 @@ and a real ffmpeg, with the offline stand-ins for narration; Chromium and the ve
 | `build.test.ts` | the files, the manifest (adapters, egress, provenance) and the frame count of a finished build; the cache directory; the config file and a flag over it; the F12 controls (a miss, a failing capture, a refused output directory): no `<out>` and no `<out>.partial` |
 | `selection.test.ts` | F14: an unknown value or key is `UnknownSelection` naming the choices, from a flag or the file, in every command; a missing model or credential is `AdapterUnavailable` or `SpeechCacheMiss` and no stand-in output replaces it |
 | `provider.test.ts` | F16: a test-only hosted adapter that needs `FAKE_PROVIDER_KEY`: without it nothing is written; with a canary as the key the build succeeds, lists the egress, and the canary is in no file, key, manifest, plan or output; controls that the search finds a leak and that a secret-named setting is refused |
-| `offline.test.ts` | F15: the whole build with `--speech silent --aligner even` on the real deck, Chromium and ffmpeg, then `check`: F1 (next, focus and the audible sfx), F2, F3, F4, F5, F7, F9 pass and only F8 says `N/A (silent stand-in)`; also the capture lags on a small deck (`lags.fountain`), moved here from the capture adapter |
+| `offline.test.ts` | F15: the whole build with `--speech silent --aligner even` on the real deck, Chromium and ffmpeg, then `check`: F1 (show, focus and the audible sounds), F2, F3, F4, F5, F7, F9 pass and only F8 says `N/A (silent stand-in)`; also the capture lags on a small deck (`lags.fountain`), moved here from the capture adapter |
 | `check.test.ts` | `check` refuses a directory without a valid `build.json`; verdict rows; `N/A`; exit code |
 | `journey.test.ts` | build, check, build, compare in order; the first failure stops the journey |
 | `cli.test.ts` | help, version, usage errors exit non-zero and run nothing |

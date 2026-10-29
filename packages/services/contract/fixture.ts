@@ -1,11 +1,12 @@
 // The Plan the Renderer and FrameCapturer contracts use unless an adapter supplies its own: one Scene, two Elements,
 // one Line, with a Timeline so that a capturer knows its frame count. Built by the core's own `buildPlan` and
 // `schedule`, so it is a valid Plan by construction.
-import { buildPlan, schedule } from "@reebeat/core";
+import { buildPlan, referenceLifecycle, schedule } from "@reebeat/core";
 import type {
   AlignedLine,
   PlanError,
   PlanJson,
+  RendererLifecycle,
   ScheduleError,
 } from "@reebeat/core";
 import { Array as Arr, Effect, String as Str } from "effect";
@@ -16,11 +17,10 @@ const source = Arr.join(
     "",
     "# Part",
     "",
-    "INT. ONE",
+    "INT. ONE #sc1#",
     "",
-    "Ruler {#ruler}",
-    "",
-    "Ticket {#ticket}",
+    "Ruler {id=ruler cell=ml class=box}",
+    "Ticket {id=ticket cell=mr class=box}",
     "",
     "NARRATOR",
     "Names are cheap, friend.",
@@ -34,8 +34,8 @@ const digest = Str.repeat(32)("c0");
 
 const wordMs = 400;
 
-/** The aligned Line of `plan`'s Line: every word `wordMs` long, so the Timeline has integer frames. */
-const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
+/** The aligned Lines of `plan`: every word `wordMs` long, ending 50 ms before the next, so the Timeline has integer frames. */
+export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.map(scene.lines, (line) => ({
       audio: { file: `${digest}.flac`, sha256: digest },
@@ -49,9 +49,12 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
+/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@reebeat/core`'s reference one. */
+export const contractLifecycle: RendererLifecycle = referenceLifecycle;
+
 /** The contract Plan, with its Timeline. */
 export const contractPlan = Effect.flatMap(buildPlan(source, digest), (plan) =>
-  schedule(plan, alignedLines(plan))
+  schedule(plan, alignedLines(plan), contractLifecycle)
 );
 
 export interface PlanOptions {

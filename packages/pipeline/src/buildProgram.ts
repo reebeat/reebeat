@@ -2,9 +2,9 @@
 // over the seven services only. No model, browser, binary or directory is named here; the composition root chooses
 // the adapters.
 //
-//   story -> hash -> Plan -> speechStage -> schedule -> plan.json, Renderer.render -> deck, SoundLibrary -> sounds
-//         -> FrameCapturer.capture -> Encoder.mux (narration at each Line's start, sounds at each sfx Cue's fire
-//            frame, WebVTT, chapters, title and source hash) -> build.json
+//   story -> hash -> Plan -> speechStage -> schedule (with the Renderer's lifecycle) -> plan.json, Renderer.render ->
+//         deck, SoundLibrary -> sounds -> FrameCapturer.capture -> Encoder.mux (narration at each Line's start, sounds
+//         at each `sound` effect's fire frame, WebVTT, chapters, title and source hash) -> build.json
 //
 // Everything is written into `<out>.partial` and moved to `<out>` in one rename after `build.json`, the last file,
 // is in. Any failure, or an interrupt, removes `<out>.partial`; an earlier build at `<out>` is removed before the
@@ -126,12 +126,19 @@ const selectedAdapters = Effect.fnUntraced(function* selectedAdapters() {
     { discard: true }
   );
 
-  return Arr.map(infos, ([service, info]): AdapterRecord => ({
-    egress: info.egress,
-    id: info.id,
-    service,
-    settings: info.settings,
-  }));
+  return Arr.map(infos, ([service, info]): AdapterRecord => {
+    const record = {
+      egress: info.egress,
+      id: info.id,
+      service,
+      settings: info.settings,
+    };
+
+    // The Renderer's record also keeps the lifecycle its Timeline was resolved against.
+    return "lifecycle" in info
+      ? { ...record, lifecycle: info.lifecycle }
+      : record;
+  });
 });
 
 /** The provenance of every cache asset the Lines of the Plan use, one per distinct key, sorted by key. */
@@ -166,7 +173,10 @@ const scheduledPlan = Effect.fnUntraced(function* scheduledPlan(
   const plan = yield* buildPlan(source.text, source.sha256);
 
   const aligned = yield* speechStage(plan, { refresh: options.refreshSpeech });
-  const scheduled = yield* schedule(plan, aligned);
+
+  // The effects resolve against the renderer's own declaration of its slide change.
+  const { lifecycle } = (yield* Renderer).info;
+  const scheduled = yield* schedule(plan, aligned, lifecycle);
 
   return {
     scheduled,

@@ -1,6 +1,11 @@
 // A scheduled Plan built by the real core: three Lines of 500 ms a word, so every frame is a whole number and the
 // expected timestamps can be worked out by hand (a Line starts `sceneLead` = 1 s after its slide frame).
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
+import {
+  buildPlan,
+  referenceLifecycle,
+  requireTimeline,
+  schedule,
+} from "@reebeat/core";
 import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
@@ -10,23 +15,23 @@ const source = Arr.join(
     "",
     "# Part",
     "",
-    "INT. ONE",
+    "INT. ONE #sc1#",
     "",
-    "Box {#a @tl .box}",
+    "Box {id=a cell=tl class=box}",
     "",
     "NARRATOR",
     "One two three four.",
     "",
-    "INT. TWO",
+    "INT. TWO #sc2#",
     "",
-    "Box {#a @br .box}",
+    "Box {id=a cell=br class=box}",
     "",
     "NARRATOR",
     "Five six seven.",
     "",
-    "INT. THREE",
+    "INT. THREE #sc3#",
     "",
-    "Done {#c @mc .title}",
+    "Done {id=c cell=mc class=title}",
     "",
     "NARRATOR",
     "Done.",
@@ -62,7 +67,9 @@ export const timed = Effect.gen(function* timedPlan() {
   const plan = yield* buildPlan(source, hash);
 
   return yield* Effect.fromResult(
-    requireTimeline(yield* schedule(plan, alignedLines(plan)))
+    requireTimeline(
+      yield* schedule(plan, alignedLines(plan), referenceLifecycle)
+    )
   );
 });
 

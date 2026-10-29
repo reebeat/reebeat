@@ -1,7 +1,7 @@
 // The schedule: aligned word times in, a Timeline of integer frames out (spec 0001, "Time" and "The Plan
-// contract"). All arithmetic is integer frames at `settings.fps`; a duration in seconds or milliseconds becomes
-// frames with `Math.round` (halves round up), and every later frame is an integer sum of those, so no rounding
-// error accumulates:
+// contract"; spec 0002 for the effects). All arithmetic is integer frames at `settings.fps`; a duration in seconds or
+// milliseconds becomes frames with `Math.round` (halves round up), and every later frame is an integer sum of those,
+// so no rounding error accumulates:
 //
 //   first Line start  = slideFrame + round(fps * (sceneLead + pauseBefore))
 //   later Line start  = previous Line end + round(fps * (lineGap + pauseBefore))
@@ -9,15 +9,13 @@
 //   word frame        = Line start + round(fps * wordMs / 1000)
 //   Scene end         = last Line end + round(fps * sceneTail)
 //   next slideFrame   = this Scene end; totalFrames = last Scene end
-//   Cue fireFrame     = Line start + round(fps * word.endMs / 1000); the Line start for afterWord = -1; the Scene's
-//                       slideFrame for a Cue anchored to the transition start (an sfx before the first word of a
-//                       Scene's first Line)
-//   Cue commandFrame  = fireFrame - 1 for next and focus, fireFrame for sfx
+//   effect frames     = `resolveEffects` (`resolve.ts`): anchor frame plus offset, from the words, the slideFrame and
+//                       the renderer's `RendererLifecycle`
 import { Array as Arr, Effect, Option, Result, Schema } from "effect";
 
 import {
   AlignmentMismatch,
-  CueOutsideLine,
+  LifecycleMismatch,
   SceneLeadTooShort,
 } from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
@@ -25,13 +23,14 @@ import { AudioFileSchema } from "./plan.ts";
 import type {
   Line,
   PlanJson,
+  RendererLifecycle,
   Scene,
   Settings,
-  TimedCue,
   TimedLine,
   TimedScene,
   Timeline,
 } from "./plan.ts";
+import { resolveEffects } from "./resolve.ts";
 
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 
@@ -83,24 +82,12 @@ const checkLine = (
     (word, index) => word !== spoken[index]
   );
 
-  if (Option.isSome(differs)) {
-    return mismatch(
-      line,
-      `Line ${line.id} word ${differs.value + 1} is "${line.words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
-    );
-  }
-
-  const stray = Arr.findFirst(
-    line.cues,
-    (cue) => cue.afterWord < -1 || cue.afterWord >= line.words.length
-  );
-
-  return Option.isNone(stray)
-    ? undefined
-    : new CueOutsideLine({
-        cueId: stray.value.id,
-        message: `Cue ${stray.value.id} follows word ${stray.value.afterWord} but Line ${line.id} has ${line.words.length} words`,
-      });
+  return Option.isSome(differs)
+    ? mismatch(
+        line,
+        `Line ${line.id} word ${differs.value + 1} is "${line.words[differs.value]}" but its alignment has "${spoken[differs.value]}"`
+      )
+    : undefined;
 };
 
 /** A Plan Line with its aligned data. */
@@ -132,38 +119,12 @@ const pairScene = (
   return Result.succeed(paired);
 };
 
-const timeCues = (
-  { aligned, line }: Paired,
-  startFrame: number,
-  slideFrame: number,
-  settings: Settings
-): readonly TimedCue[] =>
-  Arr.map(line.cues, (cue) => {
-    const word = aligned.words[cue.afterWord];
-
-    const wordFrame =
-      word === undefined
-        ? startFrame
-        : startFrame + millisecondsToFrames(settings, word.endMs);
-
-    const fireFrame =
-      cue.anchor === "transition-start" ? slideFrame : wordFrame;
-
-    return {
-      commandFrame: cue.kind === "sfx" ? fireFrame : fireFrame - 1,
-      cueId: cue.id,
-      fireFrame,
-    };
-  });
-
 const timeLine = (
   pair: Paired,
   startFrame: number,
-  slideFrame: number,
   settings: Settings
 ): TimedLine => ({
   audio: pair.aligned.audio,
-  cues: timeCues(pair, startFrame, slideFrame, settings),
   endFrame:
     startFrame + millisecondsToFrames(settings, pair.aligned.durationMs),
   lineId: pair.line.id,
@@ -178,11 +139,12 @@ const timeLine = (
 });
 
 const timeScene = (
-  sceneId: string,
+  scene: Scene,
   pairs: readonly Paired[],
   slideFrame: number,
-  settings: Settings
-): TimedScene => {
+  settings: Settings,
+  lifecycle: RendererLifecycle
+): Result.Result<TimedScene, ScheduleError> => {
   const lines: TimedLine[] = [];
   let cursor = slideFrame;
 
@@ -192,18 +154,24 @@ const timeScene = (
     const startFrame =
       cursor + secondsToFrames(settings, gap + pair.line.hints.pauseBefore);
 
-    const timed = timeLine(pair, startFrame, slideFrame, settings);
+    const timed = timeLine(pair, startFrame, settings);
 
     lines.push(timed);
     cursor = timed.endFrame;
   }
 
-  return {
-    endFrame: cursor + secondsToFrames(settings, settings.sceneTail),
-    lines,
-    sceneId,
-    slideFrame,
-  };
+  const endFrame = cursor + secondsToFrames(settings, settings.sceneTail);
+
+  return Result.map(
+    resolveEffects(scene, { endFrame, lines, slideFrame }, settings, lifecycle),
+    (effects): TimedScene => ({
+      effects,
+      endFrame,
+      lines,
+      sceneId: scene.id,
+      slideFrame,
+    })
+  );
 };
 
 const sceneLeadError = (settings: Settings): SceneLeadTooShort =>
@@ -213,13 +181,34 @@ const sceneLeadError = (settings: Settings): SceneLeadTooShort =>
     transition: settings.transition,
   });
 
+/** The first reason the Plan and the renderer's declared lifecycle cannot be scheduled together, or undefined. */
+const checkLifecycle = (
+  settings: Settings,
+  lifecycle: RendererLifecycle
+): ScheduleError | undefined => {
+  if (settings.sceneLead < settings.transition) {
+    return sceneLeadError(settings);
+  }
+
+  const declared = lifecycle.transitionMs["auto-animate"];
+
+  return declared === Math.round(settings.transition * 1000)
+    ? undefined
+    : new LifecycleMismatch({
+        message: `the renderer declares an Auto-Animate of ${declared} ms but settings.transition is ${settings.transition} s: the Plan's transition is the renderer's instruction`,
+      });
+};
+
 /** The Timeline of a Plan, or the first reason it cannot be scheduled. */
 const timelineOf = (
   plan: PlanJson,
-  alignedLines: readonly AlignedLine[]
+  alignedLines: readonly AlignedLine[],
+  lifecycle: RendererLifecycle
 ): Result.Result<Timeline, ScheduleError> => {
-  if (plan.settings.sceneLead < plan.settings.transition) {
-    return Result.fail(sceneLeadError(plan.settings));
+  const refused = checkLifecycle(plan.settings, lifecycle);
+
+  if (refused !== undefined) {
+    return Result.fail(refused);
   }
 
   const aligned = new Map(Arr.map(alignedLines, (line) => [line.lineId, line]));
@@ -249,10 +238,20 @@ const timelineOf = (
       return Result.fail(pairs.failure);
     }
 
-    const timed = timeScene(scene.id, pairs.success, slideFrame, plan.settings);
+    const timed = timeScene(
+      scene,
+      pairs.success,
+      slideFrame,
+      plan.settings,
+      lifecycle
+    );
 
-    scenes.push(timed);
-    slideFrame = timed.endFrame;
+    if (Result.isFailure(timed)) {
+      return Result.fail(timed.failure);
+    }
+
+    scenes.push(timed.success);
+    slideFrame = timed.success.endFrame;
   }
 
   return Result.succeed({
@@ -273,17 +272,25 @@ const timelineOf = (
 };
 
 /**
- * Adds the `timeline` to a Plan from the aligned Lines. Fails with `SceneLeadTooShort` when `sceneLead` is below
- * `transition`, with `AlignmentMismatch` when a Line's aligned words differ from its words (or a Line is
- * missing, or an aligned Line is not in the Plan), and with `CueOutsideLine` when a Cue follows a word the
- * Line does not have.
+ * Adds the `timeline` to a Plan from the aligned Lines and the renderer's declared lifecycle. Fails with
+ * `SceneLeadTooShort` when `sceneLead` is below `transition`, with `LifecycleMismatch` when the renderer's Auto-Animate
+ * is not the Plan's transition, with `AlignmentMismatch` when a Line's aligned words differ from its words (or a Line
+ * is missing, or an aligned Line is not in the Plan), and with `EffectOutsideScene`, `EmptyWindow` or
+ * `UnresolvedAnchor` (naming the effect) when an effect cannot be placed.
  */
 export const schedule = Effect.fn("schedule")(
-  (plan: PlanJson, aligned: readonly AlignedLine[]) =>
+  (
+    plan: PlanJson,
+    aligned: readonly AlignedLine[],
+    lifecycle: RendererLifecycle
+  ) =>
     Effect.fromResult(
-      Result.map(timelineOf(plan, aligned), (timeline): PlanJson => ({
-        ...plan,
-        timeline,
-      }))
+      Result.map(
+        timelineOf(plan, aligned, lifecycle),
+        (timeline): PlanJson => ({
+          ...plan,
+          timeline,
+        })
+      )
     )
 );

@@ -9,7 +9,9 @@ import { Array as Arr, Match, Option, Result, Schema } from "effect";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import {
+  anchorFormsText,
   didYouMean,
+  lineForm,
   oneOf,
   problem,
   reservedIds,
@@ -50,14 +52,8 @@ const offsetPattern =
 
 const percentPattern = /^(?<value>\d+(?:\.\d+)?)%$/u;
 
-/** The form of a whole line, as every message of the line grammar quotes it. */
-export const lineForm = "<id>: <verb> <argument> at <when>";
-
 const bad = (line: number, message: string): PlanError =>
   planError("BadEffect", line, message);
-
-const anchorForms =
-  'word("<phrase>"[, <n>]).start|end, scene.start|end, transition.start|end|<N>%, <element>.enter|exit|move|update.start|end|<N>%, or <effect>.start|end';
 
 const collapse = (text: string): string => text.replaceAll(/\s+/gu, " ").trim();
 
@@ -226,7 +222,7 @@ const pathAnchor = (
         kind: "effect",
       }))
     : Result.fail(
-        bad(line, problem(`"${text}" is not an anchor`, anchorForms))
+        bad(line, problem(`"${text}" is not an anchor`, anchorFormsText))
       );
 };
 
@@ -374,7 +370,7 @@ export const parseWhen = (
           offsets[0] === undefined ? { anchor } : { anchor, offset: offsets[0] }
         ),
         (failure) =>
-          bad(line, problem(`"${text}": ${failure.message}`, anchorForms))
+          bad(line, problem(`"${text}": ${failure.message}`, anchorFormsText))
       )
     )
   );

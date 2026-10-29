@@ -168,6 +168,7 @@ const decodeManifest = Schema.decodeUnknownEffect(
   Schema.fromJsonString(Manifest)
 );
 
+/** Directories that hold no package source: dependencies, tests, live suites, fixtures, build output, git. */
 const ignoredDirectories: readonly string[] = [
   "node_modules",
   "test",
@@ -177,44 +178,30 @@ const ignoredDirectories: readonly string[] = [
   ".git",
 ];
 
-const sourcePattern = /\.[cm]?tsx?$/u;
-
 type Failure = PlatformError.PlatformError | Schema.SchemaError;
 
-/** The source files of a package directory (relative paths), without dependencies, tests and fixtures. */
-const sourceFiles = (
+/** The source files of a package directory (full paths), without dependencies, tests, fixtures and `.d.ts` files. */
+const sourceFiles = Effect.fnUntraced(function* sourceFiles(
   directory: string
-): Effect.Effect<
+): Effect.fn.Return<
   readonly string[],
   PlatformError.PlatformError,
   FileSystem.FileSystem | Path.Path
-> =>
-  Effect.gen(function* walk() {
-    const fs = yield* FileSystem.FileSystem;
-    const path = yield* Path.Path;
-    const names = Arr.sort(yield* fs.readDirectory(directory), Order.String);
+> {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
 
-    const found = yield* Effect.forEach(names, (name) =>
-      Effect.gen(function* entry() {
-        const full = path.join(directory, name);
-        const info = yield* fs.stat(full);
-
-        if (info.type === "Directory") {
-          return Arr.contains(ignoredDirectories, name)
-            ? []
-            : yield* sourceFiles(full);
-        }
-
-        return info.type === "File" &&
-          sourcePattern.test(name) &&
-          !name.endsWith(".d.ts")
-          ? [full]
-          : [];
-      })
-    );
-
-    return Arr.flatten(found);
+  const found = yield* fs.glob("**/*.{ts,tsx,mts,cts}", {
+    dot: true,
+    exclude: [
+      "**/*.d.ts",
+      ...Arr.map(ignoredDirectories, (name) => `**/${name}`),
+    ],
+    root: directory,
   });
+
+  return Arr.map(found, (file) => path.join(directory, file));
+});
 
 /**
  * The package directory a specifier from `file` (relative to `packages/`) reaches: a workspace specifier names it,

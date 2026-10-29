@@ -79,7 +79,7 @@ The Kokoro card says the model was trained on permissive and non-copyrighted aud
 
 ## Provenance of copied code
 
-The lifecycle tooling comes from the author's other repository, [`phibkro/vektorprogrammet-reimagined`](https://github.com/phibkro/vektorprogrammet-reimagined) (see [`PROVENANCE.md`](../../PROVENANCE.md)). That repository carries no licence file (GitHub reports none), so its code is under its owners' default copyright. Its owner account is the one that authored every commit of this repository; if the donor has other contributors, their files need their consent before they stay under Apache-2.0. Open, for the operator.
+The lifecycle tooling comes from the operator's other repository, [`phibkro/vektorprogrammet-reimagined`](https://github.com/phibkro/vektorprogrammet-reimagined) (see [`PROVENANCE.md`](../../PROVENANCE.md)). That repository carries no licence file (GitHub reports none), so its code is under its owner's default copyright. GitHub's contributors API with `?anon=1` lists the owner (81 contributions) and one anonymous identity, `vektorprogrammet modernization` (3 commits: 8c17cf0, d272a59, 4a12578). The operator confirmed on 2026-10-29 that his agents made those three commits for him, so all of the donor is his work and may be relicensed here under Apache-2.0. Closed in the spec's Revisions.
 
 ## The gate
 

@@ -53,7 +53,7 @@ The GLOSSARY and STATE do not mention the licence and are unchanged.
 ## Open questions for the operator
 
 1. **Copyright holder.** Closed 2026-10-29: Philip Bjørknes Krogh, see Revisions.
-2. **The donor repository.** Closed 2026-10-29: `phibkro/vektorprogrammet-reimagined` has no licence file and one contributor, phibkro (81 contributions, `gh api repos/phibkro/vektorprogrammet-reimagined/contributors`), the same person as this repository's author. No other contributor's consent is needed.
+2. **The donor repository.** Closed 2026-10-29, see the second round-2 entry in Revisions: one human contributor plus three commits by an agent identity, all the operator's work.
 3. The open items of the open-core note: the licence, visibility and contribution terms of `reebeat/studio`, the tool protocol, plugin extension points beyond adapters, a gate for experimental types in the public API, and DCO enforcement.
 
 ## Revisions
@@ -64,4 +64,7 @@ The GLOSSARY and STATE do not mention the licence and are unchanged.
   - `reebeat/studio`, the first product's repository, is **public with no licence** (`gh api repos/reebeat/studio`: `visibility: public`, `license: null`, created 2026-10-29 14:01Z, after this spec was written). This supersedes "separate private repositories" in the Goal and "a separate private repository" in the first version of the note: the products are closed source in separate repositories, and whether `reebeat/studio` stays public, its licence and its contribution terms are open. The "no contributor licence agreement" statement of the entry above holds for this Apache-2.0 repository only.
   - Only the operator's decisions are marked decided in `open-core-boundary.md`: the compiler and formats are open, products are closed, a feature is paid when it costs money to run, bring-your-own agents, plugins and extensions with a modular design, pinned experimental dependencies with their types kept out of the public API. The plugin shape (an adapter Layer that passes `xContract`), open renderers and importers, an open tool protocol, closed billing and "the price of Apache-2.0 was accepted" are marked proposed.
   - The per-package list `docs/design/third-party-packages.md` and the counts table of `third-party.md` were hand-kept copies of `tools/quality/third-party-licences.json`; both are removed. The JSON file, tied to `bun.lock` by the gate, is the only list.
-  - The donor repository question is closed with its evidence (second open question).
+  - The donor repository question is closed with its evidence (second open question); round 2 corrects the evidence below.
+- **2026-10-29, review round 2.**
+  - `open-core-boundary.md`: of the three rules for experimental dependencies, "pinned exactly" and "types kept out of the public API" are decided; "behind an adapter" is marked proposed.
+  - **Donor repository, closed.** `phibkro/vektorprogrammet-reimagined` has no licence file. `gh api "repos/phibkro/vektorprogrammet-reimagined/contributors?anon=1"` lists phibkro (User, 81 contributions) and `vektorprogrammet modernization` (Anonymous, 3 contributions). The three are commits 8c17cf0, d272a59 and 4a12578, authored as `vektorprogrammet modernization <noreply@localhost>` (checked with `gh api repos/phibkro/vektorprogrammet-reimagined/commits/<sha>`). The operator confirmed on 2026-10-29 that his own agents made those commits for him, so they are his work and need no other consent. This supersedes the round 1 sentence "one contributor" (without `?anon=1` the API hides the anonymous identity).

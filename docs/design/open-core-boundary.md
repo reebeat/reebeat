@@ -49,11 +49,11 @@ Users can bring their own agents (through the tool protocol) and write plugins a
 
 ## Experimental dependencies stay behind adapters
 
-Decided 2026-10-29. The compiler may depend on experimental or alpha packages (XState v6 alpha, `@xstate/effect` alpha), because they are build-time assets. Three rules keep that safe:
+The compiler may depend on experimental or alpha packages (XState v6 alpha, `@xstate/effect` alpha), because they are build-time assets. The operator decided on 2026-10-29 that they are pinned exactly and that their types stay out of reebeat's public API; the third rule is a proposal. Three rules keep that safe:
 
-1. **Pinned exactly.** The version in `package.json` and the catalog has no range, so an alpha release cannot arrive by `bun install`.
-2. **Never in the public API.** A type from an experimental package does not appear in the signature, error, schema or codec of anything a plugin author or a product imports. The IR and the JSON Schema are reebeat's own.
-3. **Behind an adapter.** The experimental package is used inside one package that the rest of the code reaches through a reebeat-owned interface. A breaking alpha is then a change in one place and cannot reach plugin authors.
+1. **Pinned exactly.** Decided 2026-10-29. The version in `package.json` and the catalog has no range, so an alpha release cannot arrive by `bun install`.
+2. **Never in the public API.** Decided 2026-10-29. A type from an experimental package does not appear in the signature, error, schema or codec of anything a plugin author or a product imports. The IR and the JSON Schema are reebeat's own.
+3. **Behind an adapter.** Proposed (by the lead, not yet confirmed by the operator). The experimental package is used inside one package that the rest of the code reaches through a reebeat-owned interface. A breaking alpha is then a change in one place and cannot reach plugin authors.
 
 Whether to enforce rule 2 by a gate (for example, a test that scans the exported declarations for imports from a list of experimental packages) is **open**.
 

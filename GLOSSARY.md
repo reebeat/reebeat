@@ -189,7 +189,7 @@ _Avoid_ for any grouping: Epic (overloaded by agile backlogs and by journey mapp
 
 ## Extension points
 
-How third parties add to reebeat (a declarative, incremental FRP language for multimedia artifact generation: authors create, reebeat builds). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
+How third parties add to reebeat (semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
 
 **Contract**:
 The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@reebeat/contracts`; the service tags and the runner that executes the clauses stay in `@reebeat/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.

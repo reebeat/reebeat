@@ -2,13 +2,22 @@
 // real repository: every directory under `packages/` is in the table and no package depends against the direction.
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, FileSystem, Option, Path, Record } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  PlatformError,
+  Record,
+} from "effect";
 
 import {
   checkTiers,
   describeFinding,
   edgeViolation,
   importsOf,
+  sourceFiles,
   tierOf,
   tiers,
 } from "../tiers.ts";
@@ -20,34 +29,49 @@ interface Fixture {
   readonly source?: string;
 }
 
-/** Writes `packages/<name>` for each entry into a fresh temporary root (removed with the scope) and checks it. */
-const check = Effect.fn("check")(function* check(
-  packages: Readonly<Record<string, Fixture>>
+/** Files of a tree in a fresh temporary directory (removed with the scope): path relative to it, then the text. */
+const tree = Effect.fn("tree")(function* tree(
+  files: Readonly<Record<string, string>>
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const root = yield* fs.makeTempDirectoryScoped();
 
-  yield* Effect.forEach(Record.toEntries(packages), ([name, fixture]) =>
+  yield* Effect.forEach(Record.toEntries(files), ([name, text]) =>
     Effect.gen(function* write() {
-      const directory = path.join(root, "packages", name);
+      const file = path.join(root, name);
 
-      yield* fs.makeDirectory(path.join(directory, "src"), { recursive: true });
-      yield* fs.writeFileString(
-        path.join(directory, "package.json"),
-        `{"name":"@reebeat/${name}","dependencies":{${Arr.join(
-          Arr.map(
-            fixture.dependencies ?? [],
-            (dependency) => `"${dependency}":"workspace:*"`
-          ),
-          ","
-        )}}}`
-      );
-      yield* fs.writeFileString(
-        path.join(directory, "src", "index.ts"),
-        fixture.source ?? "export {};\n"
-      );
+      yield* fs.makeDirectory(path.dirname(file), { recursive: true });
+      yield* fs.writeFileString(file, text);
     })
+  );
+
+  return root;
+});
+
+/** Writes `packages/<name>` for each entry into a fresh temporary root (removed with the scope) and checks it. */
+const check = Effect.fn("check")(function* check(
+  packages: Readonly<Record<string, Fixture>>
+) {
+  const root = yield* tree(
+    Record.fromEntries(
+      Arr.flatMap(Record.toEntries(packages), ([name, fixture]) => [
+        [
+          `packages/${name}/package.json`,
+          `{"name":"@reebeat/${name}","dependencies":{${Arr.join(
+            Arr.map(
+              fixture.dependencies ?? [],
+              (dependency) => `"${dependency}":"workspace:*"`
+            ),
+            ","
+          )}}}`,
+        ] as const,
+        [
+          `packages/${name}/src/index.ts`,
+          fixture.source ?? "export {};\n",
+        ] as const,
+      ])
+    )
   );
 
   return yield* checkTiers(root);
@@ -302,6 +326,113 @@ describe("the repository", () => {
         );
 
         assert.deepStrictEqual(Arr.map(findings, describeFinding), []);
+      }).pipe(Effect.provide(platform))
+  );
+});
+
+describe("sourceFiles: what the gate reads, and what it refuses to skip", () => {
+  it.effect(
+    "lists TypeScript sources, dotfiles included, and nothing of dependencies, tests, live suites, fixtures, build output or declarations",
+    () =>
+      Effect.gen(function* listed() {
+        const path = yield* Path.Path;
+
+        const root = yield* tree({
+          ".git/g.ts": "",
+          "bin/run.ts": "",
+          "dist/o.ts": "",
+          "fixtures/f.ts": "",
+          "live/l.ts": "",
+          "node_modules/m/x.ts": "",
+          "src/.hidden.ts": "",
+          "src/a.ts": "",
+          "src/c.mts": "",
+          "src/d.cts": "",
+          "src/e.js": "",
+          "src/nested/b.tsx": "",
+          "src/nested/node_modules/n.ts": "",
+          "src/notes.md": "",
+          "src/test/deep.ts": "",
+          "src/types.d.ts": "",
+          "test/t.ts": "",
+        });
+
+        const listing = yield* sourceFiles(root);
+
+        assert.deepStrictEqual(
+          Arr.map(listing.files, (file) => path.relative(root, file)),
+          [
+            "bin/run.ts",
+            "src/.hidden.ts",
+            "src/a.ts",
+            "src/c.mts",
+            "src/d.cts",
+            "src/nested/b.tsx",
+          ]
+        );
+        assert.deepStrictEqual(listing.opaque, []);
+      }).pipe(Effect.provide(platform))
+  );
+
+  it.effect(
+    "negative control: a symbolic link under the sources is a finding, not followed and not skipped",
+    () =>
+      Effect.gen(function* linked() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+
+        const root = yield* tree({
+          "elsewhere/b.ts": import_("@reebeat/services"),
+          "packages/core/package.json": '{"name":"@reebeat/core"}',
+          "packages/core/src/index.ts": "export {};\n",
+        });
+
+        yield* fs.symlink(
+          path.join(root, "elsewhere"),
+          path.join(root, "packages", "core", "src", "linked")
+        );
+
+        assert.deepStrictEqual(
+          Arr.map(yield* checkTiers(root), describeFinding),
+          [
+            "@reebeat/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/linked at packages/core/src/linked",
+          ]
+        );
+      }).pipe(Effect.provide(platform))
+  );
+
+  it.effect(
+    "negative control: a directory that cannot be read fails the listing with the platform error",
+    () =>
+      Effect.gen(function* unreadable() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const root = yield* tree({ "src/a.ts": "", "src/locked/c.ts": "" });
+        const locked = path.join(root, "src", "locked");
+
+        const denying = FileSystem.FileSystem.of({
+          ...fs,
+          readDirectoryEntries: (directory) =>
+            directory === locked
+              ? Effect.fail(
+                  PlatformError.badArgument({
+                    description: "the directory cannot be read",
+                    method: "readDirectoryEntries",
+                    module: "FileSystem",
+                  })
+                )
+              : fs.readDirectoryEntries(directory),
+        });
+
+        const error = yield* Effect.flip(
+          Effect.provideService(
+            sourceFiles(root),
+            FileSystem.FileSystem,
+            denying
+          )
+        );
+
+        assert.strictEqual(error.reason._tag, "BadArgument");
       }).pipe(Effect.provide(platform))
   );
 });

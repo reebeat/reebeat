@@ -11,6 +11,8 @@ import {
   Path,
   Record,
   Schema,
+  String as Str,
+  pipe,
 } from "effect";
 import type { PlatformError } from "effect";
 import { parseSync } from "oxc-parser";
@@ -108,7 +110,7 @@ export interface Import {
 }
 
 const lineAt = (text: string, offset: number): number =>
-  text.slice(0, offset).split("\n").length;
+  pipe(text, Str.slice(0, offset), Str.split("\n")).length;
 
 /** Every module a source text imports, re-exports or imports dynamically, with its 1-based line. */
 export const importsOf = (text: string): readonly Import[] => {
@@ -123,7 +125,7 @@ export const importsOf = (text: string): readonly Import[] => {
     located(
       moduleRequest.start,
       /^["'](?<name>[^"']+)["']$/u.exec(
-        text.slice(moduleRequest.start, moduleRequest.end).trim()
+        pipe(text, Str.slice(moduleRequest.start, moduleRequest.end), Str.trim)
       )?.groups?.name ?? "<computed>"
     )
   );
@@ -147,8 +149,10 @@ const scope = "@reebeat/";
 
 /** The directory name a `@reebeat/<name>[/subpath]` specifier or dependency names, or none for anything else. */
 const workspaceTarget = (specifier: string): Option.Option<string> =>
-  specifier.startsWith(scope)
-    ? Option.fromNullishOr(specifier.slice(scope.length).split("/")[0])
+  Str.startsWith(scope)(specifier)
+    ? Option.fromNullishOr(
+        pipe(specifier, Str.slice(scope.length), Str.split("/"))[0]
+      )
     : Option.none();
 
 const Manifest = Schema.Struct({
@@ -180,27 +184,74 @@ const ignoredDirectories: readonly string[] = [
 
 type Failure = PlatformError.PlatformError | Schema.SchemaError;
 
-/** The source files of a package directory (full paths), without dependencies, tests, fixtures and `.d.ts` files. */
-const sourceFiles = Effect.fnUntraced(function* sourceFiles(
+const sourcePattern = /\.[cm]?tsx?$/u;
+
+/** What a package directory holds for the tier check. */
+export interface SourceListing {
+  /** The source files (full paths): TypeScript, without dependencies, tests, fixtures and `.d.ts` files. */
+  readonly files: readonly string[];
+  /** Entries the check cannot see through (a symbolic link, an entry of unknown type), as full paths. */
+  readonly opaque: readonly string[];
+}
+
+const noSources: SourceListing = { files: [], opaque: [] };
+
+const byName = Order.mapInput(
+  Order.String,
+  (entry: FileSystem.DirectoryEntry) => entry.name
+);
+
+/**
+ * The sources below a package directory. One `readDirectoryEntries` per directory gives each entry's type without a
+ * `stat`, so a symbolic link is seen as one and reported in `opaque` instead of being followed or skipped; a
+ * directory that cannot be read fails the listing. (`FileSystem.glob` was measured and rejected for this: it does
+ * not follow a link under `**` and skips an unreadable directory, both silently.)
+ */
+export const sourceFiles = Effect.fnUntraced(function* listSources(
   directory: string
 ): Effect.fn.Return<
-  readonly string[],
+  SourceListing,
   PlatformError.PlatformError,
   FileSystem.FileSystem | Path.Path
 > {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const entries = yield* fs.readDirectoryEntries(directory);
 
-  const found = yield* fs.glob("**/*.{ts,tsx,mts,cts}", {
-    dot: true,
-    exclude: [
-      "**/*.d.ts",
-      ...Arr.map(ignoredDirectories, (name) => `**/${name}`),
-    ],
-    root: directory,
-  });
+  const listings = yield* Effect.forEach(
+    Arr.sort(entries, byName),
+    ({
+      name,
+      type,
+    }): Effect.Effect<
+      SourceListing,
+      PlatformError.PlatformError,
+      FileSystem.FileSystem | Path.Path
+    > => {
+      const full = path.join(directory, name);
 
-  return Arr.map(found, (file) => path.join(directory, file));
+      if (type === "File") {
+        return Effect.succeed(
+          sourcePattern.test(name) && !Str.endsWith(".d.ts")(name)
+            ? { files: [full], opaque: [] }
+            : noSources
+        );
+      }
+
+      if (Arr.contains(ignoredDirectories, name)) {
+        return Effect.succeed(noSources);
+      }
+
+      return type === "Directory"
+        ? sourceFiles(full)
+        : Effect.succeed({ files: [], opaque: [full] });
+    }
+  );
+
+  return {
+    files: Arr.flatMap(listings, (listing) => listing.files),
+    opaque: Arr.flatMap(listings, (listing) => listing.opaque),
+  };
 });
 
 /**
@@ -212,12 +263,12 @@ const reachedPackage = (
   file: string,
   specifier: string
 ): Option.Option<string> => {
-  if (specifier.startsWith(".")) {
+  if (Str.startsWith(".")(specifier)) {
     const resolved = path.normalize(path.join(path.dirname(file), specifier));
 
-    return resolved.startsWith("..")
+    return Str.startsWith("..")(resolved)
       ? Option.some("<outside>")
-      : Option.fromNullishOr(resolved.split(path.sep)[0]);
+      : Option.fromNullishOr(Str.split(resolved, path.sep)[0]);
   }
 
   return workspaceTarget(specifier);
@@ -371,13 +422,34 @@ const packageFindings = Effect.fnUntraced(function* packageFindings(
     ];
   }
 
-  const files = yield* sourceFiles(path.join(root, "packages", dir));
+  const { files, opaque } = yield* sourceFiles(
+    path.join(root, "packages", dir)
+  );
+
+  const fromOpaque = Arr.map(opaque, (entry) => {
+    const shown = path.join(
+      "packages",
+      path.relative(path.join(root, "packages"), entry)
+    );
+
+    return finding(
+      checked,
+      shown,
+      shown,
+      undefined,
+      "cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow"
+    );
+  });
 
   const fromImports = yield* Effect.forEach(files, (file) =>
     importFindings(checked, file)
   );
 
-  return [...(yield* manifestFindings(checked)), ...Arr.flatten(fromImports)];
+  return [
+    ...(yield* manifestFindings(checked)),
+    ...fromOpaque,
+    ...Arr.flatten(fromImports),
+  ];
 });
 
 /**

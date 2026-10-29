@@ -13,11 +13,11 @@ import { licenceViolations } from "../thirdPartyLicences.ts";
 
 const read = (relative: string) =>
   Effect.gen(function* readText() {
-    const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
+    const file = yield* path.fromFileUrl(new URL(relative, import.meta.url));
 
-    return yield* fs.readFileString(
-      yield* path.fromFileUrl(new URL(relative, import.meta.url))
+    return yield* Effect.flatMap(FileSystem.FileSystem, (fs) =>
+      fs.readFileString(file)
     );
   });
 

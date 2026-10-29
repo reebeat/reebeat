@@ -1,8 +1,8 @@
 // Shared by the tests. This file is the tests' one runtime adapter: it reads the committed story and the package's
 // own files, and writes Decks to temporary directories, through the Node file system; the tests stay platform-free.
 import { NodeServices } from "@effect/platform-node";
-import { buildPlan } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
+import { buildPlan, schedule } from "@reebeat/core";
+import type { AlignedLine, PlanJson } from "@reebeat/core";
 import {
   Array as Arr,
   Effect,
@@ -17,6 +17,7 @@ import {
   assembleDeck,
   readAssets,
   renderDeck,
+  revealLifecycle,
   revealRenderer,
 } from "../src/index.ts";
 import type { DeckBundle } from "../src/index.ts";
@@ -61,6 +62,59 @@ export const readPackageText = (relative: string) =>
 
 /** The Plan of a screenplay text, with the fixture hash. */
 export const planOf = (source: string) => buildPlan(source, fixtureSha256);
+
+/** The digits of a cache file name; the tests never read the audio. */
+const digest = "c0".repeat(32);
+
+/** Every word of every Line spoken for 400 ms, ending 50 ms before the next one starts: the frames are whole. */
+const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
+  Arr.flatMap(plan.scenes, (scene) =>
+    Arr.map(scene.lines, (line) => ({
+      audio: { file: `${digest}.flac`, sha256: digest },
+      durationMs: 400 * line.words.length,
+      lineId: line.id,
+      words: Arr.map(line.words, (w, index) => ({
+        endMs: (index + 1) * 400 - 50,
+        startMs: index * 400,
+        w,
+      })),
+    }))
+  );
+
+/** Two steps and three sounds: one rides a step, one the slide, one is anchored to a word before any step. */
+export const carrySource = asText([
+  "# One",
+  "",
+  "INT. A - DAY #sc1#",
+  "",
+  "Alpha {id=a cell=ml class=box}",
+  "Beta {id=b cell=mr class=box visible=false}",
+  "",
+  "[[effects",
+  "  s1: sound whoosh at transition.start",
+  '  s2: sound pop at word("one").end',
+  '  r1: show b at word("three").end',
+  '  s3: sound ding at word("five").end',
+  '  f1: focus a at word("six").end',
+  "]]",
+  "",
+  "NARRATOR",
+  "One two three four five six seven eight.",
+]);
+
+/** The Plan of a screenplay text, scheduled against the lifecycle reveal.js declares. */
+export const scheduledOf = (source: string) =>
+  Effect.flatMap(planOf(source), (plan) =>
+    schedule(plan, alignedLines(plan), revealLifecycle)
+  );
+
+/** The Plan of the committed story `stories/same-id/story.fountain` with a Timeline. */
+export const scheduledStory = Effect.flatMap(
+  Effect.flatMap(packageDirectory, (directory) =>
+    readIn(directory, "../../stories/same-id/story.fountain")
+  ),
+  scheduledOf
+);
 
 /** The Plan of the committed story `stories/same-id/story.fountain`. */
 export const storyPlan = Effect.flatMap(

@@ -122,6 +122,20 @@ describe("a broken adapter fails exactly the clause that names its flaw", () => 
   );
 
   it.effect(
+    "C6 of Renderer: a lifecycle in which a shown Element takes no time",
+    () =>
+      Effect.gen(function* control() {
+        assert.deepStrictEqual(
+          yield* failingClauses(
+            fakeRenderer({ noShowTime: true }),
+            rendererClauses()
+          ),
+          ["C6"]
+        );
+      })
+  );
+
+  it.effect(
     "C2 of FrameCapturer: one frame fewer than `frames(plan)` says",
     () =>
       Effect.gen(function* control() {

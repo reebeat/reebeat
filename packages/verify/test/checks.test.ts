@@ -1,15 +1,21 @@
 // The checks on a small story built end to end, and the negative control of each falsifier: a mutation of one
 // written file (or a re-render with one thing changed) that makes that falsifier fail, naming the item, while the
 // falsifiers the mutation does not touch still hold.
-//   F1  a Cue commanded two frames late        F2  one character of the .vtt, and of the mov_text stream
-//   F3  a note of deck.html                    F4  a deleted and a swapped fragment of deck.html
+//   F1  a show commanded two frames late, a sound three frames late, a whoosh at the first word of its Line, a renderer
+//       that declares the wrong lifecycle
+//   F2  one character of the .vtt, and of the mov_text stream
+//   F3  a note of deck.html                    F4  a deleted and a swapped fragment of deck.html, a moved sound
 //   F5  one hash, a source edited after the build, a deck rebuilt alone
 //   F6  a frame replaced in one of two builds  F7  a hard cut instead of the transition, and a reversed transition
 //   F8  the audio delayed by three frames      F9  a renamed chapter
 import { assert, layer } from "@effect/vitest";
 import { buildPlan, encodePlan } from "@reebeat/core";
 import { sha256Hex } from "@reebeat/pipeline";
-import { renderDeck } from "@reebeat/render-reveal";
+import {
+  renderDeck,
+  revealLifecycle,
+  revealRenderer,
+} from "@reebeat/render-reveal";
 import { Array as Arr, Effect, FileSystem, Option, Path, Stream } from "effect";
 
 import {
@@ -17,13 +23,16 @@ import {
   compareBuilds,
   exitCode,
   renderVerdicts,
+  runChecks,
 } from "../src/index.ts";
 import {
   Fixture,
+  buildFixtureOf,
   buildName,
   checkDirectory,
   control,
   copyBuild,
+  decliningRenderer,
   editFile,
   failedIds,
   audioFilter,
@@ -34,13 +43,15 @@ import {
   frameMs,
   moveFire,
   narrationFile,
+  offsetsIn,
+  anchorFrameIn,
   remix,
+  rowOf,
   soundFile,
   recapture,
   mp4Of,
   muxFrames,
   replaceInFile,
-  reportedScore,
   rewriteMp4,
   sealBuild,
   shiftCommand,
@@ -50,10 +61,10 @@ import {
 } from "./support.ts";
 
 /** The pattern of the line of one fragment span of deck.html. */
-const fragment = (cue: string): string =>
-  `[ ]*<span class="fragment cue"[^>]*data-cue-id="${cue}"[^>]*></span>\\n`;
+const fragment = (effect: string): string =>
+  `[ ]*<span class="fragment effect"[^>]*data-effect-id="${effect}"[^>]*></span>\\n`;
 
-/** A copy of the story's source with `One two` changed to `One too`, in a directory of its own. */
+/** A copy of the story's source with `seven` changed to `sevens` (no effect is anchored to it), in a directory of its own. */
 const editedSource = Effect.fn("editedSource")(function* edited(name: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -62,17 +73,46 @@ const editedSource = Effect.fn("editedSource")(function* edited(name: string) {
 
   yield* fs.makeDirectory(path.dirname(target), { recursive: true });
   yield* fs.copyFile(fixture.sourcePath, target);
-  yield* replaceInFile(target, "One two", "One too");
+  yield* replaceInFile(target, "Five six seven.", "Five six sevens.");
 
   return target;
 });
 
-const whooshId = "sc2.l1.c1";
+/**
+ * One Auto-Animate move with a ding at the start of the box's motion and a pop at its end, and no whoosh: nothing
+ * sounds near them, so each is found at its own frame.
+ */
+const lifecycleStory = `Title: Lifecycle
+Author: reebeat tests
 
-/** The measured names of the whoosh: its offset from the planned frame, and from the scene change into sc2. */
-const whooshPlanned = `${whooshId} sfx offset (frames)`;
+# One
 
-const whooshMotion = `${whooshId} sfx onset vs the scene change into sc2 (frames)`;
+INT. ONE - DAY #sc1#
+
+Box {id=a cell=tl class=box}
+
+NARRATOR
+One two three four.
+
+> AUTO-ANIMATE
+
+INT. TWO - DAY #sc2#
+
+Box {id=a cell=tr class=box}
+
+[[effects
+  m1: sound ding at a.move.start
+  m2: sound pop at a.move.end
+]]
+
+NARRATOR
+Five six seven.
+`;
+
+/** The rows of F1 the tests read: one effect each, found by its Scene and id. */
+const whooshRow = "sc2.s1 sound whoosh";
+
+const dingRow = "sc2.s2 sound ding";
 
 layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
   "the checks on a small built story",
@@ -93,8 +133,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
         );
         assert.strictEqual(exitCode(verdicts), 0);
 
-        // The measured values are the evidence: four Cues and two Lines, each within a frame.
-        assert.strictEqual(verdictOf(verdicts, "F1").measured[0]?.[1], 4);
+        // The measured values are the evidence: six effects and two Lines, each within a frame.
+        assert.strictEqual(verdictOf(verdicts, "F1").measured[0]?.[1], 6);
         assert.strictEqual(verdictOf(verdicts, "F8").measured[0]?.[1], 2);
         assert.isAtLeast(Number(verdictOf(verdicts, "F7").measured[1]?.[1]), 5);
         yield* Effect.log(renderVerdicts(verdicts));
@@ -119,7 +159,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
     );
 
     it.effect(
-      "F1: a Cue commanded two frames late is observed two frames late, naming the Cue",
+      "F1: a show commanded two frames late is observed two frames late, naming the effect",
       () =>
         Effect.gen(function* late() {
           const fixture = yield* Fixture;
@@ -128,42 +168,94 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const verdicts = yield* control(
             "f1-late",
             (dir) =>
-              muxFrames(
-                dir,
-                recapture(shiftCommand(fixture.plan, "sc1.l1.c1", 2))
-              ),
+              muxFrames(dir, recapture(shiftCommand(fixture.plan, "r1", 2))),
             ["F1"]
           );
 
           const verdict = verdictOf(verdicts, "F1");
 
-          assert.include(verdict.detail, "sc1.l1.c1 next");
+          assert.include(verdict.detail, "sc1.r1 show b");
           assert.include(verdict.detail, "+2 frames");
-          assert.include(
-            measuredOf(verdict),
-            "sc1.l1.c1 next offset (frames): +2"
+          assert.approximately(
+            offsetsIn(rowOf(verdict, "sc1.r1 show b")).own ?? Number.NaN,
+            2,
+            0.5
           );
         })
     );
 
     it.effect(
-      "F1: the whoosh of an Auto-Animate Scene sounds at the first changed frame of the scene change, and at its planned frame",
+      "F1: the whoosh anchored to transition.start sounds at the first changed frame of the scene change, and at its resolved frame",
       () =>
         Effect.gen(function* anchored() {
           const fixture = yield* Fixture;
           const verdict = verdictOf(yield* checkDirectory(fixture.build), "F1");
+          const row = rowOf(verdict, whooshRow);
+          const offsets = offsetsIn(row);
 
           assert.strictEqual(verdict.status, "pass", verdict.detail);
-          assert.isAtMost(Math.abs(reportedScore(verdict, whooshPlanned)), 1);
-          assert.isAtMost(Math.abs(reportedScore(verdict, whooshMotion)), 1);
-          yield* Effect.log(
-            `whoosh: ${whooshPlanned} ${reportedScore(verdict, whooshPlanned)}, ${whooshMotion} ${reportedScore(verdict, whooshMotion)}`
+          assert.isAtMost(Math.abs(offsets.anchor ?? Number.NaN), 1, row);
+          assert.isAtMost(Math.abs(offsets.own ?? Number.NaN), 1, row);
+          // The anchor is the observed slide change, not the Timeline's own number.
+          assert.approximately(
+            anchorFrameIn(row),
+            slideFrameOf(fixture.plan, "sc2"),
+            1
           );
+          yield* Effect.log(row);
         })
     );
 
     it.effect(
-      "F1: a whoosh scheduled at the first word of its Line (30 frames after the scene change) fails against the motion, though it sounds where the Timeline says",
+      "F1: the ding anchored to the middle of the box's move sounds at the frame the box is halfway, which is not the middle of the transition",
+      () =>
+        Effect.gen(function* halfway() {
+          const fixture = yield* Fixture;
+          const verdict = verdictOf(yield* checkDirectory(fixture.build), "F1");
+          const row = rowOf(verdict, dingRow);
+          const offsets = offsetsIn(row);
+          const slide = slideFrameOf(fixture.plan, "sc2");
+
+          assert.isAtMost(Math.abs(offsets.anchor ?? Number.NaN), 1, row);
+          assert.isAtMost(Math.abs(offsets.own ?? Number.NaN), 1, row);
+
+          // `ease` is in front of its middle: the box is half way well before 0.4 s (12 frames), and well after it starts.
+          assert.isAbove(anchorFrameIn(row), slide + 4);
+          assert.isBelow(anchorFrameIn(row), slide + 12);
+          yield* Effect.log(row);
+        })
+    );
+
+    it.effect(
+      "F1: a whoosh delayed by three frames is observed three frames from its resolved frame, though it still sounds at the slide change it was written for",
+      () =>
+        Effect.gen(function* delayedSound() {
+          const fixture = yield* Fixture;
+          const slide = slideFrameOf(fixture.plan, "sc2");
+
+          // The Timeline of plan.json still says the slide frame; only the mix puts the whoosh three frames later.
+          const verdicts = yield* control(
+            "f1-whoosh-late",
+            (dir) =>
+              muxFrames(
+                dir,
+                Stream.fromIterable(fixture.frames),
+                moveFire(fixture.plan, "s1", slide + 3)
+              ),
+            ["F1"]
+          );
+
+          const verdict = verdictOf(verdicts, "F1");
+          const offsets = offsetsIn(rowOf(verdict, whooshRow));
+
+          assert.include(verdict.detail, "sc2.s1 sound whoosh");
+          assert.approximately(offsets.own ?? Number.NaN, 3, 1);
+          assert.approximately(offsets.anchor ?? Number.NaN, 0, 1);
+        })
+    );
+
+    it.effect(
+      "F1: a whoosh the Timeline and the audio both put at the first word of its Line (30 frames after the slide change) fails against the observed slide change",
       () =>
         Effect.gen(function* firstWord() {
           const fs = yield* FileSystem.FileSystem;
@@ -176,9 +268,14 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
           assert.strictEqual(lineStart, (scene?.slideFrame ?? 0) + 30);
 
-          // The old schedule: the cue at the Line's start. The Timeline of plan.json and the audio agree on it. The
-          // test narrator is loud noise that would hide the whoosh, so the Line's narration is mixed at a fifth.
-          const moved = moveFire(fixture.plan, whooshId, lineStart);
+          // The release-1 schedule: the sound at the Line's start. The Timeline of plan.json and the audio agree on it.
+          // The test narrator is loud noise that would hide the whoosh, so the Line's narration is mixed at a fifth.
+          const moved = moveFire(fixture.plan, "s1", lineStart);
+
+          const pop = Arr.findFirst(
+            firstScene?.effects ?? [],
+            (effect) => effect.effectId === "p1"
+          );
 
           const verdicts = yield* control(
             "f1-first-word",
@@ -198,13 +295,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
                     file: soundFile(fixture, "pop"),
                     startMs: frameMs(
                       Option.getOrElse(
-                        Option.map(
-                          Arr.findFirst(
-                            first?.cues ?? [],
-                            (cue) => cue.cueId === "sc1.l1.c2"
-                          ),
-                          (cue) => cue.fireFrame
-                        ),
+                        Option.map(pop, (effect) => effect.fireFrame),
                         () => 0
                       )
                     ),
@@ -224,45 +315,62 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           );
 
           const verdict = verdictOf(verdicts, "F1");
+          const offsets = offsetsIn(rowOf(verdict, whooshRow));
 
-          assert.include(verdict.detail, "sc2.l1.c1 sfx: whoosh");
-          assert.include(
-            verdict.detail,
-            "frames from the first changed frame of the scene change into sc2"
-          );
-          assert.isAtMost(Math.abs(reportedScore(verdict, whooshPlanned)), 1);
-          assert.approximately(reportedScore(verdict, whooshMotion), 30, 1);
+          assert.include(verdict.detail, "sc2.s1 sound whoosh");
+          assert.include(verdict.detail, "frames from its resolved frame");
+          assert.approximately(offsets.own ?? Number.NaN, 0, 1);
+          assert.approximately(offsets.anchor ?? Number.NaN, -30, 1);
         })
     );
 
     it.effect(
-      "F1: a whoosh delayed by three frames is observed three frames from its planned frame and from the motion",
+      "F1 (the heart of spec 0002): a renderer that declares the wrong lifecycle fails on the observed event, and the right declaration passes",
       () =>
-        Effect.gen(function* delayedSound() {
-          const fixture = yield* Fixture;
-          const [, scene] = fixture.plan.timeline.scenes;
+        Effect.gen(function* wrongDeclaration() {
+          const right = yield* buildFixtureOf(lifecycleStory, revealRenderer);
 
-          const verdicts = yield* control(
-            "f1-whoosh-late",
-            (dir) =>
-              muxFrames(
-                dir,
-                Stream.fromIterable(fixture.frames),
-                moveFire(fixture.plan, whooshId, (scene?.slideFrame ?? 0) + 3)
-              ),
-            ["F1"]
+          // reveal.js does not start the matched Element's motion at the slide change: the declaration says it does.
+          const wrong = yield* buildFixtureOf(
+            lifecycleStory,
+            decliningRenderer({
+              ...revealLifecycle,
+              matched: { ...revealLifecycle.matched, startLagFrames: 0 },
+            })
           );
 
-          const verdict = verdictOf(verdicts, "F1");
+          const checked = (built: typeof right) =>
+            runChecks({
+              buildDir: built.build,
+              cacheDir: built.cacheDir,
+              sourcePath: built.sourcePath,
+            });
 
-          assert.include(verdict.detail, "sc2.l1.c1 sfx: whoosh");
-          assert.approximately(reportedScore(verdict, whooshPlanned), 3, 1);
-          assert.approximately(reportedScore(verdict, whooshMotion), 3, 1);
+          const intact = verdictOf(yield* checked(right), "F1");
+          const declared = yield* checked(wrong);
+          const broken = verdictOf(declared, "F1");
+
+          assert.strictEqual(intact.status, "pass", intact.detail);
+          assert.deepStrictEqual(failedIds(declared), ["F1"]);
+          assert.include(broken.detail, "sc2.m1 sound ding");
+          assert.include(broken.detail, "frames from its resolved frame");
+
+          // It starts at the slide frame in the wrong Timeline and 2 frames later in the video: the anchor is 2 off.
+          assert.approximately(
+            offsetsIn(rowOf(broken, "sc2.m1 sound ding")).anchor ?? Number.NaN,
+            2,
+            0.5
+          );
+          assert.approximately(
+            offsetsIn(rowOf(intact, "sc2.m1 sound ding")).anchor ?? Number.NaN,
+            0,
+            1
+          );
         })
     );
 
     it.effect(
-      "F7: a scene change commanded two frames late, and two frames early, is observed there, naming the Scene (the whoosh anchored to it is then two frames from the motion: F1)",
+      "F7: a scene change commanded two frames late, and two frames early, is observed there, naming the Scene (the whoosh anchored to it is then two frames from the observed slide change: F1)",
       () =>
         Effect.gen(function* sceneChanges() {
           const fixture = yield* Fixture;
@@ -290,12 +398,14 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             "the slide change into sc2 (auto-animate) is observed -2 frames"
           );
           assert.approximately(
-            reportedScore(verdictOf(late, "F1"), whooshMotion),
+            offsetsIn(rowOf(verdictOf(late, "F1"), whooshRow)).anchor ??
+              Number.NaN,
             -2,
             0.5
           );
           assert.approximately(
-            reportedScore(verdictOf(early, "F1"), whooshMotion),
+            offsetsIn(rowOf(verdictOf(early, "F1"), whooshRow)).anchor ??
+              Number.NaN,
             2,
             0.5
           );
@@ -393,7 +503,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
     );
 
     it.effect(
-      "F4: a deleted fragment and two swapped fragments fail, naming the slide and the position",
+      "F4: a deleted fragment, two swapped fragments and a sound moved to another step fail, naming the slide and the position",
       () =>
         Effect.gen(function* fragmentEdits() {
           const path = yield* Path.Path;
@@ -402,7 +512,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             "f4-deleted",
             (dir) =>
               editFile(path.join(dir, "deck.html"), (text) =>
-                text.replace(new RegExp(fragment("sc1\\.l1\\.c2"), "u"), "")
+                text.replace(new RegExp(fragment("f0"), "u"), "")
               ),
             ["F4"]
           );
@@ -413,11 +523,26 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
               editFile(path.join(dir, "deck.html"), (text) =>
                 text.replace(
                   new RegExp(
-                    `(?<first>${fragment("sc1\\.l1\\.c1")})(?<second>${fragment("sc1\\.l1\\.c2")})`,
+                    `(?<first>${fragment("r1")})(?<second>${fragment("f0")})`,
                     "u"
                   ),
                   "$<second>$<first>"
                 )
+              ),
+            ["F4"]
+          );
+
+          // The pop rides on the focus f0 (the step before its time); the page puts it on the show r1 before it.
+          const afterMove = yield* control(
+            "f4-sound-moved",
+            (dir) =>
+              editFile(path.join(dir, "deck.html"), (text) =>
+                text
+                  .replace(' data-sounds="pop"', "")
+                  .replace(
+                    'data-effect-id="r1"',
+                    'data-sounds="pop" data-effect-id="r1"'
+                  )
               ),
             ["F4"]
           );
@@ -430,6 +555,11 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdictOf(afterSwap, "F4").detail,
             "scene sc1, fragment 0"
           );
+          assert.include(
+            verdictOf(afterMove, "F4").detail,
+            "slide sc1, fragment 0"
+          );
+          assert.include(verdictOf(afterMove, "F4").detail, "playing pop");
         })
     );
 
@@ -539,7 +669,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const verdicts = yield* control(
             "f7-cut",
             (dir) => muxFrames(dir, Stream.fromIterable(cut)),
-            ["F7"]
+            // The ding anchored to the middle of the box's move is half way at the cut, where the Timeline says 9 frames later.
+            ["F1", "F7"]
           );
 
           const verdict = verdictOf(verdicts, "F7");
@@ -581,7 +712,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const verdicts = yield* control(
             "f7-backwards",
             (dir) => muxFrames(dir, Stream.fromIterable(reversed)),
-            ["F7"]
+            // The box is half way on the way back, not where the Timeline resolved the ding: F1 sees it too.
+            ["F1", "F7"]
           );
 
           assert.include(
@@ -605,10 +737,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdictOf(verdicts, "F8").detail,
             "Line sc1.l1 starts +3 frames"
           );
-          assert.include(
-            verdictOf(verdicts, "F1").detail,
-            "sc1.l1.c2 sfx: pop"
-          );
+          assert.include(verdictOf(verdicts, "F1").detail, "sc1.p1 sound pop");
         })
     );
 
@@ -634,7 +763,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             );
             assert.include(
               verdictOf(verdicts, "F1").detail,
-              "sc1.l1.c2 sfx: pop at frame 65: the sound is not found within 150 ms"
+              "sc1.p1 sound pop"
             );
           }
         })

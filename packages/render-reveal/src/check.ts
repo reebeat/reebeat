@@ -1,13 +1,14 @@
-// The Deck against its Plan (spec 0001, F3 to F5, deck side). `checkDeck` reads a written `deck.html` with
-// `readDeck` and compares it with the Plan: the source hash, the slides in order, the notes (F3), the fragments (F4),
-// the Elements and the slide marks. It reports the first difference, naming the slide and the position in it.
+// The Deck against its Plan (spec 0001, F3 to F5, deck side; spec 0002, F4). `checkDeck` reads a written `deck.html`
+// with `readDeck` and compares it with the Plan: the source hash, the slides in order, the notes (F3), the fragments
+// (F4: one per `show` or `focus` effect in resolved order, and the `data-sounds` of every sound), the Elements and the
+// slide marks. It reports the first difference, naming the slide and the position in it.
 import type { PlanJson, Scene } from "@reebeat/core";
-import { cueFragmentAgreement, firstDifference } from "@reebeat/lint";
+import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
 import type { Diagnostic, Fragment } from "@reebeat/lint";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { DeckMismatch } from "./errors.ts";
-import { expectedFragments, expectedMarks } from "./expected.ts";
+import { expectedMarks, expectedSlide } from "./expected.ts";
 import type { ExpectedMarks } from "./expected.ts";
 import { readDeck } from "./read.ts";
 import type { DeckModel, DeckSlide } from "./read.ts";
@@ -87,15 +88,15 @@ const notesMismatch = (
 /** The fragments of every slide as the lint rule reads them: neutral, in page order. */
 const pageFragments = (model: DeckModel): readonly Fragment[] =>
   Arr.flatMap(model.slides, (slide) =>
-    Arr.map(slide.fragments, ({ arg, cueId, kind }) => ({
-      arg,
-      cueId,
-      kind,
+    Arr.map(slide.fragments, ({ effectId, target, verb }) => ({
+      effectId,
       sceneId: slide.sceneId,
+      target,
+      verb,
     }))
   );
 
-/** F4 as the lint rule `cue-fragment-agreement` says it: the Cues' ids, kinds and arguments, in order. */
+/** F4 as the lint rule `effect-fragment-agreement` says it: the effects' ids, verbs and targets, in resolved order. */
 const agreementMismatch = (
   scene: Scene,
   diagnostics: readonly Diagnostic[]
@@ -119,28 +120,49 @@ const agreementMismatch = (
   );
 };
 
-/** What only the page can get wrong about a fragment the lint rule accepted: its index and the Element it reveals. */
-const revealsMismatch = (
+const listed = (names: readonly string[]): string =>
+  names.length === 0 ? "no sound" : Arr.join(names, " ");
+
+/**
+ * What only the page can get wrong about a fragment the lint rule accepted: its index, and the sounds that ride along
+ * on the slide and on each step (`data-sounds`).
+ */
+const stepsMismatch = (
+  plan: PlanJson,
   scene: Scene,
   slide: DeckSlide
 ): DeckMismatch | undefined => {
-  const wanted = expectedFragments(scene);
+  const wanted = expectedSlide(plan, scene);
+
+  const fail = (message: string, index: number | null): DeckMismatch =>
+    new DeckMismatch({
+      check: "F4 fragments",
+      index,
+      message: `slide ${scene.id}${index === null ? "" : `, fragment ${index}`}: ${message}`,
+      slide: scene.id,
+    });
+
+  if (listed(wanted.sounds) !== listed(slide.sounds)) {
+    return fail(
+      `the Plan plays ${listed(wanted.sounds)} when the slide is shown, the page's data-sounds is ${listed(slide.sounds)}`,
+      null
+    );
+  }
 
   const position = firstDifference(
-    wanted,
+    wanted.fragments,
     slide.fragments,
     (want, have) =>
-      want.reveals === have.reveals && String(want.index) === have.index
+      String(want.index) === have.index &&
+      listed(want.sounds) === listed(have.sounds)
   );
 
   return position === undefined
     ? undefined
-    : new DeckMismatch({
-        check: "F4 fragments",
-        index: position,
-        message: `slide ${scene.id}, fragment ${position}: the Plan reveals ${show(wanted[position]?.reveals)} at index ${wanted[position]?.index ?? "none"}, the page has ${show(slide.fragments[position]?.reveals)} at index ${show(slide.fragments[position]?.index)}`,
-        slide: scene.id,
-      });
+    : fail(
+        `the Plan has index ${wanted.fragments[position]?.index ?? "none"} playing ${listed(wanted.fragments[position]?.sounds ?? [])}, the page has index ${show(slide.fragments[position]?.index)} playing ${listed(slide.fragments[position]?.sounds ?? [])}`,
+        position
+      );
 };
 
 const sameElement = (
@@ -148,9 +170,9 @@ const sameElement = (
   have: DeckSlide["elements"][number]
 ): boolean =>
   want.cell === have.cell &&
-  want.hidden === have.hidden &&
+  want.visible === have.visible &&
   want.text === have.text &&
-  Arr.join(want.classes, " ") === Arr.join(have.classes, " ");
+  want.class === have.class;
 
 const elementsMismatch = (
   scene: Scene,
@@ -171,7 +193,7 @@ const elementsMismatch = (
             ? []
             : [
                 fail(
-                  `slide ${scene.id}: Element ${want.id} differs from the Plan (cell, classes, hidden or text)`,
+                  `slide ${scene.id}: Element ${want.id} differs from the Plan (cell, class, visible or text)`,
                   index
                 ),
               ],
@@ -211,12 +233,13 @@ const marksMismatch = (
   marks: ExpectedMarks
 ): DeckMismatch | undefined =>
   marks.autoAnimate === slide.autoAnimate &&
+  marks.cutAfter === slide.cutAfter &&
   marks.transition === slide.transition
     ? undefined
     : new DeckMismatch({
         check: "transitions",
         index: null,
-        message: `slide ${scene.id}: data-auto-animate-id and data-transition are ${show(slide.autoAnimate)} and ${show(slide.transition)}, the Plan says ${show(marks.autoAnimate)} and ${show(marks.transition)}`,
+        message: `slide ${scene.id}: data-auto-animate-id, data-transition and data-cut-after are ${show(slide.autoAnimate)}, ${show(slide.transition)} and ${slide.cutAfter}, the Plan says ${show(marks.autoAnimate)}, ${show(marks.transition)} and ${marks.cutAfter}`,
         slide: scene.id,
       });
 
@@ -231,7 +254,7 @@ const firstMismatch = (
     return early;
   }
 
-  const agreement = cueFragmentAgreement(plan, pageFragments(model));
+  const agreement = effectFragmentAgreement(plan, pageFragments(model));
 
   const marks = expectedMarks(plan);
 
@@ -243,12 +266,16 @@ const firstMismatch = (
         ? undefined
         : (notesMismatch(scene, slide) ??
           agreementMismatch(scene, agreement) ??
-          revealsMismatch(scene, slide) ??
+          stepsMismatch(plan, scene, slide) ??
           elementsMismatch(scene, slide) ??
           marksMismatch(
             scene,
             slide,
-            marks[index] ?? { autoAnimate: null, transition: null }
+            marks[index] ?? {
+              autoAnimate: null,
+              cutAfter: false,
+              transition: null,
+            }
           ));
 
     return mismatch === undefined ? [] : [mismatch];

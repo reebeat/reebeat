@@ -16,6 +16,7 @@ import {
   copyBuild,
   failedIds,
   measuredOf,
+  rowOf,
   sealBuild,
   verdictOf,
 } from "./support.ts";
@@ -189,8 +190,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.include(f8.detail, "N/A (silent stand-in)");
           assert.strictEqual(f1.status, "pass", f1.detail);
           assert.include(
-            measuredOf(f1),
-            "sfx cues: N/A (silent stand-in): 2 not observed"
+            rowOf(f1, "sc1.p1 sound pop"),
+            "sound N/A (silent stand-in)"
           );
           assert.deepStrictEqual(failedIds(verdicts), []);
           assert.strictEqual(exitCode(verdicts), 0);

@@ -6,7 +6,7 @@ import { Array as Arr } from "effect";
 
 type Cell = Element["cell"];
 
-type ElementClass = Element["classes"][number];
+type ElementClass = Element["class"];
 
 /** Colours of the theme as `#rrggbb`. */
 export const palette = {
@@ -201,7 +201,12 @@ ${cellCss()}
   transform: scale(1.04);
 }
 
-.cue {
+/* A slide that a \`> CUT\` follows leaves at once: reveal.js fades the slide it leaves by that slide's own rule. */
+.reveal .slides section[data-cut-after].past {
+  transition: none !important;
+}
+
+.effect {
   display: none;
 }
 `;

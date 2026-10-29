@@ -1,6 +1,7 @@
 // F11, single source (spec 0001): packages/render-reveal reads the Plan and never the screenplay. Its manifest depends on
-// exactly @reebeat/core (types), @reebeat/services, @reebeat/lint, effect, reveal.js, @fontsource/inter and parse5, and no file under src imports a
-// parser, a browser driver or a Node built-in; the core is a type-only import, so the core's parser entry is never loaded; the services and the lint rules are
+// exactly @reebeat/core (types, and the parser-free `@reebeat/core/steps` that says which effects are steps and where each
+// sound plays), @reebeat/services, @reebeat/lint, effect, reveal.js, @fontsource/inter and parse5, and no file under src
+// imports a parser, a browser driver or a Node built-in; the core's own entry is a type-only import, so its parser is never loaded; the services and the lint rules are
 // libraries and service contracts, never an adapter. The lint rule `no-restricted-imports` (vite.config.ts) is the second
 // guard; this scan reads every specifier.
 import { assert, describe, it } from "@effect/vitest";
@@ -31,11 +32,11 @@ const importsOf = (text: string): readonly Found[] =>
     typeOnly: groups?.type !== undefined,
   }));
 
-/** What a file under src may import: itself, effect, parse5, the services, the lint rules and the types of @reebeat/core. */
+/** What a file under src may import: itself, effect, parse5, the services, the lint rules, `@reebeat/core/steps` and the types of @reebeat/core. */
 const violations = (text: string): readonly string[] =>
   Arr.flatMap(importsOf(text), ({ specifier, typeOnly }) => {
     const allowed =
-      /^(?:\.{1,2}\/|effect(?:\/|$)|parse5$|@reebeat\/(?:services|lint)$)/u.test(
+      /^(?:\.{1,2}\/|effect(?:\/|$)|parse5$|@reebeat\/(?:services|lint|core\/steps)$)/u.test(
         specifier
       ) ||
       (specifier === "@reebeat/core" && typeOnly);

@@ -100,7 +100,7 @@ const plan = Command.make(
   })
 ).pipe(
   Command.withDescription(
-    "Print the Plan of a story for review: scenes, elements, cues and the identity diff"
+    "Print the Plan of a story for review: scenes, elements, effects (intent and resolved frame with --timing) and the identity diff"
   ),
   Command.withExamples([
     {

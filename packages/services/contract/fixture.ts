@@ -6,6 +6,7 @@ import type {
   AlignedLine,
   PlanError,
   PlanJson,
+  RendererLifecycle,
   ScheduleError,
 } from "@reebeat/core";
 import { Array as Arr, Effect } from "effect";
@@ -16,11 +17,10 @@ const source = Arr.join(
     "",
     "# Part",
     "",
-    "INT. ONE",
+    "INT. ONE #sc1#",
     "",
-    "Ruler {#ruler}",
-    "",
-    "Ticket {#ticket}",
+    "Ruler {id=ruler cell=ml class=box}",
+    "Ticket {id=ticket cell=mr class=box}",
     "",
     "NARRATOR",
     "Names are cheap, friend.",
@@ -49,9 +49,20 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
+/**
+ * A renderer's declaration of its slide change, for the Plan the contracts schedule: sane numbers (the Auto-Animate
+ * duration is the Plan's own 0.8 s), not the measurements of any adapter.
+ */
+export const contractLifecycle: RendererLifecycle = {
+  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
+  showMs: 133,
+  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
+  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
+};
+
 /** The contract Plan, with its Timeline. */
 export const contractPlan = Effect.flatMap(buildPlan(source, digest), (plan) =>
-  schedule(plan, alignedLines(plan))
+  schedule(plan, alignedLines(plan), contractLifecycle)
 );
 
 export interface PlanOptions {

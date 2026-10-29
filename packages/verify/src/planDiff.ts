@@ -1,6 +1,6 @@
 // Where two Plans first differ, as a path (`scenes.sc3.lines.sc3.l1.text`). Plain structural comparison with
 // Effect's `Equal`, field by field in document order; the Timeline is not compared (it exists only in `plan.json`).
-import type { Cue, Element, Line, PlanJson, Scene } from "@reebeat/core";
+import type { Effect, Element, Line, PlanJson, Scene } from "@reebeat/core";
 import { Array as Arr, Equal, Option, Predicate } from "effect";
 
 /** What a field of a Plan can hold. */
@@ -59,11 +59,12 @@ const members = <A extends { readonly id: string }>(
       )
     : `${path}: plan.json has ${left.length} items, the Plan of the source has ${right.length}`;
 
-const cueDifference = (path: string, left: Cue, right: Cue) =>
+const effectDifference = (path: string, left: Effect, right: Effect) =>
   firstOf([
-    () => leaf(`${path}.kind`, left.kind, right.kind),
-    () => leaf(`${path}.arg`, left.arg, right.arg),
-    () => leaf(`${path}.afterWord`, left.afterWord, right.afterWord),
+    () => leaf(`${path}.verb`, left.verb, right.verb),
+    () => leaf(`${path}.name`, left.name, right.name),
+    () => leaf(`${path}.target`, left.target, right.target),
+    () => leaf(`${path}.when`, left.when, right.when),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
 
@@ -73,15 +74,14 @@ const lineDifference = (path: string, left: Line, right: Line) =>
     () => leaf(`${path}.words`, left.words, right.words),
     () => leaf(`${path}.hints`, left.hints, right.hints),
     () => leaf(`${path}.line`, left.line, right.line),
-    () => members(`${path}.cues`, left.cues, right.cues, cueDifference),
   ]);
 
 const elementDifference = (path: string, left: Element, right: Element) =>
   firstOf([
     () => leaf(`${path}.text`, left.text, right.text),
     () => leaf(`${path}.cell`, left.cell, right.cell),
-    () => leaf(`${path}.classes`, left.classes, right.classes),
-    () => leaf(`${path}.hidden`, left.hidden, right.hidden),
+    () => leaf(`${path}.class`, left.class, right.class),
+    () => leaf(`${path}.visible`, left.visible, right.visible),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
 
@@ -100,6 +100,8 @@ const sceneDifference = (path: string, left: Scene, right: Scene) =>
         elementDifference
       ),
     () => members(`${path}.lines`, left.lines, right.lines, lineDifference),
+    () =>
+      members(`${path}.effects`, left.effects, right.effects, effectDifference),
   ]);
 
 /** The path and values of the first difference between two Plans (their Timelines apart), or undefined. */

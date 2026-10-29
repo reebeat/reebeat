@@ -1,5 +1,5 @@
-// The page runtime: the reveal.js configuration, the effect of each fragment (a Cue) and `window.reebeatDeck`, the
-// handle the capture drives. It is plain JavaScript text (no framework, no module system) so that `deck.html` works
+// The page runtime: the reveal.js configuration, the effect of each fragment (a `show` or `focus` effect), the sounds
+// that ride along with a fragment or a slide and `window.reebeatDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that `deck.html` works
 // from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
 import { Array as Arr } from "effect";
 
@@ -66,42 +66,49 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     }
   }
 
+  function playSounds(element) {
+    (element.getAttribute("data-sounds") || "").split(" ").forEach(function (name) {
+      if (name) {
+        playSound(name);
+      }
+    });
+  }
+
   function show(fragment) {
-    var kind = fragment.getAttribute("data-cue-kind");
-    if (kind === "next") {
-      var revealed = target(fragment, fragment.getAttribute("data-reveals"));
+    var verb = fragment.getAttribute("data-effect-verb");
+    if (verb === "show") {
+      var revealed = target(fragment, fragment.getAttribute("data-target"));
       if (revealed) {
         revealed.classList.remove("hidden");
         revealed.classList.add("shown");
       }
-    } else if (kind === "focus") {
+    } else if (verb === "focus") {
       focusBefore.set(fragment, focused);
       setFocus(focused, false);
-      focused = target(fragment, fragment.getAttribute("data-cue-arg"));
+      focused = target(fragment, fragment.getAttribute("data-target"));
       setFocus(focused, true);
-    } else if (kind === "sfx") {
-      playSound(fragment.getAttribute("data-cue-arg"));
     }
+    playSounds(fragment);
   }
 
   function hide(fragment) {
-    var kind = fragment.getAttribute("data-cue-kind");
-    if (kind === "next") {
-      var concealed = target(fragment, fragment.getAttribute("data-reveals"));
+    var verb = fragment.getAttribute("data-effect-verb");
+    if (verb === "show") {
+      var concealed = target(fragment, fragment.getAttribute("data-target"));
       if (concealed) {
         concealed.classList.remove("shown");
         concealed.classList.add("hidden");
       }
-    } else if (kind === "focus") {
+    } else if (verb === "focus") {
       setFocus(focused, false);
       focused = focusBefore.get(fragment) || null;
       setFocus(focused, true);
     }
   }
 
-  function eachCue(event, apply) {
+  function eachEffect(event, apply) {
     (event.fragments || [event.fragment]).forEach(function (fragment) {
-      if (fragment && fragment.classList.contains("cue")) {
+      if (fragment && fragment.classList.contains("effect")) {
         apply(fragment);
       }
     });
@@ -116,13 +123,16 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     });
   });
   Reveal.on("fragmentshown", function (event) {
-    eachCue(event, show);
+    eachEffect(event, show);
   });
   Reveal.on("fragmenthidden", function (event) {
-    eachCue(event, hide);
+    eachEffect(event, hide);
   });
-  Reveal.on("slidechanged", function () {
+  Reveal.on("slidechanged", function (event) {
     focused = null;
+    if (event.currentSlide) {
+      playSounds(event.currentSlide);
+    }
   });
 
   window.reebeatDeck = {

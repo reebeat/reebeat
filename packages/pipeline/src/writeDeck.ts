@@ -1,5 +1,5 @@
-// Writing what the services produced: the Renderer's files under one directory, and each sound the Plan's Cues play
-// as `assets/sfx/<name>.wav`, which the Deck's `sfx` step fetches. The file system is the platform `FileSystem`.
+// Writing what the services produced: the Renderer's files under one directory, and each sound the Plan's effects play
+// as `assets/sfx/<name>.wav`, which the Deck fetches when a step or a slide that carries the sound is shown. The file system is the platform `FileSystem`.
 import { audioClipToWav } from "@reebeat/core";
 import { SoundLibrary } from "@reebeat/services";
 import type { RenderedDeck } from "@reebeat/services";

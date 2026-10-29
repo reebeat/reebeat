@@ -9,10 +9,7 @@ import { chromiumCapturer } from "@reebeat/capture-chromium";
 import { decodePlan, requireTimeline } from "@reebeat/core";
 import type { PlanJson, TimedCue, TimedPlan } from "@reebeat/core";
 import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
-import type {
-  InvalidOutputName,
-  MediaToolFailed,
-} from "@reebeat/encode-ffmpeg";
+import type { MediaToolFailed } from "@reebeat/encode-ffmpeg";
 import {
   buildProgram,
   decodeBuildManifest,
@@ -32,6 +29,7 @@ import type {
   CacheError,
   CaptureFailure,
   EncodeError,
+  InvalidOutputName,
   UnknownSound,
 } from "@reebeat/services";
 import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";

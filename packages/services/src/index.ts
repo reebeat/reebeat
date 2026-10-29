@@ -13,6 +13,8 @@ export type { MuxRequest, MuxResult } from "./encoder.ts";
 
 export * from "./errors.ts";
 
+export { requireOutputName } from "./outputName.ts";
+
 export { FrameCapturer } from "./frameCapturer.ts";
 
 export type { CaptureRequest } from "./frameCapturer.ts";

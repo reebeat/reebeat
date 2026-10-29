@@ -421,4 +421,62 @@ describe("buildProgram: failure is loud (F12)", () => {
         yield* absent(where.out, `${where.out}.partial`);
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
+
+  it.effect(
+    "a name that is not a plain file stem is InvalidOutputName before anything is written, anywhere",
+    () =>
+      Effect.gen(function* hostile() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+
+        // Two levels below a root the test owns: `<out>.partial/../../escaped` would land inside the root.
+        const root = yield* fs.makeTempDirectoryScoped({
+          prefix: "reebeat-build-",
+        });
+
+        const dir = path.join(root, "a", "b");
+        const story = path.join(dir, "story.fountain");
+
+        yield* fs.makeDirectory(dir, { recursive: true });
+        yield* fs.writeFileString(story, storyText);
+
+        const context = yield* Layer.build(
+          worldOf(parts(yield* Ref.make<readonly Muxed[]>([])))
+        );
+
+        const before = yield* fs.readDirectory(root, { recursive: true });
+
+        for (const name of [
+          "../../escaped",
+          "..",
+          "x/y",
+          "a b",
+          ".hidden",
+          "",
+          "/etc/passwd",
+        ]) {
+          const failure = yield* Effect.flip(
+            Effect.provideContext(
+              buildProgram({
+                name,
+                out: path.join(dir, "out"),
+                refreshSpeech: true,
+                story,
+              }),
+              context
+            )
+          );
+
+          assert.isTrue(Predicate.isTagged(failure, "InvalidOutputName"), name);
+        }
+
+        assert.deepStrictEqual(
+          Arr.sort(
+            yield* fs.readDirectory(root, { recursive: true }),
+            Order.String
+          ),
+          Arr.sort(before, Order.String)
+        );
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
 });

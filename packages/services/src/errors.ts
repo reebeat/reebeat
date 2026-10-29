@@ -129,6 +129,12 @@ export class SecretLikeSetting extends Schema.TaggedError<
   setting: Schema.String,
 }) {}
 
+/** The base name of a build's files is not a plain file stem, so `<name>.mp4` could land outside the output directory. */
+export class InvalidOutputName extends Schema.TaggedError<
+  InvalidOutputName,
+  { readonly brand: unique symbol }
+>()("InvalidOutputName", { message: Schema.String, stem: Schema.String }) {}
+
 /** Everything `SpeechSynthesizer.synthesize` can fail with. */
 export type SpeechError = EmptyText | SynthesisFailed | AdapterUnavailable;
 

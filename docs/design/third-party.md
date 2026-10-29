@@ -30,7 +30,7 @@ The open item for the third row is tracked in [issue #7](https://github.com/reeb
 
 ## npm packages
 
-Every third-party package of `bun.lock`, runtime and build alike, has its licence in [`tools/quality/third-party-licences.json`](../../tools/quality/third-party-licences.json), one `name@version` per line, taken from the `license` field of the package's own published `package.json` (`https://registry.npmjs.org/<name>/<version>`). That file is the one source for the list: `bun run test` fails when it and `bun.lock` disagree, so there is no second copy here. Count by licence with `jq -r '.[]' tools/quality/third-party-licences.json | sort | uniq -c | sort -rn`. On 2026-10-29 the lock held 505 packages and none was GPL, AGPL, SSPL or unknown.
+Every third-party package of `bun.lock`, runtime and build alike, has its licence in [`tools/quality/third-party-licences.json`](../../tools/quality/third-party-licences.json), one `name@version` per line, taken from the `license` field of the package's own published `package.json` (`https://registry.npmjs.org/<name>/<version>`). That file is the one source for the list: `bun run test` fails when it and `bun.lock` disagree, so there is no second copy here. Count by licence with `jq -r '.[]' tools/quality/third-party-licences.json | sort | uniq -c | sort -rn`. On 2026-10-29 the lock held 505 packages and none was GPL, AGPL, SSPL or unknown; [spec 0009](../specs/0009-npm-prereleases.md) added `@changesets/cli` and its 24 dependencies (all MIT, build tools that reebeat does not ship), 530 in all.
 
 What the licences outside the permissive family (MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD) ask of reebeat:
 

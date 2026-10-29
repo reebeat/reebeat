@@ -22,6 +22,7 @@ import {
   publishedUses,
   publishManifest,
   readPackages,
+  undeclaredImports,
   unexpectedFiles,
   unstableApisUsed,
   versionsOf,
@@ -349,13 +350,55 @@ describe("the real repository", () => {
 
         const perPackage = yield* Effect.forEach(
           publicPackages(packages),
-          ({ directory, manifest: source }) =>
-            Effect.map(publishedUses(where, directory), (uses) =>
-              peerFindings(source, uses, allowedUnstable, top.catalog)
+          (workspace) =>
+            Effect.map(publishedUses(where, workspace), (uses) =>
+              peerFindings(
+                workspace.manifest,
+                uses,
+                allowedUnstable,
+                top.catalog
+              )
             )
         );
 
         assert.deepStrictEqual(Arr.flatten(perPackage), []);
       }).pipe(Effect.provide(NodeServices.layer))
   );
+
+  it.effect(
+    "every package the published sources import is a dependency or a peer",
+    () =>
+      Effect.gen(function* imports() {
+        const { packages, top: where } = yield* repository;
+
+        const perPackage = yield* Effect.forEach(
+          publicPackages(packages),
+          (workspace) =>
+            Effect.map(publishedUses(where, workspace), (uses) =>
+              undeclaredImports(workspace.manifest, uses)
+            )
+        );
+
+        assert.deepStrictEqual(Arr.flatten(perPackage), []);
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+});
+
+describe("imports that the build could not resolve", () => {
+  it("names a development dependency, which the bundler would inline (negative control)", () => {
+    assert.deepStrictEqual(
+      undeclaredImports(
+        manifest({
+          dependencies: { "fountain-js": "catalog:" },
+          devDependencies: { "oxc-parser": "catalog:" },
+        }),
+        importUses(
+          'import { parseSync } from "oxc-parser";\nimport Fountain from "fountain-js";\nimport { readFile } from "node:fs";\nimport { x } from "./x.ts";'
+        )
+      ),
+      [
+        "@reebeat/probe imports oxc-parser, which is in neither dependencies nor peerDependencies",
+      ]
+    );
+  });
 });

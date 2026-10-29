@@ -351,10 +351,19 @@ export const importUses = (text: string): readonly ImportUse[] => {
   return [...imported, ...reexported, ...dynamic];
 };
 
-/** The imports of the sources a package publishes (`src`, `contract`, `standins`: everything but tests). */
+/** The directories (relative to the package) that the exports are built from: `src`, `contract`, `standins`. */
+const exportedDirectories = (manifest: SourceManifest): readonly string[] =>
+  Arr.dedupe(
+    Arr.filter(
+      Arr.map(entriesOf(manifest), (entry) => Str.split(entry, "/")[1]),
+      Predicate.isString
+    )
+  );
+
+/** The imports of the sources a package publishes: every source file below a directory its exports are built from. */
 export const publishedUses = Effect.fnUntraced(function* publishedUses(
   root: string,
-  directory: string
+  { directory, manifest }: WorkspacePackage
 ): Effect.fn.Return<
   readonly ImportUse[],
   PlatformError.PlatformError,
@@ -362,14 +371,46 @@ export const publishedUses = Effect.fnUntraced(function* publishedUses(
 > {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const listing = yield* sourceFiles(path.join(root, "packages", directory));
 
-  const texts = yield* Effect.forEach(listing.files, (file) =>
-    fs.readFileString(file)
+  const listings = yield* Effect.forEach(
+    exportedDirectories(manifest),
+    (name) => sourceFiles(path.join(root, "packages", directory, name))
+  );
+
+  const texts = yield* Effect.forEach(
+    Arr.flatMap(listings, (listing) => listing.files),
+    (file) => fs.readFileString(file)
   );
 
   return Arr.flatMap(texts, importUses);
 });
+
+/**
+ * Sentences about imports of the published sources that the built package could not resolve or would inline: a
+ * package imported from outside `dependencies` and `peerDependencies` (the bundler inlines a development dependency
+ * and cannot resolve an undeclared one). Relative paths and `node:` built-ins are not packages.
+ */
+export const undeclaredImports = (
+  manifest: SourceManifest,
+  uses: readonly ImportUse[]
+): readonly string[] => {
+  const declared = {
+    ...manifest.dependencies,
+    ...manifest.peerDependencies,
+  };
+
+  return Arr.filterMap(
+    Arr.dedupe(Arr.map(uses, ({ specifier }) => specifier)),
+    (specifier) =>
+      Str.startsWith(".")(specifier) ||
+      Str.startsWith("node:")(specifier) ||
+      Record.has(declared, packageOf(specifier))
+        ? Result.failVoid
+        : Result.succeed(
+            `${manifest.name} imports ${specifier}, which is in neither dependencies nor peerDependencies`
+          )
+  );
+};
 
 /**
  * Whether a use reaches the unstable module `entry` (an `allowedUnstableApis` entry of the root tsconfig): the module

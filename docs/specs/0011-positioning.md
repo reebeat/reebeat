@@ -2,6 +2,7 @@
 
 Status: **plan, built** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator, 2026-10-29 (the words, the categories and the rules of the comparison).
 Process: [spec 0000](0000-development-lifecycle.md). Number 0011, assigned by the lead (0009 npm pre-releases, 0010 review and verify skills, 0012 extension architecture, 0004 to 0006 state machines). The branch is `docs/positioning`, named by the lead (the convention is `feat/NNNN-<slug>`). Docs, plus one test file for the rules of the docs (see Revisions, review round 2): no product code changes.
+Verify skill: none, docs and a test of the doc rules only: it changes no output of `reebeat`.
 
 ## Goal
 
@@ -87,3 +88,4 @@ None. The words, the categories, the rules and the status line were decided on 2
   - The lines "Docs only: no code changes" (Process) and "Any code" (Not in scope) are corrected: the PR adds `tools/quality/positioning.ts` and its test, as round 1 recorded. No product code changes.
   - The agreement of the README status table with the "Built today, and planned" table of `how-it-works.md` stays a read check. The two tables use different row names and a different scope (the note lists specs and extension work that the README does not), so a mechanical compare needs a hand-kept name map, which is a second copy of the facts. The README against `positioning.md` compare is mechanical (F-pos5).
   - The tests are re-run after PR #17 merges and this branch is rebased.
+  - The merge of `main` with spec 0010 added the rule that a spec from 0010 on carries a `Verify skill:` line. This spec now has one (`none`, with its reason), which the drift test `verifyMap.test.ts` required.

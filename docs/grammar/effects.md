@@ -63,9 +63,46 @@ NARRATOR
 Say it, and say it again. Then say it again.
 ```
 
+**Derived events, combinators, a threshold, a duration and a State: the machines and the algebra**
+
+```fountain
+Title: Example
+
+# Part
+
+INT. THE FIRST SCREEN - DAY #sc5#
+
+Box one {id=one cell=ml class=box}
+Every box has a name {id=tag cell=tc class=label}
+
+NARRATOR
+A box on the first screen.
+
+> AUTO-ANIMATE
+
+INT. THE NEXT SCREEN - DAY #sc6#
+
+Box one {id=one cell=mc class=box}
+Every box has a name {id=tag cell=tc class=accent}
+Same name, so it moves {id=hint cell=bc class=muted}
+
+[[effects
+  let settled = last(one.move.end, tag.update.end)
+  s1: sound whoosh at transition.start
+  s2: sound ding at when(one.move.progress >= 50%)
+  s3: sound pop at settled +0.1s
+  s4: sound pop at each(word("matches").end, word("slides").end, stagger=0.3s)
+  f1: focus hint at word("slides").start -0.2s until first(word("there").end, scene.end)
+  s5: sound ding at within(word("matches").end, state(2))
+]]
+
+NARRATOR
+On the next screen, box one sits somewhere else. Its name matches, so it slides there.
+```
+
 ## The Scene heading
 
-The id sits between `#` at the end of the heading: `INT. THE NEXT SCREEN - DAY #sc4#`. It is required, unique in the story, and starts with a letter followed by letters, digits, `_` or `-`; `scene`, `transition`, `word` are reserved by the anchor grammar (no Scene, Element or effect may carry one).
+The id sits between `#` at the end of the heading: `INT. THE NEXT SCREEN - DAY #sc4#`. It is required, unique in the story, and starts with a letter followed by letters, digits, `_` or `-`; `beat`, `scene`, `state`, `transition`, `word`, `each`, `first`, `last`, `when`, `within`, `let` are reserved by the anchor grammar (no Scene, Element or effect may carry one).
 
 ## Element lines
 
@@ -86,38 +123,112 @@ One `[[effects` block per Scene, before its first dialogue, with no blank line i
 
 ```text
 block    ::= "[[effects" NEWLINE { line NEWLINE } "]]"
-line     ::= id ":" verb argument "at" when
+line     ::= effect | let
+effect   ::= id ":" verb argument "at" when [ "until" event ]
+let      ::= "let" name "=" event
 verb     ::= "sound" sound name (pop, whoosh, ding) | "show" element id | "focus" element id
-when     ::= anchor [ offset ] | absolute
+when     ::= event | absolute
 absolute ::= number "s" "because" quoted
-anchor   ::= <effect>.start|end | <element>.enter|exit|move|update.start|end|<N>% | scene.start|end | transition.start|end|<N>% | word("<phrase>"[, <n>]).start|end
-edge     ::= "start" | "end"
-event    ::= "enter" | "exit" | "move" | "update"
+event    ::= term [ offset ]
+term     ::= anchor | name | "last(" event { "," event } ")" | "first(" event { "," event } ")" | "each(" event { "," event } ")" | "within(" event "," "state(" n ")" ")" | "when(" progress ">=" number "%" ")"
+each     ::= "each(" event { "," event } [ "," "throttle=" duration ] [ "," "stagger=" duration ] ")"
+anchor   ::= one of the shapes below, generated from the machines
 offset   ::= ( "+" | "-" ) number ( "ms" | "s" | "f" | "%" )
+duration ::= number ( "ms" | "s" | "f" )
 id       ::= letter { letter | digit | "_" | "-" }
 ```
 
 ### Verbs
 
-| verb | argument | meaning |
-| --- | --- | --- |
-| `sound` | sound name (pop, whoosh, ding) | plays a sound of the built-in catalogue |
-| `show` | element id | reveals an Element that is `visible=false` |
-| `focus` | element id | rings and scales an Element of this Scene |
+| verb | argument | restart | fill | meaning |
+| --- | --- | --- | --- | --- |
+| `sound` | sound name (pop, whoosh, ding) | `overlap` | `remove` | plays a sound of the built-in catalogue, once for each occurrence of its event |
+| `show` | element id | `overlap` | `freeze` | reveals an Element that is `visible=false`; it stays shown |
+| `focus` | element id | `overlap` | `remove` | rings and scales an Element of this Scene; the ring lasts to its `until` event or the end of the Scene |
+
+The `restart` and `fill` columns are the SMIL 3.0 attributes of the same names, declared once for each verb (they follow from it, so no effect stores them). `restart` is one of `always`, `whenNotActive`, `never`, `overlap`: what happens when an effect's begin event comes while one of its instances is running. `always`, `whenNotActive` and `never` are SMIL's; `overlap` is not: the new begin starts another instance beside the running ones and no instance cuts another (two dings 300 ms apart are two dings), a deliberate departure from SMIL's default `restart="always"`. Only `overlap` is built (the resolver has no other). `fill` is one of `remove`, `freeze`: what an effect leaves when its window ends; `freeze` keeps the last state to the end of the Scene, `remove` takes the change off (the slide change ends every effect that is still running).
+
+### The machines
+
+A **machine** says which states a thing passes through and which timed transitions connect them. The anchors below are generated from these declarations (`packages/core/src/machines.ts`); an anchor that names none of them is an error. Graph model: a **State** (node) holds for a dwell interval, a **Beat** (edge) is the transition the engine generates from one State to the next, and a **Scene** is a compound State (a superstate) that groups the States sharing one identity scope. Each Element's lifecycle (presence, position, style) and each effect run as parallel regions inside a Scene.
+
+| machine | subject | initial state | states | final | transitions |
+| --- | --- | --- | --- | --- | --- |
+| `presence` | `<id>` | `absent` | `absent`, `entering`, `present`, `exiting` | none | `enter`: absent -> entering -> present (time); `exit`: present -> exiting -> absent (time) |
+| `position` | `<id>` | `still` | `still`, `moving` | none | `move`: still -> moving -> still (eased) |
+| `style` | `<id>` | `steady` | `steady`, `updating` | none | `update`: steady -> updating -> steady (eased) |
+| `effect` | `<id>` | `idle` | `idle`, `active`, `done` | `done` | `run`: idle -> active -> done (time) |
+| `slide` | `scene` | `before` | `before`, `changing`, `shown` | `shown` | `transition`: before -> changing -> shown (time) |
+| `dwell` | `state(<n>)` | `dwell` | `dwell` | `dwell` | none |
+| `beat` | `beat(<n>)` | `waiting` | `waiting`, `changing`, `done` | `done` | `change`: waiting -> changing -> done (time) |
+
+A state is **final** when no transition leaves it (derived from the transitions, never stored). `enter` is the first frame the machine is in a state and `leave` the first frame **out** of it: the frame a Beat starts or a transition ends for a state left inside the Scene, and the frame of the next slide change (the Scene's last frame plus one) for a state still held when the Scene ends, so a sound anchored at such a `leave` is outside its Scene; `scene.end` is the Scene's last frame, one frame before the first frame out of `scene.shown`.
 
 ### Anchors
 
-An anchor names a moment of the Plan. It resolves to a frame in the schedule stage, from the aligned words and the renderer's declared lifecycle; `reebeat plan` prints `intent -> frame` for each effect.
+An anchor names a moment of the Plan. It resolves to a frame in the schedule stage, from the aligned words, the machines and the renderer's declared lifecycle; `reebeat plan --timing` prints `intent -> frame` for each effect and each derived event.
 
 | anchor | points at |
 | --- | --- |
-| `<effect>.start\|end` | another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error |
-| `<element>.enter\|exit\|move\|update.start\|end\|<N>%` | a lifecycle event of an Element of this Scene (exit: of the previous Scene, seen at the transition): the first frame it differs, the frame it settles, or N percent of the way (move and update: by the renderer's declared easing) |
-| `scene.start\|end` | scene.start: the frame the slide change is shown; scene.end: the last frame of the Scene |
-| `transition.start\|end\|<N>%` | the Scene's incoming slide transition: its first frame, its last frame, or N percent of the way (linear in time) |
-| `word("<phrase>"[, <n>]).start\|end` | a word or phrase of this Scene's narration: the start of its first word or the end of its last; n picks the nth occurrence and is required when the phrase occurs more than once |
+| `word("<phrase>"[, <n>]).<edge>` | a word or phrase of this Scene's narration: the start of its first word or the end of its last; n picks the nth occurrence and is required when the phrase occurs more than once |
+| `<id>.enter.start\|end\|<N>%` | the Element appears: it is only in this Scene, or a show effect reveals it |
+| `when(<id>.enter.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (linear in time); the sugar `<id>.enter.<N>%` means the same |
+| `<id>.exit.start\|end\|<N>%` | the Element goes away: it is only in the previous Scene |
+| `when(<id>.exit.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (linear in time); the sugar `<id>.exit.<N>%` means the same |
+| `<id>.absent.enter\|leave` | the Element is not on the slide |
+| `<id>.entering.enter\|leave` | the Element is appearing |
+| `<id>.present.enter\|leave` | the Element is on the slide |
+| `<id>.exiting.enter\|leave` | the Element is going away |
+| `<id>.move.start\|end\|<N>%` | the Element slides to another cell: its cell changed |
+| `when(<id>.move.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (by the renderer's declared easing); the sugar `<id>.move.<N>%` means the same |
+| `<id>.still.enter\|leave` | the Element stays in its cell |
+| `<id>.moving.enter\|leave` | the Element is sliding to its new cell |
+| `<id>.update.start\|end\|<N>%` | the Element changes its class or its text |
+| `when(<id>.update.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (by the renderer's declared easing); the sugar `<id>.update.<N>%` means the same |
+| `<id>.steady.enter\|leave` | the Element keeps its class and text |
+| `<id>.updating.enter\|leave` | the Element is changing its class or text |
+| `<id>.start\|end\|<N>%` | the effect runs: from its fire frame to the end of its window |
+| `when(<id>.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (linear in time); the sugar `<id>.<N>%` means the same |
+| `<id>.idle.enter\|leave` | the effect has not started |
+| `<id>.active.enter\|leave` | the effect is running |
+| `<id>.done.enter\|leave` | the effect has ended |
+| `scene.transition.start\|end\|<N>%` | the slide change into this Scene |
+| `when(scene.transition.progress >= <N>%)` | the first frame the progress of the transition reaches N percent (linear in time); the sugar `scene.transition.<N>%` means the same |
+| `scene.before.enter\|leave` | the previous Scene is still shown |
+| `scene.changing.enter\|leave` | the slide change is running |
+| `scene.shown.enter\|leave` | the Scene is shown |
+| `state(<n>).enter\|leave` | the State holds |
+| `beat(<n>).start\|end\|<N>%` | the Beat leads from one State of the Scene to the next |
+| `when(beat(<n>).progress >= <N>%)` | the first frame the progress of the transition reaches N percent (linear in time); the sugar `beat(<n>).<N>%` means the same |
+| `beat(<n>).waiting.enter\|leave` | the Beat has not started |
+| `beat(<n>).changing.enter\|leave` | the Beat is running |
+| `beat(<n>).done.enter\|leave` | the Beat is over |
+| `transition.start` | the same as `scene.transition.start` |
+| `transition.end` | the same as `scene.transition.end` |
+| `transition.<N>%` | the same as `scene.transition.<N>%` |
+| `scene.start` | the same as `scene.before.leave` |
+| `scene.end` | `scene.shown.leave` moved by -1 frame: the Scene's last frame, one frame before the first frame out of `scene.shown` |
 
-Edges: `start`, `end`. Element events: `enter`, `exit`, `move`, `update`. A percent is only valid on an anchor that has a window (a move, an update, a show, the transition of a Scene that is not `> CUT`, a word); an instant (an exit, `scene.start`, a sound) has none.
+A percent is only valid on an anchor that has a window (a move, an update, a show, a focus, a Beat, the transition of a Scene that is not `> CUT`, a word); an instant (an exit, `scene.start`, a sound) has none.
+
+### Events, combinators and durations
+
+An event is a list of frames. The combinators are total functions over such lists (SMIL 3.0 timing for what happens; RxJS marble notation only to explain them, never a runtime):
+
+| written | meaning |
+| --- | --- |
+| `last(a, b)` | when every operand has happened: the latest of their last occurrences (SMIL `endsync=last`, `forkJoin`) |
+| `first(a, b)` | the earliest occurrence of any operand (SMIL `endsync=first`, `race`) |
+| `each(a, b)` | every occurrence of every operand, in time order (a begin-value list, `merge`); a `sound` runs once for each, a `show` or `focus` must have one |
+| `each(a, b, throttle=250ms)` | drops an occurrence closer than the duration to the last one kept (leading `throttle`) |
+| `each(a, b, stagger=0.3s)` | pushes an occurrence later so that none is closer than the duration to the one before it |
+| `within(a, state(2))` | the occurrences of `a` inside State 2 (scoping) |
+| `let name = a` | a derived event of the Scene, evaluated once and shared (`share`) |
+| `... until a` | the end of a `focus` ring: the first occurrence of `a` after the fire frame (SMIL end value, `takeUntil`); the slide change interrupts a ring that is still held |
+
+**Simultaneous events are one event.** Occurrences of one event at the same frame are one occurrence (an effect fires once for a moment): `each(a, b)` with `a` and `b` at the same frame has that frame once, and keeps the first operand's window; `last` and `first` of operands that tie give that frame once; a `sound` anchored there sounds once. SMIL does the same (equal times in a begin-value list are one begin); a reactive `merge` would keep both, and this language does not. Two **different** effects at one frame both fire, in the order they are declared, and two steps (`show`, `focus`) at one frame make one Beat. An `until` ignores an occurrence at or before the fire frame of the effect it ends: the end is the first occurrence strictly after it.
+
+Effects anchored to a Beat's events (`beat(n).start`, `one.move.end`) are Mealy outputs: they fire on a transition. Effects anchored to a State's events (`state(n).enter`, `one.moving.leave`) are Moore outputs: they fire on entering or leaving a state.
 
 ### Offsets
 
@@ -125,9 +236,9 @@ After an anchor: a sign, a number and a unit.
 
 | unit | means |
 | --- | --- |
-| `ms` | milliseconds |
-| `s` | milliseconds, written in seconds (x 1000) |
-| `f` | frames |
+| `ms` | an exact time, stored as 705,600 flicks (1/705,600,000 s each) per unit |
+| `s` | an exact time, stored as 705,600,000 flicks (1/705,600,000 s each) per unit |
+| `f` | output frames at the Plan's declared frame rate (a frame exists only at render time) |
 | `%` | a share of the anchored window (only with an anchor that has one) |
 
 ### Absolute times
@@ -214,7 +325,7 @@ NARRATOR
 Hello there.
 ```
 
-> line 12, BadEffect: unknown event "entr" in hint.entr.start; expected enter, exit, move or update; did you mean enter?
+> line 12, BadEffect: "hint.entr.start" names no moment of a declared machine; expected word("<phrase>"[, <n>]).<edge>, <id>.<enter|exit|absent|entering|present|exiting|move|still|moving|update|steady|updating>..., <id>.<start|end|<N>%|idle|active|done>..., scene.<transition|before|changing|shown>..., state(<n>).<enter|leave>..., beat(<n>).<start|end|<N>%|waiting|changing|done>...; did you mean hint.enter.start?
 
 **A phrase that occurs twice, with no occurrence number**
 
@@ -257,6 +368,72 @@ Hello.
 ```
 
 > line 10, AbsoluteNeedsReason: absolute time "2.5s" has no reason; expected at 2.5s because "<why this moment is fixed>"
+
+**A moment that an Element does not have in this Scene**
+
+```fountain-invalid
+Title: Example
+
+# Part
+
+INT. THE ONLY SCREEN - DAY #only#
+
+A title {id=title cell=mc class=title}
+A hint {id=hint cell=bc class=muted}
+
+[[effects
+  s1: sound pop at title.move.start
+]]
+
+NARRATOR
+Hello.
+```
+
+> line 11, NoSuchEvent: title.move: Scene only is not > AUTO-ANIMATE, so Elements only enter; expected enter (an Element of a Scene that is not > AUTO-ANIMATE only enters with the slide)
+
+**An until on a sound, which plays to its own end**
+
+```fountain-invalid
+Title: Example
+
+# Part
+
+INT. THE ONLY SCREEN - DAY #only#
+
+A title {id=title cell=mc class=title}
+
+[[effects
+  s1: sound pop at word("hello").end until scene.end
+]]
+
+NARRATOR
+Hello there.
+```
+
+> line 10, BadEffect: until on a sound, which plays to its own end; expected until only on focus
+
+**Two derived events that wait for each other**
+
+```fountain-invalid
+Title: Example
+
+# Part
+
+INT. THE ONLY SCREEN - DAY #only#
+
+A title {id=title cell=mc class=title}
+
+[[effects
+  let a = b
+  let b = a
+  s1: sound pop at a
+]]
+
+NARRATOR
+Hello there.
+```
+
+> line 10, EffectCycle: effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)
 
 ### The release-1 forms
 

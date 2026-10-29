@@ -1,9 +1,10 @@
-// F3 (notes equal dialogue) and F4 (fragments equal the `show` and `focus` effects, sounds equal `data-sounds`) on the
+// F3 (notes equal dialogue) and F4 (fragments equal the steps of the `show` and `focus` effects, sounds equal `data-sounds`) on the
 // written `deck.html`, read with the deck's own `readDeck` and compared with the Plan the source builds, resolved by
 // the Timeline of `plan.json` (the order of the fragments is the order in time). Each is computed on its own, so a fault in a slide's
 // fragments never hides one in a later slide's notes. `checkDeck` then covers what these two do not compare (the
 // revealed Element of a fragment, the Elements, the slide marks, the slide order); its findings go to F4, because
 // they are about what the slides show, not what they say.
+import { soundsOf, stepsOf } from "@reebeat/core";
 import type { PlanJson, Scene } from "@reebeat/core";
 import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
 import type { Fragment } from "@reebeat/lint";
@@ -47,6 +48,7 @@ const notesProblem = (
 const fragmentsOf = (model: DeckModel): readonly Fragment[] =>
   Arr.flatMap(model.slides, (slide) =>
     Arr.map(slide.fragments, (fragment) => ({
+      edge: fragment.edge,
       effectId: fragment.effectId,
       sceneId: slide.sceneId,
       target: fragment.target,
@@ -106,17 +108,13 @@ export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
   const effectCount = Arr.reduce(
     plan.scenes,
     0,
-    (sum, scene) =>
-      sum +
-      Arr.filter(scene.effects, (effect) => effect.verb !== "sound").length
+    (sum, scene) => sum + stepsOf(plan, scene).length
   );
 
   const soundCount = Arr.reduce(
     plan.scenes,
     0,
-    (sum, scene) =>
-      sum +
-      Arr.filter(scene.effects, (effect) => effect.verb === "sound").length
+    (sum, scene) => sum + soundsOf(plan, scene).length
   );
 
   const unmatched = Result.isFailure(mismatch) ? mismatch.failure : undefined;
@@ -153,7 +151,7 @@ export const deckVerdicts = Effect.fn("deckVerdicts")(function* deck(
     ),
     verdictOf(
       "F4",
-      `every slide has one fragment per show or focus effect of its Scene in resolved order, carries the sounds of the Plan in data-sounds, and shows the Plan's Elements and marks`,
+      `every slide has one fragment per step of its Scene in resolved order (a start for each show or focus effect, an end for each focus ring that ends by its own until), carries the sounds of the Plan in data-sounds, and shows the Plan's Elements and marks`,
       fragments,
       [
         ["slides", model.slides.length],

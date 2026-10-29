@@ -1,60 +1,18 @@
 // F2, subtitles equal narration: the `.vtt` file and the `mov_text` stream of the mp4 each hold one cue per Line,
 // the cue text is the narration text of the source, and its start and end lie within one frame of the Line's frames
 // in the Timeline.
-import type { TimedLine } from "@reebeat/core";
 import { MediaTools } from "@reebeat/encode-ffmpeg";
 import { parseVtt } from "@reebeat/subtitles";
 import type { VttCue } from "@reebeat/subtitles";
-import { Array as Arr, Effect, Option, Result } from "effect";
+import { Array as Arr, Effect, Result } from "effect";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
-import { planLines, timedLines } from "./planParts.ts";
-import { rebuiltPlan } from "./truth.ts";
+import { expectedLines } from "./truth.ts";
+import type { ExpectedLine } from "./truth.ts";
 import { msToFrames, signedFrames, withinOneFrame } from "./units.ts";
 import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
-
-interface ExpectedLine {
-  readonly endFrame: number;
-  readonly lineId: string;
-  readonly startFrame: number;
-  readonly text: string;
-}
-
-/** The Lines of the source (text) with the frames of the Timeline, or the first reason there is no such pairing. */
-const expectedLines = (
-  build: Build
-): Result.Result<readonly ExpectedLine[], string> =>
-  Result.flatMap(rebuiltPlan(build), (plan) => {
-    const timed = new Map(
-      Arr.map(timedLines(build.plan.timeline), (line): [string, TimedLine] => [
-        line.lineId,
-        line,
-      ])
-    );
-
-    const lines = planLines(plan);
-
-    const unscheduled = Arr.findFirst(lines, (line) => !timed.has(line.id));
-
-    return Option.isSome(unscheduled)
-      ? Result.fail(
-          `Line ${unscheduled.value.id} of the source is not in the Timeline of plan.json`
-        )
-      : Result.succeed(
-          Arr.map(lines, (line): ExpectedLine => {
-            const at = timed.get(line.id);
-
-            return {
-              endFrame: at?.endFrame ?? 0,
-              lineId: line.id,
-              startFrame: at?.startFrame ?? 0,
-              text: line.text,
-            };
-          })
-        );
-  });
 
 interface Comparison {
   readonly maxEndFrames: number;

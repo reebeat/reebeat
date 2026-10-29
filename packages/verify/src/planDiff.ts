@@ -1,5 +1,6 @@
 // Where two Plans first differ, as a path (`scenes.sc3.lines.sc3.l1.text`). Plain structural comparison with
 // Effect's `Equal`, field by field in document order; the Timeline is not compared (it exists only in `plan.json`).
+import { placedLines } from "@reebeat/core";
 import type { Effect, Element, Line, PlanJson, Scene } from "@reebeat/core";
 import { Array as Arr, Equal, Option, Predicate, String as Str } from "effect";
 
@@ -65,13 +66,13 @@ const effectDifference = (path: string, left: Effect, right: Effect) =>
     () => leaf(`${path}.name`, left.name, right.name),
     () => leaf(`${path}.target`, left.target, right.target),
     () => leaf(`${path}.when`, left.when, right.when),
+    () => leaf(`${path}.until`, left.until, right.until),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
 
 const lineDifference = (path: string, left: Line, right: Line) =>
   firstOf([
     () => leaf(`${path}.text`, left.text, right.text),
-    () => leaf(`${path}.words`, left.words, right.words),
     () => leaf(`${path}.hints`, left.hints, right.hints),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
@@ -84,6 +85,10 @@ const elementDifference = (path: string, left: Element, right: Element) =>
     () => leaf(`${path}.visible`, left.visible, right.visible),
     () => leaf(`${path}.line`, left.line, right.line),
   ]);
+
+/** The Lines of a Scene named by their derived ids, which a Plan does not store (`sc3.l1`). */
+const named = (scene: Scene): readonly (Line & { readonly id: string })[] =>
+  Arr.map(placedLines(scene), ({ id, line }) => ({ ...line, id }));
 
 const sceneDifference = (path: string, left: Scene, right: Scene) =>
   firstOf([
@@ -99,7 +104,7 @@ const sceneDifference = (path: string, left: Scene, right: Scene) =>
         right.elements,
         elementDifference
       ),
-    () => members(`${path}.lines`, left.lines, right.lines, lineDifference),
+    () => members(`${path}.lines`, named(left), named(right), lineDifference),
     () =>
       members(`${path}.effects`, left.effects, right.effects, effectDifference),
   ]);

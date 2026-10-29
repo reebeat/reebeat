@@ -1,8 +1,10 @@
-// Rule `absolute-times-need-a-reason` (design 4.4.1 rule 4; spec 0002, F5): an effect that pins an absolute time
-// (`at 12.5s because "<reason>"`) must say why, because every other time in a Plan is derived from the spoken words
+// Rule `absolute-times-need-a-reason` (design 4.4.1 rule 4; spec 0002, F5; spec 0004): an effect that pins an absolute
+// time (`at 12.5s because "<reason>"`) must say why, because every other time in a Plan is derived from the spoken words
 // and the renderer's lifecycle. The source grammar already refuses an absolute time without a reason; this rule reads
-// the Plan itself (`Effect.when.absoluteMs`), so a Plan that did not come from the parser is held to it too, and it
-// lists every absolute time (severity `info`) so a reviewer sees them all.
+// the Plan itself (`Effect.when.absoluteFlicks`, exact time in flicks, printed here in seconds), so a Plan that did not
+// come from the importer is held to it too, and it lists every absolute time (severity `info`) so a reviewer sees them
+// all.
+import { flicksPerSecond } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, String as Str } from "effect";
 
@@ -20,11 +22,11 @@ export const absoluteTimesNeedReason = (
     Arr.flatMap(scene.effects, (effect): readonly Diagnostic[] => {
       const { when } = effect;
 
-      if (!("absoluteMs" in when)) {
+      if (!("absoluteFlicks" in when)) {
         return [];
       }
 
-      const seconds = when.absoluteMs / 1000;
+      const seconds = when.absoluteFlicks / flicksPerSecond;
 
       return Str.trim(when.reason) === ""
         ? [

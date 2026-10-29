@@ -10,6 +10,7 @@ import {
   carrySource,
   fixtureSha256,
   planOf,
+  ringSource,
   scheduledOf,
   scheduledStory,
   storyPlan,
@@ -191,6 +192,38 @@ describe("renderDeck", () => {
   );
 
   it.effect(
+    "writes the end of a ring that ends by its own `until` as a fragment of its own (data-effect-edge=end), carrying no sound",
+    () =>
+      Effect.gen(function* ring() {
+        const { html } = renderDeck(yield* scheduledOf(ringSource));
+
+        assert.include(
+          html,
+          '<span class="fragment effect" data-fragment-index="1" data-effect-id="f1" data-effect-edge="end" data-effect-verb="focus" data-target="a"></span>'
+        );
+
+        // A start has no edge attribute, and the ring that runs to the slide change (`f2`) has no end step.
+        assert.strictEqual(Str.split(html, 'data-effect-edge="').length, 2);
+
+        const [slide] = readDeck(html).slides;
+
+        assert.deepStrictEqual(
+          Arr.map(slide?.fragments ?? [], (fragment) => [
+            fragment.index,
+            fragment.effectId,
+            fragment.edge,
+            fragment.sounds,
+          ]),
+          [
+            ["0", "f1", "start", ["ding", "pop"]],
+            ["1", "f1", "end", []],
+            ["2", "f2", "start", []],
+          ]
+        );
+      })
+  );
+
+  it.effect(
     "orders the fragments of a Scene by resolved time, not by the order they were written in",
     () =>
       Effect.gen(function* order() {
@@ -199,14 +232,22 @@ describe("renderDeck", () => {
         const scene = nth(plan.scenes, 3);
 
         // sc4 writes `f1` (the focus, 0.2 s before "slides") before `r1` (the show, 0.1 s after "matches"): "matches"
-        // is spoken first, so the show resolves first.
+        // is spoken before "slides", so the steps are `r1`, `f1` and, when the `f1` ring ends by its own `until`, the
+        // end of `f1`. `s3` (a sound after the box and the tag settled) is no step.
         assert.deepStrictEqual(
           Arr.map(scene?.effects ?? [], (effect) => effect.id),
-          ["s1", "s2", "f1", "r1"]
+          ["s1", "s2", "s3", "f1", "r1"]
         );
         assert.deepStrictEqual(
-          Arr.map(slide?.fragments ?? [], (fragment) => fragment.effectId),
-          ["r1", "f1"]
+          Arr.map(slide?.fragments ?? [], (fragment) => [
+            fragment.effectId,
+            fragment.edge,
+          ]),
+          [
+            ["r1", "start"],
+            ["f1", "start"],
+            ["f1", "end"],
+          ]
         );
 
         const fires = new Map(
@@ -226,8 +267,13 @@ describe("renderDeck", () => {
       Effect.gen(function* sounds() {
         const story = readDeck(renderDeck(yield* scheduledStory).html).slides;
 
-        // sc4: the whoosh is anchored to the slide change and the ding to the box's motion: both ride on the slide.
-        assert.deepStrictEqual(nth(story, 3)?.sounds, ["whoosh", "ding"]);
+        // sc4: the whoosh is anchored to the slide change, the ding to the box's motion and the pop to the moment the
+        // box and the tag settled: all three ride on the slide, no step comes before them.
+        assert.deepStrictEqual(nth(story, 3)?.sounds, [
+          "whoosh",
+          "ding",
+          "pop",
+        ]);
         assert.deepStrictEqual(
           Arr.flatMap(
             nth(story, 3)?.fragments ?? [],
@@ -236,8 +282,21 @@ describe("renderDeck", () => {
           []
         );
         assert.deepStrictEqual(nth(story, 4)?.sounds, ["ding"]);
+        // sc6: the two pops of the `each` ride on the slide; the pop inside State 2 (`within`) rides on the first show, the
+        // pops after the second show (a Beat's end, the last frame of the last State) on the second.
+        assert.deepStrictEqual(nth(story, 5)?.sounds, ["pop", "pop"]);
+        assert.deepStrictEqual(
+          Arr.map(nth(story, 5)?.fragments ?? [], (fragment) => [
+            fragment.effectId,
+            fragment.sounds,
+          ]),
+          [
+            ["r1", ["pop"]],
+            ["r2", ["pop", "pop"]],
+          ]
+        );
         // sc7: an absolute time with no step before it plays alone, which a Deck can only do with the slide.
-        assert.deepStrictEqual(nth(story, 6)?.sounds, ["pop"]);
+        assert.deepStrictEqual(nth(story, 6)?.sounds, ["pop", "pop", "pop"]);
 
         const carried = nth(
           readDeck(renderDeck(yield* scheduledOf(carrySource)).html).slides,

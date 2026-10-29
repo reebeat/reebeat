@@ -153,6 +153,10 @@ describe("a broken adapter fails exactly the clause that names its flaw", () => 
       },
     ],
     [
+      "the lags were measured at 0 frames per second",
+      { ...contractLifecycle, measuredFps: 0 },
+    ],
+    [
       "an easing whose first control point x is above 1",
       {
         ...contractLifecycle,

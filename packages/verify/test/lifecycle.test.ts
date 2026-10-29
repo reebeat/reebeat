@@ -123,7 +123,9 @@ layer(Coverage.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             ["sc4", ["q10"]],
           ] as const) {
             for (const probe of probes) {
-              const found = offsetsIn(rowOf(verdict, `${scene}.${probe} show`));
+              const found = offsetsIn(
+                rowOf(verdict, `${scene}.${probe}#1 show`)
+              );
 
               assert.isAtMost(
                 Math.abs(found.anchor ?? Number.NaN),

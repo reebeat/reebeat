@@ -78,7 +78,9 @@ const plan = Command.make(
     ),
     story,
     timing: Flag.Boolean("timing").pipe(
-      Flag.withDescription("Add frames from the speech cache (read-only)"),
+      Flag.withDescription(
+        "Add the resolved frames of every effect (each instance) and derived event, from the speech cache (read-only)"
+      ),
       Flag.withDefault(false)
     ),
   },
@@ -101,7 +103,7 @@ const plan = Command.make(
   })
 ).pipe(
   Command.withDescription(
-    "Print the Plan of a story for review: scenes, elements, effects (intent and resolved frame with --timing) and the identity diff"
+    "Print the Plan of a story for review: scenes, elements, effects and derived events, and the identity diff. With --timing each effect (every instance) and derived event shows its intent and its resolved frames, and what ended each duration"
   ),
   Command.withExamples([
     {
@@ -110,7 +112,8 @@ const plan = Command.make(
     },
     {
       command: "reebeat plan stories/same-id/story.fountain --timing",
-      description: "The review text with frames, from the speech cache",
+      description:
+        "The review text with intent and resolved frames, from the speech cache",
     },
   ])
 );
@@ -133,7 +136,7 @@ const lint = Command.make(
   })
 ).pipe(
   Command.withDescription(
-    "List every problem of a story with its line and the fix, and every absolute time with its reason. An effect that falls outside its Scene needs the speech timing: lint checks it only when the story's speech cache exists (the selection flags and --cache-dir say which), otherwise `plan --timing` or `build` finds it, not lint"
+    "List every problem of a story with its line and the fix (the Fountain importer's errors, then the lint rules: an unused derived event, an until that is its own fire), and every absolute time with its reason. An effect that falls outside its Scene needs the speech timing: lint checks it only when the story's speech cache exists (the selection flags and --cache-dir say which), otherwise `plan --timing` or `build` finds it, not lint"
   ),
   Command.withExamples([
     {

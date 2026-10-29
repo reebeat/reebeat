@@ -86,17 +86,22 @@ export const assertInfoDeclared = (info: AdapterInfo): void => {
 
 /**
  * Asserts a renderer's lifecycle declaration is sane: the transitions that animate and the `show` fade last a positive
- * time, an instant `cut` is not negative, the matched Element's start lag is not negative, and the easing is a CSS
- * cubic-bezier (the x of both control points inside [0, 1], so progress is a function of time).
+ * time, an instant `cut` is not negative, the matched Element's start lag is not negative, the lags were measured at a
+ * whole, positive frame rate, and the easing is a CSS cubic-bezier (the x of both control points inside [0, 1], so
+ * progress is a function of time).
  */
 export const assertLifecycleDeclared = (lifecycle: RendererLifecycle): void => {
-  const { matched, showMs, transitionMs, unmatched } = lifecycle;
+  const { matched, measuredFps, showMs, transitionMs, unmatched } = lifecycle;
 
   assert.isAbove(transitionMs["auto-animate"], 0, "auto-animate takes time");
   assert.isAbove(transitionMs.default, 0, "the default fade takes time");
   assert.isAtLeast(transitionMs.cut, 0, "a cut is instant, not negative");
   assert.isAbove(showMs, 0, "a shown Element takes time to appear");
   assert.isAtLeast(matched.startLagFrames, 0, "a lag is not negative");
+  assert.isTrue(
+    Number.isInteger(measuredFps) && measuredFps >= 1,
+    "the lags were measured at a whole, positive frame rate"
+  );
   assert.isAtLeast(
     unmatched.enter.endLagFrames,
     unmatched.enter.startLagFrames,

@@ -181,10 +181,10 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
           const verdict = verdictOf(verdicts, "F1");
 
-          assert.include(verdict.detail, "sc1.r1 show b");
+          assert.include(verdict.detail, "sc1.r1#1 show b");
           assert.include(verdict.detail, "+2 frames");
           assert.approximately(
-            offsetsIn(rowOf(verdict, "sc1.r1 show b")).own ?? Number.NaN,
+            offsetsIn(rowOf(verdict, "sc1.r1#1 show b")).own ?? Number.NaN,
             2,
             0.5
           );
@@ -301,7 +301,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const verdict = verdictOf(verdicts, "F1");
           const offsets = offsetsIn(rowOf(verdict, whooshRow));
 
-          assert.include(verdict.detail, "sc2.s1 sound whoosh");
+          assert.include(verdict.detail, "sc2.s1#1 sound whoosh");
           assert.include(verdict.detail, "frames from its resolved frame");
           assert.approximately(offsets.own ?? Number.NaN, 0, 1);
           assert.approximately(offsets.anchor ?? Number.NaN, -30, 1);
@@ -336,17 +336,19 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
           assert.strictEqual(intact.status, "pass", intact.detail);
           assert.deepStrictEqual(failedIds(declared), ["F1"]);
-          assert.include(broken.detail, "sc2.m1 sound ding");
+          assert.include(broken.detail, "sc2.m1#1 sound ding");
           assert.include(broken.detail, "frames from its resolved frame");
 
           // It starts at the slide frame in the wrong Timeline and 2 frames later in the video: the anchor is 2 off.
           assert.approximately(
-            offsetsIn(rowOf(broken, "sc2.m1 sound ding")).anchor ?? Number.NaN,
+            offsetsIn(rowOf(broken, "sc2.m1#1 sound ding")).anchor ??
+              Number.NaN,
             2,
             0.5
           );
           assert.approximately(
-            offsetsIn(rowOf(intact, "sc2.m1 sound ding")).anchor ?? Number.NaN,
+            offsetsIn(rowOf(intact, "sc2.m1#1 sound ding")).anchor ??
+              Number.NaN,
             0,
             1
           );
@@ -724,7 +726,10 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdictOf(verdicts, "F8").detail,
             "Line sc1.l1 starts +3 frames"
           );
-          assert.include(verdictOf(verdicts, "F1").detail, "sc1.p1 sound pop");
+          assert.include(
+            verdictOf(verdicts, "F1").detail,
+            "sc1.p1#1 sound pop"
+          );
         })
     );
 
@@ -750,7 +755,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             );
             assert.include(
               verdictOf(verdicts, "F1").detail,
-              "sc1.p1 sound pop"
+              "sc1.p1#1 sound pop"
             );
           }
         })

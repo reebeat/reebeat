@@ -20,7 +20,12 @@ import {
   String as Str,
 } from "effect";
 
-import { featureRows, mapProblems, specProblems } from "../verifyMap.ts";
+import {
+  featureRows,
+  mapProblems,
+  requiredRows,
+  specProblems,
+} from "../verifyMap.ts";
 import type { SpecFile, Vocabulary } from "../verifyMap.ts";
 
 const vocabulary: Vocabulary = {
@@ -37,11 +42,7 @@ const header =
 const row = (id: string, text = "x"): string =>
   `| \`${id}\` | ${text} | ${text} | ${text} | ${text} |`;
 
-const requiredIds = [
-  ...Arr.map(vocabulary.verbs, (verb) => `effect-${verb}`),
-  ...Arr.map(vocabulary.transitions, (name) => `transition-${name}`),
-  ...Arr.map(vocabulary.anchorKinds, (kind) => `anchor-${kind}`),
-];
+const requiredIds = requiredRows(vocabulary);
 
 /** A map with a row for each required id; `named` gives the text of a row, `without` the rows to leave out. */
 const mapOf = (

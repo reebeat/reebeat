@@ -29,7 +29,7 @@ export interface FeatureRow {
 }
 
 /** The first spec that must carry a `Verify skill:` line. Earlier ones are checked where the line exists. */
-export const firstEnforcedSpec = 9;
+const firstEnforcedSpec = 9;
 
 const cellsPerRow = 5;
 const rowStart = "| `";
@@ -65,6 +65,13 @@ const rowText = (rows: readonly FeatureRow[], id: string): string =>
 const mentions = (text: string, word: string): boolean =>
   Str.includes(word)(text);
 
+/** The row ids the vocabulary needs: one per effect verb, transition and anchor kind. */
+export const requiredRows = (vocabulary: Vocabulary): readonly string[] => [
+  ...Arr.map(vocabulary.verbs, (verb) => `effect-${verb}`),
+  ...Arr.map(vocabulary.transitions, (name) => `transition-${name}`),
+  ...Arr.map(vocabulary.anchorKinds, (kind) => `anchor-${kind}`),
+];
+
 /** What is wrong with the map against the vocabulary: empty when it is true. */
 export const mapProblems = (
   map: string,
@@ -83,11 +90,7 @@ export const mapProblems = (
       : []),
   ]);
 
-  const required = [
-    ...Arr.map(vocabulary.verbs, (verb) => `effect-${verb}`),
-    ...Arr.map(vocabulary.transitions, (name) => `transition-${name}`),
-    ...Arr.map(vocabulary.anchorKinds, (kind) => `anchor-${kind}`),
-  ];
+  const required = requiredRows(vocabulary);
 
   const missing = pipe(
     required,

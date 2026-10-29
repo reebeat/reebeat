@@ -51,6 +51,7 @@ Every box has a name {id=tag cell=tc class=label}
 
 [[effects
   f1: focus tag at word("name").end
+  s1: sound pop at each(scene.start +0.1s, scene.start +0.2s, scene.start +0.7s, throttle=0.3s)
 ]]
 
 NARRATOR
@@ -66,9 +67,11 @@ Same name, so it moves {id=hint cell=bc class=muted}
 Matched by id {id=note cell=br class=label visible=false}
 
 [[effects
+  let settled = all(one.move.end, tag.update.end)
   s1: sound whoosh at transition.start
-  s2: sound ding at one.move.50%
-  f1: focus hint at word("slides").start -0.2s
+  s2: sound ding at when(one.move.progress >= 50%)
+  f2: focus tag at settled
+  f1: focus hint at word("slides").start -0.2s until first(word("there").end, scene.end)
   r1: show note at word("matches").end +0.1s
 ]]
 
@@ -89,7 +92,9 @@ Same name, so it moves {id=hint cell=bc class=accent}
 Box three {id=three cell=ml class=box}
 
 [[effects
+  let landed = all(one.moving.leave, three.entering.leave)
   s1: sound ding at transition.start
+  f1: focus three at landed
 ]]
 
 NARRATOR
@@ -103,8 +108,11 @@ New name: it appears {id=new cell=mc class=box visible=false}
 Missing name: it leaves {id=gone cell=mr class=box visible=false}
 
 [[effects
+  s1: sound pop at each(scene.start +0.1s, scene.start +0.15s, stagger=0.4s)
   r1: show new at word("appears").end
   r2: show gone at word("leaves").end
+  s2: sound pop at beat(2).end +0.1s
+  s3: sound pop at state(3).leave -1f
 ]]
 
 NARRATOR
@@ -123,6 +131,8 @@ Keep the name and the motion comes free {id=sub cell=bc class=muted}
 
 [[effects
   p1: sound pop at 0.5s because "a soft pop as the closing card settles, before the narration starts"
+  p2: sound pop at first(scene.start +1s, scene.start +0.8s)
+  p3: sound pop at all(scene.start +0.1s, scene.start +0.2s)
 ]]
 
 NARRATOR

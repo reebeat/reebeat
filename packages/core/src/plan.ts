@@ -204,13 +204,24 @@ export const EffectSchema = Schema.Struct({
  * | `enter` of every visible Element of a `default` or `cut` Scene | `s` | window end (instant for `cut`) |
  * | `enter` of an Element revealed by a `show` effect | the effect's fire frame | + `round(fps * showMs / 1000)` |
  *
- * Percent points are linear in TIME between start and end, not in position. An event whose start equals its end has
+ * Percent points of a matched Element's `move` and `update` are in PROGRESS: `N%` is the frame at which the eased
+ * progress of the window reaches N percent, where `matched.easing` is the CSS cubic-bezier `[x1, y1, x2, y2]` of
+ * the animation (reveal.js: `ease` = 0.25, 0.1, 0.25, 1). Every other percent point (`transition.N%`, a `show`
+ * enter) and every percent OFFSET is linear in TIME between start and end. An event whose start equals its end has
  * no window, so a percent point or percent offset on it is an error. `transitionMs["auto-animate"]` must equal
  * `settings.transition * 1000` (the Plan's transition is the renderer's instruction; `schedule` rejects a
  * disagreement).
  */
 export const RendererLifecycleSchema = Schema.Struct({
-  matched: Schema.Struct({ startLagFrames: Frame }),
+  matched: Schema.Struct({
+    easing: Schema.Tuple([
+      Schema.Finite.check(Schema.isBetween({ maximum: 1, minimum: 0 })),
+      Schema.Finite,
+      Schema.Finite.check(Schema.isBetween({ maximum: 1, minimum: 0 })),
+      Schema.Finite,
+    ]),
+    startLagFrames: Frame,
+  }),
   showMs: Milliseconds,
   transitionMs: Schema.Struct({
     "auto-animate": Milliseconds,

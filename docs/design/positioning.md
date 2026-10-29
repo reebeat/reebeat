@@ -29,6 +29,8 @@ creating                                   building (reebeat)
 
 You declare the narrative and its structure. reebeat decides the frames.
 
+How the build works, and which mechanism delivers which quality: [how-it-works.md](how-it-works.md).
+
 ## The categories
 
 | Category | Tools | What the author works with |
@@ -117,12 +119,12 @@ This table repeats the one in the README, with the evidence.
 | --- | --- | --- |
 | One source gives a Video and a Deck | Real today | [spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), `bun run journey` |
 | Byte-identical builds | Real today, measured on one machine | F6 in spec 0001 (decoded frames, decoded audio and container bytes of two builds compared) |
-| Declared Scenes, ids and effects with explicit anchors | Real today | [spec 0002](../specs/0002-explicit-anchors-and-syntax.md) |
-| Transitions between Scenes | Today: reveal.js Auto-Animate, matched by Element id. reebeat's own generation: being built | Specs 0004 and 0005 |
+| Declared scenes, ids and effects with explicit anchors | Real today | [spec 0002](../specs/0002-explicit-anchors-and-syntax.md) |
+| Transitions between scenes | Today reveal.js Auto-Animate draws them, matched by Element id. reebeat's own generation is being built | Specs 0004 and 0005 |
 | Timing as events and behaviours (the FRP part) | Being built | [spec 0004](https://github.com/reebeat/reebeat/pull/17) |
-| An edit rebuilds only what changed | Planned | [#9](https://github.com/reebeat/reebeat/issues/9) |
-| Captions with sound descriptions, audio description, reduced motion | Planned (subtitles exist) | [#12](https://github.com/reebeat/reebeat/issues/12) |
-| An interactive website as an artifact | Planned | [#19](https://github.com/reebeat/reebeat/issues/19) |
+| An edit rebuilds only what changed | Roadmap; today only speech is cached | [#9](https://github.com/reebeat/reebeat/issues/9) |
+| Captions with sound descriptions, audio description, reduced motion | Roadmap; today subtitles, speaker notes and chapter marks | [#12](https://github.com/reebeat/reebeat/issues/12) |
+| An interactive website as an artifact | Roadmap | [#19](https://github.com/reebeat/reebeat/issues/19) |
 | Interactive lessons | Deferred investigation | [#20](https://github.com/reebeat/reebeat/issues/20) |
 
 ## Sources

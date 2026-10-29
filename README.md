@@ -6,7 +6,7 @@
 
 Declare your scenes and the narrative's structure; reebeat generates the transitions between them and produces video, decks, captions and audio description from the same source. Every result is byte-for-byte reproducible, and an edit rebuilds only what changed.
 
-For technical readers: reebeat is a declarative, incremental FRP language for multimedia artifact generation.
+**For technical readers.** Semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect.
 
 That is the goal. The code does not do all of it yet. This table says what is real, what is being built and what is planned:
 
@@ -21,7 +21,7 @@ That is the goal. The code does not do all of it yet. This table says what is re
 | Captions with sound descriptions, audio description, reduced motion | Roadmap ([#12](https://github.com/reebeat/reebeat/issues/12)); today subtitles, speaker notes and chapter marks |
 | An interactive website as an artifact | Roadmap ([#19](https://github.com/reebeat/reebeat/issues/19)) |
 
-How reebeat differs from video editors, presentation programs and motion-graphics tools, with sources, and when not to use it: [`docs/design/positioning.md`](docs/design/positioning.md).
+How the qualities are delivered (the model, the plan, the build, and what exists today): [`docs/design/how-it-works.md`](docs/design/how-it-works.md). How reebeat differs from video editors, presentation programs and motion-graphics tools, with sources, and when not to use it: [`docs/design/positioning.md`](docs/design/positioning.md).
 
 Explainer videos from a screenplay. You write one [Fountain](https://fountain.io/syntax) file: what is on screen (Action), what is said (the narrator's dialogue) and when things happen (one `[[effects]]` block per Scene: each sound, `show` and `focus` effect says **when**, at a word, at the slide change or at a moment of an Element's own motion). reebeat turns it into a **Plan** you can review, then into two renderings generated from that one file:
 
@@ -58,6 +58,7 @@ The silent narrator makes the narration check (F8) meaningless: it prints `N/A (
 - [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first; R3: composable pieces).
 - [`docs/specs/`](docs/specs/): one spec per felt journey; [`STATE.md`](STATE.md) says which is active.
 - [`docs/design/positioning.md`](docs/design/positioning.md): how reebeat differs from video editors, presentation programs and motion-graphics tools (Resolve, Premiere, Final Cut Pro, PowerPoint, Keynote, Canva, Google Slides, After Effects, Remotion, Motion Canvas, Manim, Rive, Lottie), with sources, and when not to use it.
+- [`docs/design/how-it-works.md`](docs/design/how-it-works.md): the technical how behind the what and why: statechart model, functional reactive time, per-artifact plans, an incremental build graph, the role of Effect and XState, prior art, and what is built or planned.
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).
 - [`docs/design/third-party.md`](docs/design/third-party.md) and [`docs/design/open-core-boundary.md`](docs/design/open-core-boundary.md): the licences of everything reebeat depends on, and what is open and closed.
 - Packages, in three tiers with one dependency direction (library, then service, then adapter; [design R3](docs/design/keyframe-engine.md)): libraries `core` (screenplay to Plan, schedule), `subtitles` and `lint`; the service package `services` (the seven service interfaces, their contract suites and offline stand-ins); the build program `pipeline`; adapters `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg` and `cache-fs`; and the tools `verify` (the checks) and `cli` (the `reebeat` command, the only place adapters are chosen and composed).

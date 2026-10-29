@@ -10,10 +10,10 @@ Verify skill: none, documentation only: it changes no output of `reebeat`; the f
 
 | Statement | Status |
 | --- | --- |
-| Layering is 2.5D: each Layer has **one scalar depth**; there is no 3D rotation of a Layer. | **Decided** (operator, 2026-10-29) |
+| Layering is 2.5D: each Layer has **one scalar depth**, seen through a 2D camera (parallax). Nothing more is Decided: the camera's parts (pan, zoom, focus, band) and every function below are Proposed. | **Decided** (operator, 2026-10-29) |
 | A State holds Layers; Layers are blended by blend functions; the camera moves and focus pulls between States; capabilities follow from static or dynamic Layers. | The operator's **idea**. Its concrete shape below is Proposed. |
 | The lead's sketch: identity-bearing Layer with depth, opacity, blend, blur, transform and mask as data; one camera per State; blur from the distance of a Layer's depth to the focus; static Layers as a compositing DAG; dynamic Layers as parallel regions; a plan-time capability check; accessibility rules; a closed blend set; a dependency on 0005. | **Proposed** (a sketch, not an operator decision) |
-| Every Decision 2 to 12, the schema sketch, the numeric formulas, the protocol additions, the staged plan. | **Proposed** |
+| Every Decision 2 to 12, the schema sketch, the numeric formulas, the protocol additions, and every section without a Decision number (Non-goals, Terms, The laws, Capability table, Determinism, Engine protocol impact, Build graph and caching, Accessibility, both falsifier lists, Risks, Staged plan; each says so under its heading). | **Proposed** |
 
 "Decided" is the operator's word, as in [ADR-0000](../decisions/0000-extension-architecture.md) and its [README](../decisions/README.md) (Proposed means merged and not yet confirmed by the operator). Nothing here is Decided by being written in a spec.
 
@@ -32,11 +32,13 @@ Verify skill: none, documentation only: it changes no output of `reebeat`; the f
    one 2D camera: pan (x, y), zoom, focus (a depth) and a focus band
 ```
 
-What the viewer gets: depth from motion (near Layers pass faster than far ones), attention from focus (what is out of focus is blurred; a focus pull moves the eye), and light from blends (a fog that screens, a flash that differences). What the person creating gets: depth as one number per Layer, a camera and a focus per State, and the Beat between two States moves them. What reebeat guarantees: two builds of one source on one machine give equal frames ([spec 0001](0001-release-1-screenplay-to-deck-and-video.md), F6), and the compositing step is defined in integers, so it gives equal bytes for equal inputs on any machine.
+What the viewer gets: depth from motion (near Layers pass faster than far ones), attention from focus (what is out of focus is blurred; a focus pull moves the eye), and light from blends (a fog that screens, a flash that differences). What the person creating gets: depth as one number per Layer, a camera and a focus per State, and the Beat between two States moves them. What reebeat guarantees today: two builds of one source on one machine give equal frames ([spec 0001](0001-release-1-screenplay-to-deck-and-video.md), F6). What this design aims at, to be observed by F-B1 once built: the compositing step is defined in integers, so it should give equal bytes for equal inputs on any machine.
 
 Layers are also the natural unit of a render engine: an engine renders one Layer as a transparent plane, and a compositor, which is plain integer arithmetic, puts the planes together. A Layer whose Elements are all non-interactive is **static** and collapses into a compositing DAG that the build can cache. A Layer that holds an interactive Element is **dynamic**, is derived as such, and is a parallel statechart region. The capability check reads that, not a declaration.
 
 ### Non-goals
+
+*Status: Proposed. The scope below is a proposal for the operator's review, not a decision.*
 
 - 3D rotation, perspective-correct scaling of a Layer by its depth, a camera that moves in depth (dolly), lights, shadows, a Z-buffer, intersecting planes, deep compositing. The decision of 2026-10-29 is scalar depth; the research shows what the full 3D tools pay for it ([research, After Effects](../design/layering-research.md#adobe-after-effects-and-apple-motion)).
 - Interactive Layers. They wait for [issue #19](https://github.com/reebeat/reebeat/issues/19). This spec states the rule that makes a Layer dynamic and what then changes; it does not build it.
@@ -62,19 +64,19 @@ What a story could look like. **This is a sketch of a grammar that does not exis
 INT. THE FOREST - DAY #sc1#
 
 [[layers
-  sky:    depth 300
+  sky:    depth 300   decorative
   hills:  depth 100
   actors: depth 0
   fog:    depth -50   blend screen   opacity 0.4   decorative
 ]]
 
 Two hikers stand on a path. {id=hiker1 cell=ml class=box layer=actors}
-A ridge behind them. {id=ridge cell=mc class=muted layer=hills}
+The ridge ahead. {id=ridge cell=mc class=muted layer=hills}
 
 [[effects
-  c1: camera focus actors band 20                       at scene.start
+  c1: camera refocus depth 50 band 60                   at scene.start
   c2: camera pan 200,0 over 1.2s                        at word("ridge").start
-  c3: camera focus hills over 0.8s                      at c2.end
+  c3: camera refocus depth 30 band 70 over 0.8s         at c2.end
   s1: sound whoosh                                      at c2.start
 ]]
 ```
@@ -82,17 +84,19 @@ A ridge behind them. {id=ridge cell=mc class=muted layer=hills}
 Hand-computed from the laws below (perspective `d = 100`, blur slope 0.1 px per depth unit, maximum blur 8 px; not produced by any code):
 
 ```text
-State 1 (camera x = 0,  focus = actors, band 20)         State 2 (camera x = 200)
-  layer   z    p=d/(d+z)   shift     sigma  box d_b        shift    (focus still actors)
+State 1 (camera x = 0, focus depth 50, band 60)          State 2 (camera x = 200, same focus)
+  layer   z    p=d/(d+z)   shift     sigma  box d_b        shift
   sky     300  0.25        0 px      8.0    15             -50 px
-  hills   100  0.50        0 px      8.0    15            -100 px
-  actors    0  1.00        0 px      0      0             -200 px
-  fog     -50  2.00        0 px      3.0     6            -400 px
+  hills   100  0.50        0 px      0      0              -100 px
+  actors    0  1.00        0 px      0      0              -200 px
+  fog     -50  2.00        0 px      4.0     8             -400 px
 
-State 3 (c3: focus pulls from actors, z = 0, to hills, z = 100 over 0.8 s)
-  at the middle of the pull the focus is z = 50: actors sigma = 3.0, hills sigma = 3.0
-  after the pull:  hills sigma = 0, actors sigma = 8.0, sky sigma = 8.0, fog sigma = 8.0
+State 3 (after c3: focus depth 30, band 70)
+  sky sigma 8.0 (d_b 15), hills 0, actors 0, fog sigma 1.0 (d_b 2)
+  at the middle of the pull (focus 40, band 65): fog sigma 2.5 (d_b 5)
 ```
+
+The two text Elements (`hiker1` in `actors`, `ridge` in `hills`) sit inside the focus band at every dwell, as the rule of "Accessibility" requires; the decorative `sky` and `fog` carry the blur. A pull to a depth that left a text Layer outside the band would be rejected at plan time. The camera verb is `refocus`, not `focus`, so that it does not collide with the existing `focus` effect (the ring).
 
 Nobody keyframed any blur. `c2.end` anchors the next camera move, `c2.start` anchors the sound: the Beat's events are generated from machines (Decision 9), the way spec 0004 generates every other anchor.
 
@@ -106,7 +110,9 @@ reebeat check story.fountain             # F1 also observes parallax and focus i
 
 ## Terms (proposed; not added to `GLOSSARY.md` here)
 
-[PR #17](https://github.com/reebeat/reebeat/pull/17) and [#24](https://github.com/reebeat/reebeat/pull/24) change `GLOSSARY.md` and are open, so this pull request leaves it alone and the implementing specs add these. The merged extension record already added an "Extension points" section whose **Compositor** entry says it makes a Beat between two runs; Decision 8 widens that role, so the first implementing spec rewrites the entry. Note that the glossary lists *layer* under "Avoid" for **Element**; the first implementing spec removes it from that list.
+*Status: Proposed.*
+
+[PR #17](https://github.com/reebeat/reebeat/pull/17) and [#24](https://github.com/reebeat/reebeat/pull/24) change `GLOSSARY.md` and are open, so this pull request leaves it alone and the implementing specs add these. The merged extension record already has a **Compositor** entry: the piece that makes a Beat between two runs on different engines, from boundary frames. **The layer compositor below is a different job** (blending the planes of one State inside one run), so it takes a distinct name and does not reuse that entry. Note that the glossary lists *layer* under "Avoid" for **Element**, and that `Layer` already names the Effect `Layer` (a service implementation) in this repository; the first implementing spec removes the first and chooses a module name that does not clash with the second.
 
 | Term | Meaning |
 | --- | --- |
@@ -115,17 +121,19 @@ reebeat check story.fountain             # F1 also observes parallax and focus i
 | **Camera** | One per State: a 2D pan, a zoom, and a focus (a depth, or a Layer whose depth it follows) with a focus band. |
 | **Parallax factor** `p(z)` | How far a Layer at depth `z` moves when the camera pans: `d / (d + z)`. |
 | **Plane** | The RGBA frames of one Layer, drawn by an engine at the Layer's final transform on a transparent background. |
-| **Compositor** | Integer arithmetic that turns planes and per-frame values into RGB frames. First-party; the CPU version is the reference. |
+| **Layer compositor** (written "the compositor" below) | Integer arithmetic that turns planes and per-frame values into RGB frames inside one run. First-party; the CPU version is the reference. Not the seam **Compositor** of ADR-0000 (row 9), which makes a Beat between two runs; the two may share one pure integer library, which the seam Compositor would call to blend boundary frames. |
 | **Static / dynamic Layer** | Derived: dynamic when an Element of the Layer declares an interaction; static otherwise. Never written. |
 
 ## The laws (what each number does)
 
+*Status: Proposed.*
+
 All values are those of one frame `n`; the Beat's curves have been evaluated at `n` already (spec 0004, 0005). `d` is the story's `perspective` setting; `c = (cx, cy)` the camera pan in pixels of the screen plane; `k` its zoom; `u` a point of a Layer in canvas pixels from the canvas centre.
 
-1. **Parallax.** `p(z) = d / (d + z)`. A Layer is placed at `s = k · (u − p(z) · c)`. At rest (`c = 0`, `k = 1`) every Layer appears as written, whatever its depth; panning shifts the screen plane by `−k·c` and a Layer at depth `z` by `−k·p(z)·c`. `z > −d` is required (a Layer is never behind the eye): a lint error otherwise. The zoom is uniform: a 2D camera does not change the relative parallax; a camera that moves in depth would, and is a non-goal. The form `d/(d−Z)` is the CSS perspective law and Nuke's Card3D 2.5D idea; the per-Layer multiplier is Godot's `scroll_scale` ([research](../design/layering-research.md#css-filters-3d-transforms-and-parallax-figma)).
+1. **Parallax.** `p(z) = d / (d + z)`. A Layer is placed at `s = k · (u − p(z) · c)`. At rest (`c = 0`, `k = 1`) every Layer appears as written, whatever its depth; panning shifts the screen plane by `−k·c` and a Layer at depth `z` by `−k·p(z)·c`. `z > −d` is required (a Layer is never behind the eye): a lint error otherwise. The zoom is uniform: a 2D camera does not change the relative parallax; a camera that moves in depth would, and is a non-goal. The form `d/(d−Z)` is the CSS perspective law ([research](../design/layering-research.md#css-filters-3d-transforms-and-parallax-figma)); Nuke's Card3D is the 2.5D precedent but its page gives no formula, and Godot's `scroll_scale` is a per-axis multiplier of the same kind ([research](../design/layering-research.md#unity-and-godot)).
 2. **Order.** Layers composite from far to near: sort by depth descending, ties by declaration order. The order is total, so no tie is left to an implementation (Unity and Godot document ties that are not guaranteed).
 3. **Focus and blur.** With the camera's focus depth `f` and band `w ≥ 0`, a Layer at depth `z` has `σ(z) = min(σmax, slope · max(0, |z − f| − w))` pixels, where `slope` (pixels per depth unit) and `σmax` are story settings. `blur: off` on a Layer pins `σ = 0`. A focus that names a Layer follows that Layer's depth. The rule is linear, so it needs no function that is not exact.
-4. **Box size.** reebeat's blur is three box blurs of integer size `d_b = floor(1.8799712059732503 · σ + 1/2)` per axis, following the recipe of [Filter Effects 1, §9.14](https://www.w3.org/TR/filter-effects-1/) for `d_b` odd or even, with edge pixels duplicated; `d_b ≤ 1` is no blur. It is **reebeat's own definition**, not a claim of equality with any browser (the module says an approximation "can be used"). `1.8799712059732503` is `3·√(2π)/4` written as a literal, so no run computes it.
+4. **Box size.** reebeat's blur is three box blurs per axis of integer size `d_b = floor(1.8799712059732503 · σ + 1/2)`; for an even `d_b` the module's rule is two boxes of size `d_b` and one of size `d_b + 1` ([Filter Effects 1, §9.14](https://www.w3.org/TR/filter-effects-1/)); edge pixels are duplicated; a box of `n` samples averages as `floor((2·sum + n) / (2·n))` (half up); `d_b ≤ 1` is no blur. It is **reebeat's own definition**, not a claim of equality with any browser (the module says an approximation "can be used"). `1.8799712059732503` is `3·√(2π)/4` written as a literal, so no run computes it.
 5. **Composite.** For each Layer, far to near: blur its plane, multiply its four channels by its opacity, apply its matte, then composite it onto the backdrop with its operator and blend (Decision 6). A Layer that is a group composites its children onto a transparent backdrop first (an isolated group).
 6. **Opacity** is an integer `0..65535`; **presence** (a Layer entering or leaving) is an opacity ramp over the Beat window, as Keynote, PowerPoint, reveal.js, Figma and Manim fade what they cannot match ([research, synthesis](../design/layering-research.md#synthesis-adopt-adapt-reject-for-reebeat)).
 
@@ -137,7 +145,7 @@ Each decision has options, a recommendation, and a status. Only Decision 1 is De
 
 **Status: Decided** (operator, 2026-10-29).
 
-A Layer has one number, its depth, and is a flat plane parallel to the screen: that is what 2.5D means here. This keeps one number driving three effects (parallax, blur, order) and keeps the build free of 3D intersection rules. The operator's idea pairs it with a 2D camera; the camera's shape is Decision 3 and is Proposed.
+A Layer has one number, its depth, and is a flat plane parallel to the screen: that is what 2.5D means here. This keeps one number driving three effects (parallax, blur, order) and keeps the build free of 3D intersection rules. The operator's decision includes a 2D camera; the parts of that camera (pan, zoom, focus, band) are Decision 3 and are Proposed.
 
 ### Alternatives considered
 
@@ -199,8 +207,8 @@ Blur is derived each frame from the Layer's depth and the camera's focus ("The l
 
 | Option | Why not (or why) |
 | --- | --- |
-| **A. A linear rule with a band and a clamp; reebeat's integer box recipe** | **Recommended.** Fusion's Depth Blur and Nuke's ZDefocus use a focal point, a band and a size; Unity's Gaussian mode a start, an end and a maximum. No transcendental function is needed, and every number is exact. |
-| B. A physical lens (focal length, f-stop, aperture) | After Effects, Blender and Unity Bokeh; none of the pages read gives the radius formula, and Unity's URP and HDRP pages use opposite conventions for the aperture ([research](../design/layering-research.md#unity-and-godot)). |
+| **A. A linear rule with a band and a clamp; reebeat's integer box recipe** | **Recommended.** Fusion's Depth Blur and Nuke's ZDefocus use a focal point, a band and a size; Unity's Gaussian mode a start, an end and a maximum (those pages give no law between the parameters). The rule here is linear, needs no transcendental function, and uses only integers and correctly rounded binary64 `+ − · /`; the slope is stored as an integer count of thousandths. |
+| B. A physical lens (focal length, f-stop, aperture) | After Effects, Blender and Unity Bokeh; none of the pages read gives the radius formula, and the Unity URP and HDRP pages read word the aperture in opposite directions ([research](../design/layering-research.md#unity-and-godot)). |
 | C. Call the browser's `blur()` | Allowed to differ between implementations by the module's own words. |
 | D. A Gaussian with exact weights | Needs `exp`, and ECMA-262 says the behaviour of `exp`, `pow`, `sin` and others "is not precisely specified here" ([ECMA-262](https://tc39.es/ecma262/)), so two engines may differ. |
 
@@ -230,9 +238,9 @@ P (blend term, per colour channel, division-free in premultiplied form)
   exclusion   αs·cb + αb·cs − 2·cs·cb
 ```
 
-This is [W3C's general form](https://www.w3.org/TR/compositing-1/) `Co = αs·Fa·Cs' + αb·Fb·Cb` with `Cs' = (1 − αb)·Cs + αb·B(Cb, Cs)`, rewritten with premultiplied colours `c = α·C`. The spec says "The blending calculations must not use pre-multiplied color values"; the rewriting removes the need to unpremultiply for these modes: every `α·α·B` term becomes a product of premultiplied values. Colour-dodge and burn (a division), soft-light (a square root), and hue, saturation, colour and luminosity (they need the unpremultiplied colour) are **out of the set**. `hard-light` and `overlay` have a division-free form too (a comparison `2·cs ≤ αs` selects between two of the forms above); they are deferred to keep v1 small, not for a reason of principle.
+This is [W3C's general form](https://www.w3.org/TR/compositing-1/) `Co = αs·Fa·Cs' + αb·Fb·Cb` with `Cs' = (1 − αb)·Cs + αb·B(Cb, Cs)`, rewritten with premultiplied colours `c = α·C`. The spec says "The blending calculations must not use pre-multiplied color values"; the rewriting removes the need to unpremultiply for these modes: every `α·α·B` term becomes a product of premultiplied values. Colour-dodge and burn (a division), soft-light (a square root), and hue, saturation, colour and luminosity (they need the unpremultiplied colour) are **out of the set**. `hard-light` and `overlay` have a division-free form too: a comparison selects between two of the forms above, `2·cs ≤ αs` for `hard-light` and `2·cb ≤ αb` for `overlay` (which W3C defines as `hard-light` with the two colours swapped). They are deferred to keep v1 small, not for a reason of principle.
 
-**Evidence behind this (a throwaway prototype of 2026-10-29, not committed):** the rewritten forms were compared with the W3C unpremultiplied formulas, in exact rational arithmetic, over every combination of the 9 values `{0, 1/8, ..., 1}` for `αs`, `αb`, `Cs` and `Cb`, for 9 blend modes (the 7 above plus `hard-light` and `overlay`) and 6 operators: 354,294 combinations, **0 mismatches**. The same forms in the 16-bit integer arithmetic of Decision 7 differed from the exact result by at most **1.78** units of 1/65535 over 4,000 random inputs for each of the 54 blend and operator pairs (a sample, not an exhaustive proof).
+**Evidence behind this (a throwaway prototype of 2026-10-29, not committed; its text is in the PR body):** the rewritten forms were compared with the W3C unpremultiplied formulas, in exact rational arithmetic, over every combination of the 9 values `{0, 1/8, ..., 1}` for `αs`, `αb`, `Cs` and `Cb`, for 9 blend modes (the 7 above plus `hard-light` and `overlay`) and 6 operators: 354,294 combinations, **0 mismatches**. The same forms in the 16-bit integer arithmetic of Decision 7 differed from the exact result by at most **1.78** units of 1/65535 over 4,000 random inputs for each of the 54 blend and operator pairs (a sample, not an exhaustive proof). The round 1 review of this PR reports a larger sample (30,000 per pair) in which the seven v1 blends stay at or below 1.74 and `hard-light` and `overlay` reach 2.08 and 2.17; that run was not repeated here. So the F-B2 tolerance of 2 is stated for the seven v1 blends, and must be re-derived before `hard-light` or `overlay` is admitted.
 
 ### Alternatives considered
 
@@ -249,7 +257,7 @@ This is [W3C's general form](https://www.w3.org/TR/compositing-1/) `Co = αs·Fa
 
 Premultiplied RGBA, **unsigned 16-bit integers**, in the **sRGB-encoded** values the engines write (the encoded values are blended and blurred directly, as CSS filter functions do: "must operate in the sRGB color space"). `M = 65535`; `mul(a, b) = floor((2·a·b + M) / (2·M))`, the product rounded half up. Input: `v16 = v8 · 257` (exact); premultiply `cs = mul(c16, a16)`. Output: `v8 = floor((2·v16 + 257) / 514)`, the nearest 8-bit value. The evaluation order of every formula is fixed by the implementing spec and given with literal test vectors; each `Fa`, `Fb` is an integer in `0..M`. Negative intermediate results are clamped to 0 and results to `M`. The floating-point arithmetic that remains (the parallax factor and the blur size) uses only `+`, `−`, `·`, `/` on IEEE binary64 numbers, each correctly rounded, and no `Math` function ([ECMA-262](https://tc39.es/ecma262/) leaves `sin`, `exp`, `pow` and others to the implementation); the implementing spec quantises each value that reaches an engine or the compositor (the values file, Decision 8) and says how.
 
-Why 16 bits: this record has no measurement of eight-bit rounding, so the choice rests on the cited warnings. Porter and Duff note that precision "falls off sharply" as alpha approaches 0, After Effects says GPU and CPU renderers differ in 8-bit projects and advises 16 or 32 bits, and Blender stores half precision ([research](../design/layering-research.md#adobe-after-effects-and-apple-motion)). The cost is memory: a 1280 by 720 plane is 7.4 MB.
+Why 16 bits: this record has no measurement of eight-bit rounding, so the choice rests on the cited warnings. Porter and Duff note that precision "falls off sharply" as alpha approaches 0; After Effects says GPU-accelerated effects "may render with small color precision differences in an 8-bpc project" against CPU rendering and advises 16 or 32 bits per channel for accurate results; Blender stores data in half precision by default, and its Auto setting uses full precision for final renders ([research](../design/layering-research.md#adobe-after-effects-and-apple-motion)). The cost is memory: a 1280 by 720 plane is 7.4 MB.
 
 ### Alternatives considered
 
@@ -274,7 +282,7 @@ An engine renders a **plane** per Layer: RGBA frames of the Layer's Elements alo
 | B. The engine renders each plane once; the compositor scales and moves it | Cheap. Needs a resampling filter in the specification, softens text, and rounds sub-pixel positions. |
 | C. Per-Layer engines (one Layer by Manim, one by reveal) | The natural reading of "a Layer is the unit of an engine". It changes the "run" of ADR-0000 from a stretch of Scenes to a set of Layers. The planes protocol allows it; **deferred** (Open question 9). |
 
-The **compositor** is promoted from "later" (ADR-0000, catalogue row 9): its **mathematics** becomes a first-party **library** (pure functions over typed arrays, a plain function by the repository rule that frame math stays plain), and its **service** (a swappable, possibly GPU or third-party implementation) stays later, with the clause C1: it must equal the reference for every input, byte for byte.
+The **layer compositor** is not row 9 of ADR-0000 (the seam **Compositor**, "later": it makes a Beat between two runs); it is a new row, `LayerCompositor`: its **mathematics** a first-party **library** now (pure functions over typed arrays, a plain function by the repository rule that frame math stays plain), and its **service** (a swappable, possibly GPU or third-party implementation) later, with the clause C1: it must equal the reference for every input, byte for byte. Adding the row is a dated Revision to ADR-0000 (stage S1).
 
 ## Decision 9: States, Beats and machines
 
@@ -391,9 +399,11 @@ export const CameraSchema = Schema.Struct({
 }).annotate(construct("Camera", "Nuke Card3D, 2.5D; Godot Parallax2D scroll_scale", "The 2D camera of a State: pan, zoom and focus.", "No depth axis for the camera (Decision 3)."));
 ```
 
-Additions elsewhere: `ElementSchema.layer: IdSchema` (default `base`, written only when not `base`); `StateSchema.layers: Array<StateLayer>` and `.camera: Camera`; `SettingsSchema.perspective`, `.blurPerDepth`, `.blurMax`; the graph gains `layers: Array<Layer>`. The schema is closed, so these are a new `graphVersion` (Open question 7). There is no `dynamic` key (Decision 10). `validateGraph` gains the rules: Layer ids unique and not reserved (`base`, `camera`); every `layer` reference resolves; `depth + perspective > 0`; the `matte` and `parent` references are acyclic; a decorative Layer holds no Element with text; an Element does not change Layer between States.
+Additions elsewhere: `ElementSchema.layer: IdSchema` (default `base`, written only when not `base`); `StateSchema.layers: Array<StateLayer>` and `.camera: Camera`; `SettingsSchema.perspective`, `.blurPerDepth` (stored as an integer count of thousandths of a pixel per depth unit, so no decimal fraction is needed) and `.blurMax`; the graph gains `layers: Array<Layer>`. The schema is closed, so these are a new `graphVersion` (Open question 7). There is no `dynamic` key (Decision 10). `validateGraph` gains the rules: Layer ids unique, not reserved (`base`, `camera`) and **disjoint from Element ids, effect ids and `let` names** (they share one namespace in spec 0004, so `hills.enter.end` can name only one thing); every `layer` reference resolves; `depth + perspective > 0`; the `matte` and `parent` references are acyclic; a decorative Layer holds no Element with text; an Element does not change Layer between States.
 
 ## Capability table: static and dynamic
+
+*Status: Proposed.*
 
 | | **Static Layer** | **Dynamic Layer** |
 | --- | --- | --- |
@@ -426,13 +436,17 @@ The rule is the derived predicate; the table is what each answer means. The dyna
 
 ## Determinism
 
-- **Within the compositor:** integer arithmetic only (Decision 7), a fixed evaluation order, the closed set of Decision 6, and a defined clamp. The design is that equal input planes and values give equal bytes on **any** machine, which is stronger than F6 ("same machine"); F-B1 checks it on two operating systems, and until it runs this is a design claim, not an observation.
+*Status: Proposed.*
+
+- **Within the compositor:** integer arithmetic only (Decision 7), a fixed evaluation order, the closed set of Decision 6, and a defined clamp. The design is that equal input planes and values give equal bytes on **any** machine, which is stronger than F6 ("same machine"); F-B1 checks it on two runs and two runtime versions (and on a second platform if CI has one), and until it runs this is a design claim, not an observation.
 - **At the engine:** planes come from an engine, and an engine is deterministic only on one machine and toolchain ([ADR-0000, Decision 7](../decisions/0000-extension-architecture.md)). So the whole build keeps F6's scope: the same machine. The compositor adds no source of difference, and its test needs no engine (F-B1).
-- **Blur and parallax values** use IEEE binary64 `+ − · /` only. The ECMAScript clause that leaves `sin`, `exp` and `pow` to the implementation is the reason for the ban.
+- **Blur and parallax values** use IEEE binary64 `+ − · /` only. The ECMAScript clause that leaves `sin`, `exp` and `pow` to the implementation is the reason for the ban. The curves of spec 0005 that feed these laws need the same ban; that is a requirement on 0005, not yet stated there.
 - **What the specs read do not give** (bit depth, rounding, blending colour space: W3C Compositing 1) is fixed here, by Decision 7.
 - **Conformance:** a GPU or WASM compositor, when one exists, passes the clause C1 over the same vectors. No other implementation is allowed to be "close".
 
 ## Engine protocol impact
+
+*Status: Proposed.*
 
 Against [ADR-0000](../decisions/0000-extension-architecture.md), Decision 3 and Decision 4:
 
@@ -443,13 +457,15 @@ Against [ADR-0000](../decisions/0000-extension-architecture.md), Decision 3 and 
 | `run/render` result | per plane: the frame names and the SHA-256 of each **decoded** frame (as ADR-0000 already requires for frames), so a plane is a cache key |
 | Brief digest | a **plane brief** per Layer (its Elements, their values, its transform series); its digest is the plane's cache key |
 | `boundary.snapshots: layers` | is the same mechanism: a plane of the carried ids on the boundary frames. The ADR's text should then say so; that is a Revision to ADR-0000, not an edit from this PR |
-| Compositor (ADR row 9) | math: library, now; service: later (Decision 8) |
+| Layer compositor (a new ADR-0000 row; row 9 stays the seam Compositor) | math: library, now; service: later (Decision 8) |
 | Clauses (proposed names; numbered by the SDK spec) | **P1** a plane rendered alone equals the same Layer's pixels in a render of all Layers; **P2** pixels outside the Layer's Elements have alpha 0; **P3** equal brief gives equal decoded plane frames; **P4** the Element bounds of a plane rendered under a transform equal the transform of the bounds, within half a pixel; **C1** a compositor equals the reference for every vector |
 | `reveal` today | a plane could be captured by hiding the other Layers' Elements and taking a screenshot without the default background: Playwright's `omitBackground` "allows capturing screenshots with transparency" ([Playwright](https://playwright.dev/docs/api/class-page)). **[INFERENCE]**: not run here; the theme's own background would have to be transparent |
 
 The 5-clause list is a proposal; the SDK spec ([ADR-0000, "Order of work"](../decisions/0000-extension-architecture.md)) numbers the clauses.
 
 ## Build graph and caching
+
+*Status: Proposed.*
 
 ```mermaid
 flowchart LR
@@ -466,14 +482,18 @@ flowchart LR
 
 ## Accessibility
 
+*Status: Proposed.*
+
 - **Reading order is the declaration order of the Elements of the State**, never the depth or the stacking: a Layer adds no node to the semantics tree an engine reports in `run/describe`. WCAG 1.3.2 requires that "a correct reading sequence can be programmatically determined" when the order affects meaning ([Understanding 1.3.2](https://www.w3.org/WAI/WCAG22/Understanding/meaningful-sequence.html)); depth is a visual order.
 - **`decorative`** is declared on a Layer because meaning is not derivable. A decorative Layer's Elements are left out of the reading order and get no accessible name; `validateGraph` rejects text in a decorative Layer. A non-decorative Layer must hold a text or a role-bearing Element, or it is a lint warning.
-- **Focus rests on what is read.** At every State's dwell, each Element with text in a non-decorative Layer must have `σ = 0`. The rule is computable at plan time from the declared depth, focus and band, so the error `a11y/blurred-text` needs no pixel. A text may be blurred during a Beat.
+- **Focus rests on what is read.** At every State's dwell, each Element with text, and each Element that a `focus` effect (the ring of spec 0004) targets while the ring is on, in a non-decorative Layer that is present with opacity above 0, must have `σ = 0`. The rule is computable at plan time from the declared depth, focus and band, so the error `a11y/blurred-text` needs no pixel. Text may be blurred during a Beat, and a ring may be fired during one. The Journey example obeys the rule: its text Layers are inside the band at every dwell.
 - **Contrast on the composite.** An opacity below 1, a blend and a blur change the colours behind a text. Contrast of text over the composited backdrop at each State's settled frame is a build-time check (`reebeat check`), on the written frames, like F1. It is **not** a plan-time rule.
 - **Reduced motion.** A variant of the build (the `reducedMotion` capability of ADR-0000, [issue #12](https://github.com/reebeat/reebeat/issues/12)): camera pan, zoom, Layer depth moves and focus pulls take their new value at the end of the Beat (a `step`, no interpolation); Layer enter and exit stay as an opacity fade. The reason to include focus pulls: WCAG's definition of *motion animation* "does not include changes of color, blurring, or opacity which do not change the perceived size, shape, or position", and an erratum amends it "to not exclude blurring" ([Understanding 2.3.3](https://www.w3.org/WAI/WCAG22/Understanding/animation-from-interactions.html)). The same page names parallax scrolling as an example. 2.3.3 is about animation triggered by interaction, so a pre-rendered video falls under other criteria; the variant exists because the operator's issue asks for it, and no claim of conformance is made.
 - **Flashing.** `difference`, `exclusion` and `plus`, with animated opacity, can change luminance fast. WCAG 2.3.1 limits flashes to three in any one second unless below the flash thresholds ([Understanding 2.3.1](https://www.w3.org/WAI/WCAG22/Understanding/three-flashes-or-below-threshold.html)). **No analyser is designed here** (Risks).
 
 ## Falsifiers of this record
+
+*Status: Proposed.*
 
 Each is observed with a command on the head of this branch.
 
@@ -481,20 +501,22 @@ Each is observed with a command on the head of this branch.
 - **F-doc2, Proposed is never worded as Decided.** `grep -c '^\*\*Status: Decided' docs/specs/0013-layering.md` prints 1 (Decision 1) and `grep -c '^\*\*Status: Proposed' docs/specs/0013-layering.md` prints 11. Control: change one Proposed to Decided; the counts print 2 and 10.
 - **F-doc3, links resolve.** Every relative link points to an existing path, and every external link answers with a success status. The commands and raw output are in the PR body. Control: a link to a file that does not exist is reported by the same command.
 - **F-doc4, documentation only.** `git diff --name-only origin/main...HEAD` lists exactly `docs/design/layering-research.md` and `docs/specs/0013-layering.md`. Control: touching `GLOSSARY.md` adds a line.
-- **F-doc5, no unsupported "first" or "only" claim.** `grep -nE 'the (first|only)|\bunique\b|\bno other\b' docs/specs/0013-layering.md docs/design/layering-research.md` lists each use, and each is either a statement about this document's own contents or carries a source. Falsified by a use that is neither. The list is in the PR body.
+- **F-doc5, no unsupported "first", "only" or negative claim.** `grep -nE 'the (first|only)|\bunique\b|\bno other\b|comes only|reaches .* only|only (from|through|via)|there is no|Not by id' docs/specs/0013-layering.md docs/design/layering-research.md` lists each use, and each is either a statement about this document's own contents, a quotation of a source, or carries a source. Falsified by a use that is none of these. The list is in the PR body.
 - **F-doc6, the vocabulary is the operator's.** The text says *multimedia*, *creating* for the work of people and *build* for what reebeat does; `grep -niE 'multi-?sens|author[i]ng' docs/specs/0013-layering.md docs/design/layering-research.md` finds nothing (the bracket keeps the command from matching itself). Control: add the word; the command finds it.
-- **F-doc7, the numbers can be re-derived.** The exact-rational comparison and the integer-error measurement of Decision 6 are throwaway scripts; their text is in the PR body, and re-running them prints the counts in the spec. Control: swap `screen` for `multiply` in the rewritten form; the comparison reports mismatches.
+- **F-doc7, the numbers can be re-derived.** The exact-rational comparison and the integer-error measurement of Decision 6 are throwaway scripts kept in the PR body, not in the repository (committed code is TypeScript); stage S1 writes the exact-rational reference as committed TypeScript and F-B2 re-runs it. Re-running the scripts prints the counts in the spec. Control: swap `screen` for `multiply` in the rewritten form; the comparison reports mismatches.
 - **F-doc8, nothing is claimed built.** `grep -niE 'is buil[t]|are buil[t]|implemen[t]ed|we buil[t]' docs/specs/0013-layering.md` finds only negations: the status line ("nothing in this spec is built"), this line quoting it, and "None is built or run here". Falsified by a claim that code exists. Control: add "the compositor is built" to a copy; the command finds a fourth line.
 - **F-doc9, the gates pass.** `bun run ready` passes on the head.
 
 ## Falsifiers the implementing specs must pass
 
-These are the contract for S1 to S4. Each has a control that **can fail**: a deliberate defect the check must catch. None is built or run here.
+*Status: Proposed.*
+
+These are the contract for S1 to S4b. Each has a control that **can fail**: a deliberate defect the check must catch. None is built or run here.
 
 | # | Falsifier | Control (must fail) |
 | --- | --- | --- |
-| F-B1 | **The compositor is equal across runs and machines.** A fixed set of planes and values gives literal expected bytes (a golden table of SHA-256 digests and of every operator and blend on a 4 by 4 grid), and the same result on two runs and on a second operating system in CI | change `mul` to truncate instead of round: the golden fails and names the pair |
-| F-B2 | **Reference conformance.** For every operator and blend and a sample of inputs (all pairs of `{0, 1, 127, 128, 255}` 8-bit values and random alphas), the integer result differs from the exact rational form of Decision 6 by at most 2 of 65535, and the rewritten forms equal the W3C unpremultiplied formula in exact arithmetic | replace `difference`'s absolute value with a signed difference: the exact comparison fails |
+| F-B1 | **The compositor is equal across runs.** A fixed set of planes and values gives literal expected bytes (a golden table of SHA-256 digests and of every operator and blend on a 4 by 4 grid), the same result on two runs and two runtime versions, and on a second platform if CI has one (the operator's recorded platform is Linux under devenv) | change `mul` to truncate instead of round: the golden fails and names the pair |
+| F-B2 | **Reference conformance.** For every operator and each of the seven v1 blends and a sample of inputs (all pairs of `{0, 1, 127, 128, 255}` 8-bit values and random alphas), the integer result differs from the exact rational form of Decision 6 by at most 2 of 65535, and the rewritten forms equal the W3C unpremultiplied formula in exact arithmetic (`hard-light` and `overlay` exceed 2 on larger samples, see Decision 6) | replace `difference`'s absolute value with a signed difference: the exact comparison fails |
 | F-B3 | **A story with no Layers builds the same bytes as before.** The implicit `base` Layer path gives frames equal to the build of `main` before layering, for `stories/same-id` (the journey's two-build and F1 to F9 checks pass unchanged) | set the implicit Layer's blend to `plus`: frames differ |
 | F-B4 | **The parallax law is seen.** For a camera pan `c` and Layers at three depths, the observed shift of each Layer's edge in the written frames equals `round(p(z)·c)` within one pixel, and the shift of the `z = 0` Layer is `c` | change one Layer's depth by 100 without changing the plan: the observed shift disagrees with the resolved one |
 | F-B5 | **Focus is seen and the rule holds.** The blurred plane of a Layer at `σ` equals the reference box recipe byte for byte; `σ = 0` inside the band; `a11y/blurred-text` is raised for a text Element in a Layer with `σ > 0` at a State's dwell and not for one in focus | a story with blurred text at a dwell is accepted: the lint test fails; widen the band in a copy so `σ = 0`: the same story must then pass, so the lint is observed both ways |
@@ -508,6 +530,8 @@ These are the contract for S1 to S4. Each has a control that **can fail**: a del
 | F-B13 | **The vocabulary is the machines.** `hills.shift.end` resolves, `hills.slide.end` is a lint error with "did you mean `hills.shift.end`" (0004's F2 extended); `camera` cannot be a Layer id | misspell a machine's transition in a copy: the vocabulary grows and the document changes with no other edit |
 
 ## Risks
+
+*Status: Proposed.*
 
 | Risk | Mitigation |
 | --- | --- |
@@ -531,10 +555,10 @@ The five that decide the shape of the build are marked **(key)**.
 2. **(key) Order from depth, or an explicit order?** Decision 4 recommends depth with declaration ties. The alternative is a second number for stacking that can disagree with depth.
 3. **(key) Flat parallax or perspective-correct scaling?** Decision 3 recommends the flat form (a Layer looks as written at rest). Perspective scaling would make a far Layer smaller and need `1/p` correction by hand.
 4. **(key) Colour space and bit depth.** Decision 7 recommends 16-bit integers in sRGB-encoded values. Linear light is more accurate for blur and `plus` but needs a lookup table for the transfer function.
-5. **(key) Is the compositor's mathematics a first-party library now, with the service later?** It changes row 9 of ADR-0000, which is on `main`; the ADR would need a dated Revision, written by a later change.
+5. **(key) Is the layer compositor's mathematics a first-party library now, with the service later?** It needs a new row in ADR-0000 (row 9, the seam Compositor, stays as it is), which is on `main`; the ADR would need a dated Revision, written by stage S1.
 6. May an Element change Layer between States (Decision 2)? Recommendation: refuse in v1.
 7. A new `graphVersion` for the closed IR, or an additive optional field (Decision 2, "Schema sketch")?
-8. Does the Deck show Layers (stacked, settled camera, CSS blur that need not equal the Video's) in S4, or is v1 a Video-only feature?
+8. Does the Deck show Layers (stacked, settled camera, CSS blur that need not equal the Video's), or is v1 a Video-only feature? The Deck realisation is deferred until you answer.
 9. Per-Layer engines (Decision 8, option C): the direction, not a v1 item.
 10. Is `decorative` declared (Decision 12) or derived from "no Element with text"?
 11. The Screenplay surface: effect verbs (`camera`, `depth`) and a `[[layers]]` block, or State blocks? Left to the grammar spec (S2).
@@ -542,18 +566,22 @@ The five that decide the shape of the build are marked **(key)**.
 
 ## Staged plan
 
-Each stage is **its own spec** under the lifecycle ("if a spec needs two PRs, it was two specs"). This spec builds none of them; it fixes the design the stages share. Numbers are assigned when the specs are written.
+*Status: Proposed.*
+
+Each stage is **its own spec** under the lifecycle ("if a spec needs two PRs, it was two specs"). This spec builds none of them; it fixes the design the stages share. Numbers are assigned when the specs are written. **Prerequisites outside this plan:** steps 1 to 3 of ADR-0000's "Order of work" (the contracts package, the Engine contract, the wire protocol and a first out-of-process engine, with `reveal` becoming an Engine) are unbuilt and unnumbered; S3 cannot start before them.
 
 | Stage | Builds | Depends on | Journey (one felt feature) | Defers |
 | --- | --- | --- | --- | --- |
-| **S1 compositor library** | the pure integer compositor: operators, the seven blends, opacity, matte, isolated group, the box blur; golden vectors; the exact-rational reference | nothing (not 0004, not 0005) | a command composes PNG planes and a recipe into one PNG; two runs give one SHA-256 | the IR, any engine, curves |
-| **S2 IR, machines, lints** | `Layer`, `StateLayer`, `Camera`, the four machines, validation, `plan --layers` and the timing events, the grammar for Layers | 0004 merged; 0005 (identity, curves) | a story's `plan --layers` prints order, `p(z)`, shift, `σ`, `d_b` per State, with no pixels | pixels |
-| **S3 planes and the build** | the planes capability and clauses P1 to P4, `reveal` plane capture, the compositor in the build, a journey story with three Layers; F1 observes parallax and focus in the frames | S1, S2, spec 0012's engine protocol | `reebeat build` writes a Video with parallax and a focus pull, equal on a second build | cross-engine seams, per-Layer engines |
-| **S4 graph and accessibility** | per-plane cache, static bake, early cutoff, the reduced-motion variant, `a11y/blurred-text`, contrast on the composite, the Deck's settled realisation | S3 | editing one Layer re-renders one Layer; a reduced-motion Video exists | dynamic Layers |
-| **Deferred** | dynamic Layers (issue #19); `hard-light`, `overlay`; a GPU or WASM compositor service with clause C1; linear-light; per-Layer engines; a camera in depth; a flash analyser | issue #19, a second compositor | | |
+| **S1 layer compositor** | the pure integer compositor: operators, the seven blends, opacity, matte, isolated group, the box blur; golden vectors; the exact-rational reference in TypeScript; the dated Revision to ADR-0000 (a `LayerCompositor` row; the `boundary.snapshots: layers` wording) | nothing (not 0004, not 0005) | a command composes PNG planes and a recipe into one PNG; two runs give one SHA-256 | the IR, any engine, curves |
+| **S2 IR, machines, lints** | `Layer`, `StateLayer`, `Camera`, the four machines, validation, `plan --layers` and the timing events, the grammar for Layers, and the plan-time lints `a11y/blurred-text` and `cap/layers-need-planes` (so no stage after it can ship blurred text unchecked) | 0004 merged; 0005 (identity, curves) | a story's `plan --layers` prints order, `p(z)`, shift, `σ`, `d_b` per State, with no pixels, and rejects a story with blurred text at a dwell | pixels |
+| **S3 planes and the build** | the planes capability and clauses P1 to P4, `reveal` plane capture, the compositor in the build, a journey story with three Layers; F1 observes parallax and focus in the frames | S1, S2, and ADR-0000 "Order of work" steps 1 to 3 | `reebeat build` writes a Video with parallax and a focus pull, equal on a second build | cross-engine seams, per-Layer engines |
+| **S4a graph** | per-plane cache, static bake, early cutoff | S3 | editing one Layer re-renders one Layer | dynamic Layers |
+| **S4b accessibility variants** | the reduced-motion variant, contrast on the composite | S3 | a reduced-motion Video exists and `reebeat check` reports contrast at each dwell | the Deck's settled realisation (Open question 8) |
+| **Deferred** | dynamic Layers (issue #19); `hard-light`, `overlay`; a GPU or WASM compositor service with clause C1; linear-light; per-Layer engines; a camera in depth; a flash analyser; the Deck realisation | issue #19, a second compositor | | |
 
 ## Revisions
 
 Dated entries. A spec is revised only here after its PR opens.
 
 - **2026-10-29, plan written** from the operator's idea and the lead's sketch, against the heads of PR #17 (`8dc4bef`) and PR #24 (`f6fad25`) and `main` at `82ee66f` (which includes the extension record), before any review. Research in [`layering-research.md`](../design/layering-research.md).
+- **2026-10-29, round 1 review (RevLayer27, on `540e8a0`): changes requested; fixes applied.** (1) The Journey example now obeys the blurred-text rule (text Layers inside the focus band at every dwell, blur carried by decorative Layers, numbers recomputed), the rule names `focus`-effect targets, and the camera verb is `refocus`. (2) The research note's unsourced absolute claims are rewritten as `not found in the pages read`, and F-doc5's pattern is widened. (3) Quote and paraphrase mismatches fixed in the note (Card3D quote shortened and its formula claim removed, AE Video switch, Blender precision, Godot `Vector2`, Unity aperture wording, the CSS flattening claim marked as the note's own reading, the Manim formula cited to the source file); the claim that the WCAG 2.3.3 page no longer carries the exclusion sentence was re-checked on 2026-10-29 and the sentence is still there, so it stays. (4) The stage plan names ADR-0000 "Order of work" steps 1 to 3 as prerequisites, S4 is split into S4a and S4b, the plan-time accessibility lint moves to S2, and the ADR-0000 Revision belongs to S1. (5) The `overlay` comparison is `2·cb ≤ αb`; F-B2's tolerance is stated for the seven v1 blends. (6) The Decided row quotes the decision as 2.5D with one scalar depth and a 2D camera, and every section without a Decision number says it is Proposed. Also: the layer compositor has its own name and ADR row (it is not the seam Compositor), Layer ids are disjoint from Element ids, the box-blur rounding and the even-size rule are specified, the second-platform requirement of F-B1 is conditional, and the determinism claim is worded as a design aim.

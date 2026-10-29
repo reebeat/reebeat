@@ -23,32 +23,21 @@ The open item for the third row is tracked in [issue #7](https://github.com/reeb
 
 | Part | Source of the list | Result |
 | --- | --- | --- |
-| npm packages, runtime and build | `bun.lock`: 505 third-party packages (workspace packages excluded), licence from each package's own published `package.json` | **No GPL, AGPL, SSPL or unknown licence.** Details below. |
+| npm packages, runtime and build | `bun.lock` (workspace packages excluded); the licence of each is in `tools/quality/third-party-licences.json`, from the package's own published `package.json` | **No GPL, AGPL, SSPL or unknown licence** on 2026-10-29; the gate keeps that true. Details below. |
 | External binaries | `devenv.nix` (`pkgs.chromium`, `pkgs.ffmpeg-headless`, `pkgs.whisper-cpp`, `pkgs.bun`, `pkgs.nodejs_24`, `pkgs.gitleaks`); versions read from the binaries in `devenv shell` | One GPL binary: ffmpeg, as configured. Run as a process only. |
 | Models | `packages/speech-kokoro/src/kokoroSynthesizer.ts` (Kokoro), `packages/align-whisper/src/whisperAligner.ts` (`ggml-base.en`) | MIT and Apache-2.0 weights. |
 | Sounds | `packages/sounds-synth/src/sfx.ts` | Synthesised in TypeScript; no third-party sample or source. |
 
 ## npm packages
 
-Of the 505 locked packages, 94 are **runtime** (reachable through `dependencies` or `optionalDependencies` of a `packages/*` workspace, including the optional native packages of platforms the lockfile lists) and 411 are **build** (type check, lint, format, test, commit and CI tooling). Counts by licence (runtime, build):
+Every third-party package of `bun.lock`, runtime and build alike, has its licence in [`tools/quality/third-party-licences.json`](../../tools/quality/third-party-licences.json), one `name@version` per line, taken from the `license` field of the package's own published `package.json` (`https://registry.npmjs.org/<name>/<version>`). That file is the one source for the list: `bun run test` fails when it and `bun.lock` disagree, so there is no second copy here. Count by licence with `jq -r '.[]' tools/quality/third-party-licences.json | sort | uniq -c | sort -rn`. On 2026-10-29 the lock held 505 packages and none was GPL, AGPL, SSPL or unknown.
 
-| Licence | Runtime | Build | Note |
-| --- | ---: | ---: | --- |
-| MIT | 36 | 355 | |
-| Apache-2.0 | 18 | 24 | |
-| ISC | 4 | 16 | |
-| BSD-3-Clause | 14 | 3 | |
-| BSD-2-Clause | 1 | 0 | |
-| 0BSD | 1 | 0 | |
-| BlueOak-1.0.0 | 4 | 0 | `tar`, `minipass`, `chownr`, `yallist`: permissive, notice only |
-| (MIT OR CC0-1.0) | 1 | 0 | `type-fest`: choose MIT |
-| Python-2.0 | 0 | 1 | `argparse`: permissive (PSF), build tooling only |
-| OFL-1.1 | 1 | 0 | `@fontsource/inter`: the Inter font, see below |
-| MPL-2.0 | 0 | 12 | `lightningcss` and its platform binaries, pulled by Vite+; file-level copyleft, build tooling only, never shipped |
-| LGPL-3.0-or-later (alone, or `Apache-2.0 AND LGPL-3.0-or-later [AND MIT]`) | 14 | 0 | `@img/sharp-libvips-*` and the `@img/sharp-*` packages of Windows and wasm32: see below |
-| GPL, AGPL, SSPL, unknown or missing | **0** | **0** | |
+What the licences outside the permissive family (MIT, ISC, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD) ask of reebeat:
 
-The complete list, package by package with its role, is [`third-party-packages.md`](third-party-packages.md).
+- **LGPL-3.0-or-later** (alone or in an `AND` expression): see "The LGPL packages" below. The gate allows it for `@img/sharp-*` and for no other package.
+- **MPL-2.0**: copyleft at the level of the licensed files. It binds only changes to those files. On 2026-10-29 it came from `lightningcss`, a build tool that reebeat does not ship.
+- **OFL-1.1**: a font licence; the Inter font, see below.
+- **BlueOak-1.0.0, Python-2.0, CC0-1.0**: permissive; keep the notice (BlueOak, Python-2.0) or nothing (CC0).
 
 **The LGPL packages.** `sharp` (Apache-2.0) is an image library that `@huggingface/transformers` (Apache-2.0, used by `kokoro-js`) lists as a dependency. Its prebuilt libvips binaries, `@img/sharp-libvips-<platform>`, are LGPL-3.0-or-later shared libraries ([`sharp-libvips` README](https://github.com/lovell/sharp-libvips#licences): scripts Apache-2.0, bundled libraries under [various licences](https://github.com/lovell/sharp-libvips/blob/main/THIRD-PARTY-NOTICES.md)). npm installs them on the user's machine; reebeat neither bundles nor links them into its own code. A product that ships `node_modules` (a desktop app, a container image) carries LGPL-3.0 obligations for these files: the licence text, a way to replace the library, and its source. The gate allows LGPL-3.0-or-later for `@img/sharp-*` and for no other package.
 
@@ -56,21 +45,7 @@ The complete list, package by package with its role, is [`third-party-packages.m
 
 ## Direct runtime dependencies
 
-| Package | Version | Licence | Used by |
-| --- | --- | --- | --- |
-| `effect` | 4.1.0 | MIT | every package |
-| `@effect/platform-node` | 4.1.0 | MIT | `cli` |
-| `@effect/vitest` | 4.1.0 | MIT | `services` (contract suites) |
-| `playwright-core` | 1.64.1 | Apache-2.0 | `capture-chromium` (drives the Chromium process) |
-| `timeweb` | 0.3.2 | BSD-3-Clause | `capture-chromium` (controlled clock) |
-| `fountain-js` | 1.2.4 | MIT | `core` (screenplay parser) |
-| `parse5` | 8.0.1 | MIT | `render-reveal` |
-| `reveal.js` | 6.0.2 | MIT | `render-reveal` (copied into every Deck) |
-| `@fontsource/inter` | 5.3.0 | OFL-1.1 | `render-reveal` (copied into every Deck) |
-| `@huggingface/transformers` | 3.8.1 | Apache-2.0 | `speech-kokoro` |
-| `kokoro-js` | 1.2.1 | Apache-2.0 | `speech-kokoro` |
-
-Experimental or alpha dependencies are allowed in the compiler and are pinned exactly ([open-core boundary](open-core-boundary.md)); none is locked today.
+They are the `dependencies` of the `packages/*` manifests; read the list there and the licence in the JSON file above. Experimental or alpha dependencies are allowed in the compiler and are pinned exactly ([open-core boundary](open-core-boundary.md)); none is locked today.
 
 ## External binaries
 
@@ -113,6 +88,6 @@ The lifecycle tooling comes from the author's other repository, [`phibkro/vektor
 - a locked package has no recorded licence, or a recorded package left the lock;
 - a recorded licence is not made only of identifiers in the allowlist: `0BSD`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `BlueOak-1.0.0`, `CC0-1.0`, `ISC`, `MIT`, `MPL-2.0`, `OFL-1.1`, `Python-2.0`, plus `LGPL-3.0-or-later` for `@img/sharp-*` only. GPL, AGPL, SSPL and unknown licences are rejected because they are not on the list.
 
-To add or bump a dependency, read the `license` field of `https://registry.npmjs.org/<name>/<version>`, add the line to the JSON file and update [`third-party-packages.md`](third-party-packages.md). A new licence identifier is a decision for this page first, then the allowlist.
+To add or bump a dependency, read the `license` field of `https://registry.npmjs.org/<name>/<version>` and add the line to `tools/quality/third-party-licences.json`; nothing else lists packages. A new licence identifier is a decision for this page first, then the allowlist.
 
 Limits: the gate checks the declared `license` field, which a package can get wrong or omit; it does not read licence files inside packages or the licences of what a package bundles. It does not cover the binaries and models above, which a person reads here.

@@ -1,9 +1,9 @@
 # Open-core boundary
 
-What reebeat publishes under Apache-2.0 and what stays closed, and the rule that draws the line. Decided by the operator on 2026-10-29 unless an item says **open**. Licence of the open part: [`LICENSE`](../../LICENSE). Dependencies and their licences: [third-party.md](third-party.md). Spec: [0008](../specs/0008-apache-2-licence.md).
+What reebeat publishes under Apache-2.0 and what stays closed, and the rule that draws the line. Every item carries one status: **Decided** (by the operator, with the date), **Proposed** (a draft by the lead that the operator has not confirmed) or **Open**. Licence of the open part: [`LICENSE`](../../LICENSE). Dependencies and their licences: [third-party.md](third-party.md). Spec: [0008](../specs/0008-apache-2-licence.md).
 
 ```text
-        open (this repository, Apache-2.0)               closed (private repositories)
+        open (this repository, Apache-2.0)               closed source (separate repositories)
  ┌───────────────────────────────────────────┐     ┌──────────────────────────────────────┐
  │ compiler: Story ▶ Plan ▶ Deck / Video     │     │ collaborative multiplayer video editor│
  │ IR, JSON Schema, codecs                   │◀────│   editor UI                          │
@@ -20,19 +20,19 @@ What reebeat publishes under Apache-2.0 and what stays closed, and the rule that
 | --- | --- |
 | The compiler (`core`, `pipeline`, `lint`, `subtitles`, `verify`, `cli`) | Decided 2026-10-29: Apache-2.0 |
 | The IR, the JSON Schema generated from the Effect Schema, and the codecs between the formats | Decided 2026-10-29: Apache-2.0. The schema and the codecs are the contract that every product and plugin builds on. |
-| Renderers (`render-reveal`, the Video capture and encode) and importers | Decided 2026-10-29: open |
-| The service and adapter seams (`@reebeat/services`: `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`, their contract suites and stand-ins) as the **plugin API** | Decided 2026-10-29: a plugin is an adapter Layer that passes `xContract`. Extension points beyond adapters (new effect kinds, new importers) are **open**. |
-| A tool protocol for agents that edit the IR (for example MCP tools: read a Story, apply an edit, run `check`) | Decided 2026-10-29: open, so a user's own agent gets the same tools as a hosted one. Which protocol and its tool set are **open**; MCP is the first candidate. |
+| Renderers (`render-reveal`, the Video capture and encode) and importers | Proposed: open |
+| Plugins and extensions, with a modular design, written by users | Decided 2026-10-29: supported. Proposed shape: the service and adapter seams (`@reebeat/services`: `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`, their contract suites and stand-ins) are the plugin API, and a plugin is an adapter Layer that passes `xContract`. Extension points beyond adapters (new effect kinds, new importers) are **open**. |
+| Bring-your-own agents with the editing tools | Decided 2026-10-29: supported. Proposed: an open tool protocol for agents that edit the IR (for example MCP tools: read a Story, apply an edit, run `check`), so a user's own agent gets the same tools as a hosted one. Which protocol and its tool set are **open**; MCP is the first candidate. |
 | Publishing the packages to npm (they are `"private": true` today; the `reebeat` npm org is reserved) | **Open**: products need it; it is the next spec after the licence. |
 
 ## What is closed
 
 | Item | Status |
 | --- | --- |
-| Editor UI | Decided 2026-10-29: closed, a separate private repository that depends on the published packages |
-| Sync server (multiplayer) | Decided 2026-10-29: closed, paid |
-| Hosted AI agents, deeply integrated | Decided 2026-10-29: closed, paid |
-| Billing | Decided 2026-10-29: closed |
+| Products built on top (the first is a collaborative multiplayer video editor): closed source, in separate repositories that depend on the published packages | Decided 2026-10-29. Where each repository lives, its visibility and its licence are **open** per product; see "Not decided here" for `reebeat/studio`. |
+| Sync server (multiplayer) | Decided 2026-10-29: closed source, paid |
+| Hosted AI agents, deeply integrated | Decided 2026-10-29: closed source, paid |
+| Billing | Proposed: closed |
 
 ## The rule: a feature is paid when it costs us money to run
 
@@ -43,7 +43,7 @@ Decided 2026-10-29.
 | Runs on the user's machine or in their browser: the compiler, local rendering, the editor's local features, bring-your-own agents and plugins | Needs our servers or our bills: the sync server, hosted agents (model inference), storage and egress of shared projects |
 | **Free** | **Paid** |
 
-The rule has a consequence for the open core: the open part never needs a server of ours, and a paid feature is never a local feature switched off. Anyone may run the Apache-2.0 compiler, and may build a hosted service of their own on it. That is the price of Apache-2.0 and was accepted with it.
+The rule has a consequence for the open core: the open part never needs a server of ours, and a paid feature is never a local feature switched off. Anyone may run the Apache-2.0 compiler, and may build a hosted service of their own on it. Proposed: that is the price of Apache-2.0, accepted with it; the operator has not confirmed this reading.
 
 Users can bring their own agents (through the tool protocol) and write plugins and extensions (through the adapter seams). Deeply integrated hosted agents are the paid part; the tools they use are not.
 
@@ -59,12 +59,13 @@ Whether to enforce rule 2 by a gate (for example, a test that scans the exported
 
 ## Contributions
 
-- Contributions are accepted under Apache-2.0, inbound equals outbound: section 5 of the licence says a contribution submitted for inclusion is under the licence's terms unless stated otherwise. Decided 2026-10-29.
+- Contributions to this repository are accepted under Apache-2.0, inbound equals outbound: section 5 of the licence says a contribution submitted for inclusion is under the licence's terms unless stated otherwise. Decided 2026-10-29.
 - A Developer Certificate of Origin sign-off (`Signed-off-by`, checked by a commit hook or a CI step) is **recommended and not enforced** in this change. Whether to enforce it is **open**.
-- Decided 2026-10-29: the copyright holder named in [`NOTICE`](../../NOTICE) is Philip Bjørknes Krogh, the individual (his sole proprietorship is not a separate legal person). If a company is founded later, the copyright in his own code moves to it by written assignment. Contributions stay with their authors under Apache-2.0, inbound equals outbound, so closed products need no contributor licence agreement.
+- Decided 2026-10-29: the copyright holder named in [`NOTICE`](../../NOTICE) is Philip Bjørknes Krogh, the individual (his sole proprietorship is not a separate legal person). If a company is founded later, the copyright in his own code moves to it by written assignment. Contributions stay with their authors under Apache-2.0, so this repository needs no contributor licence agreement. That holds for this Apache-2.0 repository only: the contribution terms of a closed product are **open**.
 
 ## Not decided here
 
 - The name `reebeat` is working ([README](../../README.md)); a trademark policy waits for the final name. **Open.**
 - Price, tiers and the sync-server design belong to the closed products' own repositories.
+- `reebeat/studio`, the repository of the first product, is **public with no licence** (GitHub reports `license: null`; created 2026-10-29 14:01Z, described as "closed source"). Whether it stays public, what licence or notice it carries, and how it takes contributions are **open**. Without a licence the code is under default copyright and nobody may reuse it, but a public repository can be forked and read.
 - The distribution of ffmpeg with libx264 (GPL) by a product: [issue #7](https://github.com/reebeat/reebeat/issues/7). **Open.**

@@ -1,7 +1,7 @@
 # 0011 Positioning: goals, vision and intent, how it works, and how reebeat differs from existing tools
 
 Status: **plan, built** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator, 2026-10-29 (the words, the categories and the rules of the comparison).
-Process: [spec 0000](0000-development-lifecycle.md). Number 0011, assigned by the lead (0009 npm pre-releases, 0010 review and verify skills, 0012 extension architecture, 0004 to 0006 state machines). The branch is `docs/positioning`, named by the lead (the convention is `feat/NNNN-<slug>`). Docs only: no code changes.
+Process: [spec 0000](0000-development-lifecycle.md). Number 0011, assigned by the lead (0009 npm pre-releases, 0010 review and verify skills, 0012 extension architecture, 0004 to 0006 state machines). The branch is `docs/positioning`, named by the lead (the convention is `feat/NNNN-<slug>`). Docs, plus one test file for the rules of the docs (see Revisions, review round 2): no product code changes.
 
 ## Goal
 
@@ -62,7 +62,7 @@ Everything is real: every link was opened on 2026-10-29 by an agent that copied 
 
 ## Not in scope
 
-- Any code, the adapters, or a change to the behaviour that the status table describes.
+- Any product code, the adapters, or a change to the behaviour that the status table describes. The only code is the test of the doc rules.
 - A benchmark of reebeat against another tool. The note says "not measured".
 - Marketing copy. The note is for communication between readers, not for selling.
 - The other open README edits (npm pre-releases, state machines).
@@ -82,3 +82,8 @@ None. The words, the categories, the rules and the status line were decided on 2
   - `how-it-works.md` no longer cites design R5, which exists only on the branch of PR #17. It cites spec 0004 by its PR and says that it is not yet on `main`. Merge order: PR #17 first, then this PR (one README hunk to resolve).
   - F-pos1 and F-pos3 to F-pos7 now have a test with negative controls (`tools/quality/test/positioning.test.ts`). F-pos2 (links) stays a manual request run, because it needs the network. The tables' agreement between `how-it-works.md` and the README, and the full reading of "creating" and "build", stay read checks.
   - The "is new" claims are limited to the tools compared here. The performance line quotes the two build times of spec 0001 alone and says that they were not measured again. The Resolve cell no longer says that the free version includes collaboration.
+- **2026-10-29, review round 2.**
+  - The "only one" statement in `positioning.md` is reworded: none of the pages read for the tools compared describes such a step. "Not found" is not "absent".
+  - The lines "Docs only: no code changes" (Process) and "Any code" (Not in scope) are corrected: the PR adds `tools/quality/positioning.ts` and its test, as round 1 recorded. No product code changes.
+  - The agreement of the README status table with the "Built today, and planned" table of `how-it-works.md` stays a read check. The two tables use different row names and a different scope (the note lists specs and extension work that the README does not), so a mechanical compare needs a hand-kept name map, which is a second copy of the facts. The README against `positioning.md` compare is mechanical (F-pos5).
+  - The tests are re-run after PR #17 merges and this branch is rebased.

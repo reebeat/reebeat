@@ -20,7 +20,7 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 
 | Command | What it does |
 | --- | --- |
-| `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan, so it shows frames |
+| `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan against the `lifecycle` the selected Renderer declares, so it shows each effect's intent and resolved frame |
 | `build` | `buildProgram` on the selected adapters, then the summary: files, frames, sizes, and every adapter with its egress |
 | `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@reebeat/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
 | `journey` | build, `check`, build again, F6 compare; the first failure stops it |
@@ -63,7 +63,7 @@ seconds (default: 120 plus 0.2 per frame; it does not change a frame, so it is n
 <out>/plan.json   <out>/deck.html   <out>/assets/**   <out>/<name>.mp4   <out>/<name>.vtt   <out>/build.json
 ```
 
-`assets/sfx/<name>.wav` holds only the sounds the Plan's Cues play; the speech cache's FLACs are **not** part of a build.
+`assets/sfx/<name>.wav` holds only the sounds the Plan's effects play; the speech cache's FLACs are **not** part of a build.
 `build.json` (schema 2, `@reebeat/pipeline`) lists every other file, the hash of the `.fountain` bytes, the adapters with
 egress and settings, and the provenance of each cache asset used. It is written last. Failure is loud (F12): the build
 writes into `<out>.partial`, and any failure leaves no directory that `check` accepts (see the pipeline README).

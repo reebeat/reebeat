@@ -397,16 +397,17 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             verdictOf(early, "F7").detail,
             "the slide change into sc2 (auto-animate) is observed -2 frames"
           );
+          // The Timeline still says the slide frame; the slide change is observed 2 frames later (earlier) than it.
           assert.approximately(
             offsetsIn(rowOf(verdictOf(late, "F1"), whooshRow)).anchor ??
               Number.NaN,
-            -2,
+            2,
             0.5
           );
           assert.approximately(
             offsetsIn(rowOf(verdictOf(early, "F1"), whooshRow)).anchor ??
               Number.NaN,
-            2,
+            -2,
             0.5
           );
         })

@@ -188,10 +188,10 @@ INT. THE ONLY SCREEN - DAY #only#
 A title {id=title cell=mc class=title}
 
 NARRATOR
-Hello [[next]] there.
+Hello [[focus: title]] there.
 ```
 
-> line 10, ReleaseOneForm: release-1 cue [[next]] in dialogue; expected no note in dialogue; write r1: show <element id> at word("Hello").end in the [[effects]] block of the Scene
+> line 10, ReleaseOneForm: release-1 cue [[focus: title]] in dialogue; expected no note in dialogue; write f1: focus title at word("Hello").end in the [[effects]] block of the Scene
 
 **An unknown event, with the nearest valid one**
 

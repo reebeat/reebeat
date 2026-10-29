@@ -92,20 +92,33 @@ export const elementProperties: readonly PropertySpec[] = [
   },
 ];
 
-/** What each verb takes after its name; the type makes a new verb a compile error here. */
+/**
+ * What each verb takes after its name, and the letter its generated ids start with (the messages that write an
+ * effect for the author number them `s1`, `r1`, `f1`); the type makes a new verb a compile error here.
+ */
 export const verbArguments: Readonly<
-  Record<Verb, { readonly argument: string; readonly summary: string }>
+  Record<
+    Verb,
+    {
+      readonly argument: string;
+      readonly idPrefix: string;
+      readonly summary: string;
+    }
+  >
 > = {
   focus: {
     argument: "element id",
+    idPrefix: "f",
     summary: "rings and scales an Element of this Scene",
   },
   show: {
     argument: "element id",
+    idPrefix: "r",
     summary: "reveals an Element that is `visible=false`",
   },
   sound: {
     argument: `sound name (${Arr.join(sfxNames, ", ")})`,
+    idPrefix: "s",
     summary: "plays a sound of the built-in catalogue",
   },
 };
@@ -233,6 +246,16 @@ export const releaseOneForms: readonly LegacyForm[] = [
     replacement: "`INT. THE NEXT SCREEN - DAY #sc4#`",
   },
 ];
+
+/**
+ * The notes release 1 allowed in dialogue: `[[next]]` (the next hidden Element), `[[focus: <id>]]` and
+ * `[[sfx: <name>]]`. Only the messages that write the replacement read them (`hints.ts`).
+ */
+export const releaseOneCues = {
+  focus: /^focus:\s*(?<id>\S+)$/u,
+  next: "next",
+  sfx: /^sfx:\s*(?<name>\S+)$/u,
+} as const;
 
 /** The edit distance of two words. */
 const distance = (a: string, b: string): number => {

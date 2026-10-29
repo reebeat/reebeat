@@ -462,15 +462,15 @@ const cases: readonly Case[] = [
 const oldForms: readonly Case[] = [
   {
     message:
-      'release-1 cue [[next]] in dialogue; expected no note in dialogue; write r1: show <element id> at word("there").end in the [[effects]] block of the Scene',
-    name: "[[next]] in dialogue",
+      'release-1 cue [[next]] in dialogue; expected no note in dialogue; write r2: show h at word("there").end in the [[effects]] block of the Scene',
+    name: "[[next]] in dialogue names the hidden Element and takes a free id",
     needle: "[[next]]",
     source: change("Hello there.", "Hello there. [[next]]"),
     tag: "ReleaseOneForm",
   },
   {
     message:
-      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f1: focus a at word("Hello").end in the [[effects]] block of the Scene',
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("Hello").end in the [[effects]] block of the Scene',
     name: "[[focus: id]] in dialogue",
     needle: "[[focus: a]]",
     source: change("Hello there.", "Hello [[focus: a]] there."),
@@ -478,10 +478,40 @@ const oldForms: readonly Case[] = [
   },
   {
     message:
-      "release-1 cue [[sfx: whoosh]] in dialogue; expected no note in dialogue; write s1: sound whoosh at transition.start in the [[effects]] block of the Scene",
+      "release-1 cue [[sfx: whoosh]] in dialogue; expected no note in dialogue; write s2: sound whoosh at transition.start in the [[effects]] block of the Scene",
     name: "[[sfx: name]] before the first word",
     needle: "[[sfx: whoosh]]",
     source: change("Hello there.", "[[sfx: whoosh]] Hello there."),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("there").end in the [[effects]] block of the Scene',
+    name: "a cue that opens a Line is timed against the last word of the Line before",
+    needle: "[[focus: a]] Goodbye",
+    source: change(
+      "Hello there. Goodbye.",
+      "Hello there.\n\nNARRATOR\n[[focus: a]] Goodbye."
+    ),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[sfx: pop]] in dialogue; expected no note in dialogue; write s2: sound pop at word("there", 2).end in the [[effects]] block of the Scene',
+    name: "a cue after a phrase that repeats in the Scene writes the occurrence",
+    needle: "[[sfx: pop]]",
+    source: change(
+      "Hello there. Goodbye.",
+      "Hello there. Goodbye there. [[sfx: pop]]"
+    ),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("Hello").start in the [[effects]] block of the Scene',
+    name: "a focus before the first word of the Scene is timed against that word",
+    needle: "[[focus: a]]",
+    source: change("Hello there.", "[[focus: a]] Hello there."),
     tag: "ReleaseOneForm",
   },
   {

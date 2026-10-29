@@ -77,6 +77,14 @@ const rewritten = (words: readonly string[]): string =>
     " "
   );
 
+const hiddenIdOf = (words: readonly string[]): string | undefined =>
+  Arr.contains(words, "hidden")
+    ? Arr.findFirst(words, (word) => word.startsWith("#")).pipe(
+        Option.map((word) => word.slice(1)),
+        Option.getOrUndefined
+      )
+    : undefined;
+
 const releaseOne = (
   text: string,
   words: readonly string[],
@@ -187,11 +195,14 @@ export interface ParsedElement {
   /** Absent when the line has no usable `id` or a property is wrong. */
   readonly element: Element | undefined;
   readonly errors: readonly PlanError[];
+  /** The id of a release-1 `hidden` Element: the one a `[[next]]` cue of its Scene was meant to reveal. */
+  readonly releaseOneHidden: string | undefined;
 }
 
 const failed = (errors: readonly PlanError[]): ParsedElement => ({
   element: undefined,
   errors,
+  releaseOneHidden: undefined,
 });
 
 /** The pairs of a `{...}` block, or every problem found in it. */
@@ -271,7 +282,10 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
   }
 
   if (Arr.some(words, isReleaseOne)) {
-    return failed([releaseOne(text, words, line)]);
+    return {
+      ...failed([releaseOne(text, words, line)]),
+      releaseOneHidden: hiddenIdOf(words),
+    };
   }
 
   const { errors, pairs } = readPairs(words, line);
@@ -311,7 +325,11 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
             )
           ),
         ]),
-      onSuccess: (element) => ({ element, errors: [] }),
+      onSuccess: (element) => ({
+        element,
+        errors: [],
+        releaseOneHidden: undefined,
+      }),
     }
   );
 };

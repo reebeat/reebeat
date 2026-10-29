@@ -119,7 +119,7 @@ const invalid: readonly Example[] = [
       "INT. THE ONLY SCREEN - DAY #only#",
       "",
       "A title {id=title cell=mc class=title}",
-      ...narrate("Hello [[next]] there."),
+      ...narrate("Hello [[focus: title]] there."),
     ]),
     title: "A note in dialogue (release 1)",
   },

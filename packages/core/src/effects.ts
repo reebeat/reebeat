@@ -486,8 +486,11 @@ export const parseEffectLine = (
 const formatPoint = (point: Point): string =>
   isEdge(point) ? point : `${point.percent}%`;
 
-/** The anchor as written: `one.move.50%`, `word("matches").end`, `transition.start`. */
-export const formatAnchor = (anchor: Anchor): string =>
+/**
+ * The anchor as written: `one.move.50%`, `word("matches").end`, `transition.start`. A word anchor omits its
+ * occurrence when it is the first, unless `explicit` says the occurrence is to be written (a phrase that repeats).
+ */
+export const formatAnchor = (anchor: Anchor, explicit = false): string =>
   Match.value(anchor).pipe(
     Match.discriminatorsExhaustive("kind")({
       effect: (found) => `${found.id}.${found.edge}`,
@@ -495,10 +498,23 @@ export const formatAnchor = (anchor: Anchor): string =>
       scene: (found) => `scene.${found.edge}`,
       transition: (found) => `transition.${formatPoint(found.at)}`,
       word: (found) =>
-        `word("${found.phrase}"${found.occurrence === 1 ? "" : `, ${found.occurrence}`}).${found.edge}`,
+        `word("${found.phrase}"${found.occurrence === 1 && !explicit ? "" : `, ${found.occurrence}`}).${found.edge}`,
     })
   );
 
+/** One line of an `[[effects]]` block: the shape `lineForm` of the grammar describes. */
+export const effectLine = (
+  id: string,
+  verb: string,
+  argument: string,
+  when: string
+): string => `${id}: ${verb} ${argument} at ${when}`;
+
 /** The effect as one line of an `[[effects]]` block, its `when` as the author wrote it; `parseEffectLine` reads it back. */
 export const formatEffect = (effect: Effect): string =>
-  `${effect.id}: ${effect.verb} ${effect.name ?? effect.target ?? ""} at ${effect.written}`;
+  effectLine(
+    effect.id,
+    effect.verb,
+    effect.name ?? effect.target ?? "",
+    effect.written
+  );

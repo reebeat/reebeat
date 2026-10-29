@@ -2,6 +2,7 @@
   "name": "@reebeat/cli",
   "version": "0.0.0",
   "private": true,
+  "license": "Apache-2.0",
   "bin": {
     "reebeat": "./bin/reebeat.ts"
   },

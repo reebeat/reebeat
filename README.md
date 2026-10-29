@@ -36,13 +36,14 @@ The silent narrator makes the narration check (F8) meaningless: it prints `N/A (
 - [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first; R3: composable pieces; R4: anchors as built; R5: state machines, the IR and exact time).
 - [`docs/specs/`](docs/specs/): one spec per felt journey; [`STATE.md`](STATE.md) says which is active.
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).
+- [`docs/design/third-party.md`](docs/design/third-party.md) and [`docs/design/open-core-boundary.md`](docs/design/open-core-boundary.md): the licences of everything reebeat depends on, and what is open and closed.
 - Packages, in three tiers with one dependency direction (library, then service, then adapter; [design R3](docs/design/keyframe-engine.md)): libraries `core` (the machines, the Fountain importer, the IR, the Plan, schedule), `subtitles` and `lint`; the service package `services` (the seven service interfaces, their contract suites and offline stand-ins); the build program `pipeline`; adapters `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg` and `cache-fs`; and the tools `verify` (the checks) and `cli` (the `reebeat` command, the only place adapters are chosen and composed).
 
 The name `reebeat` is working; the GitHub org `reebeat` and the npm org `reebeat` are reserved.
 
 ## Licence
 
-All rights reserved; licence to be decided. No licence file is present on purpose, so nothing here is licensed for reuse yet. Third-party code keeps its own licences (see `PROVENANCE.md` and the licence files next to copied code).
+reebeat's compiler and its formats (the IR, the JSON Schema generated from it, the codecs) are licensed under the [Apache License 2.0](LICENSE); the copyright notice is in [`NOTICE`](NOTICE). Products built on top live in separate repositories: [`docs/design/open-core-boundary.md`](docs/design/open-core-boundary.md) says what is open and what is closed. Third-party software, models and the binaries reebeat calls keep their own licences: [`docs/design/third-party.md`](docs/design/third-party.md) lists each one (ffmpeg with libx264 is GPL; reebeat runs it as a separate process and does not bundle it). Code adapted from another repository is in [`PROVENANCE.md`](PROVENANCE.md).
 
 ## Contributing
 

@@ -113,6 +113,7 @@ Missing name: it leaves {id=gone cell=mr class=box visible=false}
   r2: show gone at word("leaves").end
   s2: sound pop at beat(2).end +0.1s
   s3: sound pop at state(3).leave -1f
+  s4: sound pop at within(word("missing").end, state(2))
 ]]
 
 NARRATOR

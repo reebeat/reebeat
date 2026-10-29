@@ -4,7 +4,7 @@
 // picture of the video is not a change). Each span is the observed counterpart of the window `resolve.ts` computes from
 // the renderer's declared lifecycle, so an expression evaluated over them (`leaves.ts`) and the resolved frames can be
 // compared. Pure: the decoding happened before, `World` holds its results.
-import { eventKind, showEffectOf, stepsOf } from "@reebeat/core";
+import { eventKind, showEffectOf, stateStart, stepsOf } from "@reebeat/core";
 import type {
   ElementEvent,
   LifecycleFrames,
@@ -378,7 +378,7 @@ export const beatOf = (world: World, index: number, n: number): Found<Window> =>
     )
   );
 
-/** State `n` (1-based) as observed: from the end of the Beat before it to the start of the Beat after it. */
+/** State `n` (1-based) as observed: from the end of the last Beat before it (`stateStart`) to the start of the Beat after it. */
 export const dwellOf = (
   world: World,
   index: number,
@@ -394,10 +394,12 @@ export const dwellOf = (
       );
     }
 
-    const start = Option.match(Arr.get(beats, n - 2), {
-      onNone: () => bounds.start,
-      onSome: (beat) => beat.end,
-    });
+    // The one definition of the schedule: never before the end of any earlier Beat, even when Beats overlap.
+    const start = stateStart(
+      bounds.start,
+      Arr.map(beats, (beat) => beat.end),
+      n
+    );
 
     return {
       end: Option.match(Arr.get(beats, n - 1), {

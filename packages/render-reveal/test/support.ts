@@ -109,6 +109,26 @@ export const ringSource = asText([
   "One two three four five six seven eight.",
 ]);
 
+/**
+ * One Element is rung twice: `f1` rings `a` until "four" ends, and `f2` rings `a` again at "three". The ring is `f2`'s
+ * from "three" on and lasts to the slide change, so the end step of `f1` (at "four") has nothing to take off.
+ */
+export const reringSource = asText([
+  "# One",
+  "",
+  "INT. A - DAY #sc1#",
+  "",
+  "Alpha {id=a cell=ml class=box}",
+  "",
+  "[[effects",
+  '  f1: focus a at word("one").end until word("four").end',
+  '  f2: focus a at word("three").end',
+  "]]",
+  "",
+  "NARRATOR",
+  "One two three four five six seven eight.",
+]);
+
 /** The Plan of a screenplay text, scheduled against the lifecycle reveal.js declares. */
 export const scheduledOf = (source: string) =>
   Effect.flatMap(planOf(source), (plan) =>

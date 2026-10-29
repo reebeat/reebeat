@@ -282,6 +282,19 @@ describe("renderDeck", () => {
           []
         );
         assert.deepStrictEqual(nth(story, 4)?.sounds, ["ding"]);
+        // sc6: the two pops of the `each` ride on the slide; the pop inside State 2 (`within`) rides on the first show, the
+        // pops after the second show (a Beat's end, the last frame of the last State) on the second.
+        assert.deepStrictEqual(nth(story, 5)?.sounds, ["pop", "pop"]);
+        assert.deepStrictEqual(
+          Arr.map(nth(story, 5)?.fragments ?? [], (fragment) => [
+            fragment.effectId,
+            fragment.sounds,
+          ]),
+          [
+            ["r1", ["pop"]],
+            ["r2", ["pop", "pop"]],
+          ]
+        );
         // sc7: an absolute time with no step before it plays alone, which a Deck can only do with the slide.
         assert.deepStrictEqual(nth(story, 6)?.sounds, ["pop", "pop", "pop"]);
 

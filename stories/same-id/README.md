@@ -39,6 +39,7 @@ Dialogue is plain prose: the narration, the subtitles and the notes are its text
 | `sc6` | `s1: sound pop at each(scene.start +0.1s, scene.start +0.15s, stagger=0.4s)` | `stagger=0.4s` pushes the second pop to 0.4 s after the first |
 | `sc6` | `s2: sound pop at beat(2).end +0.1s` | a sound on the generated Beat between State 2 and State 3 (the Beat of `r2`) |
 | `sc6` | `s3: sound pop at state(3).leave -1f` | a sound on the last State: left at the Scene's last frame, the slide change leaves every state |
+| `sc6` | `s4: sound pop at within(word("missing").end, state(2))` | `within`: the occurrences of an event inside a State of the Scene: "missing" ends while State 2 holds (after the first show, before the second), so the pop sounds once |
 | `sc7` | `p1: sound pop at 0.5s because "..."` | an absolute time, which needs its reason and which `reebeat lint` lists |
 | `sc7` | `p2: sound pop at first(scene.start +1s, scene.start +0.8s)` | `first`: the earlier of the two |
 | `sc7` | `p3: sound pop at last(scene.start +0.1s, scene.start +0.2s)` | `last`: the later of the two |

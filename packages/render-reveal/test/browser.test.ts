@@ -21,6 +21,7 @@ import {
 import {
   asText,
   planOf,
+  reringSource,
   ringSource,
   scheduledOf,
   scheduledStory,
@@ -91,6 +92,30 @@ const step = "reebeatDeck.stepFragment()";
 
 const hasClass = (classes: string, name: string): boolean =>
   Str.split(classes, " ").includes(name);
+
+/**
+ * Steps through every fragment of the first Scene of `source`, asserting which Elements carry the ring after each step
+ * (`forward`), then that no step is left, then steps back through them (`back`).
+ */
+const walkRings = (
+  source: string,
+  forward: readonly (readonly string[])[],
+  back: readonly (readonly string[])[]
+) =>
+  Effect.gen(function* walk() {
+    const plan = yield* scheduledOf(source);
+    const { page } = yield* openDeck(yield* writtenDeck(plan));
+
+    for (const ringed of forward) {
+      yield* focusAfter(page, step, ringed);
+    }
+
+    assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
+
+    for (const ringed of back) {
+      yield* focusAfter(page, "Reveal.prevFragment()", ringed);
+    }
+  });
 
 /** How many fragment steps a Scene has: `stepsOf`, a start for each `show` and `focus` and an end for each ring that ends by its `until`. */
 const stepCount = (plan: PlanJson, scene: PlanJson["scenes"][number]): number =>
@@ -494,25 +519,14 @@ describe("the Deck page", () => {
 
   it.live(
     "the end step takes the ring off its own target, stepping back puts it back, and the next focus is untouched",
-    () =>
-      Effect.gen(function* ring() {
-        const plan = yield* scheduledOf(ringSource);
-        const { page } = yield* openDeck(yield* writtenDeck(plan));
+    // Three fragments: the start of `f1`, the end of `f1`, the start of `f2`.
+    () => walkRings(ringSource, [["a"], [], ["b"]], [[], ["a"], []])
+  );
 
-        // Three fragments: the start of `f1`, the end of `f1`, the start of `f2`.
-        yield* focusAfter(page, step, ["a"]);
-
-        yield* focusAfter(page, step, []);
-
-        yield* focusAfter(page, step, ["b"]);
-        assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
-
-        yield* focusAfter(page, "Reveal.prevFragment()", []);
-
-        yield* focusAfter(page, "Reveal.prevFragment()", ["a"]);
-
-        yield* focusAfter(page, "Reveal.prevFragment()", []);
-      })
+  it.live(
+    "the end step of a ring that a later focus on the same Element has taken over takes nothing off, and stepping back restores each owner",
+    // Three fragments: the start of `f1`, the start of `f2` (the ring is its now), the end of `f1` (a no-op).
+    () => walkRings(reringSource, [["a"], ["a"], ["a"]], [["a"], ["a"], []])
   );
 
   it.live(

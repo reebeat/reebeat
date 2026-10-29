@@ -534,6 +534,55 @@ describe("an event expression evaluated over the observed frames", () => {
   );
 
   it.effect(
+    "enters a State only after every earlier Beat has ended: a focus that fires inside the previous show's fade does not enter State 3 before State 2",
+    () =>
+      Effect.gen(function* overlap() {
+        const head = Str.split("[[effects")(story)[0] ?? "";
+
+        const plan = yield* timedWith(
+          referenceLifecycle,
+          `${head}[[effects
+  r1: show h at word("six").end
+  f1: focus a at word("seven").end
+]]
+
+NARRATOR
+Five six seven eight nine.
+`
+        );
+
+        const r1 = factOf(plan, "sc2.r1#1").timed;
+        const f1 = factOf(plan, "sc2.f1#1").timed;
+
+        // A show from its fire frame to 14 frames later, and a focus 9 frames after it: inside the fade.
+        const world = withOwn(
+          withOwn(worldOf(plan), "sc2.r1#1", {
+            end: r1.fireFrame + 14,
+            start: r1.fireFrame,
+          }),
+          "sc2.f1#1",
+          { end: r1.fireFrame + 12, start: r1.fireFrame + 12 }
+        );
+
+        assert.deepStrictEqual(Result.getOrThrow(beatsOf(world, sceneIndex)), [
+          { end: r1.fireFrame + 14, start: r1.fireFrame },
+          { end: r1.fireFrame + 12, start: r1.fireFrame + 12 },
+        ]);
+        assert.isAbove(f1.fireFrame, r1.fireFrame);
+        // State 2 opens when the show's fade is over (14); State 3 opens no earlier: the focus's Beat ends at 12, but
+        // it started inside the fade, so State 3 enters at 14 too, never before State 2 (the old start was 12).
+        assert.strictEqual(
+          Result.getOrThrow(dwellOf(world, sceneIndex, 2)).start,
+          r1.fireFrame + 14
+        );
+        assert.strictEqual(
+          Result.getOrThrow(dwellOf(world, sceneIndex, 3)).start,
+          r1.fireFrame + 14
+        );
+      })
+  );
+
+  it.effect(
     "negative control: a show observed three frames early takes beat(2) and the State it opens with it, and within(...) loses the occurrence it no longer holds",
     () =>
       Effect.gen(function* within() {

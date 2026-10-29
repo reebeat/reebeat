@@ -58,6 +58,9 @@ import {
   shiftSlide,
   slideFrameOf,
   verdictOf,
+  assertWhooshThreeFramesLate,
+  dingRow,
+  whooshRow,
 } from "./support.ts";
 
 /** The pattern of the line of one fragment span of deck.html. */
@@ -108,11 +111,6 @@ Box {id=a cell=tr class=box}
 NARRATOR
 Five six seven.
 `;
-
-/** The rows of F1 the tests read: one effect each, found by its Scene and id. */
-const whooshRow = "sc2.s1 sound whoosh";
-
-const dingRow = "sc2.s2 sound ding";
 
 layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
   "the checks on a small built story",
@@ -228,30 +226,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
 
     it.effect(
       "F1: a whoosh delayed by three frames is observed three frames from its resolved frame, though it still sounds at the slide change it was written for",
-      () =>
-        Effect.gen(function* delayedSound() {
-          const fixture = yield* Fixture;
-          const slide = slideFrameOf(fixture.plan, "sc2");
-
-          // The Timeline of plan.json still says the slide frame; only the mix puts the whoosh three frames later.
-          const verdicts = yield* control(
-            "f1-whoosh-late",
-            (dir) =>
-              muxFrames(
-                dir,
-                Stream.fromIterable(fixture.frames),
-                moveFire(fixture.plan, "s1", slide + 3)
-              ),
-            ["F1"]
-          );
-
-          const verdict = verdictOf(verdicts, "F1");
-          const offsets = offsetsIn(rowOf(verdict, whooshRow));
-
-          assert.include(verdict.detail, "sc2.s1 sound whoosh");
-          assert.approximately(offsets.own ?? Number.NaN, 3, 1);
-          assert.approximately(offsets.anchor ?? Number.NaN, 0, 1);
-        })
+      () => assertWhooshThreeFramesLate("f1-whoosh-late")
     );
 
     it.effect(

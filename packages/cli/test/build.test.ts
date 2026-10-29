@@ -24,6 +24,7 @@ import {
   runBuild,
   runCli,
   storySetup,
+  storyText,
   tempDirectory,
   writeText,
 } from "./support.ts";
@@ -351,6 +352,45 @@ layer(platform)("reebeat build", (it) => {
         assert.isTrue(Exit.isFailure(exit));
         assert.match(stderr, /^SourceUnreadable: cannot read /u);
         yield* absent(out, `${out}.partial`);
+      })
+  );
+
+  it.effect(
+    "--name that is not a plain file stem is InvalidOutputName and nothing is created, inside or outside the output",
+    () =>
+      Effect.gen(function* hostile() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+
+        // Two levels below a root the test owns: `<out>.partial/../../escaped` would land inside the root.
+        const root = yield* tempDirectory;
+        const dir = path.join(root, "a", "b");
+
+        yield* fs.makeDirectory(dir, { recursive: true });
+
+        const story = yield* writeText(dir, "story.fountain", storyText);
+        const before = yield* fs.readDirectory(root, { recursive: true });
+
+        for (const name of ["../../escaped", "..", "x/y", "a b", ".hidden"]) {
+          const { exit, stderr, stdout } = yield* runCli([
+            "build",
+            story,
+            "--out",
+            path.join(dir, "out"),
+            ...offline,
+            "--name",
+            name,
+          ]);
+
+          assert.isTrue(Exit.isFailure(exit), name);
+          assert.match(stderr, /^InvalidOutputName: /u, name);
+          assert.strictEqual(stdout, "", name);
+        }
+
+        assert.sameMembers(
+          yield* fs.readDirectory(root, { recursive: true }),
+          before
+        );
       })
   );
 });

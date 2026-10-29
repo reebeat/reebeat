@@ -29,7 +29,7 @@ in resolved-time order with its verb and target, and the `data-sounds` of the sl
 carries there), `F5 source hash` (`<html data-source-sha256>` and the `reebeat:source-sha256`
 meta both equal `plan.sourceSha256`), `elements` (every Plan Element is on its slide with the same cell, class, `visible` flag and
 text, and nothing else is), `slides` (same scene ids and chapters in the same order) and `transitions` (`data-auto-animate`,
-`data-auto-animate-id`, `data-transition`, `data-cut-after`).
+`data-auto-animate-id`, `data-transition`).
 
 ## The page
 
@@ -77,8 +77,10 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   Element still focused when an Auto-Animate starts is measured with its scale of 1.04 and animates from that box.
 - **A cut is a cut.** reveal.js takes the transition of the slide it LEAVES from that slide, so `data-transition="none"` on the
   incoming slide still left the old slide fading out for 12 frames under the new one (found by the observer of
-  `@reebeat/verify`: the whole frame of a `> CUT` changed for 12 frames). The slide before a cut carries `data-cut-after` and
-  `theme.css` gives `section[data-cut-after].past` `transition: none`; the cut now changes the frame in one frame.
+  `@reebeat/verify`: the whole frame of a `> CUT` changed for 12 frames). The last rule of `theme.css`,
+  `.reveal .slides > section.past:has(+ section.present[data-transition="none"])` with `transition: none`, makes the slide
+  that a `none` slide replaces leave at once; it is derived from the one mark the page already holds, so a cut has no second
+  attribute that could disagree with it. The cut now changes the frame in one frame.
 - **Files.** `assets/reveal/{reveal.js,reveal.css,reset.css,plugin/notes.js,LICENSE}` and
   `assets/fonts/{inter-latin-400-normal.woff2,inter-latin-700-normal.woff2,LICENSE}` are read from the installed
   packages (found with `import.meta.resolve`); the licences travel with them. The Latin subset of Inter is bundled.
@@ -104,7 +106,7 @@ story of `packages/verify/test/lifecycle.test.ts`, which anchors one effect to e
 | unmatched `enter` (an Element only in the new Scene) | `s + 8` to `s + 22` (`unmatched.enter`) | `s + 7` to `s + 21`, `s + 8` to `s + 22`, `s + 7` to `s + 22` (three Elements) | it fades in after the slide change, not with it |
 | `exit` (an Element only in the old Scene) | `s` | `s` | |
 | `default` fade, end (reveal.js `fade`, `opacity .5s`) | `s + 12` (`transitionMs.default` 400) | `s + 12` | the eased fade has less than 1% left after 12 of its 15 frames |
-| `cut`, end | `s` (`transitionMs.cut` 0) | `s` | before the `data-cut-after` fix: `s + 12`, the old slide fading out |
+| `cut`, end | `s` (`transitionMs.cut` 0) | `s` | before the theme rule that makes the replaced slide leave at once: `s + 12`, the old slide fading out |
 | `show`, end (`showMs` 133) | fire frame + 4 | fire frame + 4 | `.el.shown` fades opacity in 0.2 s (6 frames), 4 of them are visible |
 
 The two `+ 1` differences are inside the one-frame tolerance of F1. A renderer whose declaration is wrong by two frames fails: the
@@ -139,12 +141,12 @@ against the slide background and against the box background. Inter is bundled
 
 | File | Proves |
 | --- | --- |
-| `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, `data-cut-after`, one fragment per `show` or `focus` effect in resolved order, `data-sounds` on slides and steps (pure) |
+| `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, `data-transition="none"` on the incoming slide of a cut, one fragment per `show` or `focus` effect in resolved order, `data-sounds` on slides and steps (pure) |
 | `check.test.ts` | F3, F4, F5 and Element controls on the written file: a deleted, swapped, re-targeted fragment, a sound dropped, reordered or moved to another step; `assembleDeck` fails on a bad bundle (pure) |
 | `renderer.test.ts` | the Renderer contract (`@reebeat/services/contract`, C1 to C6 with the lifecycle clause) with negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
 | `theme.test.ts` | contrast of every class |
 | `boundaries.test.ts` | F11: the manifest and an import scan of `src` |
-| `browser.test.ts` | Chromium: `reebeatDeck`, each step's effect, the sounds of a slide and of a step, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box |
+| `browser.test.ts` | Chromium: `reebeatDeck`, each step's effect, the sounds of a slide and of a step, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box; the slide a `> CUT` replaces is invisible in the same task as the change, and a default change is still fading it out |
 
 The browser tests use the real clock; the controlled clock belongs to `packages/capture-chromium`. The only suppression is the
 Promise adapter of `test/browser.ts` (`EX-0030` in `tools/quality/effect-exceptions.json`).

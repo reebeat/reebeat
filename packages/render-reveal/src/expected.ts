@@ -34,11 +34,10 @@ export interface ExpectedMarks {
   /** The `data-auto-animate-id` of the chain of Auto-Animate scenes the slide belongs to, or null. */
   readonly autoAnimate: string | null;
   /**
-   * The next Scene is a `> CUT`: this slide leaves at once. reveal.js takes the transition of the slide it LEAVES from
-   * the slide itself, so without this mark a cut would show the old slide fade out for 12 frames under the new one.
+   * `none` for a `> CUT`, else null (the deck default). The theme makes the slide that a `none` slide replaces leave at
+   * once (reveal.js takes the transition of the slide it LEAVES from that slide's own style), so this one mark is all a
+   * cut needs: the page holds no second copy of the fact.
    */
-  readonly cutAfter: boolean;
-  /** `none` for a `> CUT`, else null (the deck default). */
   readonly transition: "none" | null;
 }
 
@@ -93,7 +92,6 @@ export const expectedMarks = (plan: PlanJson): readonly ExpectedMarks[] => {
       joinsPrevious(index) || joinsPrevious(index + 1)
         ? `aa${Arr.filter(Arr.range(0, index), startsChain).length}`
         : null,
-    cutAfter: plan.scenes[index + 1]?.transition === "cut",
     transition: scene.transition === "cut" ? "none" : null,
   }));
 };

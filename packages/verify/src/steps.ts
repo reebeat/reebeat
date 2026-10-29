@@ -6,7 +6,7 @@ import {
   decodeGrayFrames,
   firstChangedFrame,
 } from "@reebeat/encode-ffmpeg";
-import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
+import type { Box, FrameSize, GrayClip } from "@reebeat/encode-ffmpeg";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */
@@ -45,6 +45,7 @@ export const changeFloor = (clip: GrayClip, box?: Box): number => {
  */
 export const stepOffset = Effect.fn("stepOffset")(function* step(
   mp4: string,
+  size: FrameSize,
   center: number,
   reach: number,
   box?: Box
@@ -52,7 +53,8 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   const clip = yield* decodeGrayFrames(
     mp4,
     Math.max(0, center - reach - 1),
-    center + reach
+    center + reach,
+    size
   );
 
   const first = firstChangedFrame(clip, box, {

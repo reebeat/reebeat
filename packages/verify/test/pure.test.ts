@@ -4,8 +4,9 @@ import { buildPlan } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
 import { synthClip } from "@reebeat/sounds-synth";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, Option } from "effect";
 
+import { judge } from "../src/effects.ts";
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
@@ -224,4 +225,83 @@ describe("the signal helpers", () => {
 
     assert.strictEqual(found?.score, 0);
   });
+});
+
+describe("the anchor comparison of a sound anchored to a transition", () => {
+  /**
+   * The problems of the whoosh of the fixture story (`s1` of `sc2`, `transition.start`, resolved at frame 100) when
+   * its sound starts `soundFrames` from frame 100 and the scene change into sc2 shows at `100 + change`.
+   */
+  const problemsOf = Effect.fn("problemsOf")(function* problems(
+    soundFrames: number,
+    change: number
+  ) {
+    const plan = yield* buildPlan(storyText, "0".repeat(64));
+    const [, scene] = plan.scenes;
+    const found = Arr.findFirst(scene?.effects ?? [], (one) => one.id === "s1");
+
+    if (scene === undefined || Option.isNone(found)) {
+      return yield* Effect.die("the fixture story has no whoosh s1 in sc2");
+    }
+
+    const timed = {
+      commandFrame: 100,
+      effectId: "s1",
+      fireFrame: 100,
+      intent: "transition.start",
+    };
+
+    return judge(
+      {
+        effect: found.value,
+        scene,
+        sceneIndex: 1,
+        timed,
+        timedScene: {
+          effects: [timed],
+          endFrame: 200,
+          lines: [],
+          sceneId: "sc2",
+          slideFrame: 100,
+        },
+      },
+      {
+        end: 100 + soundFrames,
+        reason: "",
+        score: 1,
+        start: 100 + soundFrames,
+      },
+      { frame: 100 + change, length: undefined, tag: "found" },
+      30
+    ).problems;
+  });
+
+  it.effect(
+    "passes a sound 0.99 frame from its resolved frame and from the observed first changed frame, and fails 1.02 frames, on both sides and with the picture moved",
+    () =>
+      Effect.gen(function* boundary() {
+        // The sound is where its effect says (0.99 frame late), the picture changes at the slide frame.
+        assert.deepStrictEqual(yield* problemsOf(0.99, 0), []);
+        assert.deepStrictEqual(yield* problemsOf(-0.99, 0), []);
+        // The picture changes one frame late or early (F7 allows it): the sound is then a frame from the motion, no more.
+        assert.deepStrictEqual(yield* problemsOf(0, 1), []);
+        assert.deepStrictEqual(yield* problemsOf(0, -1), []);
+        assert.deepStrictEqual(yield* problemsOf(0.01, 1), []);
+
+        for (const [soundFrames, change, shown] of [
+          [1.02, 0, "+1.02"],
+          [-1.02, 0, "-1.02"],
+          [-0.02, 1, "-1.02"],
+          [0.02, -1, "+1.02"],
+        ] as const) {
+          const problems = yield* problemsOf(soundFrames, change);
+
+          assert.include(
+            Arr.join(problems, "\n"),
+            `${shown} frames`,
+            `${soundFrames} against a change at ${change}`
+          );
+        }
+      })
+  );
 });

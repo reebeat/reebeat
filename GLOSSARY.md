@@ -113,7 +113,7 @@ _Avoid_: Integration (as a package name; it is the tier's description), driver
 Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `reebeat.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
 
 **Stand-in**:
-An offline adapter for tests and for running the whole pipeline with no model (`silent` narrator, `even` aligner, tone sounds, in-memory cache). Its id ends `-standin`. A build made with a stand-in narrator is silent by construction, so the checks that compare narration audio report `N/A (silent stand-in)` for it, and only for it.
+An offline adapter for tests and for running the whole pipeline with no model (`silent` narrator, `even` aligner, tone sounds, in-memory cache). Its id ends `-standin`. A build made with a stand-in narrator has silent narration (its sounds are audible), so the check that finds narration onsets (F8) reports `N/A (silent stand-in)` for it, and only for it.
 _Avoid_: Mock, fake (a fake is a test double inside one test)
 
 **Egress**:

@@ -258,7 +258,7 @@ describe("renderDeck", () => {
   );
 
   it.effect(
-    "marks Auto-Animate scenes on both sides of the join, a cut on the Scene it leads into, and the slide a cut follows",
+    "marks Auto-Animate scenes on both sides of the join and a cut on the Scene it leads into",
     () =>
       Effect.gen(function* marks() {
         const plan = yield* planOf(chainSource);
@@ -275,11 +275,6 @@ describe("renderDeck", () => {
         assert.deepStrictEqual(
           Arr.map(slides, (slide) => slide.transition),
           [null, null, null, null, "none"]
-        );
-        // The slide before the cut leaves at once: reveal.js fades the slide it leaves by that slide's own rule.
-        assert.deepStrictEqual(
-          Arr.map(slides, (slide) => slide.cutAfter),
-          [false, false, false, true, false]
         );
       })
   );

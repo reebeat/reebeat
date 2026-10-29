@@ -381,9 +381,9 @@ describe("checkDeck", () => {
       what: "data-auto-animate",
     },
     {
-      lost: / data-cut-after=""/u,
-      slide: "sc2",
-      what: "data-cut-after (the slide before a cut would fade out)",
+      lost: / data-transition="none"/u,
+      slide: "sc3",
+      what: "data-transition (the incoming slide of a cut would fade in, and the one it replaces would fade out)",
     },
   ])("control: a lost $what fails", ({ lost, slide }) =>
     Effect.gen(function* marks() {

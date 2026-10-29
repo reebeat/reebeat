@@ -2,9 +2,11 @@
 // SHA-256 and size, the hash of the source, every adapter the build selected with what it sends out (egress) and its
 // settings, and the provenance of every cache asset the build used (spec 0001, F5 and F16). The declared field order
 // is alphabetical so equal builds write equal text. The schema lives here, with the program that writes it:
-// `@reebeat/verify` reads the same definition. No secret can be in it: `writeManifest` rejects a secret-looking
-// setting name (`rejectSecretSettings`), and the settings are what the adapters declare, never what they read from
-// the environment.
+// `@reebeat/verify` reads the same definition. No secret can be in it, and `writeManifest` does not check that: the
+// names are refused where each setting enters, `selectedAdapters` in `buildProgram.ts` for the adapters' settings,
+// `rejectSecretSettings` in `cache.put` and `cache.key` for an asset's, and `keyOf` in `speechStage.ts` for the
+// aligner's inside a key's `extra`; `@reebeat/verify` (F5) checks every nested `settings` of the written file. The
+// settings are what the adapters declare, never what they read from the environment.
 import { RendererLifecycleSchema } from "@reebeat/core";
 import {
   EgressSchema,

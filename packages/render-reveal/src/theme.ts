@@ -97,6 +97,12 @@ const cellCss = (): string =>
 /**
  * The text of `assets/theme.css`: a pure function of the palette and of the slide height. Lengths are written for a
  * 720 px slide and scale with `settings.height / 720`, so a taller slide has proportionally larger type and spacing.
+ *
+ * A `> CUT` is a cut on both sides (spec 0001, Revision "review round 2"): the incoming slide carries
+ * `data-transition="none"`, which stops only its own transition, and reveal.js 6.0.2 takes the transition of a leaving
+ * slide from the leaving slide's own style (a fade of 0.5 s). It has no `none-out`: `data-transition` on the leaving
+ * slide would also remove the fade INTO it. The last rule of the sheet makes the slide that a `none` slide replaces
+ * leave at once, derived from the next slide's `data-transition`, the one fact the page already holds.
  */
 export const themeCss = (settings: DeckSettings): string => {
   const px = (design: number): string =>
@@ -201,13 +207,13 @@ ${cellCss()}
   transform: scale(1.04);
 }
 
-/* A slide that a \`> CUT\` follows leaves at once: reveal.js fades the slide it leaves by that slide's own rule. */
-.reveal .slides section[data-cut-after].past {
-  transition: none !important;
-}
-
 .effect {
   display: none;
+}
+
+/* A cut leaves at once too: reveal.js fades the old slide out by its own style unless this says otherwise. */
+.reveal .slides > section.past:has(+ section.present[data-transition="none"]) {
+  transition: none;
 }
 `;
 };

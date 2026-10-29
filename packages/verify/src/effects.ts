@@ -33,7 +33,7 @@ import {
   signedFrames,
   withinOneFrame,
 } from "./units.ts";
-import { fail, notApplicable, verdictOf } from "./verdict.ts";
+import { fail, verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 import { locateSounds, soundMatchFloor } from "./wav.ts";
 import type { SoundFound } from "./wav.ts";
@@ -312,18 +312,10 @@ const anchorFinding = (
 };
 
 /** What the effect itself did: the sound's onset, or the step in its target's cell, against its resolved frame. */
-const ownFinding = (
-  fact: EffectFact,
-  own: Own,
-  skipSound: boolean
-): Finding => {
+const ownFinding = (fact: EffectFact, own: Own): Finding => {
   const label = labelOf(fact);
   const { fireFrame } = fact.timed;
   const sound = fact.effect.verb === "sound";
-
-  if (sound && skipSound) {
-    return { measured: ["sound N/A (silent stand-in)"], problems: [] };
-  }
 
   if (own.start === undefined) {
     return {
@@ -347,15 +339,14 @@ const ownFinding = (
 };
 
 /** One effect's findings, printed as one row: `resolved F; anchor observed A, so B (+d); observed O (+d)`. */
-const judge = (
+export const judge = (
   fact: EffectFact,
   own: Own,
   anchor: AnchorSeen,
-  fps: number,
-  skipSound: boolean
+  fps: number
 ): Finding => {
   const found = anchorFinding(fact, own, anchor, fps);
-  const did = ownFinding(fact, own, skipSound);
+  const did = ownFinding(fact, own);
 
   return {
     measured: [
@@ -391,7 +382,6 @@ export const effectTiming = (build: Build) =>
     Effect.gen(function* observe() {
       const facts = effectFacts(build.plan);
       const { fps } = build.plan.settings;
-      const silent = Option.isSome(build.silentNarrator);
       const sceneCount = build.plan.scenes.length;
       const sources = Arr.map(facts, (fact) => anchorSource(fact, sceneCount));
 
@@ -406,14 +396,14 @@ export const effectTiming = (build: Build) =>
 
       const seen = yield* observeAll(build, subjects);
 
-      const sounds = Arr.filter(facts, (fact) => fact.effect.verb === "sound");
-      const hearing = sounds.length > 0 && !silent;
+      const hasSounds = Arr.some(facts, (fact) => fact.effect.verb === "sound");
 
-      const track = hearing
+      // A stand-in narrator silences the narration only: the sounds of an offline build are real and are observed.
+      const track = hasSounds
         ? yield* decodeMonoPcm(build.mp4)
         : new Float32Array(0);
 
-      const heard = hearing
+      const heard = hasSounds
         ? hearSounds(track, facts, fps)
         : new Map<string, Own>();
 
@@ -430,8 +420,7 @@ export const effectTiming = (build: Build) =>
           fact,
           owns.get(effectKey(fact)) ?? ownOf(fact, seen),
           anchorSeen(source, seen, owns, fact.scene.id),
-          fps,
-          fact.effect.verb === "sound" && silent
+          fps
         ),
       }));
 
@@ -449,17 +438,9 @@ export const effectTiming = (build: Build) =>
         return fail("F1", "the Timeline has no effect to observe", measured);
       }
 
-      if (silent && sounds.length === facts.length && problems.length === 0) {
-        return notApplicable(
-          "F1",
-          "N/A (silent stand-in): the only effects are sounds and the narrator's track is silent by construction; their anchors in the picture hold",
-          measured
-        );
-      }
-
       return verdictOf(
         "F1",
-        `all ${facts.length} effects are observed within one frame of their resolved frame and of their observed anchor${silent && sounds.length > 0 ? `; the ${sounds.length} sound onsets are N/A (silent stand-in)` : ""}`,
+        `all ${facts.length} effects are observed within one frame of their resolved frame and of their observed anchor`,
         problems,
         measured
       );

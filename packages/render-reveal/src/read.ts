@@ -38,8 +38,6 @@ export interface DeckSlide {
   /** Null without `data-auto-animate`; else the value of `data-auto-animate-id` (empty when absent). */
   readonly autoAnimate: string | null;
   readonly chapterId: string;
-  /** Whether the section carries `data-cut-after`. */
-  readonly cutAfter: boolean;
   readonly elements: readonly DeckElement[];
   readonly fragments: readonly DeckFragment[];
   /** The text of each `<p>` of the slide's `<aside class="notes">`, in order. */
@@ -149,7 +147,6 @@ const readSlide = (section: Element): DeckSlide => {
         ? null
         : (attributes["data-auto-animate-id"] ?? ""),
     chapterId: attributes["data-chapter"] ?? "",
-    cutAfter: attributes["data-cut-after"] !== undefined,
     elements: Arr.map(Arr.filter(inside, withClass("el")), readElement),
     fragments: Arr.map(
       Arr.filter(

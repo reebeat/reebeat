@@ -25,6 +25,7 @@ import {
   SpeechSynthesizer,
   WordAligner,
   rejectSecretSettings,
+  requireOutputName,
 } from "@reebeat/services";
 import type { AdapterInfo } from "@reebeat/services";
 import {
@@ -287,6 +288,9 @@ const buildInto = Effect.fnUntraced(function* buildInto(
 export const buildProgram = Effect.fn("buildProgram")(function* buildProgram(
   options: BuildOptions
 ) {
+  // First, before anything is written: a name that is not a plain stem would put `<name>.mp4` and `<name>.vtt` outside `out`.
+  yield* requireOutputName(options.name);
+
   const path = yield* Path.Path;
   const out = path.resolve(options.out);
 

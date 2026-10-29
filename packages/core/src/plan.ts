@@ -278,13 +278,14 @@ export const TimedWordSchema = Schema.Struct({
 
 export const TimedEffectSchema = Schema.Struct({
   /**
-   * The frame at which the capture issues the effect's command: `fireFrame - 1` for `show` and `focus`, `fireFrame`
-   * for `sound` (an anchor at the transition start has command = fire = the Scene's `slideFrame`). Scene changes
-   * are not effects: the video package commands them itself.
+   * The frame at which the capture (the `FrameCapturer` service) issues the effect's command: `fireFrame - 1` for
+   * `show` and `focus`, `fireFrame` for `sound` (an anchor at the transition start has command = fire = the Scene's
+   * `slideFrame`). Scene changes are not effects: the capture commands them itself from the Scene's `slideFrame`, an
+   * Auto-Animate or cut at `slideFrame` (lag 0) and a default fade one frame earlier.
    */
   commandFrame: Frame,
   effectId: Id,
-  /** The resolved frame of the effect: anchor frame plus offset, always inside the Scene. */
+  /** The resolved frame of the effect: anchor frame plus offset, always inside the Scene. It is not when the capture commands it: see `commandFrame`. */
   fireFrame: Frame,
   /** What the author wrote for the timing, as the review text prints it, e.g. `word("matches").end +100ms`. */
   intent: Schema.String,

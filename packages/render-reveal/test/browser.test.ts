@@ -707,3 +707,68 @@ describe("Auto-Animate between matched scenes", () => {
     })
   );
 });
+
+const cutScreenplay = asText([
+  "# Cut",
+  "",
+  "INT. A - DAY #sc1#",
+  "",
+  "Box {id=x cell=mc class=box}",
+  "",
+  "NARRATOR",
+  "One.",
+  "",
+  "> CUT",
+  "",
+  "INT. B - DAY #sc2#",
+  "",
+  "Box {id=y cell=mc class=box}",
+  "",
+  "NARRATOR",
+  "Two.",
+  "",
+  "INT. C - DAY #sc3#",
+  "",
+  "Box {id=z cell=mc class=box}",
+  "",
+  "NARRATOR",
+  "Three.",
+  "",
+  "INT. D - DAY #sc4#",
+  "",
+  "Box {id=w cell=mc class=box}",
+  "",
+  "NARRATOR",
+  "Four.",
+]);
+
+/** The opacity the slide of `scene` has in the same task as the change of slide to `to`: a leaving fade has not begun. */
+const opacityRightAfter = (to: string, scene: string): string =>
+  `(() => { ${goTo(to)}; return Number(getComputedStyle(document.querySelector('section[data-scene="${scene}"]')).opacity); })()`;
+
+describe("the slide change into a CUT", () => {
+  it.live(
+    "the old slide leaves at once on a cut and fades out on a default change",
+    () =>
+      Effect.gen(function* cutting() {
+        const plan = yield* planOf(cutScreenplay);
+        const { page } = yield* openDeck(yield* writtenDeck(plan));
+
+        // sc1 -> sc2 is a cut: sc1 is invisible in the same task.
+        assert.strictEqual(
+          yield* evaluate(page, opacityRightAfter("sc2", "sc1"), Schema.Finite),
+          0
+        );
+        // sc3 -> sc4 is a default fade, once sc3 has faded in: sc3 has begun to leave, it is still visible.
+        yield* evaluate(page, goTo("sc3"), Schema.Undefined);
+        yield* waitUntil(
+          page,
+          `getComputedStyle(document.querySelector('section[data-scene="sc3"]')).opacity === "1"`
+        );
+        assert.isAbove(
+          yield* evaluate(page, opacityRightAfter("sc4", "sc3"), Schema.Finite),
+          0.5
+        );
+      })
+  );
+});

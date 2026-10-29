@@ -27,7 +27,7 @@ devenv shell -- bun run reebeat build stories/same-id/story.fountain --speech si
 devenv shell -- bun run reebeat check build/offline --source stories/same-id/story.fountain --cache-dir /tmp/standin
 ```
 
-The silent narrator makes the narration check (F8) and the sound part of the effect check (F1) meaningless; they print `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator.
+The silent narrator makes the narration check (F8) meaningless: it prints `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator. The sounds of an offline build are real, so the effect check (F1) still observes them.
 
 ## Where to read
 

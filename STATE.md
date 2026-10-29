@@ -9,6 +9,7 @@ reebeat turns a Fountain screenplay into a reveal.js Deck and a captured Video. 
 Next:
 
 - Merge spec 0001 after its review rounds; then spec 0002.
+- Follow-up to 0001, not part of 0002: remove the `(speed 1.05)` interim on one Line of `stories/same-id` (word timings from the synthesiser, or alignment judged by its path).
 - Candidates for 0003 (recorded in design R2, not started): reebeat's own motion engine as a renderer plug-in, and the pixel-identical port of the earlier 4EM explainer as its regression test (`docs/design/4em-regression-baseline.md`).
 
 Blocked:

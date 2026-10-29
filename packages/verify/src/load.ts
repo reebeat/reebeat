@@ -42,8 +42,8 @@ export interface Build {
   /** The Plan the current source builds, or why it does not build. */
   readonly rebuilt: Result.Result<PlanJson, PlanError>;
   /**
-   * The id of the narrator `build.json` lists when it is a stand-in whose audio is silent by construction (an id
-   * ending `-standin`), else none. The one reason F8 and the sound part of F1 report N/A.
+   * The id of the narrator `build.json` lists when it is a stand-in whose narration is silent by construction (an id
+   * ending `-standin`), else none. The one reason F8 reports N/A: the sounds of such a build are audible, F1 checks them.
    */
   readonly silentNarrator: Option.Option<string>;
   readonly source: SourceFile;

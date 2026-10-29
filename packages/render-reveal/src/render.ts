@@ -92,14 +92,12 @@ const sectionHtml = (
       ? ""
       : attribute("data-transition", marks.transition);
 
-  const cutAfter = marks.cutAfter ? attribute("data-cut-after", "") : "";
-
   const fragments = Arr.map(
     slide.fragments,
     (fragment) => `    ${fragmentHtml(fragment)}\n`
   );
 
-  return `  <section${attribute("data-scene", scene.id)}${attribute("data-chapter", scene.chapterId)}${autoAnimate}${transition}${cutAfter}${soundsAttribute(slide.sounds)}>
+  return `  <section${attribute("data-scene", scene.id)}${attribute("data-chapter", scene.chapterId)}${autoAnimate}${transition}${soundsAttribute(slide.sounds)}>
     ${gridHtml(scene)}
 ${Arr.join(fragments, "")}    ${notesHtml(scene)}
   </section>`;
@@ -113,7 +111,7 @@ const pageHtml = (plan: PlanJson): string => {
       sectionHtml(
         plan,
         scene,
-        marks[index] ?? { autoAnimate: null, cutAfter: false, transition: null }
+        marks[index] ?? { autoAnimate: null, transition: null }
       )
     ),
     "\n"

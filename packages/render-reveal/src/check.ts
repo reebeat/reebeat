@@ -233,13 +233,12 @@ const marksMismatch = (
   marks: ExpectedMarks
 ): DeckMismatch | undefined =>
   marks.autoAnimate === slide.autoAnimate &&
-  marks.cutAfter === slide.cutAfter &&
   marks.transition === slide.transition
     ? undefined
     : new DeckMismatch({
         check: "transitions",
         index: null,
-        message: `slide ${scene.id}: data-auto-animate-id, data-transition and data-cut-after are ${show(slide.autoAnimate)}, ${show(slide.transition)} and ${slide.cutAfter}, the Plan says ${show(marks.autoAnimate)}, ${show(marks.transition)} and ${marks.cutAfter}`,
+        message: `slide ${scene.id}: data-auto-animate-id and data-transition are ${show(slide.autoAnimate)} and ${show(slide.transition)}, the Plan says ${show(marks.autoAnimate)} and ${show(marks.transition)}`,
         slide: scene.id,
       });
 
@@ -271,11 +270,7 @@ const firstMismatch = (
           marksMismatch(
             scene,
             slide,
-            marks[index] ?? {
-              autoAnimate: null,
-              cutAfter: false,
-              transition: null,
-            }
+            marks[index] ?? { autoAnimate: null, transition: null }
           ));
 
     return mismatch === undefined ? [] : [mismatch];

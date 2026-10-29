@@ -14,10 +14,7 @@ import type {
   TimedPlan,
 } from "@reebeat/core";
 import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
-import type {
-  InvalidOutputName,
-  MediaToolFailed,
-} from "@reebeat/encode-ffmpeg";
+import type { MediaToolFailed } from "@reebeat/encode-ffmpeg";
 import {
   buildProgram,
   decodeBuildManifest,
@@ -38,9 +35,10 @@ import type {
   CacheError,
   CaptureFailure,
   EncodeError,
+  InvalidOutputName,
   UnknownSound,
 } from "@reebeat/services";
-import { evenAligner } from "@reebeat/services/standins";
+import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";
 import { sfxNames, sfxWav, synthSounds } from "@reebeat/sounds-synth";
 import {
   Array as Arr,
@@ -103,6 +101,37 @@ Entering {id=d cell=mc class=label}
   s1: sound whoosh at transition.start
   s2: sound ding at a.move.50%
   f1: focus a at word("six").end
+]]
+
+NARRATOR
+Five six seven.
+`;
+
+/** Two Scenes joined by a `> CUT`: the picture changes at once or F7's cut check fails. */
+const cutStoryText = `Title: Cut story
+Author: reebeat tests
+
+# Part one
+
+INT. ONE - DAY #sc1#
+
+Box {id=a cell=tl class=box}
+Left {id=b cell=ml class=label}
+
+NARRATOR
+One two three four.
+
+# Part two
+
+> CUT
+
+INT. TWO - DAY #sc2#
+
+Other {id=d cell=br class=title}
+Later {id=e cell=bl class=label visible=false}
+
+[[effects
+  r1: show e at word("five").end
 ]]
 
 NARRATOR
@@ -216,11 +245,12 @@ export const decliningRenderer = (
 /** The real adapters of a build over the cache in `cacheDir`; the capturer records into `frames` when it is given. */
 const adapters = (
   cacheDir: string,
+  narrator: Layer.Layer<SpeechSynthesizer>,
   renderer: RendererLayer,
   frames?: Ref.Ref<readonly Uint8Array[]>
 ) =>
   Layer.mergeAll(
-    noiseSynthesizer,
+    narrator,
     evenAligner,
     synthSounds,
     renderer,
@@ -263,8 +293,15 @@ export interface FixtureData {
 
 const timedOrDie = (plan: PlanJson) => Effect.fromResult(requireTimeline(plan));
 
-/** Builds `story` end to end with the test narrator and `renderer`, into a temporary directory of the scope. */
-export const buildFixtureOf = (story: string, renderer: RendererLayer) =>
+/**
+ * Builds `story` end to end with `narrator` (the seeded-noise narrator unless given) and `renderer`, into a temporary
+ * directory of the scope.
+ */
+export const buildFixtureOf = (
+  story: string,
+  renderer: RendererLayer,
+  narrator: Layer.Layer<SpeechSynthesizer> = noiseSynthesizer
+) =>
   Effect.gen(function* buildFixtureDirectory() {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -295,7 +332,7 @@ export const buildFixtureOf = (story: string, renderer: RendererLayer) =>
         refreshSpeech: true,
         story: sourcePath,
       }),
-      adapters(cacheDir, renderer, frames)
+      adapters(cacheDir, narrator, renderer, frames)
     );
 
     const plan = yield* timedOrDie(
@@ -313,15 +350,26 @@ export const buildFixtureOf = (story: string, renderer: RendererLayer) =>
     };
   });
 
-const buildFixture = buildFixtureOf(storyText, revealRenderer);
-
 /** The small build, made once per test block. */
 export class Fixture extends Context.Service<Fixture, FixtureData>()(
   "@reebeat/verify/test/Fixture"
 ) {
-  static readonly layer = Layer.effect(Fixture, buildFixture).pipe(
-    Layer.provideMerge(services)
-  );
+  static readonly layer = Layer.effect(
+    Fixture,
+    buildFixtureOf(storyText, revealRenderer)
+  ).pipe(Layer.provideMerge(services));
+
+  /** The same story built offline: the silent stand-in narrates, so the narration is silent and the sounds are real. */
+  static readonly offlineLayer = Layer.effect(
+    Fixture,
+    buildFixtureOf(storyText, revealRenderer, silentSynthesizer)
+  ).pipe(Layer.provideMerge(services));
+
+  /** A story with a `> CUT` into its second Scene, built offline (only the scene change is under test). */
+  static readonly cutLayer = Layer.effect(
+    Fixture,
+    buildFixtureOf(cutStoryText, revealRenderer, silentSynthesizer)
+  ).pipe(Layer.provideMerge(services));
 }
 
 /**
@@ -598,8 +646,11 @@ export const moveFire = (
 /** The capturer the controls re-capture with: Chromium over the platform. */
 const capturing = chromiumCapturer.pipe(Layer.provide(NodeServices.layer));
 
-/** A new capture of the intact build's deck, commanded by the schedule of `plan`, as the frames to mux. */
-export const recapture = (plan: TimedPlan) =>
+/**
+ * A new capture of the intact build's deck (or of the deck in `deckDir`), commanded by the schedule of `plan`, as the
+ * frames to mux.
+ */
+export const recapture = (plan: TimedPlan, deckDir?: string) =>
   Stream.unwrap(
     Effect.gen(function* capture() {
       const fixture = yield* Fixture;
@@ -608,7 +659,7 @@ export const recapture = (plan: TimedPlan) =>
         Effect.flatMap(FrameCapturer, (capturer) =>
           Effect.scoped(
             Stream.runCollect(
-              capturer.capture({ deckDir: fixture.build, plan })
+              capturer.capture({ deckDir: deckDir ?? fixture.build, plan })
             )
           )
         ),
@@ -848,3 +899,41 @@ export const fireFrameOf = (plan: TimedPlan, effectId: string): number =>
       (effect) => effect.effectId === effectId
     )
   ).fireFrame;
+
+/** The start of the row of the whoosh of the fixture story (`s1` of `sc2`), anchored to the slide change into sc2. */
+export const whooshRow = "sc2.s1 sound whoosh";
+
+/** The row of the ding of the fixture story (`s2` of `sc2`), anchored to the middle of the box's move. */
+export const dingRow = "sc2.s2 sound ding";
+
+/**
+ * A copy of the build whose whoosh sounds three frames after its resolved frame, the picture unchanged: F1 alone fails,
+ * naming the whoosh, three frames from its resolved frame while it is 0 frames from where the observed slide change
+ * puts it (the Timeline still says the slide frame; only the mix moved). Returns every verdict.
+ */
+export const assertWhooshThreeFramesLate = Effect.fn(
+  "assertWhooshThreeFramesLate"
+)(function* late(name: string) {
+  const fixture = yield* Fixture;
+  const slide = slideFrameOf(fixture.plan, "sc2");
+
+  const verdicts = yield* control(
+    name,
+    (dir) =>
+      muxFrames(
+        dir,
+        Stream.fromIterable(fixture.frames),
+        moveFire(fixture.plan, "s1", slide + 3)
+      ),
+    ["F1"]
+  );
+
+  const verdict = verdictOf(verdicts, "F1");
+  const offsets = offsetsIn(rowOf(verdict, whooshRow));
+
+  assert.include(verdict.detail, "sc2.s1 sound whoosh");
+  assert.approximately(offsets.own ?? Number.NaN, 3, 1);
+  assert.approximately(offsets.anchor ?? Number.NaN, 0, 1);
+
+  return verdicts;
+});

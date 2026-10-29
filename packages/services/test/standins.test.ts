@@ -28,10 +28,15 @@ wordAlignerContract("evenAligner", evenAligner);
 soundLibraryContract("toneSounds", toneSounds);
 
 assetCacheContract("memoryCache", Layer.provide(memoryCache, platform), {
-  failingWriter: Layer.provide(
-    memoryCacheWith({ beforeMetadata: Effect.fail(halfWritten) }),
-    platform
-  ),
+  failingWriters: [
+    {
+      layer: Layer.provide(
+        memoryCacheWith({ beforeMetadata: Effect.fail(halfWritten) }),
+        platform
+      ),
+      when: "its files are stored and before its metadata",
+    },
+  ],
 });
 
 describe("every stand-in declares itself", () => {

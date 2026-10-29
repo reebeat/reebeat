@@ -3,7 +3,7 @@
 // and the `--speech`, `--aligner`, `--sounds`, `--renderer`, `--capturer`, `--encoder` and `--cache` flags select them
 // (`selection.ts`), and `Composition` turns the selection into Layers (`adapters.ts`). Every expected failure is
 // printed once, by `run`.
-import { choices, defaults } from "@reebeat/services";
+import { choices, defaults, requireOutputName } from "@reebeat/services";
 import type { Selection, SelectionKey } from "@reebeat/services";
 import { Array as Arr, Console, Effect, Option, Record, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
@@ -147,16 +147,19 @@ const build = Command.make(
     story,
   },
   Effect.fn("reebeat.build")(function* handleBuild(input) {
+    // The name first: nothing is read or written for a name that is not a plain stem (`--name ../../escaped`).
+    const name = yield* requireOutputName(
+      Option.isSome(input.name)
+        ? input.name.value
+        : yield* storyName(input.story)
+    );
+
     const { run, selection } = yield* settingsFor(
       input.story,
       flagsOf(input),
       input.cacheDir,
       Option.getOrUndefined(input.captureTimeout)
     );
-
-    const name = Option.isSome(input.name)
-      ? input.name.value
-      : yield* storyName(input.story);
 
     const summary = yield* buildStory({
       ...run,

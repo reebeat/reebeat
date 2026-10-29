@@ -73,10 +73,12 @@ Every published package lists `effect` (and `@effect/vitest` for `services/contr
 
 Since 4.0.0 an Effect API tagged `@stability unstable` or `experimental` may break in a minor release (4.1.0 removed `effect/Crypto`, which was unstable); `@stability stable` follows semver. So:
 
-- a package whose **published sources** reach an API of `allowedUnstableApis` (root `tsconfig.json`) declares `~4.1.0` (below the next minor);
-- a package that reaches only stable APIs declares `^4.1.0`.
+- a package whose **published sources** use any unstable or experimental Effect API declares `~4.1.0` (below the next minor), for each effect-family peer whose API it uses;
+- a package that uses only stable APIs declares `^4.1.0`.
 
-Today: `core`, `subtitles`, `lint`, `sounds-synth` are `^4.1.0`; `services` (`effect/crypto` `Digest`, `FileSystem`, `Path`, `PlatformError`, and `@effect/vitest`), `pipeline` (`Digest`, `FileSystem`, `Path`) and `render-reveal` (`FileSystem`, `Path`) are `~4.1.0`. The release rules test computes this from the imports of each published source file (a module, a binding of its parent such as `import { FileSystem } from "effect"`, or a namespace import) and fails on the wrong operator, on a pin (`catalog`) outside the range (an Effect upgrade fails here until the ranges are re-examined), on `effect` in `dependencies`, and on an `effect`-family import that is not declared.
+"Uses" is **measured by the compiler, not by reading imports**: the release rules test runs the repository's patched `tsc` (TypeScript 7 with the Effect language service, `effect-tsgo patch`) over each package's exported directories (`src`, `contract`, `standins`) with an EMPTY `allowedUnstableApis` and with `unstableApiUsage` and `experimentalApiUsage` at `error`. Each finding (`` `effect/FileSystem#FileSystem` is an unstable API ``) names the module and so the package (`effect`, `@effect/vitest`); any finding is a use, however it was imported. A root-barrel binding (`import { FileSystem } from "effect"`), a module import and a namespace import are controls of the test, and a stable import (`Effect.succeed`) finds nothing. A scan of import specifiers against the `allowedUnstableApis` list was written first and **replaced**: it had to know every unstable module by name and to treat a binding of a parent module as that module, which the compiler already does exactly.
+
+Today: `core`, `subtitles`, `lint`, `sounds-synth` are `^4.1.0`; `services` (for `effect`: `crypto/Digest`, `FileSystem`, `Path`, `PlatformError`; and `@effect/vitest`), `pipeline` and `render-reveal` are `~4.1.0`. The test fails on the wrong operator, on a pin (`catalog`) outside the range (an Effect upgrade fails here until the ranges are re-examined), on `effect` in `dependencies`, and on an `effect`-family import that is not declared.
 
 ### Publishing: GitHub Actions, trusted publishing, provenance
 

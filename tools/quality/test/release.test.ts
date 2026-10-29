@@ -22,9 +22,10 @@ import {
   publishedUses,
   publishManifest,
   readPackages,
+  scanUnstable,
   undeclaredImports,
   unexpectedFiles,
-  unstableApisUsed,
+  unstableModules,
   versionsOf,
 } from "../release.ts";
 import type {
@@ -66,18 +67,11 @@ const without = (key: "license" | "publishConfig") =>
     fixtureVersions
   );
 
-const allowed = [
-  "effect/crypto/Digest",
-  "effect/FileSystem",
-  "@effect/vitest",
-] as const;
-
-const used = (text: string) => unstableApisUsed(importUses(text), allowed);
-
 const findings = (
   overrides: Partial<SourceManifest>,
-  uses: readonly ImportUse[]
-) => peerFindings(manifest(overrides), uses, allowed, root.catalog);
+  uses: readonly ImportUse[],
+  unstable: readonly string[]
+) => peerFindings(manifest(overrides), uses, unstable, root.catalog);
 
 const names = (list: readonly WorkspacePackage[]) =>
   Arr.sort(
@@ -187,31 +181,87 @@ describe("what a tarball may hold", () => {
   });
 });
 
-describe("unstable Effect APIs reached by the published sources", () => {
-  it("sees a module, a binding of its parent, and a namespace import", () => {
-    assert.deepStrictEqual(used('import { Digest } from "effect/crypto";'), [
-      "effect/crypto/Digest",
-    ]);
-    assert.deepStrictEqual(
-      used('import { Effect, FileSystem } from "effect";'),
-      ["effect/FileSystem"]
-    );
-    assert.deepStrictEqual(used('import * as Fs from "effect/FileSystem";'), [
-      "effect/FileSystem",
-    ]);
-    assert.deepStrictEqual(used('export { assert } from "@effect/vitest";'), [
-      "@effect/vitest",
-    ]);
+/** What `tsc` prints for `packages/services` when `allowedUnstableApis` is empty (abridged). */
+const reported = Arr.join(
+  [
+    "contract/assetCache.ts(265,7): error TS377136: `@effect/vitest#it` is an unstable API. Breaking changes may happen between versions. effect(unstableApiUsage)",
+    "contract/encoder.ts(42,16): error TS377136: `effect/FileSystem#FileSystem` is an unstable API. Breaking changes may happen between versions. effect(unstableApiUsage)",
+    "contract/encoder.ts(46,38): error TS377136: `effect/FileSystem#FileSystem` is an unstable API. Breaking changes may happen between versions. effect(unstableApiUsage)",
+    "src/cacheKey.ts(72,55): error TS377136: `effect/crypto/Digest#Digest` is an unstable API. Breaking changes may happen between versions. effect(unstableApiUsage)",
+    "src/x.ts(1,1): error TS377137: `effect/unstable/http#HttpClient` is an experimental API. effect(experimentalApiUsage)",
+    "src/y.ts(3,1): error TS2322: Type 'string' is not assignable to type 'number'.",
+  ],
+  "\n"
+);
+
+/** A package `probe` in a temporary tree under tools/quality (so `effect` resolves), checked as a published package. */
+const scan = Effect.fn("scan")(function* scan(source: string) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const quality = yield* path.fromFileUrl(new URL("..", import.meta.url));
+
+  const top = yield* fs.makeTempDirectoryScoped({
+    directory: quality,
+    prefix: ".scan-",
   });
 
-  it("sees nothing in stable imports", () => {
-    assert.deepStrictEqual(
-      used(
-        'import { Effect, Schema } from "effect";\nimport { Cause } from "effect/Cause";'
-      ),
-      []
-    );
+  const directory = path.join(top, "packages", "probe");
+
+  yield* fs.makeDirectory(path.join(directory, "src"), { recursive: true });
+  yield* fs.writeFileString(
+    path.join(directory, "tsconfig.json"),
+    `{ "extends": "${path.join(quality, "tsconfig.json")}" }`
+  );
+  yield* fs.writeFileString(path.join(directory, "src", "index.ts"), source);
+
+  return yield* scanUnstable(
+    path.join(quality, "node_modules", ".bin", "tsc"),
+    top,
+    { directory: "probe", manifest: manifest({}) }
+  );
+}, Effect.scoped);
+
+describe("unstable Effect APIs used by the published sources", () => {
+  it("names the module of each unstable or experimental API a tsc run reports, once, and ignores other errors", () => {
+    assert.deepStrictEqual(unstableModules(reported), [
+      "@effect/vitest",
+      "effect/FileSystem",
+      "effect/crypto/Digest",
+      "effect/unstable/http",
+    ]);
+    assert.deepStrictEqual(unstableModules(""), []);
   });
+
+  it.effect(
+    "the compiler finds a root-barrel binding, a module import and a namespace import, and nothing in a stable one (controls)",
+    () =>
+      Effect.gen(function* controls() {
+        assert.deepStrictEqual(
+          yield* scan(
+            'import { FileSystem } from "effect";\nexport const fs = FileSystem.FileSystem;\n'
+          ),
+          ["effect/FileSystem"]
+        );
+        assert.deepStrictEqual(
+          yield* scan(
+            'import { Digest } from "effect/crypto";\nexport const digest = Digest.sha256;\n'
+          ),
+          ["effect/crypto/Digest"]
+        );
+        assert.deepStrictEqual(
+          yield* scan(
+            'import * as Path from "effect/Path";\nexport const path = Path.Path;\n'
+          ),
+          ["effect/Path"]
+        );
+        assert.deepStrictEqual(
+          yield* scan(
+            'import { Effect } from "effect";\nexport const one = Effect.succeed(1);\n'
+          ),
+          []
+        );
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
 
   it("names the package of a specifier", () => {
     assert.strictEqual(packageOf("effect/Cause"), "effect");
@@ -222,62 +272,53 @@ describe("unstable Effect APIs reached by the published sources", () => {
 });
 
 describe("the effect peer range", () => {
-  const stable = importUses('import { Effect } from "effect";');
-  const unstable = importUses('import { Digest } from "effect/crypto";');
+  const imports = importUses('import { Effect } from "effect";');
+  const crypto = ["effect/crypto/Digest"];
 
   it("accepts ^ for stable APIs and ~ for an unstable API", () => {
     assert.deepStrictEqual(
-      findings({ peerDependencies: { effect: "^4.1.0" } }, stable),
+      findings({ peerDependencies: { effect: "^4.1.0" } }, imports, []),
       []
     );
     assert.deepStrictEqual(
-      findings({ peerDependencies: { effect: "~4.1.0" } }, unstable),
+      findings({ peerDependencies: { effect: "~4.1.0" } }, imports, crypto),
       []
     );
   });
 
   it("fails ^ when an unstable API is reached: the next minor may break it (negative control)", () => {
     assert.strictEqual(
-      findings({ peerDependencies: { effect: "^4.1.0" } }, unstable).length,
+      findings({ peerDependencies: { effect: "^4.1.0" } }, imports, crypto)
+        .length,
       1
     );
   });
 
   it("fails ~ for stable-only use, a pin outside the range, and a range that is not a floor", () => {
     assert.strictEqual(
-      findings({ peerDependencies: { effect: "~4.1.0" } }, stable).length,
+      findings({ peerDependencies: { effect: "~4.1.0" } }, imports, []).length,
       1
     );
     assert.strictEqual(
-      findings({ peerDependencies: { effect: "~4.0.0" } }, unstable).length,
+      findings({ peerDependencies: { effect: "~4.0.0" } }, imports, crypto)
+        .length,
       1
     );
     assert.strictEqual(
-      findings({ peerDependencies: { effect: ">=4.1.0 <5" } }, stable).length,
+      findings({ peerDependencies: { effect: ">=4.1.0 <5" } }, imports, [])
+        .length,
       1
     );
   });
 
   it("fails effect as a dependency, and effect imported but not declared", () => {
     assert.strictEqual(
-      findings({ dependencies: { effect: "catalog:" } }, []).length,
+      findings({ dependencies: { effect: "catalog:" } }, [], []).length,
       1
     );
-    assert.strictEqual(findings({}, stable).length, 1);
+    assert.strictEqual(findings({}, imports, []).length, 1);
   });
 });
-
-const Tsconfig = Schema.fromJsonString(
-  Schema.Struct({
-    compilerOptions: Schema.Struct({
-      plugins: Schema.Array(
-        Schema.Struct({
-          allowedUnstableApis: Schema.optionalKey(Schema.Array(Schema.String)),
-        })
-      ),
-    }),
-  })
-);
 
 const ChangesetConfig = Schema.fromJsonString(
   Schema.Struct({ fixed: Schema.Array(Schema.Array(Schema.String)) })
@@ -288,19 +329,11 @@ const repository = Effect.gen(function* repository() {
   const path = yield* Path.Path;
   const top = yield* path.fromFileUrl(new URL("../../..", import.meta.url));
 
-  const tsconfig = yield* Schema.decodeEffect(Tsconfig)(
-    yield* fs.readFileString(path.join(top, "tsconfig.json"))
-  );
-
   const changesets = yield* Schema.decodeEffect(ChangesetConfig)(
     yield* fs.readFileString(path.join(top, ".changeset", "config.json"))
   );
 
   return {
-    allowedUnstable: Arr.flatMap(
-      tsconfig.compilerOptions.plugins,
-      (plugin) => plugin.allowedUnstableApis ?? []
-    ),
     changesets,
     manifest: yield* decodeRoot(
       yield* fs.readFileString(path.join(top, "package.json"))
@@ -341,23 +374,20 @@ describe("the real repository", () => {
     "every published package declares effect as a peer with the range its APIs need",
     () =>
       Effect.gen(function* peers() {
-        const {
-          allowedUnstable,
-          manifest: top,
-          packages,
-          top: where,
-        } = yield* repository;
+        const path = yield* Path.Path;
+        const { manifest: top, packages, top: where } = yield* repository;
+        const tsc = path.join(where, "node_modules", ".bin", "tsc");
 
         const perPackage = yield* Effect.forEach(
           publicPackages(packages),
           (workspace) =>
-            Effect.map(publishedUses(where, workspace), (uses) =>
-              peerFindings(
-                workspace.manifest,
-                uses,
-                allowedUnstable,
-                top.catalog
-              )
+            Effect.map(
+              Effect.all([
+                publishedUses(where, workspace),
+                scanUnstable(tsc, where, workspace),
+              ]),
+              ([uses, unstable]) =>
+                peerFindings(workspace.manifest, uses, unstable, top.catalog)
             )
         );
 

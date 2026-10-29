@@ -15,7 +15,8 @@ import {
   String as Str,
   pipe,
 } from "effect";
-import type { PlatformError } from "effect";
+import type { PlatformError, Scope } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { parseSync } from "oxc-parser";
 
 import { sourceFiles } from "./tiers.ts";
@@ -412,28 +413,99 @@ export const undeclaredImports = (
   );
 };
 
+const unstableLine =
+  /`(?<module>[^`#]+)#[^`]+` is an? (?:unstable|experimental) API/gu;
+
 /**
- * Whether a use reaches the unstable module `entry` (an `allowedUnstableApis` entry of the root tsconfig): the module
- * itself (`effect/crypto/Digest`), anything below it, or the module as a binding of its parent
- * (`import { Digest } from "effect/crypto"`, `import { FileSystem } from "effect"`).
+ * The modules of the unstable or experimental Effect APIs a `tsc` run reports (`effect/FileSystem#FileSystem is an
+ * unstable API` names `effect/FileSystem`, `@effect/vitest#it` names `@effect/vitest`).
  */
-const reaches = (use: ImportUse, entry: string): boolean => {
-  const segments = Str.split(entry, "/");
-
-  return (
-    use.specifier === entry ||
-    Str.startsWith(`${entry}/`)(use.specifier) ||
-    (use.specifier === pipe(segments, Arr.initNonEmpty, Arr.join("/")) &&
-      Arr.some(use.names, (name) => name === Arr.lastNonEmpty(segments)))
+export const unstableModules = (diagnostics: string): readonly string[] =>
+  Arr.dedupe(
+    Arr.filterMap(
+      Arr.fromIterable(Str.matchAll(unstableLine)(diagnostics)),
+      ({ groups }) =>
+        groups?.module === undefined
+          ? Result.failVoid
+          : Result.succeed(groups.module)
+    )
   );
-};
 
-/** The entries of `allowed` that some use reaches. */
-export const unstableApisUsed = (
-  uses: readonly ImportUse[],
-  allowed: readonly string[]
-): readonly string[] =>
-  Arr.filter(allowed, (entry) => Arr.some(uses, (use) => reaches(use, entry)));
+const ScanConfig = Schema.fromJsonString(
+  Schema.Struct({
+    compilerOptions: Schema.Struct({
+      noEmit: Schema.Boolean,
+      plugins: Schema.Array(
+        Schema.Struct({
+          allowedUnstableApis: Schema.Array(Schema.String),
+          diagnosticSeverity: Schema.Record(Schema.String, Schema.String),
+          diagnostics: Schema.Boolean,
+          name: Schema.String,
+        })
+      ),
+    }),
+    extends: Schema.String,
+    include: Schema.Array(Schema.String),
+  })
+);
+
+const encodeScanConfig = Schema.encodeEffect(ScanConfig);
+
+/**
+ * The unstable or experimental Effect APIs the published sources of a package use: `tsc` (patched with the Effect
+ * language service by `effect-tsgo patch`) checks the exported directories with an EMPTY `allowedUnstableApis`, so
+ * each use is reported where the repository's own check allows it, whichever way it is imported (a module, a binding
+ * of `effect`'s root barrel, a namespace). Any finding is a use.
+ */
+export const scanUnstable = Effect.fnUntraced(function* scanUnstable(
+  tsc: string,
+  root: string,
+  { directory, manifest }: WorkspacePackage
+): Effect.fn.Return<
+  readonly string[],
+  PlatformError.PlatformError | Schema.SchemaError,
+  | FileSystem.FileSystem
+  | Path.Path
+  | ChildProcessSpawner.ChildProcessSpawner
+  | Scope.Scope
+> {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const cwd = path.join(root, "packages", directory);
+
+  // A directory below the package, so `types`, `effect` and the language service resolve as they do for the package.
+  const scratch = yield* fs.makeTempDirectoryScoped({
+    directory: cwd,
+    prefix: ".unstable-scan-",
+  });
+
+  yield* fs.writeFileString(
+    path.join(scratch, "tsconfig.json"),
+    yield* encodeScanConfig({
+      compilerOptions: {
+        noEmit: true,
+        plugins: [
+          {
+            allowedUnstableApis: [],
+            diagnosticSeverity: {
+              experimentalApiUsage: "error",
+              unstableApiUsage: "error",
+            },
+            diagnostics: true,
+            name: "@effect/language-service",
+          },
+        ],
+      },
+      extends: "../tsconfig.json",
+      include: Arr.map(exportedDirectories(manifest), (name) => `../${name}`),
+    })
+  );
+
+  return unstableModules(
+    yield* spawner.string(ChildProcess.make(tsc, ["-p", scratch], { cwd }))
+  );
+}, Effect.scoped);
 
 interface Version {
   readonly major: number;
@@ -474,10 +546,9 @@ const admits = (operator: string, floor: Version, pin: Version): boolean =>
 export const peerFindings = (
   manifest: SourceManifest,
   uses: readonly ImportUse[],
-  allowedUnstable: readonly string[],
+  unstable: readonly string[],
   catalog: Readonly<Record<string, string>>
 ): readonly string[] => {
-  const unstable = unstableApisUsed(uses, allowedUnstable);
   const peers = manifest.peerDependencies ?? {};
 
   const asDependencies = Arr.filterMap(

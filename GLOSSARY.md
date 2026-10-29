@@ -119,6 +119,18 @@ _Avoid_: Mock, fake (a fake is a test double inside one test)
 **Egress**:
 What an adapter sends out of the machine when it runs, declared in its `info`: nothing (`none`) for every local adapter, the kinds of data (for example the script text) for a hosted one. The build prints each adapter's egress and lists it in `build.json` with the adapter's id and settings and the provenance of every cached asset. Credentials come from the environment only and never appear in a cache key, the Plan, the manifest or the output.
 
+## Words for the work
+
+reebeat separates two kinds of work, and each has one word (spec 0011). Use the word for the work that is meant.
+
+**Creation** (or **creating**):
+The creative work of the author: choosing the story, declaring its Scenes and the structure of the narrative, and writing the Screenplay. Focus on what the story is and how it is arranged, not on how the files are produced.
+_Avoid_: build, building, producing (for the author's work)
+
+**Build**:
+What reebeat does with the Screenplay: it derives the Plan, generates the motion between Scenes and writes the Renderings (`reebeat build`). Two builds of the same source and cache on one machine give the same result (falsifier F6 of spec 0001). "Build" names the process; its output is a Rendering.
+_Avoid_: creation, creating, authoring (for what reebeat does)
+
 ## Groupings (reserved; not modelled until a real case needs them)
 
 **Chapter**:

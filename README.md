@@ -1,5 +1,28 @@
 # reebeat
 
+**Declarative multimedia: accessible, reproducible, rebuilt as you edit.**
+
+*We take care of building; you focus on creating.*
+
+Declare your scenes and the narrative's structure; reebeat generates the transitions between them and produces video, decks, captions and audio description from the same source. Every result is byte-for-byte reproducible, and an edit rebuilds only what changed.
+
+For technical readers: reebeat is a declarative, incremental FRP language for multimedia artifact generation.
+
+That is the goal. The code does not do all of it yet. This table says what is real, what is being built and what is planned:
+
+| Part of the goal | Status |
+| --- | --- |
+| One source gives a Video and a Deck | Real today ([spec 0001](docs/specs/0001-release-1-screenplay-to-deck-and-video.md)) |
+| Byte-identical builds | Real today, measured on one machine (F6 of spec 0001) |
+| Declared scenes, ids and effects with explicit anchors | Real today ([spec 0002](docs/specs/0002-explicit-anchors-and-syntax.md)) |
+| Transitions between scenes | Today reveal.js Auto-Animate draws them, matched by Element id. reebeat's own generation is being built (specs 0004 and 0005) |
+| Timing as events and behaviours (the FRP part) | Being built ([spec 0004](https://github.com/reebeat/reebeat/pull/17)) |
+| An edit rebuilds only what changed | Roadmap ([#9](https://github.com/reebeat/reebeat/issues/9)); today only speech is cached |
+| Captions with sound descriptions, audio description, reduced motion | Roadmap ([#12](https://github.com/reebeat/reebeat/issues/12)); today subtitles, speaker notes and chapter marks |
+| An interactive website as an artifact | Roadmap ([#19](https://github.com/reebeat/reebeat/issues/19)) |
+
+How reebeat differs from video editors, presentation programs and motion-graphics tools, with sources, and when not to use it: [`docs/design/positioning.md`](docs/design/positioning.md).
+
 Explainer videos from a screenplay. You write one [Fountain](https://fountain.io/syntax) file: what is on screen (Action), what is said (the narrator's dialogue) and when things happen (one `[[effects]]` block per Scene: each sound, `show` and `focus` effect says **when**, at a word, at the slide change or at a moment of an Element's own motion). reebeat turns it into a **Plan** you can review, then into two renderings generated from that one file:
 
 - a **Deck**: a reveal.js presentation with the narration as speaker notes, the `show` and `focus` effects as fragments in the order of their time, and the sounds that go with a step or a slide;
@@ -34,6 +57,7 @@ The silent narrator makes the narration check (F8) meaningless: it prints `N/A (
 - [`GLOSSARY.md`](GLOSSARY.md): the vocabulary and the screenplay mapping (Story, Scene, Beat, Keyframe, Line, effect, anchor, Hint, Element, Identity diff, Rendering).
 - [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first; R3: composable pieces).
 - [`docs/specs/`](docs/specs/): one spec per felt journey; [`STATE.md`](STATE.md) says which is active.
+- [`docs/design/positioning.md`](docs/design/positioning.md): how reebeat differs from video editors, presentation programs and motion-graphics tools (Resolve, Premiere, Final Cut Pro, PowerPoint, Keynote, Canva, Google Slides, After Effects, Remotion, Motion Canvas, Manim, Rive, Lottie), with sources, and when not to use it.
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).
 - [`docs/design/third-party.md`](docs/design/third-party.md) and [`docs/design/open-core-boundary.md`](docs/design/open-core-boundary.md): the licences of everything reebeat depends on, and what is open and closed.
 - Packages, in three tiers with one dependency direction (library, then service, then adapter; [design R3](docs/design/keyframe-engine.md)): libraries `core` (screenplay to Plan, schedule), `subtitles` and `lint`; the service package `services` (the seven service interfaces, their contract suites and offline stand-ins); the build program `pipeline`; adapters `speech-kokoro`, `align-whisper`, `sounds-synth`, `render-reveal`, `capture-chromium`, `encode-ffmpeg` and `cache-fs`; and the tools `verify` (the checks) and `cli` (the `reebeat` command, the only place adapters are chosen and composed).

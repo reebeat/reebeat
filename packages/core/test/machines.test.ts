@@ -179,13 +179,17 @@ type Expectation =
   | { readonly frame: number; readonly head: string }
   | {
       readonly head: string;
-      readonly includes: string;
+      readonly includes: readonly string[];
       readonly refused: string;
     };
 
 const at = (head: string, frame: number): Expectation => ({ frame, head });
 
-const refused = (head: string, tag: string, includes = ""): Expectation => ({
+const refused = (
+  head: string,
+  tag: string,
+  includes: readonly string[] = []
+): Expectation => ({
   head,
   includes,
   refused: tag,
@@ -193,7 +197,10 @@ const refused = (head: string, tag: string, includes = ""): Expectation => ({
 
 /** The first frame out of a state held to the end of the Scene is 180, the next slide change: outside this Scene. */
 const outsideAt180 = (head: string): Expectation =>
-  refused(head, "EffectOutsideScene", "resolves to frame 180");
+  refused(head, "EffectOutsideScene", [
+    "resolves to frame 180",
+    "write -1f after the leave, or use scene.end",
+  ]);
 
 /** Every form of every machine, keyed by machine and spelling (placeholder head), and where it fires. */
 const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
@@ -304,7 +311,10 @@ describe("every form of every machine resolves", () => {
             const error = yield* Effect.flip(scheduledAt(source));
 
             assert.strictEqual(error._tag, expected.refused, keyOf(form));
-            assert.include(error.message, expected.includes, keyOf(form));
+
+            for (const part of expected.includes) {
+              assert.include(error.message, part, keyOf(form));
+            }
           } else {
             assert.deepStrictEqual(
               firesOf(yield* scheduledAt(source), "x1"),

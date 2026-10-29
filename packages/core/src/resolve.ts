@@ -757,9 +757,14 @@ const outsideScene = (
     return undefined;
   }
 
+  const hint =
+    fire === endFrame
+      ? "; a state still open at the end of the Scene is left on the first frame of the next slide: write -1f after the leave, or use scene.end"
+      : "";
+
   return new EffectOutsideScene({
     effectId: effect.id,
-    message: `effect ${effect.id} (line ${effect.line}) resolves to frame ${fire} (command at ${command}), outside Scene ${context.scene.id} (frames ${slideFrame} to ${endFrame - 1}): its event and offset must keep it, and its command, inside the Scene`,
+    message: `effect ${effect.id} (line ${effect.line}) resolves to frame ${fire} (command at ${command}), outside Scene ${context.scene.id} (frames ${slideFrame} to ${endFrame - 1}): its event and offset must keep it, and its command, inside the Scene${hint}`,
     sceneId: context.scene.id,
   });
 };

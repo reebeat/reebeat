@@ -367,7 +367,7 @@ export const effectTiming = (build: Build) =>
 
       return verdictOf(
         "F1",
-        `all ${facts.length} effects${lets.length === 0 ? "" : ` and ${lets.length} derived events`} are observed within one frame of their resolved frame and of what their observed anchors give`,
+        `all ${facts.length} effects${lets.length === 0 ? "" : ` and ${lets.length} derived events`} are observed within one frame of their resolved frame, and their expressions over the observed anchors give the resolved frame within one frame`,
         problems,
         measured
       );

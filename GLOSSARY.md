@@ -31,7 +31,7 @@ One visual context inside a Story, introduced by a scene heading that carries it
 _Avoid_: Slide (the Deck's word for it), section, shot
 
 **Beat**:
-The transition the engine generates from one State to the next: `beat(n).start` is the frame the previous State is left, `beat(n).end` the frame the next State is entered, and `beat(n).<N>%` is N percent of the way. A Beat is derived, never written: the engine generates one from each distinct fire frame of a `show` or `focus` Effect after the Scene's first frame, and it lasts as long as the slowest step that fires then. (The old meaning, the smallest unit of story that holds a Keyframe, a Line, Effects and Hints, is gone: a Scene holds the Lines.)
+The transition the engine generates from one State to the next: `beat(n).start` is the frame the previous State is left, `beat(n).end` the frame the next State is entered, and `beat(n).<N>%` is N percent of the way. A Beat is derived, never written: within a Scene the engine generates one from each distinct fire frame of a `show` or `focus` Effect after the Scene's first frame, and it lasts as long as the slowest step that fires then. **Between two Scenes** the Beat is the slide change (the `slide` machine, `transition.*`): the edge between two compound States, styled by `> AUTO-ANIMATE` or `> CUT`. (The old meaning, the smallest unit of story that holds a Keyframe, a Line, Effects and Hints, is gone: a Scene holds the Lines.)
 _Avoid_: Step (a Deck's fragment step is how a Beat is shown), frame, slide, keyframe
 
 **Keyframe**:
@@ -189,7 +189,7 @@ _Avoid_ for any grouping: Epic (overloaded by agile backlogs and by journey mapp
 
 ## Extension points
 
-How third parties add to reebeat (a declarative, incremental FRP language for multimedia artifact generation: authors create, reebeat builds). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words. In this section **Beat** has the meaning of the state-machine model of [PR #17](https://github.com/reebeat/reebeat/pull/17) (spec 0004): the generated edge from one State to the next, and a Beat between two Scenes is the edge between two compound States. That meaning replaces the "smallest unit of story" entry above once #17 merges.
+How third parties add to reebeat (a declarative, incremental FRP language for multimedia artifact generation: authors create, reebeat builds). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
 
 **Contract**:
 The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@reebeat/contracts`; the service tags and the runner that executes the clauses stay in `@reebeat/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.

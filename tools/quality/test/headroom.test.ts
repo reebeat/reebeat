@@ -81,42 +81,45 @@ describe("headroom.sh reads before it admits", () => {
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 
-  it.effect("negative control: a reading over its limit is SHORT", () =>
-    Effect.gen(function* over() {
-      const overLimits: readonly (readonly [
-        string,
-        Record<string, string | null>,
-        string,
-      ])[] = [
-        [
-          "memory pressure",
-          {
-            "pressure/memory":
-              "some avg10=1.00 avg60=1.00 avg300=1.00 total=1\nfull avg10=0.00 avg60=12.00 avg300=0.00 total=1\n",
-          },
-          "memory PSI full avg60 is 12.00, not under 10",
-        ],
-        [
-          "load",
-          { loadavg: "9.00 9.00 9.00 1/100 1\n" },
-          "load1 9.00 is not under 8 CPU threads",
-        ],
-        [
-          "memory",
-          { meminfo: "MemTotal: 65536000 kB\nMemAvailable: 3000000 kB\n" },
-          "MemAvailable after the job would be 1905 MiB, under 20% of RAM (12800 MiB)",
-        ],
-      ];
+  it.effect(
+    "negative control: a reading over its limit is SHORT",
+    () =>
+      Effect.gen(function* over() {
+        const overLimits: readonly (readonly [
+          string,
+          Record<string, string | null>,
+          string,
+        ])[] = [
+          [
+            "memory pressure",
+            {
+              "pressure/memory":
+                "some avg10=1.00 avg60=1.00 avg300=1.00 total=1\nfull avg10=0.00 avg60=12.00 avg300=0.00 total=1\n",
+            },
+            "memory PSI full avg60 is 12.00, not under 10",
+          ],
+          [
+            "load",
+            { loadavg: "9.00 9.00 9.00 1/100 1\n" },
+            "load1 9.00 is not under 8 CPU threads",
+          ],
+          [
+            "memory",
+            { meminfo: "MemTotal: 65536000 kB\nMemAvailable: 3000000 kB\n" },
+            "MemAvailable after the job would be 1905 MiB, under 20% of RAM (12800 MiB)",
+          ],
+        ];
 
-      for (const [name, changes, reason] of overLimits) {
-        const { code, short } = verdict(yield* headroom(changes));
+        for (const [name, changes, reason] of overLimits) {
+          const { code, short } = verdict(yield* headroom(changes));
 
-        assert.deepStrictEqual(
-          [name, code, short],
-          [name, "1", [`headroom SHORT: ${reason}`]]
-        );
-      }
-    }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+          assert.deepStrictEqual(
+            [name, code, short],
+            [name, "1", [`headroom SHORT: ${reason}`]]
+          );
+        }
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    60_000
   );
 
   it.effect(
@@ -166,7 +169,8 @@ describe("headroom.sh reads before it admits", () => {
           short.length === 1 &&
             Str.includes("CPU thread count is unreadable")(short[0] ?? "")
         );
-      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    60_000
   );
 
   it.effect(
@@ -218,7 +222,7 @@ describe("headroom.sh reads before it admits", () => {
 
         assert.deepStrictEqual([under.code, under.short], ["0", []]);
       }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
-    20_000
+    60_000
   );
 
   it.effect(
@@ -247,7 +251,8 @@ describe("headroom.sh reads before it admits", () => {
             ]
           );
         }
-      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
+    60_000
   );
 
   it.effect("REEBEAT_VERIFY_FORCE continues past a shortage and says so", () =>

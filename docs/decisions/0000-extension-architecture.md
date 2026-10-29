@@ -391,7 +391,7 @@ The check is a pure function over the IR and a table of declared capabilities. I
 | An interaction element on an artifact whose `interactions` lacks a realisation of it (a live surface asked of a `static` artifact is the same case: a video can show a scheduled cursor, never answer a live call) | a realisation, or an explicit fallback declared in the story for that artifact | `cap/interaction-unrealisable` (later, not v1). |
 | A web realisation of an interaction without a keyboard and screen-reader route | that route | `cap/interaction-inaccessible` (later, not v1). |
 
-Two guards keep the declaration honest. First, the **manifest is the root** for planning: its capability set is read without starting the engine, and the capability set the engine returns from `initialize` must equal it or the plugin is refused. Second, **every capability field that describes behaviour is named by at least one conformance clause** (a registry test, Decision 3: clauses E5 to E24, with `egress`, `runtime` and `permissions` as the stated exceptions), so a declared capability is tested against behaviour and not trusted. The plan-time check is **necessary, not sufficient**: `run/describe` diagnostics of severity error fail the plan like a `cap/*` rule, and a build's `reebeat check` observes events in the written video (F1) as it does today.
+Two guards keep the declaration honest. First, the **manifest is the root** for planning: its capability set is read without starting the engine, and the capability set the engine returns from `initialize` must equal it or the plugin is refused. Second, **every capability field that describes behaviour is named by at least one conformance clause** (a registry test, Decision 3: clauses E3 and E5 to E25, with `egress`, `runtime` and `permissions` as the stated exceptions), so a declared capability is tested against behaviour and not trusted. The plan-time check is **necessary, not sufficient**: `run/describe` diagnostics of severity error fail the plan like a `cap/*` rule, and a build's `reebeat check` observes events in the written video (F1) as it does today.
 
 ```mermaid
 flowchart LR
@@ -554,7 +554,7 @@ Rules:
 | Pure function of the brief or input; calling twice gives equal output | every contract | `deterministic` clause of each suite (E2, E3; the existing renderer C-clauses) |
 | Frames identical by decoded pixel | `Engine`, `Compositor` | E3 |
 | Declared lifecycle equals produced lifecycle | `Engine` | E6 |
-| Declared capabilities are all exercised (every behavioural capability field is named by a clause: a registry test); undeclared ones fail closed | `Engine`, `Compositor` | E5 to E24, E12 |
+| Declared capabilities are all exercised (every behavioural capability field is named by a clause: a registry test); undeclared ones fail closed | `Engine`, `Compositor` | E3, E5 to E25, E12 |
 | `decode(encode(ir)) = ir` and canonical form unchanged | `IrCodec` | codec law (0004) |
 | No silent drop: every unmapped input is an error or listed in the import report | `Importer` | importer clause |
 | Input never mutated; output written atomically; no partial file after cancel | integrations with files | `atomicWriteClause` (exists for `AssetCache`), E10 |
@@ -722,7 +722,7 @@ The second pass verified all fourteen resolutions in the text and found two bloc
 
 After the two review rounds the operator decided that React's core is rejected as reebeat's engine core, with seven reasons, and that React as one engine and JSX as an importer stay open. The ADR gained the section "Considered alternative: React's core as reebeat's engine" and the section "Layering: the story, the plans and the build graph" (the story is a statechart that may cycle; each artifact's plan unrolls it; "DAG" applies only to the build graph, which has dynamic dependencies and early cutoff, after Build Systems à la Carte). The Remotion licence point is marked as an inference.
 
-### 2026-10-29, review round 3 (reviewer RevExt23, on head `dd24d8c`): changes requested
+### 2026-10-29, reviewer round 1 of the PR record (reviewer RevExt23, on head `dd24d8c`): changes requested
 
 | # | Severity | Finding | Resolution |
 | --- | --- | --- | --- |

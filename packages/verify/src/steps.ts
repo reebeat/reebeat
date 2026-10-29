@@ -2,7 +2,7 @@
 // Cues and F7's scene changes. The first frame within `reach` frames either side of `center` whose pixels differ from
 // the frame before it.
 import { decodeGrayFrames, firstChangedFrame } from "@reebeat/encode-ffmpeg";
-import type { Box } from "@reebeat/encode-ffmpeg";
+import type { Box, FrameSize } from "@reebeat/encode-ffmpeg";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */
@@ -20,6 +20,7 @@ export const stepMinPixels = 200;
  */
 export const stepOffset = Effect.fn("stepOffset")(function* step(
   mp4: string,
+  size: FrameSize,
   center: number,
   reach: number,
   box?: Box
@@ -27,7 +28,8 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   const clip = yield* decodeGrayFrames(
     mp4,
     Math.max(0, center - reach - 1),
-    center + reach
+    center + reach,
+    size
   );
 
   const first = firstChangedFrame(clip, box, {

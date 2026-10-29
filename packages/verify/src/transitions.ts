@@ -14,6 +14,7 @@
 //   - capture with the settle wait off and capture without the virtual clock are recorded manual measurements (spec
 //     0001, Revision "M0 measured: the clock decides the mechanism"), not automated tests.
 import { changedPixels, decodeGrayFrames } from "@reebeat/encode-ffmpeg";
+import type { FrameSize } from "@reebeat/encode-ffmpeg";
 import { sha256Hex } from "@reebeat/pipeline";
 import { Array as Arr, Effect, Option } from "effect";
 
@@ -76,6 +77,7 @@ const largestRise = (values: readonly number[]): number =>
 
 const observeTransition = Effect.fn("observeTransition")(function* transition(
   mp4: string,
+  size: FrameSize,
   sceneId: string,
   slideFrame: number,
   lastFrame: number
@@ -83,7 +85,8 @@ const observeTransition = Effect.fn("observeTransition")(function* transition(
   const clip = yield* decodeGrayFrames(
     mp4,
     Math.max(0, slideFrame - lead),
-    Math.min(lastFrame, slideFrame + tail)
+    Math.min(lastFrame, slideFrame + tail),
+    size
   );
 
   const [first] = clip.frames;
@@ -151,6 +154,7 @@ export const transitions = (build: Build) =>
       const found = yield* Effect.forEach(scenes, (scene) =>
         observeTransition(
           build.mp4,
+          build.plan.settings,
           scene.sceneId,
           scene.slideFrame,
           build.plan.timeline.totalFrames - 1

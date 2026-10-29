@@ -5,7 +5,7 @@
 // Cue is reported, positive when the step is late. An `sfx` the Plan anchors to a transition start must also sound
 // within one frame of the first changed frame of that scene change (`motionSounds.ts`); both offsets are reported.
 import { audioOffsetMs, decodeMonoPcm } from "@reebeat/encode-ffmpeg";
-import type { Box } from "@reebeat/encode-ffmpeg";
+import type { Box, FrameSize } from "@reebeat/encode-ffmpeg";
 import { sfxNames, synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect, Option } from "effect";
 
@@ -122,15 +122,18 @@ const cueWindowFrames = 3;
 
 const observeCueStep = (
   mp4: string,
+  size: FrameSize,
   fireFrame: number,
   region: Box | undefined
 ) =>
-  Effect.map(stepOffset(mp4, fireFrame, cueWindowFrames, region), (offset) =>
-    offset === undefined
-      ? missing(
-          `no frame within ${cueWindowFrames} frames of frame ${fireFrame} differs from the one before it`
-        )
-      : found(offset)
+  Effect.map(
+    stepOffset(mp4, size, fireFrame, cueWindowFrames, region),
+    (offset) =>
+      offset === undefined
+        ? missing(
+            `no frame within ${cueWindowFrames} frames of frame ${fireFrame} differs from the one before it`
+          )
+        : found(offset)
   );
 
 const label = (cue: CueFact): string =>
@@ -158,7 +161,12 @@ export const cueTiming = (build: Build) =>
       const observations = yield* Effect.forEach(facts, (cue) =>
         cue.kind === "sfx"
           ? Effect.succeed(observeSound(track, cue.arg, cue.fireFrame, fps))
-          : observeCueStep(build.mp4, cue.fireFrame, cue.region)
+          : observeCueStep(
+              build.mp4,
+              build.plan.settings,
+              cue.fireFrame,
+              cue.region
+            )
       );
 
       const rows = Arr.zip(facts, observations);

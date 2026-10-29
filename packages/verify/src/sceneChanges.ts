@@ -24,7 +24,7 @@ export const observeSceneChanges = Effect.fn("observeSceneChanges")(
     const later = Arr.drop(build.plan.timeline.scenes, 1);
 
     const offsets = yield* Effect.forEach(later, (scene) =>
-      stepOffset(build.mp4, scene.slideFrame, windowFrames)
+      stepOffset(build.mp4, build.plan.settings, scene.slideFrame, windowFrames)
     );
 
     const rows = Arr.map(Arr.zip(later, offsets), ([scene, offset]) => ({

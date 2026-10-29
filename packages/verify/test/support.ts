@@ -87,7 +87,7 @@ NARRATOR
 `;
 
 /** Two Scenes joined by a `> CUT`: the picture changes at once or F7's cut check fails. */
-export const cutStoryText = `Title: Cut story
+const cutStoryText = `Title: Cut story
 Author: reebeat tests
 
 # Part one

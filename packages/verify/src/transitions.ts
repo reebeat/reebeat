@@ -2,7 +2,8 @@
 // (`sceneChanges.ts`). For every Scene that enters with `auto-animate`, the decoded frames from three before the slide
 // change to thirty after show at least five distinct intermediate frames between the first frame and the settled one,
 // and each intermediate frame is no farther from the settled frame than the one before it (the sum of absolute pixel
-// differences does not rise by more than a slack).
+// differences does not rise by more than a slack). A Scene that enters with `cut` shows NO intermediate frame: from its
+// first changed frame on, every frame already is the settled one (the old slide must not fade out over the new one).
 //
 // F7 does NOT check that two runs give the same frames: that is F6 (`compareBuilds`, on two builds). Which test covers
 // what:
@@ -30,6 +31,9 @@ const lead = 3;
 
 /** Frames after the slide change that are decoded: the transition (0.8 s) is over well before. */
 const tail = 30;
+
+/** The frames after the first changed frame of a cut in which the picture must already be the settled one: 0.6 s, longer than the 0.5 s fade of reveal.js and shorter than a Scene's lead. */
+const cutWindowSeconds = 0.6;
 
 /** The count of distinct intermediate frames the transition must show. */
 const minIntermediate = 5;
@@ -130,11 +134,67 @@ const problemOf = (found: Transition): readonly string[] => [
       ]),
 ];
 
+interface Cut {
+  /** The frames of the first `cutWindowSeconds` after the first changed frame that are not yet the settled frame. */
+  readonly intermediate: number;
+  readonly sceneId: string;
+}
+
+/**
+ * A `> CUT` shows no intermediate frame: from the first changed frame on, every frame is already the settled frame
+ * (the frame `cutWindowSeconds` later) within the encoder's noise (`stepTolerance`, `stepMinPixels`, as everywhere).
+ * The old slide fading out over the new one (reveal.js fades a leaving slide by its own style) fails it.
+ */
+const observeCut = Effect.fn("observeCut")(function* cut(
+  build: Build,
+  sceneId: string,
+  changedFrame: number
+) {
+  const clip = yield* decodeGrayFrames(
+    build.mp4,
+    changedFrame,
+    Math.min(
+      build.plan.timeline.totalFrames - 1,
+      changedFrame + Math.round(cutWindowSeconds * build.plan.settings.fps)
+    ),
+    build.plan.settings
+  );
+
+  const settled = Arr.last(clip.frames);
+
+  return {
+    intermediate: Option.match(settled, {
+      onNone: () => 0,
+      onSome: (frame) =>
+        Arr.filter(
+          clip.frames,
+          (one) =>
+            changedPixels(one, frame, clip.width, undefined, stepTolerance) >=
+            stepMinPixels
+        ).length,
+    }),
+    sceneId,
+  } satisfies Cut;
+});
+
+const cutProblem = (seen: Cut): readonly string[] =>
+  seen.intermediate === 0
+    ? []
+    : [
+        `the cut into ${seen.sceneId} shows ${seen.intermediate} frames that are not yet its settled frame after its first changed frame: the old slide still fades out`,
+      ];
+
 /** F7 on the scene changes and the Auto-Animate transitions of the written video. */
 export const transitions = (build: Build) =>
   guarded(
     "F7",
     Effect.gen(function* observe() {
+      const cutScenes = new Set(
+        Arr.flatMap(build.plan.scenes, (scene) =>
+          scene.transition === "cut" ? [scene.id] : []
+        )
+      );
+
       const animated = new Set(
         Arr.flatMap(build.plan.scenes, (scene) =>
           scene.transition === "auto-animate" ? [scene.id] : []
@@ -146,6 +206,21 @@ export const transitions = (build: Build) =>
       );
 
       const changes = yield* observeSceneChanges(build);
+
+      // A cut is observed from its first changed frame; a cut whose change is not observed is reported by the scene
+      // change check.
+      const cuts = Arr.flatMap(build.plan.timeline.scenes, (scene) => {
+        const offset = changes.offsets.get(scene.sceneId);
+
+        return offset !== undefined && cutScenes.has(scene.sceneId)
+          ? [
+              {
+                changedFrame: scene.slideFrame + offset,
+                sceneId: scene.sceneId,
+              },
+            ]
+          : [];
+      });
 
       if (scenes.length === 0 && changes.measured.length === 0) {
         return fail("F7", "the Plan has no Scene change to observe");
@@ -161,8 +236,16 @@ export const transitions = (build: Build) =>
         )
       );
 
+      const cutsSeen = yield* Effect.forEach(cuts, (cut) =>
+        observeCut(build, cut.sceneId, cut.changedFrame)
+      );
+
       const measured: Measured = [
         ...changes.measured,
+        ...Arr.map(cutsSeen, (one): readonly [string, number] => [
+          `${one.sceneId} cut intermediate frames`,
+          one.intermediate,
+        ]),
         ...Arr.flatMap(found, (one): Measured => [
           [`${one.sceneId} intermediate frames`, one.intermediate],
           [`${one.sceneId} distinct intermediate frames`, one.distinct],
@@ -175,8 +258,12 @@ export const transitions = (build: Build) =>
 
       return verdictOf(
         "F7",
-        `all ${changes.measured.length} scene changes begin within one frame of their slide frame, and every one of the ${found.length} auto-animate transitions shows at least ${minIntermediate} distinct intermediate frames and approaches its settled frame monotonically`,
-        [...changes.problems, ...Arr.flatMap(found, problemOf)],
+        `all ${changes.measured.length} scene changes begin within one frame of their slide frame, every one of the ${found.length} auto-animate transitions shows at least ${minIntermediate} distinct intermediate frames and approaches its settled frame monotonically, and each of the ${cuts.length} cuts shows none`,
+        [
+          ...changes.problems,
+          ...Arr.flatMap(found, problemOf),
+          ...Arr.flatMap(cutsSeen, cutProblem),
+        ],
         measured
       );
     })

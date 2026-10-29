@@ -81,9 +81,13 @@ _Avoid_: Trigger, signal, timestamp
 **Mealy and Moore outputs**:
 An Effect anchored to an edge of a Machine (a Beat's `start` or `end`, an Element's `move.end`) is a Mealy output: it happens on a transition. An Effect anchored to a State's `enter` or `leave` is a Moore output: it happens on a state. A State's enter is the end of the Beat before it and its leave the start of the Beat after it.
 
-**IR**:
-The canonical state and beat graph of a Story: what the Screenplay declared, as a closed, versioned Effect Schema (`GraphSchema`; an excess key is a decode error, the `version` changes with the shape) with JSON as its canonical encoding. The Plan is a function of the IR. Time in the IR is exact (**Flicks**); a frame appears only in the Timeline.
+**Story IR** (also **IR**):
+The canonical state and beat graph of a Story: what the Screenplay declared, as a closed, versioned Effect Schema (`GraphSchema`; an excess key is a decode error, the `version` changes with the shape) with JSON as its canonical encoding. It is the source: authored, decoded, edited. The Plan is a function of it. Time in the story IR is exact (**Flicks**); a frame appears only in the Timeline.
 _Avoid_: AST (the Fountain reader's tree is not the IR), model
+
+**Timeline IR**:
+The compiled, seekable form of a Story: `plan.json` after `schedule` (the Plan, then the Timeline with narration placed and every effect resolved to frames), a list of operation values a renderer follows. It is derived from the story IR and the narration, so it is an artifact: never edited, never decoded back into the story IR. The three clocks meet here: logical order from the machines, media time in flicks, frame time at the Plan's rate.
+_Avoid_: the IR (alone: it means the story IR)
 
 **IR codec**:
 A reversible format of the IR: it has `encode` and `decode` and the law `decode(encode(ir)) = ir` holds. JSON is the canonical codec; SCXML, XState and the like are codecs too when they carry the whole IR. A migration between two versions of the IR is a codec.
@@ -99,7 +103,7 @@ The IR out to an artifact, never read back: the Video, the Deck, the WebVTT subt
 The unit of exact time in the IR: 1/705,600,000 of a second (Facebook's flicks), a whole number. It divides evenly into one frame of 24, 25, 30, 48, 50, 60 and 120 fps, so `+0.1s` is 70,560,000 flicks and is the same time at every frame rate. Never a millisecond or a frame.
 
 **Frame rate**:
-A render setting, not a property of the story: `settings.fps` (24, 25, 30, 50 or 60; 30 by default) with `settings.ntsc` for the 1000/1001 fraction. A frame exists only in the Timeline: `frame = floor(t x rate + 1/2)`, the nearest frame, a half going to the later one.
+A render setting, not a property of the story: `settings.fps` (24, 30, 50 or 60; 30 by default; 25 is refused until spec 0005 rounds a time to a frame once, at the end) with `settings.ntsc` for the 1000/1001 fraction. A frame exists only in the Timeline: `frame = floor(t x rate + 1/2)`, the nearest frame, a half going to the later one.
 
 ## Identity and motion
 

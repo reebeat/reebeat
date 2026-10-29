@@ -1,9 +1,11 @@
 // The one-grammar gate (spec 0002, F3): `packages/core/src/grammar.ts` is the only place that spells the effects
 // syntax. This scan reads the source of every package and reports a copy of it: a regular expression that names a verb,
 // edge, event, unit, keyword or anchor word, a regular expression that repeats the id rule, or a string that lists
-// two members of one closed set as an alternation (`start|end`). A typed use of a member (`effect.verb === "sound"`,
-// an object `{ edge: "end" }`) is not a copy: the type checker holds it to the closed set. `grammar.ts` and `plan.ts`,
-// which own the sets, are not scanned. Pure functions over the text of one file.
+// two members of one closed set as an alternation (`start|end`), or an array literal that lists two members of one
+// closed set (`["sound", "show"]`, `Schema.Literals([...])`, `[...].join("|")`: one array node). A typed use of a single
+// member (`effect.verb === "sound"`, an object `{ edge: "end" }`) is not a copy: the type checker holds it to the
+// closed set. The closed sets are DEFINED in `packages/core/src/plan.ts` (cells, classes, sounds, verbs, edges, events)
+// and `grammar.ts` (keywords, anchor words, units), the two files the scan skips. Pure functions over one file's text.
 import { Array as Arr, Record, Schema } from "effect";
 import { parseSync } from "oxc-parser";
 
@@ -46,6 +48,12 @@ const TemplateLiteral = Schema.Struct({
   type: Schema.Literal("TemplateLiteral"),
 });
 
+const ArrayLiteral = Schema.Struct({
+  elements: Schema.Array(Schema.NullOr(NodeSchema)),
+  start: Schema.Finite,
+  type: Schema.Literal("ArrayExpression"),
+});
+
 const RegExpCall = Schema.Struct({
   arguments: Schema.Array(NodeSchema),
   callee: Schema.Struct({ name: Schema.Literal("RegExp") }),
@@ -61,6 +69,7 @@ const isRegexLiteral = Schema.is(RegexLiteral);
 const isStringLiteral = Schema.is(StringLiteral);
 const isTemplateLiteral = Schema.is(TemplateLiteral);
 const isRegExpCall = Schema.is(RegExpCall);
+const isArrayLiteral = Schema.is(ArrayLiteral);
 
 const allValues = (node: Node): readonly unknown[] => Record.values(node);
 
@@ -138,6 +147,27 @@ const alternationCopies = (
       );
 };
 
+/**
+ * The strings an array literal lists, when it spells two or more members of one closed set: `["sound", "show"]`,
+ * `Schema.Literals(["start", "end"])` and `["start", "end"].join("|")` are all this one node.
+ */
+const arrayCopies = (node: Node, vocabulary: Vocabulary): readonly string[] => {
+  if (!isArrayLiteral(node)) {
+    return [];
+  }
+
+  const listed = Arr.flatMap(node.elements, (element) =>
+    element !== null && isStringLiteral(element) ? [element.value] : []
+  );
+
+  return Arr.flatMap(vocabulary.sets, (set) =>
+    Arr.filter(Arr.dedupe(listed), (value) => Arr.contains(set, value))
+      .length >= 2
+      ? [`an array lists ${Arr.join(set, ", ")} of a closed set`]
+      : []
+  );
+};
+
 /** Every copy of the grammar in one file's text. */
 export const copiesIn = (
   text: string,
@@ -156,6 +186,7 @@ export const copiesIn = (
         ? regexCopies(literal, vocabulary)
         : []),
       ...(literal === undefined ? [] : alternationCopies(literal, vocabulary)),
+      ...arrayCopies(node, vocabulary),
     ];
 
     for (const reason of reasons) {

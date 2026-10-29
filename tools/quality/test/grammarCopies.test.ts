@@ -9,6 +9,7 @@ import {
   edges,
   elementEvents,
   keywords,
+  sfxNames,
   sourceUnits,
   verbs,
 } from "@reebeat/core";
@@ -24,6 +25,7 @@ const vocabulary: Vocabulary = {
     verbs,
     edges,
     elementEvents,
+    sfxNames,
     Arr.map(sourceUnits, ({ token }) => token),
   ],
   words: [
@@ -98,6 +100,32 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
     );
   });
 
+  it("negative control: an array literal that lists the members of a closed set", () => {
+    assert.deepStrictEqual(reasonsOf('const v = ["sound", "show", "focus"];'), [
+      "an array lists sound, show, focus of a closed set",
+    ]);
+  });
+
+  it("negative control: Schema.Literals over a copy of a closed set", () => {
+    assert.deepStrictEqual(
+      reasonsOf('const E = Schema.Literals(["enter", "exit", "move"]);'),
+      ["an array lists enter, exit, move, update of a closed set"]
+    );
+  });
+
+  it("negative control: a regular expression built by joining a copy of a closed set", () => {
+    assert.deepStrictEqual(
+      reasonsOf('const r = new RegExp(["start", "end"].join("|"), "u");'),
+      ["an array lists start, end of a closed set"]
+    );
+  });
+
+  it("negative control: the sound names", () => {
+    assert.deepStrictEqual(reasonsOf('const n = ["pop", "ding"];'), [
+      "an array lists pop, whoosh, ding of a closed set",
+    ]);
+  });
+
   it("is quiet about typed uses and about regular expressions that spell no member", () => {
     assert.deepStrictEqual(
       reasonsOf(
@@ -105,7 +133,8 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
           [
             'const sound = effect.verb === "sound";',
             'const anchor = { edge: "end", kind: "word" } as const;',
-            'const kinds = ["start", "end"];',
+            'const one = ["start", "later"];',
+            'const kinds = ["start", "start"];',
             String.raw`const tolerant = /^(?<id>[^\s:]+)\s*:\s*(?<rest>.*)$/u;`,
             String.raw`const pause = /^\(pause\s+(?<seconds>\d+(?:\.\d+)?)\)$/iu;`,
             String.raw`const letters = /[^\p{L}\p{N}]+$/gu;`,

@@ -108,7 +108,7 @@ Five six seven.
 `;
 
 /** Two Scenes joined by a `> CUT`: the picture changes at once or F7's cut check fails. */
-const cutStoryText = `Title: Cut story
+export const cutStoryText = `Title: Cut story
 Author: reebeat tests
 
 # Part one

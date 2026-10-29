@@ -94,14 +94,25 @@ describe("an offset in each unit, resolved to a frame", () => {
       })
   );
 
-  it("refuses a fraction of a frame, with the nearest whole form, and accepts the decimals the other units may have", () => {
-    assert.strictEqual(
-      text('a: sound pop at word("x").end -1.5f'),
-      'BadEffect (line 7): frame offset "-1.5f" is not a whole number of frames; expected +Nf with an integer N, as +2f (seconds, milliseconds and percents may be decimal); did you mean -2f?'
-    );
+  it("refuses a fraction of a frame and suggests the whole form the schedule would round to (the signed value, halves toward +infinity)", () => {
+    const hint = (offset: string): string => {
+      const found = text(`a: sound pop at word("x").end ${offset}`);
+
+      return found.slice(found.lastIndexOf("did you mean ") + 13, -1);
+    };
+
     assert.strictEqual(
       text('a: sound pop at word("x").end +1.5f'),
       'BadEffect (line 7): frame offset "+1.5f" is not a whole number of frames; expected +Nf with an integer N, as +2f (seconds, milliseconds and percents may be decimal); did you mean +2f?'
+    );
+
+    // -1.5 frames is -1 for the schedule (see `-50ms` above): the hint must not say -2f.
+    assert.deepStrictEqual(
+      Arr.map(
+        ["+1.5f", "-1.5f", "+2.5f", "-2.5f", "+0.4f", "-0.4f", "-1.6f"],
+        hint
+      ),
+      ["+2f", "-1f", "+3f", "-2f", "+0f", "+0f", "-2f"]
     );
 
     for (const accepted of ["+0.1s", "+100ms", "+12.5%", "+2f", "+2.0f"]) {

@@ -18,7 +18,7 @@ import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
 import { locateSounds, onsetIndex, soundMatchFloor } from "../src/wav.ts";
-import { storyText } from "./support.ts";
+import { cutStoryText, storyText } from "./support.ts";
 
 const holds: Verdict = {
   detail: "all 2 effects hold",
@@ -342,9 +342,9 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
 });
 
 /** The fixture story spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */
-const timedWith = (lifecycle: RendererLifecycle) =>
+const timedWith = (lifecycle: RendererLifecycle, text: string = storyText) =>
   Effect.gen(function* timed() {
-    const plan = yield* buildPlan(storyText, "0".repeat(64));
+    const plan = yield* buildPlan(text, "0".repeat(64));
 
     const aligned = Arr.flatMap(plan.scenes, (scene) =>
       Arr.map(scene.lines, (line) => ({
@@ -426,4 +426,42 @@ describe("observationRange", () => {
         );
       })
   );
+
+  for (const { kind, sceneIndex, story } of [
+    { kind: "default", sceneIndex: 0, story: storyText },
+    { kind: "cut", sceneIndex: 1, story: cutStoryText },
+  ] as const) {
+    it.effect(
+      `widens a ${kind} Scene's window to the declared ${kind} time: 2 s is 60 frames, plus the margin`,
+      () =>
+        Effect.gen(function* declaredLonger() {
+          const declared: RendererLifecycle = {
+            ...referenceLifecycle,
+            transitionMs: { ...referenceLifecycle.transitionMs, [kind]: 2000 },
+          };
+
+          const plan = yield* timedWith(declared, story);
+          const own = { kind: "transition", sceneIndex } as const;
+          const slide = plan.timeline.scenes[sceneIndex]?.slideFrame ?? -1;
+          const last = plan.timeline.totalFrames - 1;
+
+          assert.strictEqual(plan.scenes[sceneIndex]?.transition, kind);
+          assert.isAbove(
+            last,
+            slide + 70,
+            "the Timeline is long enough to show it"
+          );
+          // 60 frames from the declaration beat the Plan's 24 and the lags.
+          assert.strictEqual(
+            observationRange(plan, declared, own).to,
+            slide + 60 + 10
+          );
+          // The reference declares 400 ms (default) or none (cut): the Plan's 24 frames decide.
+          assert.strictEqual(
+            observationRange(plan, referenceLifecycle, own).to,
+            slide + 24 + 10
+          );
+        })
+    );
+  }
 });

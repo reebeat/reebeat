@@ -415,11 +415,11 @@ const readRepositoryFile = (
   FileSystem.FileSystem | Path.Path
 > =>
   Effect.gen(function* readRepositoryFileGen() {
-    const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const root = path.resolve(import.meta.dirname, "..", "..", "..");
+    const fs = yield* FileSystem.FileSystem;
+    const repository = path.join(import.meta.dirname, "../../..");
 
-    return yield* fs.readFileString(path.join(root, file));
+    return yield* fs.readFileString(path.join(repository, file));
   });
 
 describe("the positioning files of this repository", () => {

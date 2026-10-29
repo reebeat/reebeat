@@ -105,7 +105,7 @@ const cases: readonly Case[] = [
         `effects and derived events wait for each other: b -> a -> b; ${cycleHint}`,
       ],
     ],
-    name: "a cycle through an all",
+    name: "a cycle through a last",
     rows: [
       'let a = last(b, word("alpha").start)',
       "let b = a",
@@ -169,6 +169,39 @@ const cases: readonly Case[] = [
     ],
     name: "a focus whose until reads a State",
     rows: ['f2: focus tag at word("alpha").start until state(2).enter'],
+  },
+  {
+    errors: [
+      [
+        "EffectCycle",
+        "let e = beat(2).start",
+        `effects and derived events wait for each other: f2 -> e -> f2; ${cycleHint}`,
+      ],
+    ],
+    name: "a focus whose until reads a let that reads a Beat",
+    rows: [
+      "let e = beat(2).start",
+      'f2: focus tag at word("alpha").start until e',
+    ],
+  },
+  {
+    errors: [
+      [
+        "EffectCycle",
+        'f2: focus tag at word("alpha").start until beat(2).start',
+        `effects and derived events wait for each other: f2 -> f2; ${cycleHint}`,
+      ],
+      [
+        "EffectCycle",
+        'f2: focus tag at word("alpha").start until beat(2).start',
+        `effects and derived events wait for each other: f2 -> f3 -> f2; ${cycleHint}`,
+      ],
+    ],
+    name: "a focus that starts at the end of a focus whose until reads a Beat",
+    rows: [
+      'f2: focus tag at word("alpha").start until beat(2).start',
+      "f3: focus fresh at f2.end",
+    ],
   },
   {
     errors: [

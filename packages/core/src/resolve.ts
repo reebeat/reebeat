@@ -15,9 +15,8 @@
 //                        its end; the slide change at L leaves every state
 //   state n            = the dwell: from the end of Beat n-1 (s for State 1) to the start of Beat n (L for the last State)
 //   beat n             = the n-th Beat the engine generates: from a distinct fire frame of the steps (show, focus) after s to
-//                        the end of the slowest of them (a show fades, a focus is an instant). Only fire frames make a Beat,
-//                        so a step cannot be timed by a State or a Beat of its own Scene; an `until` is a window end and may
-//                        name them
+//                        the end of the slowest of them (a show fades, a focus is an instant). A step cannot be timed, by its
+//                        fire anchor or its `until`, by a State or a Beat of its own Scene (validate.ts: EffectCycle)
 //   until              = the first occurrence after the fire frame, else L (the slide change interrupts the effect)
 //   offset             = flicks: framesOfFlicks at the Plan's rate; f: output frames; %: round(N/100 * window width) (needs a window)
 //   absolute           = s + framesOfFlicks(absoluteFlicks)

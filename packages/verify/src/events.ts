@@ -1,4 +1,4 @@
-import type { ElementEvent, TimedPlan } from "@reebeat/core";
+import type { ElementEvent, RendererLifecycle, TimedPlan } from "@reebeat/core";
 // F1, the events of the picture: where in the written video a slide change or an Element's enter, exit, move or update
 // really starts, ends and is N percent through (spec 0002, "plan contract for effects"). The Plan says WHEN each
 // happens (`Timeline`, resolved from the renderer's declared lifecycle); this module looks at the decoded frames and
@@ -26,11 +26,35 @@ import { elementBox, unionBox } from "./regions.ts";
  */
 const lead = 5;
 
-/** The frames after a slide change that are decoded: the Auto-Animate (0.8 s) and the fade are long over. */
-const settleReach = 30;
+/** The frames kept after the declared end of an event: a declaration that is a little short is still seen as late. */
+const margin = 2 * lead;
 
-/** The frames after a `show` or `focus` effect's fire frame that are decoded: a fade lasts 0.2 s. */
-const stepReach = 12;
+const framesOf = (plan: TimedPlan, ms: number): number =>
+  Math.ceil((plan.settings.fps * ms) / 1000);
+
+/**
+ * The frames after a slide change in which one of its events may still be going on, from the Plan's Auto-Animate
+ * `transition`, the transition the renderer declares for this Scene, its matched Elements' start lag and its unmatched
+ * Elements' last frame, plus the margin.
+ */
+const settleReach = (
+  plan: TimedPlan,
+  lifecycle: RendererLifecycle,
+  sceneIndex: number
+): number =>
+  Math.max(
+    framesOf(plan, plan.settings.transition * 1000),
+    framesOf(
+      plan,
+      lifecycle.transitionMs[plan.scenes[sceneIndex]?.transition ?? "default"]
+    ),
+    lifecycle.matched.startLagFrames,
+    lifecycle.unmatched.enter.endLagFrames
+  ) + margin;
+
+/** The frames after a `show` or `focus` effect's fire frame that are decoded: the declared show time plus the margin. */
+const stepReach = (plan: TimedPlan, lifecycle: RendererLifecycle): number =>
+  framesOf(plan, lifecycle.showMs) + margin;
 
 /**
  * What to look at: the incoming slide change of a Scene, one event of one Element of a Scene, or the step of a `show`
@@ -100,14 +124,21 @@ const followingOf = (subject: Subject): Following | undefined => {
   return subject.event === "update" ? "blend" : undefined;
 };
 
-/** The frames decoded for a subject: from just before the event to well after it. */
-const rangeOf = (plan: TimedPlan, subject: Subject) => {
+/**
+ * The frames decoded for a subject: from just before the event to past the end the renderer declared for it (plus the
+ * margin), so that a declaration that is too short is seen as a difference and not cut off.
+ */
+export const observationRange = (
+  plan: TimedPlan,
+  lifecycle: RendererLifecycle,
+  subject: Subject
+) => {
   const last = plan.timeline.totalFrames - 1;
 
   if (subject.kind === "step") {
     return {
       from: Math.max(0, subject.fireFrame - lead),
-      to: Math.min(last, subject.fireFrame + stepReach),
+      to: Math.min(last, subject.fireFrame + stepReach(plan, lifecycle)),
     };
   }
 
@@ -115,7 +146,10 @@ const rangeOf = (plan: TimedPlan, subject: Subject) => {
 
   return {
     from: Math.max(0, slide - lead),
-    to: Math.min(last, slide + settleReach),
+    to: Math.min(
+      last,
+      slide + settleReach(plan, lifecycle, subject.sceneIndex)
+    ),
   };
 };
 
@@ -147,7 +181,7 @@ const look = Effect.fn("observeEvent.look")(function* look(
   build: Build,
   subject: Subject
 ) {
-  const { from, to } = rangeOf(build.plan, subject);
+  const { from, to } = observationRange(build.plan, build.lifecycle, subject);
 
   const clip = yield* decodeGrayFrames(
     build.mp4,

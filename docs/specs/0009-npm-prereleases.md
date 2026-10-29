@@ -119,7 +119,7 @@ Run on the branch after `changeset version` (reverted afterwards), with the seve
 - No stable (`latest`) release and no `changeset pre exit`. The registry may also point `latest` at the first published version (Verdaccio did; npm's behaviour on a first publish with `--tag alpha` was not observed). `npm dist-tag` can move it; nothing depends on it.
 - Not published: `cli`, `verify` and the five Node adapters (table above).
 - Staged publishing (`npm stage publish`, a maintainer approves each package with 2FA) would be a stronger setting; it is not compatible with `changeset publish` and is left as a later hardening.
-- Third-party licence gate: after [spec 0008](0008-apache-2-licence.md) merges, `@changesets/cli` and its dependencies are build-time packages that need entries in `tools/quality/third-party-licences.json`.
+- Third-party licence gate ([spec 0008](0008-apache-2-licence.md)): `@changesets/cli` and its 24 dependencies are build-time packages; their 25 licences (all MIT, read from the registry) are recorded in `tools/quality/third-party-licences.json`, so the lock holds 530 packages.
 
 ## Revisions
 

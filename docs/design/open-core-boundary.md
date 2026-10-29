@@ -23,7 +23,7 @@ What reebeat publishes under Apache-2.0 and what stays closed, and the rule that
 | Renderers (`render-reveal`, the Video capture and encode) and importers | Proposed: open |
 | Plugins and extensions, with a modular design, written by users | Decided 2026-10-29: supported. Proposed shape: the service and adapter seams (`@reebeat/services`: `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`, their contract suites and stand-ins) are the plugin API, and a plugin is an adapter Layer that passes `xContract`. Extension points beyond adapters (new effect kinds, new importers) are **open**. |
 | Bring-your-own agents with the editing tools | Decided 2026-10-29: supported. Proposed: an open tool protocol for agents that edit the IR (for example MCP tools: read a Story, apply an edit, run `check`), so a user's own agent gets the same tools as a hosted one. Which protocol and its tool set are **open**; MCP is the first candidate. |
-| Publishing the packages to npm (they are `"private": true` today; the `reebeat` npm org is reserved) | **Open**: products need it; it is the next spec after the licence. |
+| Publishing the packages to npm (the `reebeat` npm org exists) | Decided 2026-10-29: pre-releases of `core`, `subtitles`, `lint`, `services`, `pipeline`, `sounds-synth` and `render-reveal` under the `alpha` tag, by trusted publishing from GitHub Actions; see [spec 0009](../specs/0009-npm-prereleases.md). `cli`, `verify` and the Node adapters are not published yet. |
 
 ## What is closed
 

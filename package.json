@@ -2,7 +2,15 @@
   "name": "reebeat",
   "version": "0.0.0",
   "private": true,
+  "homepage": "https://github.com/reebeat/reebeat#readme",
+  "bugs": {
+    "url": "https://github.com/reebeat/reebeat/issues"
+  },
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/reebeat/reebeat.git"
+  },
   "workspaces": [
     "packages/*",
     "tools/*"
@@ -20,9 +28,13 @@
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
     "commitlint": "commitlint",
     "reebeat": "bun packages/cli/bin/reebeat.ts",
+    "changeset": "changeset",
+    "release:version": "changeset version",
+    "release:stage": "bun tools/quality/stagePackages.ts",
     "journey": "bun packages/cli/bin/reebeat.ts journey stories/same-id/story.fountain"
   },
   "devDependencies": {
+    "@changesets/cli": "3.0.3",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@effect/tsgo": "catalog:",

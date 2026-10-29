@@ -13,7 +13,7 @@ import type { RunOptions } from "./adapters.ts";
 import { buildStory, renderSummary } from "./build.ts";
 import { checkBuild } from "./check.ts";
 import { journey } from "./journey.ts";
-import { lintCommand } from "./lint.ts";
+import { lintStory } from "./lint.ts";
 import { planText, timedPlanText } from "./plan.ts";
 import { reportFailure } from "./report.ts";
 import { readSelection } from "./selection.ts";
@@ -111,6 +111,40 @@ const plan = Command.make(
     {
       command: "reebeat plan stories/same-id/story.fountain --timing",
       description: "The review text with frames, from the speech cache",
+    },
+  ])
+);
+
+const lint = Command.make(
+  "lint",
+  {
+    ...selectionFlags,
+    cacheDir,
+    story,
+  },
+  Effect.fn("reebeat.lint")(function* handleLint(input) {
+    const { run, selection } = yield* settingsFor(
+      input.story,
+      flagsOf(input),
+      input.cacheDir
+    );
+
+    yield* lintStory(input.story, { run, selection });
+  })
+).pipe(
+  Command.withDescription(
+    "List every problem of a story with its line and the fix, and every absolute time with its reason. An effect that falls outside its Scene needs the speech timing: lint checks it only when the story's speech cache exists (the selection flags and --cache-dir say which), otherwise `plan --timing` or `build` finds it, not lint"
+  ),
+  Command.withExamples([
+    {
+      command: "reebeat lint stories/same-id/story.fountain",
+      description: "Exits non-zero when the story has an error",
+    },
+    {
+      command:
+        "reebeat lint stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin",
+      description:
+        "Also schedules the Plan against the speech cache that the named adapters filled",
     },
   ])
 );
@@ -288,7 +322,7 @@ const reebeat = Command.make("reebeat").pipe(
   Command.withDescription(
     "Explainer decks and videos from a Fountain screenplay"
   ),
-  Command.withSubcommands([plan, build, check, journeyCommand, lintCommand])
+  Command.withSubcommands([plan, build, check, journeyCommand, lint])
 );
 
 /**

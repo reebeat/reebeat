@@ -135,6 +135,22 @@ describe("withinOneFrame", () => {
   });
 });
 
+/** A track of `length` samples with each clip added at its sample. */
+const mixed = (
+  length: number,
+  parts: readonly { readonly at: number; readonly clip: Float32Array }[]
+): Float32Array => {
+  const track = new Float32Array(length);
+
+  for (const { at, clip } of parts) {
+    for (const [index, sample] of clip.entries()) {
+      track[at + index] = (track[at + index] ?? 0) + sample;
+    }
+  }
+
+  return track;
+};
+
 describe("the signal helpers", () => {
   it("finds where a catalogue sound starts", () => {
     const { samples } = synthClip("pop");
@@ -146,18 +162,12 @@ describe("the signal helpers", () => {
 
   it("finds a ding under the tail of a whoosh by its amplitude, where normalised correlation takes its ringing for its start", () => {
     const rate = 48_000;
-    const track = new Float32Array(rate * 2);
-    const whoosh = synthClip("whoosh").samples;
     const ding = synthClip("ding").samples;
-    const dingAt = Math.round(0.3 * rate);
 
-    for (const [index, sample] of whoosh.entries()) {
-      track[index] = (track[index] ?? 0) + sample;
-    }
-
-    for (const [index, sample] of ding.entries()) {
-      track[dingAt + index] = (track[dingAt + index] ?? 0) + sample;
-    }
+    const track = mixed(rate * 2, [
+      { at: 0, clip: synthClip("whoosh").samples },
+      { at: Math.round(0.3 * rate), clip: ding },
+    ]);
 
     const [found] = locateSounds(
       track,
@@ -175,20 +185,14 @@ describe("the signal helpers", () => {
 
   it("finds a whoosh and the ding that sounds over its tail, each where it is, even when the plan puts them a frame off", () => {
     const rate = 48_000;
-    const track = new Float32Array(rate * 3);
     const whoosh = synthClip("whoosh").samples;
     const ding = synthClip("ding").samples;
     const frame = rate / 30;
-    const whooshAt = 20 * frame;
-    const dingAt = 28 * frame + 3;
 
-    for (const [index, sample] of whoosh.entries()) {
-      track[whooshAt + index] = (track[whooshAt + index] ?? 0) + sample;
-    }
-
-    for (const [index, sample] of ding.entries()) {
-      track[dingAt + index] = (track[dingAt + index] ?? 0) + sample;
-    }
+    const track = mixed(rate * 3, [
+      { at: 20 * frame, clip: whoosh },
+      { at: 28 * frame + 3, clip: ding },
+    ]);
 
     // The plan says the whoosh at frame 21 and the ding at frame 27: one frame late and one early.
     const [first, second] = locateSounds(

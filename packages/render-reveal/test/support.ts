@@ -2,7 +2,8 @@
 // own files, and writes Decks to temporary directories, through the Node file system; the tests stay platform-free.
 import { NodeServices } from "@effect/platform-node";
 import { buildPlan, schedule } from "@reebeat/core";
-import type { AlignedLine, PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@reebeat/core";
+import { alignedLines } from "@reebeat/services/contract";
 import {
   Array as Arr,
   Effect,
@@ -62,24 +63,6 @@ export const readPackageText = (relative: string) =>
 
 /** The Plan of a screenplay text, with the fixture hash. */
 export const planOf = (source: string) => buildPlan(source, fixtureSha256);
-
-/** The digits of a cache file name; the tests never read the audio. */
-const digest = "c0".repeat(32);
-
-/** Every word of every Line spoken for 400 ms, ending 50 ms before the next one starts: the frames are whole. */
-const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
-  Arr.flatMap(plan.scenes, (scene) =>
-    Arr.map(scene.lines, (line) => ({
-      audio: { file: `${digest}.flac`, sha256: digest },
-      durationMs: 400 * line.words.length,
-      lineId: line.id,
-      words: Arr.map(line.words, (w, index) => ({
-        endMs: (index + 1) * 400 - 50,
-        startMs: index * 400,
-        w,
-      })),
-    }))
-  );
 
 /** Two steps and three sounds: one rides a step, one the slide, one is anchored to a word before any step. */
 export const carrySource = asText([

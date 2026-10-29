@@ -34,8 +34,8 @@ const digest = "c0".repeat(32);
 
 const wordMs = 400;
 
-/** The aligned Line of `plan`'s Line: every word `wordMs` long, so the Timeline has integer frames. */
-const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
+/** The aligned Lines of `plan`: every word `wordMs` long, ending 50 ms before the next, so the Timeline has integer frames. */
+export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
   Arr.flatMap(plan.scenes, (scene) =>
     Arr.map(scene.lines, (line) => ({
       audio: { file: `${digest}.flac`, sha256: digest },

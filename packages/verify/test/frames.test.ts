@@ -5,6 +5,7 @@ import type { GrayClip } from "@reebeat/encode-ffmpeg";
 import { Array as Arr } from "effect";
 
 import { eventWindow, frameAtFraction } from "../src/frames.ts";
+import { slideChangeMinPixels, stepMinPixels } from "../src/steps.ts";
 
 const width = 200;
 const height = 80;
@@ -74,14 +75,21 @@ const jittery = (index: number): number => {
 
 describe("eventWindow", () => {
   it("starts at the first frame that no longer shows the old picture and ends at the first that shows the new one", () => {
-    const window = eventWindow(movingBox(linear, 20));
+    const window = eventWindow(movingBox(linear, 20), {
+      minPixels: stepMinPixels,
+    });
 
     // Frame index 4 is the first one 10 px from the start; index 13 is the first one on the end position.
     assert.deepStrictEqual(window, { end: 113, start: 104 });
   });
 
   it("finds nothing in a clip that never changes, and in one that changes by less than the noise", () => {
-    assert.isUndefined(eventWindow(movingBox(() => 0, 12)));
+    assert.isUndefined(
+      eventWindow(
+        movingBox(() => 0, 12),
+        { minPixels: stepMinPixels }
+      )
+    );
 
     const faint = clipOf(
       Arr.makeBy(12, (index) =>
@@ -89,7 +97,32 @@ describe("eventWindow", () => {
       )
     );
 
-    assert.isUndefined(eventWindow(faint));
+    assert.isUndefined(eventWindow(faint, { minPixels: stepMinPixels }));
+  });
+
+  it("is not fooled by the encoder's flicker on the edge of an Element: a scanline toggling before a slide change is not its start", () => {
+    // A 1-pixel line of 288 pixels (over the 200 of a step, under a slide change) toggles every frame; at index 8 the
+    // whole picture changes at once.
+    const frames = Arr.makeBy(14, (index) => {
+      const flicker: [number, number, number, number, number][] = [
+        [0, 70, 144, 1, index % 2 === 0 ? 120 : 200],
+        [144, 70, 144, 1, index % 2 === 0 ? 120 : 200],
+      ];
+
+      return index < 8
+        ? frameOf(flicker)
+        : frameOf([...flicker, [0, 0, 200, 60, 20]]);
+    });
+
+    assert.deepStrictEqual(
+      eventWindow(clipOf(frames), { minPixels: slideChangeMinPixels }),
+      { end: 108, start: 108 }
+    );
+    // As a step it is over the threshold of a small Element's first frame: the control that the two thresholds differ.
+    assert.strictEqual(
+      eventWindow(clipOf(frames), { minPixels: stepMinPixels })?.start,
+      101
+    );
   });
 
   it("calls an instant change a window with no length", () => {
@@ -97,10 +130,13 @@ describe("eventWindow", () => {
       frameOf([[10, 10, 40, 20, index < 5 ? 40 : 90]])
     );
 
-    assert.deepStrictEqual(eventWindow(clipOf(frames)), {
-      end: 105,
-      start: 105,
-    });
+    assert.deepStrictEqual(
+      eventWindow(clipOf(frames), { minPixels: stepMinPixels }),
+      {
+        end: 105,
+        start: 105,
+      }
+    );
   });
 
   it("looks only inside the region it is given", () => {
@@ -108,10 +144,16 @@ describe("eventWindow", () => {
 
     // The still box at x=150 never changes: its region has no event, the moving box's region has.
     assert.isUndefined(
-      eventWindow(clip, { height: 30, width: 40, x: 150, y: 45 })
+      eventWindow(clip, {
+        minPixels: stepMinPixels,
+        region: { height: 30, width: 40, x: 150, y: 45 },
+      })
     );
     assert.deepStrictEqual(
-      eventWindow(clip, { height: 30, width: 150, x: 0, y: 0 }),
+      eventWindow(clip, {
+        minPixels: stepMinPixels,
+        region: { height: 30, width: 150, x: 0, y: 0 },
+      }),
       {
         end: 113,
         start: 104,
@@ -121,7 +163,9 @@ describe("eventWindow", () => {
 
   it("ends an eased change where under 1% is left, not at the frame the curve reaches its end", () => {
     // The last 0.5% of the travel (half a pixel of 100) is below what can be seen.
-    const window = eventWindow(movingBox(easedOut, 30));
+    const window = eventWindow(movingBox(easedOut, 30), {
+      minPixels: stepMinPixels,
+    });
 
     assert.isDefined(window);
     assert.isBelow(window?.end ?? 0, 115);
@@ -133,18 +177,28 @@ describe("eventWindow of a box that moves", () => {
     // The box jumps one pixel at index 2 (a sub-pixel offset), then waits, then moves from index 6 to 16.
     const clip = movingBox(jittery, 24);
 
-    assert.deepStrictEqual(eventWindow(clip, undefined, "ink"), {
-      end: 116,
-      start: 107,
-    });
+    assert.deepStrictEqual(
+      eventWindow(clip, { following: "ink", minPixels: stepMinPixels }),
+      {
+        end: 116,
+        start: 107,
+      }
+    );
   });
 
   it("ends within half a pixel of the new place, where the pixel count still sees an eased tail", () => {
     const clip = movingBox(easedOut, 40);
-    const moved = eventWindow(clip, undefined, "ink");
+
+    const moved = eventWindow(clip, {
+      following: "ink",
+      minPixels: stepMinPixels,
+    });
 
     assert.isDefined(moved);
-    assert.isAbove(moved?.end ?? 0, eventWindow(clip)?.end ?? 0);
+    assert.isAbove(
+      moved?.end ?? 0,
+      eventWindow(clip, { minPixels: stepMinPixels })?.end ?? 0
+    );
   });
 });
 

@@ -19,6 +19,7 @@ import { eventWindow, frameAtFraction } from "./frames.ts";
 import type { Following } from "./frames.ts";
 import type { Build } from "./load.ts";
 import { elementBox, unionBox } from "./regions.ts";
+import { slideChangeMinPixels, stepMinPixels } from "./steps.ts";
 
 /** The frames before the event that are decoded: the first one is the old picture. */
 const lead = 3;
@@ -122,7 +123,11 @@ const observedIn = (
   region: Box | undefined,
   following: Following | undefined
 ): Observed | undefined => {
-  const window = eventWindow(clip, region, following);
+  const window = eventWindow(clip, {
+    following,
+    minPixels: region === undefined ? slideChangeMinPixels : stepMinPixels,
+    region,
+  });
 
   if (window === undefined) {
     return undefined;

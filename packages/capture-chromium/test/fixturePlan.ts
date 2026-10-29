@@ -86,15 +86,57 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
-/** The fixture Plan with its Timeline checked against its Scenes. A module value: the tests read it as data. */
-export const fixture: TimedPlan = await Effect.runPromise(
+/** The Plan of `text` with its Timeline checked against its Scenes. */
+const timedOf = (text: string) =>
   Effect.gen(function* timedFixturePlan() {
-    const plan = yield* buildPlan(source, "5ca1ab1e".repeat(8));
+    const plan = yield* buildPlan(text, "5ca1ab1e".repeat(8));
 
     return yield* Effect.fromResult(
       requireTimeline(
         yield* schedule(plan, alignedLines(plan), contractLifecycle)
       )
     );
-  })
+  });
+
+/** The fixture Plan with its Timeline checked against its Scenes. A module value: the tests read it as data. */
+export const fixture: TimedPlan = await Effect.runPromise(timedOf(source));
+
+/**
+ * Two Scenes whose effects are both called `x1`: a sound in the first, a focus in the second. Effect ids are unique per
+ * Scene, not in the story.
+ */
+export const sharedIds: TimedPlan = await Effect.runPromise(
+  timedOf(
+    Arr.join(
+      [
+        "Title: Shared",
+        "",
+        "# Part",
+        "",
+        "INT. ONE #sc1#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "",
+        "[[effects",
+        '  x1: sound pop at word("two").end',
+        "]]",
+        "",
+        "NARRATOR",
+        "One two three four.",
+        "",
+        "INT. TWO #sc2#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "",
+        "[[effects",
+        '  x1: focus a at word("five").end',
+        "]]",
+        "",
+        "NARRATOR",
+        "Five six seven.",
+        "",
+      ],
+      "\n"
+    )
+  )
 );

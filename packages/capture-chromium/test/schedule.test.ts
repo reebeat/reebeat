@@ -6,10 +6,7 @@ import type { TimedPlan } from "@reebeat/core";
 import { Array as Arr, Order } from "effect";
 
 import { captureSchedule, sceneChangeLag } from "../src/captureSchedule.ts";
-import { fixture } from "./fixturePlan.ts";
-
-/** `id` unless it is `from`, which becomes `x1`. */
-const renamed = (from: string) => (id: string) => (id === from ? "x1" : id);
+import { fixture, sharedIds } from "./fixturePlan.ts";
 
 describe("captureSchedule", () => {
   it("commands each slide change `lag` frames before its slide frame and each fragment at its effect's command frame", () => {
@@ -103,40 +100,18 @@ describe("captureSchedule", () => {
   });
 
   it("tells a sound from a step by the effect of its own Scene: two Scenes may both have an `x1`", () => {
-    const plan = fixture;
-
-    const same: TimedPlan = {
-      ...plan,
-      scenes: Arr.map(plan.scenes, (scene) => ({
-        ...scene,
-        effects: Arr.map(scene.effects, (effect) => ({
-          ...effect,
-          id: renamed(scene.id === "sc1" ? "p1" : "f1")(effect.id),
-        })),
-      })),
-      timeline: {
-        ...plan.timeline,
-        scenes: Arr.map(plan.timeline.scenes, (scene) => ({
-          ...scene,
-          effects: Arr.map(scene.effects, (effect) => ({
-            ...effect,
-            effectId: renamed(scene.sceneId === "sc1" ? "p1" : "f1")(
-              effect.effectId
-            ),
-          })),
-        })),
-      },
-    };
-
     const steps = Arr.filter(
-      captureSchedule(same).commands,
+      captureSchedule(sharedIds).commands,
       (step) => step.source === "x1"
     );
 
-    // The `x1` of sc1 is the pop (no command); the `x1` of sc2 is the focus (one command, at 118).
+    // The `x1` of sc1 is a pop (no command); the `x1` of sc2 is a focus (one command, one frame before its fire frame).
+    const [second] = Arr.drop(sharedIds.timeline.scenes, 1);
+    const focus = second?.effects[0];
+
     assert.deepStrictEqual(
       Arr.map(steps, ({ frame }) => frame),
-      [118]
+      [focus?.commandFrame]
     );
   });
 

@@ -6,7 +6,7 @@ import { changedPixels } from "@reebeat/encode-ffmpeg";
 import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
-import { stepMinPixels, stepTolerance } from "./steps.ts";
+import { stepTolerance } from "./steps.ts";
 
 /** An event as observed: the first frame that differs from the old picture and the first that equals the new one. */
 export interface EventWindow {
@@ -15,10 +15,23 @@ export interface EventWindow {
 }
 
 /**
- * The share of the whole change that may be left for a frame to count as settled (at least `stepMinPixels` pixels):
+ * The share of the whole change that may be left for a frame to count as settled (at least the pixels of a step):
  * an eased animation approaches its end without ever quite arriving, and the encoder's noise reaches about 240 pixels.
  */
 const settledShare = 0.01;
+
+/** The window between two frame indexes of `clip`, as frame numbers; none when either is none. */
+const windowOf = (
+  clip: GrayClip,
+  start: Option.Option<number>,
+  end: Option.Option<number>
+): EventWindow | undefined =>
+  Option.getOrUndefined(
+    Option.map(Option.all({ end, start }), (both) => ({
+      end: clip.firstFrame + both.end,
+      start: clip.firstFrame + both.start,
+    }))
+  );
 
 const framesOf = (
   clip: GrayClip
@@ -33,10 +46,14 @@ const framesOf = (
 
 /**
  * Where the event of `clip` starts and ends inside `region` (the whole frame when absent), by the pixels that differ:
- * as frame numbers; none when the old and the new picture do not differ enough to see an event. An instant change has
- * `start` equal to `end`.
+ * as frame numbers; none when the old and the new picture do not differ by `minPixels`. An instant change has `start`
+ * equal to `end`.
  */
-const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
+const pixelWindow = (
+  clip: GrayClip,
+  region: Box | undefined,
+  minPixels: number
+): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
   if (pictures === undefined) {
@@ -47,12 +64,11 @@ const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
     changedPixels(left, right, clip.width, region, stepTolerance);
 
   const total = differ(pictures.before, pictures.after);
-  const limit = Math.max(stepMinPixels, settledShare * total);
+  const limit = Math.max(minPixels, settledShare * total);
 
   const start = Arr.findFirstIndex(
     clip.frames,
-    (frame, index) =>
-      index > 0 && differ(frame, pictures.before) >= stepMinPixels
+    (frame, index) => index > 0 && differ(frame, pictures.before) >= minPixels
   );
 
   const end = Option.flatMap(start, (from) =>
@@ -62,14 +78,7 @@ const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
     )
   );
 
-  return total < stepMinPixels
-    ? undefined
-    : Option.getOrUndefined(
-        Option.map(Option.all({ end, start }), (both) => ({
-          end: clip.firstFrame + both.end,
-          start: clip.firstFrame + both.start,
-        }))
-      );
+  return total < minPixels ? undefined : windowOf(clip, start, end);
 };
 
 /** How a thing is followed through the frames in between: by the box of its ink, or by the blend of its pixels. */
@@ -77,6 +86,19 @@ export type Following = "blend" | "ink";
 
 const regionOf = (clip: GrayClip, region: Box | undefined): Box =>
   region ?? { height: clip.height, width: clip.width, x: 0, y: 0 };
+
+/** Calls `visit(index, column, row)` for every pixel of `box` in a frame `width` wide. */
+const eachPixel = (
+  box: Box,
+  width: number,
+  visit: (index: number, column: number, row: number) => void
+): void => {
+  for (let row = box.y; row < box.y + box.height; row += 1) {
+    for (let column = box.x; column < box.x + box.width; column += 1) {
+      visit(row * width + column, column, row);
+    }
+  }
+};
 
 /** The sum of the absolute gray differences of two frames inside `box`. */
 const absoluteDifference = (
@@ -87,13 +109,9 @@ const absoluteDifference = (
 ): number => {
   let sum = 0;
 
-  for (let row = box.y; row < box.y + box.height; row += 1) {
-    for (let column = box.x; column < box.x + box.width; column += 1) {
-      const index = row * width + column;
-
-      sum += Math.abs((left[index] ?? 0) - (right[index] ?? 0));
-    }
-  }
+  eachPixel(box, width, (index) => {
+    sum += Math.abs((left[index] ?? 0) - (right[index] ?? 0));
+  });
 
   return sum;
 };
@@ -103,9 +121,13 @@ interface Center {
   readonly y: number;
 }
 
+/** Whether a gray level is ink: it differs from the slide background `bg` by more than the tolerance. */
+const isInk = (gray: number | undefined, bg: number): boolean =>
+  Math.abs((gray ?? bg) - bg) > stepTolerance;
+
 /**
- * The centre of the bounding box of the pixels of `frame` inside `box` that differ from the slide background `bg` by
- * more than the tolerance and are not in `fixed` (ink that is the same before and after the event: other Elements).
+ * The centre of the bounding box of the pixels of `frame` inside `box` that are ink and not in `fixed` (ink that is the
+ * same before and after the event: other Elements).
  */
 const inkCenter = (
   frame: Uint8Array,
@@ -119,21 +141,14 @@ const inkCenter = (
   let top = Number.POSITIVE_INFINITY;
   let bottom = -1;
 
-  for (let row = box.y; row < box.y + box.height; row += 1) {
-    for (let column = box.x; column < box.x + box.width; column += 1) {
-      const index = row * width + column;
-
-      if (
-        Math.abs((frame[index] ?? bg) - bg) > stepTolerance &&
-        !fixed.has(index)
-      ) {
-        left = Math.min(left, column);
-        right = Math.max(right, column);
-        top = Math.min(top, row);
-        bottom = Math.max(bottom, row);
-      }
+  eachPixel(box, width, (index, column, row) => {
+    if (isInk(frame[index], bg) && !fixed.has(index)) {
+      left = Math.min(left, column);
+      right = Math.max(right, column);
+      top = Math.min(top, row);
+      bottom = Math.max(bottom, row);
     }
-  }
+  });
 
   return right < 0
     ? undefined
@@ -150,21 +165,18 @@ const fixedInk = (
 ): ReadonlySet<number> => {
   const fixed = new Set<number>();
 
-  for (let row = box.y; row < box.y + box.height; row += 1) {
-    for (let column = box.x; column < box.x + box.width; column += 1) {
-      const index = row * width + column;
-      const old = before[index] ?? bg;
-      const now = after[index] ?? bg;
+  eachPixel(box, width, (index) => {
+    const old = before[index] ?? bg;
+    const now = after[index] ?? bg;
 
-      if (
-        Math.abs(old - bg) > stepTolerance &&
-        Math.abs(now - bg) > stepTolerance &&
-        Math.abs(old - now) <= stepTolerance
-      ) {
-        fixed.add(index);
-      }
+    if (
+      isInk(old, bg) &&
+      isInk(now, bg) &&
+      Math.abs(old - now) <= stepTolerance
+    ) {
+      fixed.add(index);
     }
-  }
+  });
 
   return fixed;
 };
@@ -235,23 +247,30 @@ const movementWindow = (
       distance(center, to) <= settledPixels
   );
 
-  return Option.getOrUndefined(
-    Option.map(Option.all({ end, start }), (both) => ({
-      end: clip.firstFrame + both.end,
-      start: clip.firstFrame + both.start,
-    }))
-  );
+  return windowOf(clip, start, end);
 };
 
+/** What `eventWindow` looks at. */
+export interface WindowOptions {
+  /** How a thing that moves is measured; none for anything else, which is measured by the pixels that differ. */
+  readonly following?: Following | undefined;
+  /**
+   * The pixels that must change for an event to be seen: a step of an Element is small and the encoder's flicker on a hard
+   * edge is as large, a slide change is the whole frame.
+   */
+  readonly minPixels: number;
+  /** Where to look; the whole frame when absent. */
+  readonly region?: Box | undefined;
+}
+
 /**
- * Where the event of `clip` starts and ends inside `region` (the whole frame when absent), as frame numbers; none when
- * the old and the new picture do not differ enough to see an event. An instant change has `start` equal to `end`. A
- * box that moves (`following` is `ink`) is measured by where it is; anything else by the pixels that differ.
+ * Where the event of `clip` starts and ends, as frame numbers; none when the old and the new picture do not differ enough
+ * to see an event. An instant change has `start` equal to `end`. A box that moves (`following` is `ink`) is measured by
+ * where it is; anything else by the pixels that differ.
  */
 export const eventWindow = (
   clip: GrayClip,
-  region?: Box,
-  following?: Following
+  { following, minPixels, region }: WindowOptions
 ): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
@@ -260,7 +279,7 @@ export const eventWindow = (
       ? movementWindow(clip, regionOf(clip, region), pictures)
       : undefined;
 
-  return moved ?? pixelWindow(clip, region);
+  return moved ?? pixelWindow(clip, region, minPixels);
 };
 
 const inkFractions = (

@@ -15,6 +15,15 @@ export const stepTolerance = 8;
 export const stepMinPixels = 200;
 
 /**
+ * A slide change (the whole frame) has at least this many pixels changed in its first frame. Measured: the smallest
+ * first frame of a scene change on the committed story is 6,100 pixels (a default fade), a cut 8,867 and an Auto-Animate
+ * 19,282. The encoder's flicker on the hard edge of an Element that appeared earlier (one scanline, 288 pixels, every
+ * frame) is over `stepMinPixels` and would read as the start of the change: on the offline build of the committed story
+ * F7 observed the change into `sc7` 4 frames early, at the first frame of the flicker.
+ */
+export const slideChangeMinPixels = 1000;
+
+/**
  * The offset in frames from `center` of the first changed frame in `[center - reach, center + reach]`, or undefined.
  * With a `box` only the pixels inside it count.
  */
@@ -22,7 +31,8 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   mp4: string,
   center: number,
   reach: number,
-  box?: Box
+  box?: Box,
+  minPixels: number = stepMinPixels
 ) {
   const clip = yield* decodeGrayFrames(
     mp4,
@@ -31,7 +41,7 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   );
 
   const first = firstChangedFrame(clip, box, {
-    minPixels: stepMinPixels,
+    minPixels,
     tolerance: stepTolerance,
   });
 

@@ -8,7 +8,7 @@ import type { Box } from "@reebeat/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
 /** The cell of the grid as a rectangle of the frame: `tl` is the top left ninth, `mc` the middle one. */
-export const cellBox = (
+const cellBox = (
   cell: Element["cell"],
   size: { readonly height: number; readonly width: number }
 ): Box => {
@@ -33,7 +33,7 @@ export const unionBox = (first: Box, second: Box): Box => {
 };
 
 /** The Element `id` of a Scene. */
-export const elementOf = (
+const elementOf = (
   scene: Scene | undefined,
   id: string
 ): Option.Option<Element> =>

@@ -374,37 +374,27 @@ describe("checkDeck", () => {
     })
   );
 
-  it.effect("control: a lost data-auto-animate fails", () =>
+  it.effect.each([
+    {
+      lost: / data-auto-animate="" data-auto-animate-id="aa1"/u,
+      slide: "sc3",
+      what: "data-auto-animate",
+    },
+    {
+      lost: / data-cut-after=""/u,
+      slide: "sc2",
+      what: "data-cut-after (the slide before a cut would fade out)",
+    },
+  ])("control: a lost $what fails", ({ lost, slide }) =>
     Effect.gen(function* marks() {
       const { html, plan } = yield* writtenStory;
+      const error = yield* failureOf(plan, html, html.replace(lost, ""));
 
-      const lost = yield* failureOf(
-        plan,
-        html,
-        html.replace(/ data-auto-animate="" data-auto-animate-id="aa1"/u, "")
+      assert.deepStrictEqual(
+        [error.check, error.slide],
+        ["transitions", slide]
       );
-
-      assert.deepStrictEqual([lost.check, lost.slide], ["transitions", "sc3"]);
     })
-  );
-
-  it.effect(
-    "control: a lost data-cut-after fails (the slide before a cut would fade out)",
-    () =>
-      Effect.gen(function* marks() {
-        const { html, plan } = yield* writtenStory;
-
-        const lost = yield* failureOf(
-          plan,
-          html,
-          html.replace(' data-cut-after=""', "")
-        );
-
-        assert.deepStrictEqual(
-          [lost.check, lost.slide],
-          ["transitions", "sc2"]
-        );
-      })
   );
 
   it.effect("control: a slide with another scene id fails", () =>

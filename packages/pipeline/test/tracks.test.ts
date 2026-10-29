@@ -3,8 +3,7 @@
 // ding of the next.
 import { assert, it } from "@effect/vitest";
 import { buildPlan, frameToMs, requireTimeline, schedule } from "@reebeat/core";
-import type { AlignedLine, PlanJson } from "@reebeat/core";
-import { contractLifecycle } from "@reebeat/services/contract";
+import { alignedLines, contractLifecycle } from "@reebeat/services/contract";
 import { Array as Arr, Effect } from "effect";
 
 import { sfxStarts } from "../src/tracks.ts";
@@ -43,20 +42,6 @@ const source = Arr.join(
 );
 
 const digest = "c0".repeat(32);
-
-const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
-  Arr.flatMap(plan.scenes, (scene) =>
-    Arr.map(scene.lines, (line) => ({
-      audio: { file: `${digest}.flac`, sha256: digest },
-      durationMs: 300 * line.words.length,
-      lineId: line.id,
-      words: Arr.map(line.words, (w, index) => ({
-        endMs: index * 300 + 280,
-        startMs: index * 300,
-        w,
-      })),
-    }))
-  );
 
 it.effect(
   "gives each sound the name of its own effect, though two Scenes both have an `s1`",

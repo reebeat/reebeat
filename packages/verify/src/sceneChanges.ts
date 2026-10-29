@@ -4,7 +4,7 @@
 import { Array as Arr, Effect, Option } from "effect";
 
 import type { Build } from "./load.ts";
-import { stepOffset } from "./steps.ts";
+import { slideChangeMinPixels, stepOffset } from "./steps.ts";
 import { signedFrames, withinOneFrame } from "./units.ts";
 import type { Measured } from "./verdict.ts";
 
@@ -24,7 +24,13 @@ export const observeSceneChanges = Effect.fn("observeSceneChanges")(
     const later = Arr.drop(build.plan.timeline.scenes, 1);
 
     const offsets = yield* Effect.forEach(later, (scene) =>
-      stepOffset(build.mp4, scene.slideFrame, windowFrames)
+      stepOffset(
+        build.mp4,
+        scene.slideFrame,
+        windowFrames,
+        undefined,
+        slideChangeMinPixels
+      )
     );
 
     const rows = Arr.map(Arr.zip(later, offsets), ([scene, offset]) => ({

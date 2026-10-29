@@ -1,0 +1,7 @@
+The npm release is on hold (operator decision, 2026-10-29).
+
+Reason: the name `reebeat` is under a trademark clearance review by a Norwegian IP advisor (EU REBEAT in classes 9, 35 and 41 and a Norwegian FREEBEAT were found; report: reebeat-intent-sources/name-clearance-2026-10-29.md). If the advisor flags a conflict, the packages are renamed before any exists on npm; a published npm name is permanent.
+
+While this file exists, the `publish` job of `.github/workflows/release.yml` stops before it builds or publishes anything. The `check` mode is not held: it publishes nothing.
+
+To lift the hold: the operator decides, then a pull request deletes this file (and the "Release hold" entry of spec 0009, Revisions, is closed by a dated entry). Nothing else lifts it.

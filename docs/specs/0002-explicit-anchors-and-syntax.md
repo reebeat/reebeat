@@ -160,3 +160,31 @@ More effect kinds than `sound`, `show`, `focus` (a later spec adds them against 
 - **2026-10-28, plan written**, with three candidates and a recommendation, as the operator asked (feedback item 4: "put 2 to 3 concrete syntax candidates in spec 0002 and stop for the operator's pick before building the parser change").
 - **2026-10-28, operator's picks (M0 closed).** (1) **Syntax B**: a per-Scene `[[effects ... ]]` block; dialogue stays pure prose. (2) **Element properties are `key=value`**, every property named, no sigils and no bare flags: `{id=one cell=mc class=box visible=false}`. (3) **Deck: sounds ride along**: a sound is not its own fragment step; it plays with the step whose event it is anchored to (a sound anchored to a transition or an Element event plays when that event's step runs; a sound anchored to a word plays with the step of the nearest preceding effect in time, or alone as a plain audio event when there is none, and the Deck says so in the plan output). (4) **Absolute times are allowed with a reason**: `at 12.5s because "<reason>"`, listed by `lint` and by `plan`.
 - **2026-10-28, operator's clarification: a whoosh belongs to the slide change.** In release 1 the whoosh sat in the script and so followed the voiceover's timing; word-anchored effects must stay supported, but a sound that belongs to the slide change anchors to **the transition from one slide to the next**. The anchor model therefore gains a first-class, named anchor for the Scene's incoming slide transition: `transition.start`, `transition.end`, `transition.<N>%`, alongside `scene.start`, `scene.end` and the Element lifecycles; the earlier `scene.start` row of the anchor model means the frame the slide change is shown and `transition.start` the same frame (the transition's window runs from it for the Plan's `transition` seconds for Auto-Animate, and for the renderer's declared duration for a fade or `cut`). Release 1 (PR #3) already anchors a sound written before the first word of a Scene's first Line to the transition start (`Cue.anchor = "transition-start"`), measured in the mp4; F7 of this spec ("remove the release-1 workaround") is therefore reduced to removing that shim once `transition.start` is a written anchor.
+- **2026-10-29, plan contract for effects (binding for M1 to M3; `packages/core/src/plan.ts` stays the authority).** Release 1's `Cue` and `Line.cues` are **removed**: effects are per Scene. Scenes get **explicit ids** (Fountain scene number: `INT. THE NEXT SCREEN - DAY #sc4#`; required, unique, `[A-Za-z][A-Za-z0-9_-]*`) and Elements get `visible` instead of `hidden`. Chapters and Lines keep derived ids that authors never write (a word is referenced by its text, never by a Line id).
+  ```ts
+  interface Scene { /* as release 1, plus: */ elements: { id; text; cell; class: string /* one class, key=value */; visible: boolean; line: number }[];
+                    effects: Effect[]; lines: Line[] /* no cues */ }
+  type Verb = "sound" | "show" | "focus";
+  type Edge = "start" | "end";
+  type Anchor =
+    | { kind: "word"; phrase: string; occurrence: number /* 1-based, default 1 */; edge: Edge }   // a word or phrase of this Scene's narration
+    | { kind: "scene"; edge: Edge }                                                                    // scene.start = the slide change frame; scene.end = the Scene's last frame
+    | { kind: "transition"; at: Edge | { percent: number } }                                           // the Scene's incoming slide transition: start, end, or N% through its window
+    | { kind: "element"; id: string; event: "enter" | "exit" | "move" | "update"; at: Edge | { percent: number } }   // lifecycle of an Element of this Scene
+    | { kind: "effect"; id: string; edge: Edge };                                                      // another effect of this Scene
+  type Offset = { unit: "ms" | "f"; value: number } | { unit: "percent"; value: number };             // signed; percent = share of the anchored window (only with an anchor that has one)
+  interface Effect { id: string; line: number; verb: Verb; name?: string /* sound name */; target?: string /* element id */;
+                     when: { anchor: Anchor; offset?: Offset } | { absoluteMs: number; reason: string } }   // absolute: Scene-relative, from the slide change
+  // Timeline: scenes[].effects: { effectId; fireFrame; commandFrame; intent: string /* e.g. "one.move.start +0 -> 732" */ }[]
+  ```
+  The Plan's `effects[*].when` keeps what the author wrote (intent); the Timeline holds the resolved frames. Element lifecycle events come from the identity diff of the Plan (`enter`: only in this Scene; `exit`: only in the previous Scene, seen at the transition; `move`: cell changed; `update`: class or text changed) and, for a hidden Element, from its `show` effect (its `enter`). A **`RendererLifecycle`** (plain data in `core`, supplied by the renderer's adapter `info.lifecycle` and passed to `schedule`) says when each event happens in the transition window: `{ transitionMs: { "auto-animate": number; default: number; cut: number }, matched: { startLagFrames: number }, unmatched: { enterAtTransitionStart: boolean }, showMs: number }`; F1 observes the events in the mp4 so a wrong declaration fails on the observed event. Grammar of the effects block (the schema is the source of the grammar document):
+  ```text
+  block   ::= "[[effects" NEWLINE { line NEWLINE } "]]"            no blank line inside; one block per Scene, before the first dialogue
+  line    ::= id ":" verb args "at" when
+  verb    ::= "sound" name | "show" elementId | "focus" elementId
+  when    ::= anchor [ offset ] | number "s" "because" quoted        absolute only with a reason
+  anchor  ::= "word(" quoted [ "," n ] ")." edge | "scene." edge | "transition." ( edge | n "%" )
+            | elementId "." event "." ( edge | n "%" ) | effectId "." edge
+  offset  ::= ( "+" | "-" ) number ( "ms" | "f" | "s" | "%" )
+  ```
+  Rejected with the replacement in the message (F4): `[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, `{#id @cell .class hidden}`, a Scene heading without `#id#`. Sounds ride along in the Deck: `show` and `focus` are fragment steps in resolved-time order; a `sound` is data on the step (`data-sounds`) or on the slide (`data-sounds` on the section) it is anchored to and plays with it.

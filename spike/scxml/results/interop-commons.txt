@@ -1,0 +1,15 @@
+# commit: 5b5caef4d7ca3872abe66cfa8ed2b23afc25d50d
+     21 WARNING: Ignoring unknown or invalid element <element> in namespace "urn:reebeat:ir:1" as child of <state>
+     12 WARNING: Ignoring unknown or invalid element <line> in namespace "urn:reebeat:ir:1" as child of <state>
+     11 WARNING: Ignoring unknown or invalid element <effect> in namespace "urn:reebeat:ir:1" as child of <state>
+      2 WARNING: Ignoring unknown or invalid element <chapter> in namespace "urn:reebeat:ir:1" as child of <scxml>
+      1   state sc7 transitions=0
+      1   state sc6 transitions=1
+      1   state sc5 transitions=1
+      1   state sc4 transitions=1
+      1   state sc3 transitions=1
+      1   state sc2 transitions=1
+      1   state sc1 transitions=1
+      1 serialized bytes=727 contains 'rb:'? false contains 'urn:reebeat'? true
+      1 loaded: initial=sc1 states=7
+# input bytes: 11726

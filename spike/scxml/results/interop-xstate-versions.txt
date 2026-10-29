@@ -1,0 +1,4 @@
+xstate@5.33.3: files with scxml in the name: 0
+xstate@5.33.3: files that mention scxml: 14 (only comments, e.g. package/dist/log-6a5e50a8.esm.js)
+xstate@5.33.3: createMachineFromSCXML etc: 0 files
+xstate@4.38.3: scxml.d.ts scxml.js 

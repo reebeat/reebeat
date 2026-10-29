@@ -1,0 +1,25 @@
+## scxml.xsd
+same-id.scxml: same-id.scxml validates
+bad-attr.scxml: bad-attr.scxml fails to validate
+bad-cond.scxml: bad-cond.scxml validates
+bad-datamodel.scxml: bad-datamodel.scxml validates
+bad-invoke.scxml: bad-invoke.scxml validates
+bad-log.scxml: bad-log.scxml validates
+bad-rbbogus.scxml: bad-rbbogus.scxml validates
+bad-rootscript.scxml: bad-rootscript.scxml validates
+bad-script.scxml: bad-script.scxml validates
+bad-send.scxml: bad-send.scxml validates
+## profile-driver.xsd
+same-id.scxml: same-id.scxml validates
+bad-attr.scxml: bad-attr.scxml fails to validate
+bad-cond.scxml: bad-cond.scxml validates
+bad-datamodel.scxml: bad-datamodel.scxml validates
+bad-invoke.scxml: bad-invoke.scxml validates
+bad-log.scxml: bad-log.scxml fails to validate
+bad-rbbogus.scxml: bad-rbbogus.scxml validates
+bad-rootscript.scxml: bad-rootscript.scxml validates
+bad-script.scxml: bad-script.scxml fails to validate
+bad-send.scxml: bad-send.scxml fails to validate
+## core-module-only driver (does the W3C core module compile without the data and external modules?)
+scxml}datamodel' does not resolve to a(n) element declaration.
+scxml}script' does not resolve to a(n) element declaration.

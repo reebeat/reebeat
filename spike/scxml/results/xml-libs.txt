@@ -1,0 +1,26 @@
+## npm (license, version, unpackedSize)
+fast-xml-parser: license = 'MIT' version = '5.11.2' dist.unpackedSize = 1315394 
+saxes: license = 'ISC' version = '6.0.0' dist.unpackedSize = 163774 
+@xmldom/xmldom: license = 'MIT' version = '0.9.12' dist.unpackedSize = 440251 
+xmlbuilder2: license = 'MIT' version = '4.0.3' dist.unpackedSize = 939597 
+txml: license = 'MIT' version = '6.0.3' dist.unpackedSize = 132519 
+sax: license = 'BlueOak-1.0.0' version = '1.6.1' dist.unpackedSize = 61678 
+## on disk (du -sb)
+163774	node_modules/saxes
+58957	node_modules/xmlchars
+1315394	node_modules/fast-xml-parser
+223768	node_modules/fast-xml-builder
+node_modules/xmlchars/package.json:  "license": "MIT",
+node_modules/fast-xml-builder/package.json:  "license": "MIT",
+## bun build --minify --target=node, parser only
+_sax minified 28372 B, gzip 8101 B
+_fxp minified 79196 B, gzip 24973 B
+## lines
+  103 src/xml.ts
+  131 src/profile.ts
+  374 src/codec.ts
+   78 src/generic.ts
+  561 vendor/0004/plan.ts
+   70 vendor/0004/graph.ts
+ 1317 total
+codec.ts mapping section (up to the codec entry-point comment): 304 lines

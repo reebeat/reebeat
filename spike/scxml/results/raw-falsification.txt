@@ -1,0 +1,20 @@
+Property falsified after 52 run(s) and 7 shrink(s)
+Shrunk input: {
+  "chapters": [],
+  "scenes": [{
+    "chapterId": "\u0000",
+    "effects": [],
+    "elements": [],
+    "events": [],
+    "heading": "",
+    "id": "\u0000",
+    "line": 1,
+    "lines": [],
+    "transition": "default"
+  }],
+  "speed": 0.5,
+  "title": "",
+  "version": 1
+}
+Failure: returned false
+Replay: [0,"7",51,1,[1,1,1,1,1,1,1],"ReturnedFalse"]

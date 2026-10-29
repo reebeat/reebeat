@@ -9,3 +9,17 @@ Evidence for `docs/specs/0007-scxml-persistent-ir-spike.md` (the report is on br
 - `results/`: the output of each script as run for the report.
 
 `bun install` here, then see the Reproduction section of the report.
+
+## Result files and the command that made each (from `spike/scxml/`)
+
+| File in `results/` | Command |
+| --- | --- |
+| `same-id.txt`, `coverage.txt`, `generator-stats.txt` | `bun src/same-id.ts`, `bun src/coverage.ts`, `bun src/stats.ts` |
+| `property-test.txt`, `mutation-*.txt`, `profile-test.txt` | `RUNS=1000 bun test --timeout 300000 src/roundtrip.test.ts` (with `MUTATE=<name>` for a mutant), `bun test src/profile.test.ts` |
+| `raw-falsification.txt` | `bun src/raw-count.ts` |
+| `drift.txt` | `sh src/drift.sh` (adds an optional field to the vendored `ElementSchema`, runs the tests, restores) |
+| `ergonomics.txt` | `PAIRS=1000 bun src/ergonomics.ts` |
+| `xml-libs.txt` | `sh src/xml-libs.sh` |
+| `interop-*.txt` | `WORK=/tmp/scxml-interop sh interop/run-interop.sh` (Commons SCXML build, SCION, Qt `qscxmlc`, `@xstate/scxml`, W3C XSD; needs network and nix) |
+
+The XState measurements are in `../xstate/` (`README.md`, `results/`).

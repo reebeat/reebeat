@@ -1,0 +1,16 @@
+compiled code bytes 47972
+foreign elements in the document: 218  kept as actions: 218
+foreign attributes on state and root in the document: 32  kept as keys: 32
+payload string kept: "Another box" true
+payload string kept: "Picture a box on a screen." true
+payload string kept: "word(&quot;slides&quot;)" false
+payload string kept: "word(\\\"slides\\\")" true
+scxml.scion property is now deprecated. Use property scxml.core instead (or scion.core in the browser)
+initial configuration: ["sc1"]
+rb.next -> ["sc2"]
+rb.next -> ["sc3"]
+rb.next -> ["sc4"]
+rb.next -> ["sc5"]
+rb.next -> ["sc6"]
+rb.next -> ["sc7"]
+rb.next -> ["sc7"]

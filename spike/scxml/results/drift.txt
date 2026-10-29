@@ -1,0 +1,11 @@
+128:  note: Schema.optionalKey(Schema.String),
+bun test v1.3.13 (bf2e2cec)
+src/roundtrip.test.ts:
+                                                      ^
+error: expect(received).toBeUndefined()
+Received: "Property falsified after 651 run(s) and 28 shrink(s)\nShrunk input: {\n  \"chapters\": [],\n  \"scenes\": [{\n    \"chapterId\": \"\\u0000\",\n    \"effects\": [],\n    \"elements\": [{\n  
+(fail) IR <-> SCXML > decode(encode(ir)) = ir for generated Graphs [833.99ms]
+ 3 pass
+ 1 fail
+ 4 expect() calls
+Ran 4 tests across 1 file. [8.44s]

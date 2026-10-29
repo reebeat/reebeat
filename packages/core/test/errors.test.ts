@@ -281,6 +281,17 @@ const cases: readonly Case[] = [
   },
   {
     message:
+      'word("there goodbye").end: "there goodbye" runs from the end of one Line into the start of the next (a phrase must stay within one Line); expected words that stand next to each other in one Line; did you mean word("there")?',
+    name: "a phrase that runs across two Lines states the rule",
+    needle: 'word("there goodbye")',
+    source: change('word("hello").end', 'word("there goodbye").end').replace(
+      "Hello there. Goodbye.",
+      "Hello there.\n\nNARRATOR\nGoodbye."
+    ),
+    tag: "UnknownReference",
+  },
+  {
+    message:
       'word("hello") occurs 2 times in Scene one; expected the occurrence you mean; did you mean word("hello", 1) to word("hello", 2)?',
     name: "a phrase that occurs twice, with no occurrence number",
     needle: 'r1: show h at word("hello")',

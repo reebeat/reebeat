@@ -6,7 +6,7 @@ import { changedPixels } from "@reebeat/encode-ffmpeg";
 import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
-import { stepTolerance } from "./steps.ts";
+import { changeFloor, stepTolerance } from "./steps.ts";
 
 /** An event as observed: the first frame that differs from the old picture and the first that equals the new one. */
 export interface EventWindow {
@@ -46,19 +46,17 @@ const framesOf = (
 
 /**
  * Where the event of `clip` starts and ends inside `region` (the whole frame when absent), by the pixels that differ:
- * as frame numbers; none when the old and the new picture do not differ by `minPixels`. An instant change has `start`
- * equal to `end`.
+ * as frame numbers; none when the old and the new picture do not differ enough (`changeFloor`). An instant change has
+ * `start` equal to `end`.
  */
-const pixelWindow = (
-  clip: GrayClip,
-  region: Box | undefined,
-  minPixels: number
-): EventWindow | undefined => {
+const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
   if (pictures === undefined) {
     return undefined;
   }
+
+  const minPixels = changeFloor(clip, region);
 
   const differ = (left: Uint8Array, right: Uint8Array): number =>
     changedPixels(left, right, clip.width, region, stepTolerance);
@@ -250,19 +248,6 @@ const movementWindow = (
   return windowOf(clip, start, end);
 };
 
-/** What `eventWindow` looks at. */
-export interface WindowOptions {
-  /** How a thing that moves is measured; none for anything else, which is measured by the pixels that differ. */
-  readonly following?: Following | undefined;
-  /**
-   * The pixels that must change for an event to be seen: a step of an Element is small and the encoder's flicker on a hard
-   * edge is as large, a slide change is the whole frame.
-   */
-  readonly minPixels: number;
-  /** Where to look; the whole frame when absent. */
-  readonly region?: Box | undefined;
-}
-
 /**
  * Where the event of `clip` starts and ends, as frame numbers; none when the old and the new picture do not differ enough
  * to see an event. An instant change has `start` equal to `end`. A box that moves (`following` is `ink`) is measured by
@@ -270,7 +255,8 @@ export interface WindowOptions {
  */
 export const eventWindow = (
   clip: GrayClip,
-  { following, minPixels, region }: WindowOptions
+  region?: Box,
+  following?: Following
 ): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
@@ -279,7 +265,7 @@ export const eventWindow = (
       ? movementWindow(clip, regionOf(clip, region), pictures)
       : undefined;
 
-  return moved ?? pixelWindow(clip, region, minPixels);
+  return moved ?? pixelWindow(clip, region);
 };
 
 const inkFractions = (

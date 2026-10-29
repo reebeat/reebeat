@@ -1,8 +1,12 @@
 // Where the picture of the written video first changes near a frame: the one observation behind F1's `next` and `focus`
 // Cues and F7's scene changes. The first frame within `reach` frames either side of `center` whose pixels differ from
 // the frame before it.
-import { decodeGrayFrames, firstChangedFrame } from "@reebeat/encode-ffmpeg";
-import type { Box } from "@reebeat/encode-ffmpeg";
+import {
+  changedPixels,
+  decodeGrayFrames,
+  firstChangedFrame,
+} from "@reebeat/encode-ffmpeg";
+import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */
@@ -15,13 +19,25 @@ export const stepTolerance = 8;
 export const stepMinPixels = 200;
 
 /**
- * A slide change (the whole frame) has at least this many pixels changed in its first frame. Measured: the smallest
- * first frame of a scene change on the committed story is 6,100 pixels (a default fade), a cut 8,867 and an Auto-Animate
- * 19,282. The encoder's flicker on the hard edge of an Element that appeared earlier (one scanline, 288 pixels, every
- * frame) is over `stepMinPixels` and would read as the start of the change: on the offline build of the committed story
- * F7 observed the change into `sc7` 4 frames early, at the first frame of the flicker.
+ * The encoder flickers on the hard edge of an Element that appeared earlier: one scanline of 288 pixels changes in every
+ * frame of the offline build of the committed story, which is over `stepMinPixels` and read as a step (F7 observed the
+ * change into `sc7` 4 frames early). A step must change this many more pixels than the flicker already there between the
+ * first two frames of the clip, which precede any event.
  */
-export const slideChangeMinPixels = 1000;
+export const flickerMargin = 100;
+
+/** The pixels a frame must change to count as a step, given the first two frames of a clip (before any event). */
+export const changeFloor = (clip: GrayClip, box?: Box): number => {
+  const [before, next] = clip.frames;
+
+  return before === undefined || next === undefined
+    ? stepMinPixels
+    : Math.max(
+        stepMinPixels,
+        changedPixels(before, next, clip.width, box, stepTolerance) +
+          flickerMargin
+      );
+};
 
 /**
  * The offset in frames from `center` of the first changed frame in `[center - reach, center + reach]`, or undefined.
@@ -31,8 +47,7 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   mp4: string,
   center: number,
   reach: number,
-  box?: Box,
-  minPixels: number = stepMinPixels
+  box?: Box
 ) {
   const clip = yield* decodeGrayFrames(
     mp4,
@@ -41,7 +56,7 @@ export const stepOffset = Effect.fn("stepOffset")(function* step(
   );
 
   const first = firstChangedFrame(clip, box, {
-    minPixels,
+    minPixels: changeFloor(clip, box),
     tolerance: stepTolerance,
   });
 

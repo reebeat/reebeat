@@ -19,10 +19,12 @@ import { eventWindow, frameAtFraction } from "./frames.ts";
 import type { Following } from "./frames.ts";
 import type { Build } from "./load.ts";
 import { elementBox, unionBox } from "./regions.ts";
-import { slideChangeMinPixels, stepMinPixels } from "./steps.ts";
 
-/** The frames before the event that are decoded: the first one is the old picture. */
-const lead = 3;
+/**
+ * The frames before the event that are decoded: the first one is the old picture, and the first two show the flicker the
+ * encoder may leave on the picture (`changeFloor`), so an event up to three frames early is still after them.
+ */
+const lead = 5;
 
 /** The frames after a slide change that are decoded: the Auto-Animate (0.8 s) and the fade are long over. */
 const settleReach = 30;
@@ -123,11 +125,7 @@ const observedIn = (
   region: Box | undefined,
   following: Following | undefined
 ): Observed | undefined => {
-  const window = eventWindow(clip, {
-    following,
-    minPixels: region === undefined ? slideChangeMinPixels : stepMinPixels,
-    region,
-  });
+  const window = eventWindow(clip, region, following);
 
   if (window === undefined) {
     return undefined;

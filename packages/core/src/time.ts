@@ -7,7 +7,7 @@
 //   frame = floor(t x rate + 1/2)     the NEAREST frame, a half going to the later one (the rule of 0001 and 0002)
 //
 // computed in integers (BigInt), so no float rounds a half the wrong way. Plain functions.
-import type { Settings } from "./plan.ts";
+import type { RendererLifecycle, Settings } from "./plan.ts";
 
 /** Flicks in one second (Facebook's `flicks`). */
 export const flicksPerSecond = 705_600_000;
@@ -48,3 +48,45 @@ export const flicksOfMilliseconds = (milliseconds: number): number =>
 /** A number of frames at `fps` as flicks: the time a lag that was measured in frames lasts. */
 export const flicksOfFrames = (fps: number, frames: number): number =>
   Math.round((frames * flicksPerSecond) / fps);
+
+/** What a renderer's declared lifecycle is, in frames at the Plan's rate: the same times, resolved by one rule. */
+export interface LifecycleFrames {
+  /** The last frame, after the slide change, of an unmatched Element's enter (Auto-Animate). */
+  readonly enterEnd: number;
+  /** The first frame, after the slide change, of an unmatched Element's enter (Auto-Animate). */
+  readonly enterStart: number;
+  /** The frames after the slide change at which a matched Element starts to move or change. */
+  readonly matchedStart: number;
+  /** The frames a `show` takes. */
+  readonly show: number;
+  /** The frames each kind of slide change takes. */
+  readonly transition: Readonly<
+    Record<keyof RendererLifecycle["transitionMs"], number>
+  >;
+}
+
+/** The declared lifecycle at the Plan's rate: a lag measured in frames at `measuredFps` is the same time here. */
+export const lifecycleFrames = (
+  settings: Pick<Settings, "fps" | "ntsc">,
+  lifecycle: RendererLifecycle
+): LifecycleFrames => {
+  const rate = rateOf(settings);
+
+  const lag = (frames: number): number =>
+    framesOfFlicks(rate, flicksOfFrames(lifecycle.measuredFps, frames));
+
+  const time = (ms: number): number =>
+    framesOfFlicks(rate, flicksOfMilliseconds(ms));
+
+  return {
+    enterEnd: lag(lifecycle.unmatched.enter.endLagFrames),
+    enterStart: lag(lifecycle.unmatched.enter.startLagFrames),
+    matchedStart: lag(lifecycle.matched.startLagFrames),
+    show: time(lifecycle.showMs),
+    transition: {
+      "auto-animate": time(lifecycle.transitionMs["auto-animate"]),
+      cut: time(lifecycle.transitionMs.cut),
+      default: time(lifecycle.transitionMs.default),
+    },
+  };
+};

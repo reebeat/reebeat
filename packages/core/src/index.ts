@@ -39,6 +39,18 @@ export { initialState } from "./events.ts";
 
 export { occupancies, stateEvent } from "./occupancy.ts";
 
+export {
+  flicksOfFrames,
+  flicksOfMilliseconds,
+  flicksOfSeconds,
+  flicksPerSecond,
+  framesOfFlicks,
+  lifecycleFrames,
+  rateOf,
+} from "./time.ts";
+
+export type { LifecycleFrames, Rate } from "./time.ts";
+
 export * from "./errors.ts";
 
 export * from "./grammar.ts";

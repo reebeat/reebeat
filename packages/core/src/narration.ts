@@ -1,26 +1,20 @@
-// Dialogue text to narration text, words and Cues (spec 0001, "Narration text" and "Cues"). A plain function.
-import { Array as Arr, Schema } from "effect";
+// Dialogue text to narration text and words (spec 0002: dialogue is prose, byte for byte what is spoken and
+// subtitled, so it contains no `[[...]]` at all). A note in dialogue is a release-1 Cue and an error that gives the
+// replacement. A plain function.
 
-import { idPattern } from "./elements.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
-import { SfxNameSchema, sfxNames } from "./plan.ts";
-import type { Cue } from "./plan.ts";
-
-/** A Cue before ids exist: the id is `sc<N>.l<M>.c<K>`, assigned when the Plan is assembled. */
-export type CueDraft = Omit<Cue, "anchor" | "id">;
+import { problem } from "./grammar.ts";
 
 export interface Narration {
-  readonly cues: readonly CueDraft[];
   readonly errors: readonly PlanError[];
   readonly text: string;
   readonly words: readonly string[];
 }
 
-const cuePattern = /\[\[(?<inner>[\s\S]*?)\]\]/gu;
+const notePattern = /\[\[(?<inner>[\s\S]*?)\]\]/gu;
 const focusPattern = /^focus:\s*(?<id>\S+)$/u;
 const sfxPattern = /^sfx:\s*(?<name>\S+)$/u;
-const isSfx = Schema.is(SfxNameSchema);
 
 const collapse = (text: string): string => text.replaceAll(/\s+/gu, " ").trim();
 
@@ -31,100 +25,93 @@ const wordsOf = (text: string): readonly string[] =>
 const lineAt = (text: string, offset: number, firstLine: number): number =>
   firstLine + text.slice(0, offset).split("\n").length - 1;
 
-/** Reads the inside of one `[[...]]`: a Cue, or the error that says why it is not one. */
-const parseCue = (
-  inner: string,
-  line: number,
-  afterWord: number
-): CueDraft | PlanError => {
-  const trimmed = inner.trim();
-  const focus = focusPattern.exec(trimmed)?.groups?.id;
-  const sfx = sfxPattern.exec(trimmed)?.groups?.name;
+/** The effects line that replaces the release-1 Cue `inner`, timed against the word before it. */
+const replacement = (inner: string, before: readonly string[]): string => {
+  const last = before.at(-1);
 
-  if (trimmed === "next") {
-    return { afterWord, arg: null, kind: "next", line };
+  const after =
+    last === undefined
+      ? "transition.start"
+      : `word("${last.replaceAll(/["]/gu, "")}").end`;
+
+  const focus = focusPattern.exec(inner)?.groups?.id;
+  const sfx = sfxPattern.exec(inner)?.groups?.name;
+
+  if (inner === "next") {
+    return `r1: show <element id> at ${after}`;
   }
 
-  if (focus !== undefined && idPattern.test(focus)) {
-    return { afterWord, arg: focus, kind: "focus", line };
+  if (focus !== undefined) {
+    return `f1: focus ${focus} at ${after}`;
   }
 
-  if (sfx !== undefined && isSfx(sfx)) {
-    return { afterWord, arg: sfx, kind: "sfx", line };
-  }
-
-  if (sfx !== undefined) {
-    return planError(
-      "UnknownSfx",
-      line,
-      `unknown sound "${sfx}": the catalogue is ${Arr.join(sfxNames, ", ")}`
-    );
-  }
-
-  return planError(
-    "UnknownCue",
-    line,
-    `unknown Cue [[${trimmed}]]: use [[next]], [[focus: id]] or [[sfx: ${Arr.join(sfxNames, "|")}]]`
-  );
+  return sfx === undefined
+    ? "an effects line of the [[effects]] block"
+    : `s1: sound ${sfx} at ${after}`;
 };
 
-/** Blanks the Cues of `text` with spaces, keeping newlines and offsets. */
-const maskCues = (text: string): string =>
-  text.replaceAll(cuePattern, (cue) => cue.replaceAll(/[^\n]/gu, " "));
-
 /**
- * Splits the dialogue of one Line. `text` is the token text (lines joined by `\n`); `firstLine` is the source
- * line of its first line. Narration is the text without its Cues, whitespace collapsed; a Cue follows the
- * last word before it.
+ * Splits the dialogue of one Line. `text` is the token text (lines joined by `\n`); `firstLine` is the source line
+ * of its first line. Every `[[...]]` is an error with its replacement; the narration is the text without them.
  */
 export const parseNarration = (text: string, firstLine: number): Narration => {
   const errors: PlanError[] = [];
-  const cues: CueDraft[] = [];
   let before = "";
   let cursor = 0;
 
-  for (const match of text.matchAll(cuePattern)) {
+  for (const match of text.matchAll(notePattern)) {
     before += text.slice(cursor, match.index);
     cursor = match.index + match[0].length;
 
-    const parsed = parseCue(
-      match.groups?.inner ?? "",
-      lineAt(text, match.index, firstLine),
-      wordsOf(collapse(before)).length - 1
-    );
+    const inner = collapse(match.groups?.inner ?? "");
 
-    if ("_tag" in parsed) {
-      errors.push(parsed);
-    } else {
-      cues.push(parsed);
-    }
+    errors.push(
+      planError(
+        "ReleaseOneForm",
+        lineAt(text, match.index, firstLine),
+        problem(
+          `release-1 cue [[${inner}]] in dialogue`,
+          `no note in dialogue; write ${replacement(inner, wordsOf(collapse(before)))} in the [[effects]] block`
+        )
+      )
+    );
   }
 
-  const masked = maskCues(text);
+  const masked = text.replaceAll(notePattern, (note) =>
+    note.replaceAll(/[^\n]/gu, " ")
+  );
+
   const stray = masked.search(/\[\[|\]\]/u);
-  const emphasis = masked.search(/[*_]/u);
 
   if (stray !== -1) {
     errors.push(
       planError(
-        "UnknownCue",
+        "ReleaseOneForm",
         lineAt(text, stray, firstLine),
-        "unbalanced [[ or ]]: a Cue is written [[next]], [[focus: id]] or [[sfx: name]] on one line"
+        problem(
+          "unbalanced [[ or ]] in dialogue",
+          "no note in dialogue; effects live in the [[effects]] block of the Scene"
+        )
       )
     );
   }
+
+  const emphasis = masked.search(/[*_]/u);
 
   if (emphasis !== -1) {
     errors.push(
       planError(
         "EmphasisInDialogue",
         lineAt(text, emphasis, firstLine),
-        "emphasis markers (* and _) are not allowed in dialogue: narration, subtitles and notes are one string"
+        problem(
+          "emphasis markers (* and _) in dialogue",
+          "plain words: narration, subtitles and notes are one string"
+        )
       )
     );
   }
 
-  const narration = collapse(text.replaceAll(cuePattern, ""));
+  const narration = collapse(text.replaceAll(notePattern, ""));
 
-  return { cues, errors, text: narration, words: wordsOf(narration) };
+  return { errors, text: narration, words: wordsOf(narration) };
 };

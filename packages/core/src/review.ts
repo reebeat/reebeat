@@ -1,10 +1,11 @@
 // The review text of `reebeat plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
-// (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its Lines with Cue markers, and one
-// summary line. Deterministic: the same Plan gives the same text. A plain function.
+// (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its effects as `intent -> frame` (spec 0002),
+// its Lines, and one summary line. Deterministic: the same Plan gives the same text. A plain function.
 import { Array as Arr, Option } from "effect";
 
+import { formatWhen } from "./effects.ts";
 import type {
-  Cue,
+  Effect,
   Element,
   Identity,
   Line,
@@ -30,15 +31,12 @@ const describe = (element: Element): string =>
   Arr.join(
     [
       `@${element.cell}`,
-      ...Arr.map(element.classes, (name) => `.${name}`),
-      ...(element.hidden ? ["hidden"] : []),
+      `.${element.class}`,
+      ...(element.visible ? [] : ["hidden"]),
       quote(element.text),
     ],
     " "
   );
-
-const classesOf = (element: Element): string =>
-  element.classes.length === 0 ? "none" : Arr.join(element.classes, " ");
 
 const changeText = (
   change: Identity["update"][number]["changes"][number],
@@ -49,8 +47,8 @@ const changeText = (
     return `cell ${before.cell}→${after.cell}`;
   }
 
-  if (change === "classes") {
-    return `classes ${classesOf(before)}→${classesOf(after)}`;
+  if (change === "class") {
+    return `class ${before.class}→${after.class}`;
   }
 
   return `text ${quote(before.text)}→${quote(after.text)}`;
@@ -138,25 +136,6 @@ const elementRows = (
   );
 };
 
-const marker = (cue: Cue): string =>
-  `[[${cue.kind}${cue.arg === null ? "" : `: ${cue.arg}`}]]`;
-
-/** The narration with its Cues written back in, after the word each one follows. */
-const narrationWithCues = (line: Line): string => {
-  const after = (index: number): readonly string[] =>
-    Arr.flatMap(line.cues, (cue) =>
-      cue.afterWord === index ? [marker(cue)] : []
-    );
-
-  return Arr.join(
-    [
-      ...after(-1),
-      ...Arr.flatMap(line.words, (word, index) => [word, ...after(index)]),
-    ],
-    " "
-  );
-};
-
 const hintText = (plan: PlanJson, line: Line): string => {
   const parts = [
     ...(line.hints.speed === plan.settings.speed
@@ -176,45 +155,13 @@ const seconds = (plan: PlanJson, frames: number): string =>
 const span = (plan: PlanJson, from: number, to: number): string =>
   `frames ${from}-${to} (${seconds(plan, from)}-${seconds(plan, to)} s)`;
 
-const cueName = (cue: Cue): string =>
-  `${cue.kind}${cue.arg === null ? "" : ` ${cue.arg}`}`;
-
-/** A Cue row: where it fires and, for an anchored Cue, the anchor. */
-const cueRow = (cue: Cue, timed?: TimedLine["cues"][number]): string => {
-  const anchor = cue.anchor === "transition-start" ? "transition.start" : "";
-
-  if (timed === undefined) {
-    return `        cue ${cue.id} ${cueName(cue)}  anchored to ${anchor}`;
-  }
-
-  const where = `fires at frame ${timed.fireFrame}, command at ${timed.commandFrame}`;
-
-  return anchor === ""
-    ? `        cue ${cue.id} ${where}`
-    : `        cue ${cue.id} ${cueName(cue)}  ${anchor} -> frame ${timed.fireFrame}, command at ${timed.commandFrame}`;
-};
-
 const timedLineRows = (
   plan: PlanJson,
-  line: Line,
   timed: TimedLine | undefined
 ): readonly string[] =>
   timed === undefined
-    ? Arr.flatMap(line.cues, (cue) =>
-        cue.anchor === "transition-start" ? [cueRow(cue)] : []
-      )
-    : [
-        `        ${span(plan, timed.startFrame, timed.endFrame)}`,
-        ...Arr.flatMap(timed.cues, (cued) =>
-          Option.match(
-            Arr.findFirst(line.cues, (cue) => cue.id === cued.cueId),
-            {
-              onNone: () => [],
-              onSome: (cue) => [cueRow(cue, cued)],
-            }
-          )
-        ),
-      ];
+    ? []
+    : [`        ${span(plan, timed.startFrame, timed.endFrame)}`];
 
 const lineRows = (
   plan: PlanJson,
@@ -222,9 +169,40 @@ const lineRows = (
   timed: TimedLine | undefined
 ): readonly string[] => [
   `      ${line.id}${hintText(plan, line)}`,
-  `        ${quote(narrationWithCues(line))}`,
-  ...timedLineRows(plan, line, timed),
+  `        ${quote(line.text)}`,
+  ...timedLineRows(plan, timed),
 ];
+
+/** What an effect does, as the review prints it: `sound whoosh`, `show note`. */
+const doing = (effect: Effect): string =>
+  `${effect.verb} ${effect.name ?? effect.target ?? ""}`;
+
+/** One row per effect: `s1  sound whoosh  one.move.start  ->  frame 732` (the frame once the Timeline exists). */
+const effectRows = (
+  scene: Scene,
+  timed: TimedScene | undefined
+): readonly string[] => {
+  const idWidth = Arr.reduce(scene.effects, 2, (width, effect) =>
+    Math.max(width, effect.id.length)
+  );
+
+  const doingWidth = Arr.reduce(scene.effects, 0, (width, effect) =>
+    Math.max(width, doing(effect).length)
+  );
+
+  return Arr.map(scene.effects, (effect) => {
+    const fire = Option.getOrUndefined(
+      Arr.findFirst(
+        timed?.effects ?? [],
+        (candidate) => candidate.effectId === effect.id
+      )
+    )?.fireFrame;
+
+    const when = `${doing(effect).padEnd(doingWidth)}  ${formatWhen(effect.when)}`;
+
+    return `      ${effect.id.padEnd(idWidth)}  ${when}${fire === undefined ? "" : `  ->  frame ${fire}`}`;
+  });
+};
 
 const sceneRows = (
   plan: PlanJson,
@@ -246,6 +224,9 @@ const sceneRows = (
         ]),
     "    Elements",
     ...elementRows(scene, previous),
+    ...(scene.effects.length === 0
+      ? []
+      : ["    Effects", ...effectRows(scene, timed)]),
     "    Lines",
     ...Arr.flatMap(scene.lines, (line) =>
       lineRows(
@@ -262,6 +243,18 @@ const sceneRows = (
   ];
 };
 
+/** Every absolute time of the Plan, with the Scene, the effect and the reason that was written. */
+const absoluteRows = (plan: PlanJson): readonly string[] =>
+  Arr.flatMap(plan.scenes, (scene) =>
+    Arr.flatMap(scene.effects, (effect) =>
+      "absoluteMs" in effect.when
+        ? [
+            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${formatWhen(effect.when)}`,
+          ]
+        : []
+    )
+  );
+
 const summary = (plan: PlanJson): string => {
   const identities = Arr.flatMap(plan.scenes, (scene) =>
     scene.identity === null ? [] : [scene.identity]
@@ -276,18 +269,26 @@ const summary = (plan: PlanJson): string => {
     (total, scene) => total + scene.lines.length
   );
 
-  const cues = Arr.reduce(
+  const effects = Arr.reduce(
     plan.scenes,
     0,
-    (total, scene) =>
-      total + Arr.reduce(scene.lines, 0, (sum, line) => sum + line.cues.length)
+    (total, scene) => total + scene.effects.length
   );
 
   const enter = count((identity) => identity.enter.length);
   const exit = count((identity) => identity.exit.length);
   const update = count((identity) => identity.update.length);
 
-  return `Plan: ${plan.scenes.length} scenes, ${lines} lines, ${cues} cues; ${enter} to enter, ${exit} to exit, ${update} to update`;
+  return `Plan: ${plan.scenes.length} scenes, ${lines} lines, ${effects} effects; ${enter} to enter, ${exit} to exit, ${update} to update`;
+};
+
+const absoluteSummary = (plan: PlanJson): readonly string[] => {
+  const rows = absoluteRows(plan);
+
+  return [
+    ...rows,
+    `${rows.length} absolute time${rows.length === 1 ? "" : "s"}`,
+  ];
 };
 
 const timingSummary = (plan: PlanJson): string =>
@@ -327,7 +328,8 @@ const chapterRows = (
 
 /**
  * The review text of a Plan. Scenes list their Elements once, with `+ - ~` marks (and a blank mark for `same`)
- * when they are joined to the previous Scene by `> AUTO-ANIMATE`. With `timing` and a Timeline it adds frames.
+ * when they are joined to the previous Scene by `> AUTO-ANIMATE`, then their effects (with frames when `timing` and a
+ * Timeline are there). The last line counts the absolute times; each is listed with its reason above it.
  */
 export const reviewText = (
   plan: PlanJson,
@@ -346,6 +348,7 @@ export const reviewText = (
       "",
       summary(plan),
       ...(timing ? [timingSummary(plan)] : []),
+      ...absoluteSummary(plan),
       "",
     ],
     "\n"

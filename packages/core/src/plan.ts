@@ -199,7 +199,7 @@ export const EffectSchema = Schema.Struct({
  * | --- | --- | --- |
  * | `transition.*` | `s` | window end |
  * | matched Element `move` and `update` (Auto-Animate) | `s + matched.startLagFrames` | window end |
- * | unmatched `enter` (Auto-Animate) | `s` if `unmatched.enterAtTransitionStart`, else the window end | = start (instant) |
+ * | unmatched `enter` (Auto-Animate) | `s + unmatched.enter.startLagFrames` | `s + unmatched.enter.endLagFrames` (equal: an instant) |
  * | `exit` (Auto-Animate) | `s` | = start (instant) |
  * | `enter` of every visible Element of a `default` or `cut` Scene | `s` | window end (instant for `cut`) |
  * | `enter` of an Element revealed by a `show` effect | the effect's fire frame | + `round(fps * showMs / 1000)` |
@@ -228,7 +228,9 @@ export const RendererLifecycleSchema = Schema.Struct({
     cut: Milliseconds,
     default: Milliseconds,
   }),
-  unmatched: Schema.Struct({ enterAtTransitionStart: Schema.Boolean }),
+  unmatched: Schema.Struct({
+    enter: Schema.Struct({ endLagFrames: Frame, startLagFrames: Frame }),
+  }),
 });
 
 export const LineSchema = Schema.Struct({

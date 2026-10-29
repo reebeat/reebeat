@@ -51,6 +51,12 @@ export class BadParenthetical extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()("BadParenthetical", located) {}
 
+/** `Speed:` or `(speed N)` with a value that is not a number from 0.5 to 2, or a second `Speed:` title key. */
+export class BadSpeed extends Schema.TaggedError<
+  BadSpeed,
+  { readonly brand: unique symbol }
+>()("BadSpeed", located) {}
+
 /** A transition other than `> AUTO-ANIMATE` and `> CUT`, or one that does not lead into a Scene. */
 export class BadTransition extends Schema.TaggedError<
   BadTransition,
@@ -83,6 +89,7 @@ export class EmptyStory extends Schema.TaggedError<
 
 const planErrors = {
   BadParenthetical,
+  BadSpeed,
   BadTransition,
   CueTargetMissing,
   DuplicateId,

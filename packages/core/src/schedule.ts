@@ -9,7 +9,9 @@
 //   word frame        = Line start + round(fps * wordMs / 1000)
 //   Scene end         = last Line end + round(fps * sceneTail)
 //   next slideFrame   = this Scene end; totalFrames = last Scene end
-//   Cue fireFrame     = Line start + round(fps * word.endMs / 1000); the Line start for afterWord = -1
+//   Cue fireFrame     = Line start + round(fps * word.endMs / 1000); the Line start for afterWord = -1; the Scene's
+//                       slideFrame for a Cue anchored to the transition start (an sfx before the first word of a
+//                       Scene's first Line)
 //   Cue commandFrame  = fireFrame - 1 for next and focus, fireFrame for sfx
 import { Array as Arr, Effect, Option, Result, Schema } from "effect";
 
@@ -133,15 +135,19 @@ const pairScene = (
 const timeCues = (
   { aligned, line }: Paired,
   startFrame: number,
+  slideFrame: number,
   settings: Settings
 ): readonly TimedCue[] =>
   Arr.map(line.cues, (cue) => {
     const word = aligned.words[cue.afterWord];
 
-    const fireFrame =
+    const wordFrame =
       word === undefined
         ? startFrame
         : startFrame + millisecondsToFrames(settings, word.endMs);
+
+    const fireFrame =
+      cue.anchor === "transition-start" ? slideFrame : wordFrame;
 
     return {
       commandFrame: cue.kind === "sfx" ? fireFrame : fireFrame - 1,
@@ -153,10 +159,11 @@ const timeCues = (
 const timeLine = (
   pair: Paired,
   startFrame: number,
+  slideFrame: number,
   settings: Settings
 ): TimedLine => ({
   audio: pair.aligned.audio,
-  cues: timeCues(pair, startFrame, settings),
+  cues: timeCues(pair, startFrame, slideFrame, settings),
   endFrame:
     startFrame + millisecondsToFrames(settings, pair.aligned.durationMs),
   lineId: pair.line.id,
@@ -185,7 +192,7 @@ const timeScene = (
     const startFrame =
       cursor + secondsToFrames(settings, gap + pair.line.hints.pauseBefore);
 
-    const timed = timeLine(pair, startFrame, settings);
+    const timed = timeLine(pair, startFrame, slideFrame, settings);
 
     lines.push(timed);
     cursor = timed.endFrame;

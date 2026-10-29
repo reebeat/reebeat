@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 95678,
+      "name": "flac",
+      "sha256": "cc08d4ac49160591a296a3f8e5fdc3b712d8926014e02a157a9fd4452a82d47c"
+    },
+    {
+      "bytes": 945,
+      "name": "words.json",
+      "sha256": "b485a4538e669e575fd565b58574384c681b9452899c32a09015f7ab90851fe0"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1.1,
+        "voice": "af_heart"
+      },
+      "input": "A new name means it appears. A missing name means it leaves.",
+      "key": "0d2a9a4c5d3c1a2b17d3e0789f3b13ae32c21efcb917fe8fc9ef50270179541b"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

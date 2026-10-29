@@ -8,7 +8,7 @@ import { SfxNameSchema, sfxNames } from "./plan.ts";
 import type { Cue } from "./plan.ts";
 
 /** A Cue before ids exist: the id is `sc<N>.l<M>.c<K>`, assigned when the Plan is assembled. */
-export type CueDraft = Omit<Cue, "id">;
+export type CueDraft = Omit<Cue, "anchor" | "id">;
 
 export interface Narration {
   readonly cues: readonly CueDraft[];

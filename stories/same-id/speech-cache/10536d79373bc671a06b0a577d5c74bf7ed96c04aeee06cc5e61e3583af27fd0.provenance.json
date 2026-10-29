@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 76875,
+      "name": "flac",
+      "sha256": "5b44904e85a1d6a523e727366bbb20221230264ca3741dee03b5ce02222b4c0b"
+    },
+    {
+      "bytes": 648,
+      "name": "words.json",
+      "sha256": "d6910cb383be7a09f1396da8652e8f4641f2494c5bb06a0556ea0311c39fe672"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 0.99,
+        "voice": "af_heart"
+      },
+      "input": "Here is a small idea about moving things.",
+      "key": "10536d79373bc671a06b0a577d5c74bf7ed96c04aeee06cc5e61e3583af27fd0"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

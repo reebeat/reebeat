@@ -1,0 +1,96 @@
+{
+  "durationMs": 4600,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 300,
+      "startMs": 120,
+      "w": "On"
+    },
+    {
+      "endMs": 310,
+      "startMs": 300,
+      "w": "the"
+    },
+    {
+      "endMs": 560,
+      "startMs": 310,
+      "w": "next"
+    },
+    {
+      "endMs": 1060,
+      "startMs": 560,
+      "w": "screen"
+    },
+    {
+      "endMs": 1370,
+      "startMs": 1060,
+      "w": "there"
+    },
+    {
+      "endMs": 1500,
+      "startMs": 1370,
+      "w": "is"
+    },
+    {
+      "endMs": 1560,
+      "startMs": 1500,
+      "w": "a"
+    },
+    {
+      "endMs": 1770,
+      "startMs": 1560,
+      "w": "box"
+    },
+    {
+      "endMs": 2340,
+      "startMs": 1770,
+      "w": "too."
+    },
+    {
+      "endMs": 2420,
+      "startMs": 2340,
+      "w": "Is"
+    },
+    {
+      "endMs": 2480,
+      "startMs": 2420,
+      "w": "it"
+    },
+    {
+      "endMs": 2690,
+      "startMs": 2480,
+      "w": "the"
+    },
+    {
+      "endMs": 2970,
+      "startMs": 2690,
+      "w": "same"
+    },
+    {
+      "endMs": 3180,
+      "startMs": 2970,
+      "w": "box,"
+    },
+    {
+      "endMs": 3310,
+      "startMs": 3180,
+      "w": "or"
+    },
+    {
+      "endMs": 3390,
+      "startMs": 3310,
+      "w": "a"
+    },
+    {
+      "endMs": 3620,
+      "startMs": 3390,
+      "w": "new"
+    },
+    {
+      "endMs": 4080,
+      "startMs": 3620,
+      "w": "one?"
+    }
+  ]
+}

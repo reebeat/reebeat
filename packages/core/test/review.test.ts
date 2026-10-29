@@ -96,7 +96,7 @@ describe("reviewText", () => {
           text,
           '"Same id, new place. [[sfx: whoosh]] [[next]] A new element enters."'
         );
-        assert.include(text, "sc1.l1  (speed 0.9)");
+        assert.include(text, "sc1.l1  (speed 0.99)");
         assert.include(text, "sc2.l1  (pause 0.5 s)");
       })
   );
@@ -127,6 +127,36 @@ const words = (...spoken: readonly string[]): AlignedLine["words"] =>
     w,
   }));
 
+/** The Plan of a one-Line story with `dialogue`, and the same Plan with a Timeline for a Line of "One two." (1000 ms). */
+const oneLine = (dialogue: string) =>
+  Effect.gen(function* built() {
+    const plan = yield* buildPlan(
+      asText([
+        "Title: T",
+        "",
+        "# S",
+        "",
+        "INT. A",
+        "",
+        "NARRATOR",
+        dialogue,
+        "",
+      ]),
+      fixtureSha256
+    );
+
+    const withTimeline = yield* schedule(plan, [
+      {
+        audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
+        durationMs: 1000,
+        lineId: "sc1.l1",
+        words: words("One", "two."),
+      },
+    ]);
+
+    return { plan, withTimeline };
+  });
+
 describe("reviewText with timing", () => {
   it.effect("says there is no timeline before schedule", () =>
     Effect.gen(function* none() {
@@ -139,29 +169,7 @@ describe("reviewText with timing", () => {
 
   it.effect("adds frames and the total once a timeline exists", () =>
     Effect.gen(function* timed() {
-      const plan = yield* buildPlan(
-        asText([
-          "Title: T",
-          "",
-          "# S",
-          "",
-          "INT. A",
-          "",
-          "NARRATOR",
-          "One two. [[sfx: pop]]",
-          "",
-        ]),
-        fixtureSha256
-      );
-
-      const withTimeline = yield* schedule(plan, [
-        {
-          audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
-          durationMs: 1000,
-          lineId: "sc1.l1",
-          words: words("One", "two."),
-        },
-      ]);
+      const { withTimeline } = yield* oneLine("One two. [[sfx: pop]]");
 
       const text = reviewText(withTimeline, { timing: true });
 
@@ -175,5 +183,24 @@ describe("reviewText with timing", () => {
       assert.include(text, "Timeline: 75 frames, 2.50 s at 30 fps");
       assert.notInclude(reviewText(withTimeline), "frames 30-60");
     })
+  );
+
+  it.effect(
+    "shows an sfx anchored to the transition start with its frame",
+    () =>
+      Effect.gen(function* anchored() {
+        const { plan, withTimeline } = yield* oneLine(
+          "[[sfx: whoosh]] One two."
+        );
+
+        assert.include(
+          reviewText(plan),
+          "cue sc1.l1.c1 sfx whoosh  anchored to transition.start"
+        );
+        assert.include(
+          reviewText(withTimeline, { timing: true }),
+          "cue sc1.l1.c1 sfx whoosh  transition.start -> frame 0, command at 0"
+        );
+      })
   );
 });

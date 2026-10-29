@@ -1,0 +1,49 @@
+{
+  "files": [
+    {
+      "bytes": 119287,
+      "name": "flac",
+      "sha256": "61d67ef712c4c3b0bf25a804e45dea9a1140657749b90382d5fd2c5eeb7d63a2"
+    },
+    {
+      "bytes": 1232,
+      "name": "words.json",
+      "sha256": "36bb9ab60789918f96aaab5ff25e2f3defdf82261127e215541d8a2056aef0ee"
+    }
+  ],
+  "provenance": {
+    "adapter": "kokoro@1.2.1",
+    "createdBy": "speech-v2: kokoro@1.2.1, whisper.cpp@1.9.5-dev+ggml-base.en, ffmpeg@9.0.1",
+    "egress": {
+      "kind": "local",
+      "sends": []
+    },
+    "keyParts": {
+      "extra": {
+        "aligner": {
+          "egress": {
+            "kind": "local",
+            "sends": []
+          },
+          "id": "whisper.cpp@1.9.5-dev+ggml-base.en",
+          "settings": {
+            "model": "ggml-base.en",
+            "modelSha256": "a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002",
+            "resample": "-ar 16000 -ac 1 -c:a pcm_s16le",
+            "whisperArgs": "-ml 1 -sow -oj -np -t 4"
+          }
+        },
+        "pipeline": "speech-v2",
+        "speed": 1.1,
+        "voice": "af_heart"
+      },
+      "input": "A box can glide across a screen only if we know it is the same box.",
+      "key": "33f20a925993ee5e87132bfa02b7fece0a2c3366fb6230928be813db99f35bd3"
+    },
+    "settings": {
+      "dtype": "fp32",
+      "model": "onnx-community/Kokoro-82M-v1.0-ONNX",
+      "sampleRate": 24000
+    }
+  }
+}

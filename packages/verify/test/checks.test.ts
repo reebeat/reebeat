@@ -7,7 +7,7 @@
 //   F6  a frame replaced in one of two builds  F7  a hard cut instead of the transition, and a reversed transition
 //   F8  the audio delayed by three frames      F9  a renamed chapter
 import { assert, layer } from "@effect/vitest";
-import { buildPlan } from "@reebeat/core";
+import { buildPlan, encodePlan } from "@reebeat/core";
 import { sha256Hex } from "@reebeat/pipeline";
 import { renderDeck } from "@reebeat/render-reveal";
 import { Array as Arr, Effect, FileSystem, Option, Path, Stream } from "effect";
@@ -31,10 +31,16 @@ import {
   logFailures,
   mapping,
   measuredOf,
+  frameMs,
+  moveFire,
+  narrationFile,
+  remix,
+  soundFile,
   recapture,
   mp4Of,
   muxFrames,
   replaceInFile,
+  reportedScore,
   rewriteMp4,
   sealBuild,
   shiftCommand,
@@ -61,6 +67,13 @@ const editedSource = Effect.fn("editedSource")(function* edited(name: string) {
   return target;
 });
 
+const whooshId = "sc2.l1.c1";
+
+/** The measured names of the whoosh: its offset from the planned frame, and from the scene change into sc2. */
+const whooshPlanned = `${whooshId} sfx offset (frames)`;
+
+const whooshMotion = `${whooshId} sfx onset vs the scene change into sc2 (frames)`;
+
 layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
   "the checks on a small built story",
   (it) => {
@@ -80,8 +93,8 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
         );
         assert.strictEqual(exitCode(verdicts), 0);
 
-        // The measured values are the evidence: three Cues and two Lines, each within a frame.
-        assert.strictEqual(verdictOf(verdicts, "F1").measured[0]?.[1], 3);
+        // The measured values are the evidence: four Cues and two Lines, each within a frame.
+        assert.strictEqual(verdictOf(verdicts, "F1").measured[0]?.[1], 4);
         assert.strictEqual(verdictOf(verdicts, "F8").measured[0]?.[1], 2);
         assert.isAtLeast(Number(verdictOf(verdicts, "F7").measured[1]?.[1]), 5);
         yield* Effect.log(renderVerdicts(verdicts));
@@ -134,7 +147,122 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
     );
 
     it.effect(
-      "F7: a scene change commanded two frames late, and two frames early, is observed there, naming the Scene",
+      "F1: the whoosh of an Auto-Animate Scene sounds at the first changed frame of the scene change, and at its planned frame",
+      () =>
+        Effect.gen(function* anchored() {
+          const fixture = yield* Fixture;
+          const verdict = verdictOf(yield* checkDirectory(fixture.build), "F1");
+
+          assert.strictEqual(verdict.status, "pass", verdict.detail);
+          assert.isAtMost(Math.abs(reportedScore(verdict, whooshPlanned)), 1);
+          assert.isAtMost(Math.abs(reportedScore(verdict, whooshMotion)), 1);
+          yield* Effect.log(
+            `whoosh: ${whooshPlanned} ${reportedScore(verdict, whooshPlanned)}, ${whooshMotion} ${reportedScore(verdict, whooshMotion)}`
+          );
+        })
+    );
+
+    it.effect(
+      "F1: a whoosh scheduled at the first word of its Line (30 frames after the scene change) fails against the motion, though it sounds where the Timeline says",
+      () =>
+        Effect.gen(function* firstWord() {
+          const fs = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const fixture = yield* Fixture;
+          const [firstScene, scene] = fixture.plan.timeline.scenes;
+          const line = scene?.lines[0];
+          const first = firstScene?.lines[0];
+          const lineStart = line?.startFrame ?? 0;
+
+          assert.strictEqual(lineStart, (scene?.slideFrame ?? 0) + 30);
+
+          // The old schedule: the cue at the Line's start. The Timeline of plan.json and the audio agree on it. The
+          // test narrator is loud noise that would hide the whoosh, so the Line's narration is mixed at a fifth.
+          const moved = moveFire(fixture.plan, whooshId, lineStart);
+
+          const verdicts = yield* control(
+            "f1-first-word",
+            (dir) =>
+              Effect.gen(function* remixed() {
+                yield* remix([
+                  {
+                    file: narrationFile(fixture, "sc1.l1"),
+                    startMs: frameMs(first?.startFrame ?? 0),
+                  },
+                  {
+                    file: narrationFile(fixture, "sc2.l1"),
+                    gain: 0.2,
+                    startMs: frameMs(lineStart),
+                  },
+                  {
+                    file: soundFile(fixture, "pop"),
+                    startMs: frameMs(
+                      Option.getOrElse(
+                        Option.map(
+                          Arr.findFirst(
+                            first?.cues ?? [],
+                            (cue) => cue.cueId === "sc1.l1.c2"
+                          ),
+                          (cue) => cue.fireFrame
+                        ),
+                        () => 0
+                      )
+                    ),
+                  },
+                  {
+                    file: soundFile(fixture, "whoosh"),
+                    startMs: frameMs(lineStart),
+                  },
+                ])(dir);
+                yield* fs.writeFileString(
+                  path.join(dir, "plan.json"),
+                  yield* Effect.orDie(encodePlan(moved))
+                );
+              }),
+            // The quiet narration under the whoosh falls below F8's score floor: a side effect of this crude mix.
+            ["F1", "F8"]
+          );
+
+          const verdict = verdictOf(verdicts, "F1");
+
+          assert.include(verdict.detail, "sc2.l1.c1 sfx: whoosh");
+          assert.include(
+            verdict.detail,
+            "frames from the first changed frame of the scene change into sc2"
+          );
+          assert.isAtMost(Math.abs(reportedScore(verdict, whooshPlanned)), 1);
+          assert.approximately(reportedScore(verdict, whooshMotion), 30, 1);
+        })
+    );
+
+    it.effect(
+      "F1: a whoosh delayed by three frames is observed three frames from its planned frame and from the motion",
+      () =>
+        Effect.gen(function* delayedSound() {
+          const fixture = yield* Fixture;
+          const [, scene] = fixture.plan.timeline.scenes;
+
+          const verdicts = yield* control(
+            "f1-whoosh-late",
+            (dir) =>
+              muxFrames(
+                dir,
+                Stream.fromIterable(fixture.frames),
+                moveFire(fixture.plan, whooshId, (scene?.slideFrame ?? 0) + 3)
+              ),
+            ["F1"]
+          );
+
+          const verdict = verdictOf(verdicts, "F1");
+
+          assert.include(verdict.detail, "sc2.l1.c1 sfx: whoosh");
+          assert.approximately(reportedScore(verdict, whooshPlanned), 3, 1);
+          assert.approximately(reportedScore(verdict, whooshMotion), 3, 1);
+        })
+    );
+
+    it.effect(
+      "F7: a scene change commanded two frames late, and two frames early, is observed there, naming the Scene (the whoosh anchored to it is then two frames from the motion: F1)",
       () =>
         Effect.gen(function* sceneChanges() {
           const fixture = yield* Fixture;
@@ -143,14 +271,14 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             "f7-late",
             (dir) =>
               muxFrames(dir, recapture(shiftSlide(fixture.plan, "sc2", 2))),
-            ["F7"]
+            ["F1", "F7"]
           );
 
           const early = yield* control(
             "f7-early",
             (dir) =>
               muxFrames(dir, recapture(shiftSlide(fixture.plan, "sc2", -2))),
-            ["F7"]
+            ["F1", "F7"]
           );
 
           assert.include(
@@ -160,6 +288,16 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.include(
             verdictOf(early, "F7").detail,
             "the slide change into sc2 (auto-animate) is observed -2 frames"
+          );
+          assert.approximately(
+            reportedScore(verdictOf(late, "F1"), whooshMotion),
+            -2,
+            0.5
+          );
+          assert.approximately(
+            reportedScore(verdictOf(early, "F1"), whooshMotion),
+            2,
+            0.5
           );
         })
     );

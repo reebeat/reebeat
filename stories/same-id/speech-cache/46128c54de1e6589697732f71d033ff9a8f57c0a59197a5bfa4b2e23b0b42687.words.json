@@ -1,0 +1,76 @@
+{
+  "durationMs": 3675,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 290,
+      "startMs": 0,
+      "w": "A"
+    },
+    {
+      "endMs": 350,
+      "startMs": 290,
+      "w": "name"
+    },
+    {
+      "endMs": 490,
+      "startMs": 350,
+      "w": "we"
+    },
+    {
+      "endMs": 800,
+      "startMs": 490,
+      "w": "have"
+    },
+    {
+      "endMs": 1040,
+      "startMs": 800,
+      "w": "not"
+    },
+    {
+      "endMs": 1270,
+      "startMs": 1040,
+      "w": "seen"
+    },
+    {
+      "endMs": 1690,
+      "startMs": 1270,
+      "w": "before"
+    },
+    {
+      "endMs": 1820,
+      "startMs": 1690,
+      "w": "is"
+    },
+    {
+      "endMs": 1890,
+      "startMs": 1820,
+      "w": "a"
+    },
+    {
+      "endMs": 2090,
+      "startMs": 1890,
+      "w": "new"
+    },
+    {
+      "endMs": 2550,
+      "startMs": 2090,
+      "w": "box,"
+    },
+    {
+      "endMs": 2600,
+      "startMs": 2550,
+      "w": "so"
+    },
+    {
+      "endMs": 2720,
+      "startMs": 2600,
+      "w": "it"
+    },
+    {
+      "endMs": 3360,
+      "startMs": 2720,
+      "w": "appears."
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 // The adapter from Fountain tokens to the Story: chapters, scenes, Elements, Lines and Cues, before ids and
 // cross-checks exist. Everything the vocabulary does not define becomes a Plan error with its line, never a
 // silent drop. A plain function.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, Result } from "effect";
 
 import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
@@ -10,6 +10,13 @@ import { parseNarration } from "./narration.ts";
 import type { CueDraft } from "./narration.ts";
 import type { FountainToken } from "./parse.ts";
 import type { Element, Line, Scene } from "./plan.ts";
+import {
+  defaultSpeed,
+  parseSpeed,
+  quickFactor,
+  scaleSpeed,
+  slowFactor,
+} from "./speed.ts";
 
 export interface LineDraft {
   readonly line: number;
@@ -39,16 +46,22 @@ interface ChapterDraft {
 export interface Story {
   readonly title: string | undefined;
   readonly author: string | undefined;
+  /** The story's default speech rate: `Speed:` of the title page, or `defaultSpeed`. */
+  readonly speed: number;
   readonly chapters: readonly ChapterDraft[];
   readonly scenes: readonly SceneDraft[];
   readonly errors: readonly PlanError[];
 }
 
-interface Parenthetical {
-  readonly kind: "speed" | "pause";
-  readonly value: number;
-  readonly line: number;
-}
+/** `(slowly)` and `(quickly)` are `preset`s: their `value` is a factor of the story default. `(speed N)` is `absolute`. */
+type Parenthetical =
+  | { readonly kind: "pause"; readonly line: number; readonly value: number }
+  | {
+      readonly kind: "speed";
+      readonly line: number;
+      readonly mode: "absolute" | "preset";
+      readonly value: number;
+    };
 
 interface PendingTransition {
   readonly kind: "auto-animate" | "cut";
@@ -58,6 +71,8 @@ interface PendingTransition {
 interface State {
   title: string | undefined;
   author: string | undefined;
+  /** The `Speed:` title key and the line it stands on; none: the default. */
+  speed: { readonly line: number; readonly value: number } | undefined;
   readonly chapters: ChapterDraft[];
   readonly scenes: SceneDraft[];
   readonly errors: PlanError[];
@@ -69,9 +84,7 @@ interface State {
 const pausePattern = /^\(pause\s+(?<seconds>\d+(?:\.\d+)?)\)$/iu;
 const slowlyPattern = /^\(slowly\)$/iu;
 const quicklyPattern = /^\(quickly\)$/iu;
-
-const slowSpeed = 0.9;
-const quickSpeed = 1.1;
+const speedPattern = /^\(speed\s+(?<value>[^()]*)\)$/iu;
 
 const unsupported = (state: State, line: number, message: string): void => {
   state.errors.push(planError("UnsupportedElement", line, message));
@@ -82,23 +95,66 @@ const currentScene = (state: State): SceneDraft | undefined =>
 
 const parseParenthetical = (
   token: FountainToken
-): Parenthetical | undefined => {
+): Result.Result<Parenthetical, PlanError> | undefined => {
   const text = token.text.trim();
   const pause = pausePattern.exec(text)?.groups?.seconds;
+  const absolute = speedPattern.exec(text)?.groups?.value;
+  const { line } = token;
 
   if (pause !== undefined) {
-    return { kind: "pause", line: token.line, value: Number(pause) };
+    return Result.succeed({ kind: "pause", line, value: Number(pause) });
   }
 
   if (slowlyPattern.test(text)) {
-    return { kind: "speed", line: token.line, value: slowSpeed };
+    return Result.succeed({
+      kind: "speed",
+      line,
+      mode: "preset",
+      value: slowFactor,
+    });
   }
 
   if (quicklyPattern.test(text)) {
-    return { kind: "speed", line: token.line, value: quickSpeed };
+    return Result.succeed({
+      kind: "speed",
+      line,
+      mode: "preset",
+      value: quickFactor,
+    });
   }
 
-  return undefined;
+  return absolute === undefined
+    ? undefined
+    : Result.mapBoth(parseSpeed(absolute), {
+        onFailure: (problem) =>
+          planError("BadSpeed", line, `${text}: ${problem}`),
+        onSuccess: (value): Parenthetical => ({
+          kind: "speed",
+          line,
+          mode: "absolute",
+          value,
+        }),
+      });
+};
+
+const speedKey = (state: State, token: FountainToken): void => {
+  const parsed = parseSpeed(token.text);
+
+  if (state.speed !== undefined) {
+    state.errors.push(
+      planError(
+        "BadSpeed",
+        token.line,
+        `Speed: is already set on line ${state.speed.line}`
+      )
+    );
+  } else if (Result.isFailure(parsed)) {
+    state.errors.push(
+      planError("BadSpeed", token.line, `Speed: ${parsed.failure}`)
+    );
+  } else {
+    state.speed = { line: token.line, value: parsed.success };
+  }
 };
 
 const titlePageToken = (state: State, token: FountainToken): void => {
@@ -108,11 +164,13 @@ const titlePageToken = (state: State, token: FountainToken): void => {
     state.title = text;
   } else if (token.type === "author" || token.type === "authors") {
     state.author = text;
+  } else if (token.type === "speed") {
+    speedKey(state, token);
   } else {
     unsupported(
       state,
       token.line,
-      `title page key "${token.type}" is not supported: use Title: and Author:`
+      `title page key "${token.type}" is not supported: use Title:, Author: and Speed:`
     );
   }
 };
@@ -262,12 +320,13 @@ const transitionToken = (state: State, token: FountainToken): void => {
   }
 };
 
-/** Folds the Parentheticals before one dialogue paragraph into delivery hints. */
+/** Folds the Parentheticals before one dialogue paragraph into delivery hints; the speed is resolved here. */
 const hintsOf = (
   state: State,
   pending: readonly Parenthetical[]
 ): Line["hints"] => {
-  let speed = 1;
+  const base = state.speed?.value ?? defaultSpeed;
+  let speed = base;
   let pauseBefore = 0;
   const seen = new Set<string>();
 
@@ -277,13 +336,14 @@ const hintsOf = (
         planError(
           "BadParenthetical",
           hint.line,
-          `a second ${hint.kind === "speed" ? "(slowly) or (quickly)" : "(pause N)"} before one Line`
+          `a second ${hint.kind === "speed" ? "speed hint ((speed N), (slowly) or (quickly))" : "(pause N)"} before one Line`
         )
       );
-    } else if (hint.kind === "speed") {
-      speed = hint.value;
-    } else {
+    } else if (hint.kind === "pause") {
       pauseBefore = hint.value;
+    } else {
+      speed =
+        hint.mode === "absolute" ? hint.value : scaleSpeed(base, hint.value);
     }
 
     seen.add(hint.kind);
@@ -332,11 +392,13 @@ const parentheticalToken = (state: State, token: FountainToken): void => {
       planError(
         "BadParenthetical",
         token.line,
-        `parenthetical ${token.text.trim()} is not supported: use (slowly), (quickly) or (pause N)`
+        `parenthetical ${token.text.trim()} is not supported: use (speed N), (slowly), (quickly) or (pause N)`
       )
     );
+  } else if (Result.isFailure(hint)) {
+    state.errors.push(hint.failure);
   } else {
-    dialogue.pending.push(hint);
+    dialogue.pending.push(hint.success);
   }
 };
 
@@ -549,6 +611,7 @@ export const adaptTokens = (tokens: readonly FountainToken[]): Story => {
     dialogue: undefined,
     errors: [],
     scenes: [],
+    speed: undefined,
     title: undefined,
     transition: undefined,
   };
@@ -564,6 +627,7 @@ export const adaptTokens = (tokens: readonly FountainToken[]): Story => {
     chapters: state.chapters,
     errors: state.errors,
     scenes: state.scenes,
+    speed: state.speed?.value ?? defaultSpeed,
     title: state.title,
   };
 };

@@ -6,7 +6,10 @@ import { decodePlan, frameToMs, requireTimeline } from "@reebeat/core";
 import { CaptureError } from "@reebeat/services";
 import {
   Array as Arr,
+  Deferred,
   Effect,
+  Exit,
+  Fiber,
   FileSystem,
   Layer,
   Option,
@@ -340,6 +343,49 @@ describe("buildProgram: failure is loud (F12)", () => {
 
         assert.isTrue(Predicate.isTagged(failure, "SpeechCacheMiss"));
         yield* absent(where.out, `${where.out}.partial`);
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+
+  it.effect(
+    "an interrupt in the middle of the capture leaves neither <out> nor <out>.partial, and removes an earlier build",
+    () =>
+      Effect.gen(function* interrupted() {
+        const fs = yield* FileSystem.FileSystem;
+        const capturing = yield* Deferred.make<boolean>();
+
+        // Three frames, then a capture that never ends: the build is in the middle of the mux when it is interrupted.
+        const hanging = fakeCapturer(() =>
+          Stream.concat(
+            tinyFrames(3),
+            Stream.fromEffect(
+              Effect.andThen(Deferred.succeed(capturing, true), Effect.never)
+            )
+          )
+        );
+
+        const good = yield* withWorld();
+
+        yield* good.run();
+
+        const stuck = yield* withWorld((seen) => ({
+          ...parts(seen),
+          capturer: hanging,
+        }));
+
+        yield* fs.copy(good.where.out, stuck.where.out);
+
+        const fiber = yield* Effect.forkChild(stuck.run());
+
+        yield* Deferred.await(capturing);
+        assert.isTrue(
+          yield* fs.exists(`${stuck.where.out}.partial`),
+          "the build is under way: its partial directory exists"
+        );
+
+        yield* Fiber.interrupt(fiber);
+
+        assert.isTrue(Exit.hasInterrupts(yield* Fiber.await(fiber)));
+        yield* absent(stuck.where.out, `${stuck.where.out}.partial`);
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
 

@@ -24,7 +24,7 @@ The record is [ADR-0000](../decisions/0000-extension-architecture.md). This spec
 A reader of each kind opens the repository and finds what they need:
 
 ```text
-Plugin author (Python engine):   docs/decisions/0000 -> Decision 3 (protocol, messages, conformance clauses E1 to E22)
+Plugin author (Python engine):   docs/decisions/0000 -> Decision 3 (protocol, messages, conformance clauses E1 to E25)
                                                        Decision 4 (capabilities)  Decision 6 (manifest, trust)
 Plugin author (lint rule):       Decision 2 row 15 (open now, pure)  Decision 5 (stability, peer range)
 Reviewer of the architecture:    Context (what exists, what is new, status of each) -> each Decision with its alternatives
@@ -59,7 +59,7 @@ Each is observed with a command on the head.
 - **F-ext8, the critique is recorded.** The ADR's Revisions section has a dated entry that lists each objection of the `architecture-critic` review and how it was resolved or why it was not. Falsified by an empty Revisions section after review.
 - **F-ext11, the React alternative and the layering are decided.** The ADR has the section "Considered alternative: React's core as reebeat's engine" with seven reasons, the two kept options (React as one engine, JSX as an importer) and the Remotion licence point marked as an inference, and the section "Layering: the story, the plans and the build graph" saying that "DAG" applies only to the build graph. `grep -c '^## Considered alternative: React' docs/decisions/0000-extension-architecture.md` and `grep -c '^## Layering' ...` print 1 each, and the React table has seven rows. Falsified by a missing section or row.
 - **F-ext9, the gates pass.** `bun run ready` passes on the head (the spec and feature-map tests, formatting of the files, the licence and tier gates, the journey).
-- **F-ext10, claims about existing code are checked.** Every path of the repository that the ADR names in backticks exists, and every symbol it names (`xContract`, `failingClauses`, `assetKey`, `RendererInfo`, `AdapterInfo`, `UnknownSelection`, `AdapterUnavailable`, `rejectSecretSettings`, `atomicWriteClause`, `choices`) is found in the sources by `grep -rlw`. Falsified by a path or symbol that is absent (a path of a *future* file, such as `docs/contracts/<id>.md`, is written as a template and is the one expected miss). Command and raw output in the PR body.
+- **F-ext10, claims about existing code are checked.** Every path of the repository that the ADR names in backticks exists, and every symbol it names (`registerClauses`, `rendererContract`, `failingClauses`, `assetKey`, `RendererInfo`, `AdapterInfo`, `UnknownSelection`, `AdapterUnavailable`, `rejectSecretSettings`, `atomicWriteClause`, `choices`) is found in the sources by `grep -rlw packages tools --include='*.ts'` with a match in code, not only in a comment. Falsified by a path or symbol that is absent (a path of a *future* file, such as `docs/contracts/<id>.md`, is written as a template and is the one expected miss). Control: the earlier symbol `xContract` matched only comments, so the check is run as `grep -rnw SYMBOL ... | grep -v '^[^:]*:[0-9]*:\s*//'` and `xContract` must return nothing. Command and raw output in the PR body.
 
 ## Not in scope
 
@@ -71,7 +71,7 @@ Each is observed with a command on the head.
 
 ## Open questions for the operator
 
-The ADR lists eight (package name and tier, engine id as story content, default trust level, TypeScript-only SDK, reproducible by default, compositor timing, ADR numbering, WebMCP). None blocks this PR: each decision is marked Proposed and the implementing specs record the answer.
+The ADR lists eleven (package name and tier, engine id as story content, default trust level, TypeScript-only SDK, reproducible and accessible by default, compositor timing, ADR numbering, WebMCP, a new `sdk` tier, the agent tool protocol, the plugin peer-range rule). None blocks this PR: each decision is marked Proposed and the implementing specs record the answer.
 
 ## Revisions
 
@@ -79,3 +79,4 @@ The ADR lists eight (package name and tier, engine id as story content, default 
 - **2026-10-29, direction folded in.** The operator's tagline and the four aims; interactions as elements, with `static` and `dynamic` artifact kinds and interaction surfaces in the artifact renderer's capability declaration, and the split between authoring tools and interaction tools; WebMCP as an experimental candidate with its status checked and cited; the README is left to the change that owns it, so this spec no longer links the ADR from it.
 - **2026-10-29, review round 2 (`architecture-critic`, second pass).** Two blockers (the SDK needs its own `sdk` tier so first-party engines may import it; the decisions README now defines Proposed as merged and not yet confirmed by the operator), six majors (a plan brief and a render brief; a per-Scene seed from stable identity and an honest statement that the unit of reuse is the run; the registry rule's exceptions and clauses E23 and E24; accessibility on by default like reproducibility; what "open now" means; interactions fire only declared transitions) and two minors, all recorded in the ADR's Revisions. The ADR's decisions are unchanged in direction; the open questions grew to nine.
 - **2026-10-29, operator direction on React.** The operator rejected React's core as reebeat's engine core and fixed the layering (statechart, per-artifact plan, build DAG); the ADR gained the two sections above (F-ext11).
+- **2026-10-29, review round 3 (reviewer RevExt23, on `dd24d8c`).** Five mediums and three lows, all recorded in the ADR's Revisions: this spec's journey and open-questions lines now match the ADR (E1 to E25, eleven questions); WebMCP is attributed by source and date; the registry rule is made true (E3 requires `determinism`, new E25, artifact clauses A1 to A4 with `requires`); the MCP choice and the peer-range rule are Proposed and are questions 10 and 11; the glossary states which Beat it means; F-ext10 checks `registerClauses` and `rendererContract` instead of the comment-only `xContract`. The questions grew from nine to eleven.

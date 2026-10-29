@@ -137,3 +137,37 @@ An ordered set of Episodes on one topic, such as a set of study videos.
 The argument that runs through a Series and that each Episode advances.
 
 _Avoid_ for any grouping: Epic (overloaded by agile backlogs and by journey mapping), playlist
+
+## Extension points
+
+How third parties add to reebeat (a declarative, incremental FRP language for multimedia artifact generation: authors create, reebeat builds). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words. In this section **Beat** has the meaning of the state-machine model of [PR #17](https://github.com/reebeat/reebeat/pull/17) (spec 0004): the generated edge from one State to the next, and a Beat between two Scenes is the edge between two compound States. That meaning replaces the "smallest unit of story" entry above once #17 merges.
+
+**Contract**:
+The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@reebeat/contracts`; the service tags and the runner that executes the clauses stay in `@reebeat/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.
+_Avoid_: Interface (alone), API
+
+**Capability**:
+One thing an engine or other plugin declares it can do (`access: random`, `boundary.snapshots: layers`, `semantics: tree`). The default of every capability is unsupported, and the compiler checks the story against the declared capabilities at plan time and fails closed.
+_Avoid_: Feature flag, option
+
+**Engine**:
+A piece that renders the frames of one **run**: consecutive Scenes on the same engine, with the Beats between them. `reveal` today, Manim or Motion Canvas later. The Scene names the engine; the configuration says which package fills it. An engine may run in process or in another language over the wire protocol.
+_Avoid_: Renderer (the Renderer service is the reveal engine's internals; a Rendering is an output)
+
+**Compositor**:
+The piece that makes a Beat between two runs, that is between two Scenes on different engines, from the boundary frames of both.
+
+**Boundary frame**:
+The last frame of a run's range and the first frame of the next run's range, on which a compositor transition works. For an id shared by both sides, an engine may also give a snapshot (bounds, and an alpha layer with a plate) so the compositor can carry the Element across.
+
+**Plugin**:
+A package (npm, or another language with a `reebeat.plugin.json`) that provides an implementation of one or more contracts. It is installed, enabled explicitly in `reebeat.config.json` with a trust level, and selected; nothing is discovered by scanning.
+_Avoid_: Extension, add-on, module
+
+**Run**:
+The longest stretch of consecutive Scenes on one engine, with the Beats between them. An engine renders a whole run; the compositor works only at the seams between runs. A run is not a Chapter (a Chapter groups Scenes for the viewer; a run groups them by engine).
+_Avoid_: Segment (a rendered segment is a cached piece of a run), batch
+
+**Brief**:
+Everything an engine may depend on for one call. The **plan brief** goes to `run/describe` (anchors and effect times unresolved). The **render brief** adds the Beat windows, the effect fire frames and the digest of the sampled values; its SHA-256 is the cache key of a rendered segment.
+_Avoid_: Request (alone), job

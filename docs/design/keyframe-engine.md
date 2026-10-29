@@ -1241,3 +1241,21 @@ Rules:
 2. **Every integration has a test stand-in** so the whole pipeline runs offline in tests, and **declares what it sends out** (for a speech provider: the script text). The build manifest lists each adapter's declaration.
 3. **Secrets only through the environment or the secret store**: never in a config file or the repository, never printed, never part of a cache key or manifest.
 4. **The dependency direction is enforced by the linter** (restricted imports per category), not by review.
+
+### R4 (2026-10-29): anchors as built (spec 0002) and how they differ from section 4.4.1
+
+**Decided by:** the operator's picks of 2026-10-28 and the review of spec 0002. **Supersedes** section 4.4.1 where it differs; the rest of 4.4.1 stands.
+
+The anchor model of 4.4.1 is built as `@reebeat/core` `Anchor`/`Offset`/`Effect` (spec 0002, "plan contract for effects"). Differences, each deliberate:
+
+| 4.4.1 | As built | Why |
+|---|---|---|
+| Defaults per cue kind, so most cues need no `at` | `at` is mandatory | "no positional magic": every effect names its anchor |
+| `beat` anchor (start, settle, end) | none | a Beat is derived, not written, in the screenplay source; the Scene, the slide transition (`transition.start|end|N%`), an Element's lifecycle and a word cover the moments that exist |
+| Offset `fraction` | `%` of the anchored window | the same quantity |
+| Absolute times: "`reebeat lint` warns on every" | allowed with `because "<reason>"`, listed by `lint` and `plan` at severity info | operator pick 2026-10-28 |
+| Cue chain: end of another cue | `<effect>.start`; `<show>.end` = end of its window; `.end` of a sound or focus is an error | an instant has no end |
+| Element events enter, exit, update | enter, exit, **move**, update; an Element's `move` and `update` percent points follow the renderer's eased progress | a box that moves is the case the operator asked to anchor to ("50% through the move") |
+| The event times | declared by the renderer as a `RendererLifecycle` (plain data) and observed in the output by F1 | a wrong declaration must fail on the observed event |
+
+New first-class anchor: **`transition.start|end|N%`**, the Scene's incoming slide transition (the operator: a whoosh belongs to the slide change). Transitions written as lines (`> AUTO-ANIMATE`, `> CUT`) still apply to the scene heading below: Fountain's own grammar; making them a heading property is an open, operator-owned decision.

@@ -11,10 +11,15 @@
 // Plain functions over the Scene's drafts.
 import { Array as Arr, Option } from "effect";
 
-import { effectLine, formatAnchor } from "./effects.ts";
+import { formatAnchor } from "./effects.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
-import { problem, releaseOneCues, verbArguments } from "./grammar.ts";
+import {
+  effectLine,
+  problem,
+  releaseOneCues,
+  verbArguments,
+} from "./grammar.ts";
 import type { LegacyCue } from "./narration.ts";
 import type { Anchor, Verb } from "./plan.ts";
 import { findPhrase } from "./words.ts";

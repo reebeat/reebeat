@@ -9,14 +9,26 @@ import { Array as Arr, Match, Option, Result, Schema } from "effect";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import {
+  absolutePattern,
+  absoluteUnit,
   anchorFormsText,
+  anchorWords,
+  bodyPattern,
   didYouMean,
+  effectLine,
+  keywords,
   lineForm,
+  linePattern,
+  offsetExamples,
+  offsetPattern,
   oneOf,
+  percentPattern,
+  percentUnit,
   problem,
   reservedIds,
   sourceUnits,
   verbArguments,
+  wordPattern,
 } from "./grammar.ts";
 import {
   EdgeSchema,
@@ -37,20 +49,6 @@ const isEvent = Schema.is(ElementEventSchema);
 const isSfx = Schema.is(SfxNameSchema);
 const isVerb = Schema.is(VerbSchema);
 const decodeWhen = Schema.decodeUnknownResult(WhenSchema);
-
-const linePattern = /^(?<id>[^\s:]+)\s*:\s*(?<rest>.*)$/u;
-const bodyPattern = /^(?<verb>\S+)\s+(?<argument>\S+)\s+at\s+(?<when>\S.*)$/u;
-
-const wordPattern =
-  /^word\(\s*"(?<phrase>[^"]*)"\s*(?:,\s*(?<n>\d+)\s*)?\)\.(?<edge>[^\s.]+)(?<rest>.*)$/u;
-
-const absolutePattern =
-  /^(?<value>\d+(?:\.\d+)?)(?<unit>[A-Za-z]*)(?:\s+because\s+"(?<reason>[^"]*)")?\s*$/u;
-
-const offsetPattern =
-  /^(?<sign>[+-])(?<value>\d+(?:\.\d+)?)(?<unit>[A-Za-z%]*)$/u;
-
-const percentPattern = /^(?<value>\d+(?:\.\d+)?)%$/u;
 
 const bad = (line: number, message: string): PlanError =>
   planError("BadEffect", line, message);
@@ -185,14 +183,14 @@ const pathAnchor = (
   const parts = text.split(".");
   const [first = "", second = ""] = parts;
 
-  if (first === "scene" && parts.length === 2) {
+  if (first === anchorWords.scene && parts.length === 2) {
     return Result.map(readEdge(second, line, text), (edge): Anchor => ({
       edge,
       kind: "scene",
     }));
   }
 
-  if (first === "transition" && parts.length === 2) {
+  if (first === anchorWords.transition && parts.length === 2) {
     return Result.map(readPoint(second, line, text), (at): Anchor => ({
       at,
       kind: "transition",
@@ -242,7 +240,7 @@ const readOffset = (
         line,
         problem(
           `"${text}" after the anchor is not an offset`,
-          "an offset such as +0.1s, -200ms, +3f or +50%, or nothing"
+          `an offset such as ${oneOf(offsetExamples)}, or nothing`
         )
       )
     );
@@ -301,13 +299,13 @@ const absoluteWhen = (
 ): Result.Result<When, PlanError> => {
   const groups = absolutePattern.exec(text)?.groups;
 
-  if (groups?.unit !== "s") {
+  if (groups?.unit !== absoluteUnit.token) {
     return Result.fail(
       bad(
         line,
         problem(
           `"${text}" is not an absolute time`,
-          'an absolute time in seconds with its reason: at 12.5s because "<reason>"'
+          `an absolute time in seconds with its reason: at 12.5${absoluteUnit.token} ${keywords.because} "<reason>"`
         )
       )
     );
@@ -322,14 +320,14 @@ const absoluteWhen = (
         line,
         problem(
           `absolute time "${text}" has no reason`,
-          `at ${groups.value ?? ""}s because "<why this moment is fixed>"`
+          `at ${groups.value ?? ""}${absoluteUnit.token} because "<why this moment is fixed>"`
         )
       )
     );
   }
 
   return Result.succeed({
-    absoluteMs: Math.round(scaled(Number(groups.value), 1000)),
+    absoluteMs: Math.round(scaled(Number(groups.value), absoluteUnit.factor)),
     reason,
   });
 };
@@ -484,7 +482,7 @@ export const parseEffectLine = (
 
 /** `start`, `end` or `N%`. */
 const formatPoint = (point: Point): string =>
-  isEdge(point) ? point : `${point.percent}%`;
+  isEdge(point) ? point : `${point.percent}${percentUnit.token}`;
 
 /**
  * The anchor as written: `one.move.50%`, `word("matches").end`, `transition.start`. A word anchor omits its
@@ -495,20 +493,13 @@ export const formatAnchor = (anchor: Anchor, explicit = false): string =>
     Match.discriminatorsExhaustive("kind")({
       effect: (found) => `${found.id}.${found.edge}`,
       element: (found) => `${found.id}.${found.event}.${formatPoint(found.at)}`,
-      scene: (found) => `scene.${found.edge}`,
-      transition: (found) => `transition.${formatPoint(found.at)}`,
+      scene: (found) => `${anchorWords.scene}.${found.edge}`,
+      transition: (found) =>
+        `${anchorWords.transition}.${formatPoint(found.at)}`,
       word: (found) =>
-        `word("${found.phrase}"${found.occurrence === 1 && !explicit ? "" : `, ${found.occurrence}`}).${found.edge}`,
+        `${anchorWords.word}("${found.phrase}"${found.occurrence === 1 && !explicit ? "" : `, ${found.occurrence}`}).${found.edge}`,
     })
   );
-
-/** One line of an `[[effects]]` block: the shape `lineForm` of the grammar describes. */
-export const effectLine = (
-  id: string,
-  verb: string,
-  argument: string,
-  when: string
-): string => `${id}: ${verb} ${argument} at ${when}`;
 
 /** The effect as one line of an `[[effects]]` block, its `when` as the author wrote it; `parseEffectLine` reads it back. */
 export const formatEffect = (effect: Effect): string =>

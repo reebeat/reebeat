@@ -267,3 +267,13 @@ Hello.
 | `[[sfx: name]]` in dialogue | a `sound` line in the `[[effects]]` block: `s1: sound <name> at word("<phrase>").end`, or `at transition.start` for the slide change |
 | `{#id @cell .class hidden}` | `{id=<id> cell=<cell> class=<class> visible=false}` |
 | a Scene heading without `#id#` | `INT. THE NEXT SCREEN - DAY #sc4#` |
+
+
+## What is not yet explicit
+
+Two kinds of line are still read by where they stand, because that is how Fountain itself writes them. Everything else in this document is written once, with its id.
+
+- **A transition line applies to the NEXT scene heading.** `> AUTO-ANIMATE` and `> CUT` stand alone, between blank lines, right before the heading they lead into (a `# Section` or `= synopsis` may stand between); they name no Scene and carry no id. A transition anywhere else is a `BadTransition` error that says so.
+- **A parenthetical applies to the dialogue right after it**: `(slowly)`, `(quickly)`, `(pause N)` and `(speed N)` set the delivery of the NARRATOR Line that follows.
+
+A later spec may give both an explicit form (for example a transition written on the heading it belongs to); until then the position is the rule.

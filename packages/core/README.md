@@ -39,8 +39,10 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 - A line that Fountain reads as something else is not an Element: an ALL-CAPS first line is a character cue, a line
   starting `#`, `=`, `~`, `>` or `.` is an outline, lyric, transition or heading. Start the line with `!` to force
   Action (`!BOX {id=a cell=mc class=box}`).
-- A transition (`> AUTO-ANIMATE`, `> CUT`) stands alone, between blank lines, right before the scene heading it leads into
-  (a `# Section` or `= synopsis` may stand between). A Scene needs a Section before it and at least one `NARRATOR` Line.
+- A transition (`> AUTO-ANIMATE`, `> CUT`) applies to the **next** scene heading: it is still positional (Fountain-native, like a
+  parenthetical, which applies to the dialogue after it) and names no Scene. It stands alone, between blank lines, right before the
+  scene heading it leads into (a `# Section` or `= synopsis` may stand between); anywhere else is a `BadTransition`. A Scene needs
+  a Section before it and at least one `NARRATOR` Line. `docs/grammar/effects.md` ends with what is not yet explicit.
 - `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
 - No title: the Plan title is `Untitled`.
 - The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).

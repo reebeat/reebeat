@@ -1,7 +1,7 @@
-# 0010 Extension architecture
+# 0012 Extension architecture
 
 Status: **plan, built** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator's direction of 2026-10-29 (declarative multimedia that is accessible, reproducible and rebuilt as you edit; multiple render engines chosen per Scene, with compositor transitions and snapshot carry-over between engines; an SDK for building render engines; open core with plugin seams and an open agent tool protocol). The ADR marks which of its decisions the operator made and which are proposed.
-Process: [spec 0000](0000-development-lifecycle.md). Number 0010 because 0004 (state machines) names 0005 and 0006, 0007 is merged, 0008 is merged and two open branches ([PR #16](https://github.com/reebeat/reebeat/pull/16) and [PR #18](https://github.com/reebeat/reebeat/pull/18)) both use 0009. Branch `docs/extension-architecture`, named by the lead (the convention is `feat/NNNN-<slug>`).
+Process: [spec 0000](0000-development-lifecycle.md). Number 0012 because the lead assigned the numbers on 2026-10-29: 0009 is the merged npm pre-releases spec, 0010 the review and verify skills, 0011 the positioning, and 0004, 0005 and 0006 the state-machine work. Branch `docs/extension-architecture`, named by the lead (the convention is `feat/NNNN-<slug>`).
 Verify skill: none, documentation only: it changes no output of `reebeat`; the falsifiers below are observed with commands on the committed files.
 Decision record: [ADR-0000](../decisions/0000-extension-architecture.md).
 
@@ -40,7 +40,7 @@ Everything in the record is a decision with a reason. Nothing is built: no packa
 | --- | --- |
 | The ADR: context, seven decisions each with alternatives and reason, consequences, open questions, sources | `docs/decisions/0000-extension-architecture.md` |
 | The ADR directory: when to write one, the template, the index | `docs/decisions/README.md` |
-| This spec | `docs/specs/0010-extension-architecture.md` |
+| This spec | `docs/specs/0012-extension-architecture.md` |
 | Glossary entries for the terms the ADR introduces (Contract, Capability, Engine, Compositor, Boundary frame, Plugin, Run, Brief) | `GLOSSARY.md`, section "Extension points" |
 
 No code is built; the PR changes documentation only.
@@ -66,7 +66,7 @@ Each is observed with a command on the head.
 - Any code: the `contracts` package, the registry, the generated docs, the engine protocol and SDK, the compositor, plugin loading, the `Sandbox` service. Each is a spec after this one (the ADR's "Order of work").
 - The README and the positioning document (another change owns them); the ADR is linked from this spec and from `docs/decisions/README.md`.
 - The grammar of the per-Scene engine Hint (it belongs to the grammar spec after 0005).
-- Publishing: [spec 0009 (PR #18)](https://github.com/reebeat/reebeat/pull/18) decides how packages reach npm. This record only says what plugin authors will peer-depend on.
+- Publishing: [spec 0009](0009-npm-prereleases.md) decides how packages reach npm. This record only says what plugin authors will peer-depend on.
 - A decision on the closed products (the studio's licence, price, sync server).
 
 ## Open questions for the operator

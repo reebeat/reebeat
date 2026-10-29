@@ -1,27 +1,35 @@
 {
   "name": "@reebeat/pipeline",
   "version": "0.0.0",
-  "private": true,
+  "description": "reebeat pipeline: the build program over the services, and the build manifest schema.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "access": "public",
+    "directory": "dist"
+  },
   "scripts": {
     "test": "bunx vp test",
-    "check": "vp check"
+    "check": "vp check",
+    "prepublishOnly": "echo 'publish the staged dist (bun run release:stage), never this directory' && exit 1"
   },
   "dependencies": {
     "@reebeat/core": "workspace:*",
     "@reebeat/services": "workspace:*",
-    "@reebeat/subtitles": "workspace:*",
-    "effect": "catalog:"
+    "@reebeat/subtitles": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
+    "effect": "catalog:",
     "typescript": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "~4.1.0"
   }
 }

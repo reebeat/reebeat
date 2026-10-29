@@ -1,5 +1,5 @@
-// F11, boundaries: packages/core is pure. Its manifest depends on exactly effect and fountain-js (the first
-// from the catalog, the second pinned exactly there), and no file under src imports a browser, Playwright,
+// F11, boundaries: packages/core is pure. Its manifest requires exactly effect (a peer dependency, spec 0009) and
+// fountain-js (a dependency pinned exactly in the root catalog), and no file under src imports a browser, Playwright,
 // ffmpeg, reveal.js, a UI runtime or a Node built-in. The lint rule `no-restricted-imports` (vite.config.ts) is
 // the second guard; this scan is the one that reads every specifier.
 import { assert, describe, it } from "@effect/vitest";
@@ -18,6 +18,7 @@ import { readLocal, readSources } from "./support.ts";
 
 const Manifest = Schema.Struct({
   dependencies: Schema.Record(Schema.String, Schema.String),
+  peerDependencies: Schema.Record(Schema.String, Schema.String),
 });
 
 const RootManifest = Schema.Struct({
@@ -76,7 +77,7 @@ const violations = (text: string): readonly string[] =>
 
 describe("F11: packages/core is pure", () => {
   it.effect(
-    "depends on exactly effect and fountain-js, the second pinned in the root catalog",
+    "requires exactly effect (a peer) and fountain-js (a dependency pinned in the root catalog)",
     () =>
       Effect.gen(function* manifest() {
         const decodeManifest = Schema.decodeUnknownEffect(
@@ -87,7 +88,7 @@ describe("F11: packages/core is pure", () => {
           Schema.fromJsonString(RootManifest)
         );
 
-        const { dependencies } = yield* Effect.flatMap(
+        const { dependencies, peerDependencies } = yield* Effect.flatMap(
           readLocal("../package.json"),
           decodeManifest
         );
@@ -98,13 +99,14 @@ describe("F11: packages/core is pure", () => {
         );
 
         assert.deepStrictEqual(
-          Arr.sort(Record.keys(dependencies), Order.String),
+          Arr.sort(
+            [...Record.keys(dependencies), ...Record.keys(peerDependencies)],
+            Order.String
+          ),
           ["effect", "fountain-js"]
         );
-        assert.deepStrictEqual(dependencies, {
-          effect: "catalog:",
-          "fountain-js": "catalog:",
-        });
+        assert.deepStrictEqual(dependencies, { "fountain-js": "catalog:" });
+        assert.deepStrictEqual(Record.keys(peerDependencies), ["effect"]);
         assert.strictEqual(catalog["fountain-js"], "1.2.4");
       })
   );

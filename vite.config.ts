@@ -200,6 +200,7 @@ export default defineConfig({
         files: [
           "tools/quality/checkTiers.ts",
           "tools/quality/effectExceptions.ts",
+          "tools/quality/stagePackages.ts",
         ],
         rules: { "unicorn/throw-new-error": "off" },
       },

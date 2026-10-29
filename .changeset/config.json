@@ -1,0 +1,23 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
+  "access": "public",
+  "baseBranch": "main",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@reebeat/core",
+      "@reebeat/lint",
+      "@reebeat/pipeline",
+      "@reebeat/render-reveal",
+      "@reebeat/services",
+      "@reebeat/sounds-synth",
+      "@reebeat/subtitles"
+    ]
+  ],
+  "privatePackages": {
+    "tag": false,
+    "version": false
+  },
+  "updateInternalDependencies": "patch"
+}

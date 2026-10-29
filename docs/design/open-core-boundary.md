@@ -60,8 +60,8 @@ Whether to enforce rule 2 by a gate (for example, a test that scans the exported
 ## Contributions
 
 - Contributions are accepted under Apache-2.0, inbound equals outbound: section 5 of the licence says a contribution submitted for inclusion is under the licence's terms unless stated otherwise. Decided 2026-10-29.
-- A Developer Certificate of Origin sign-off (`Signed-off-by`, checked by a commit hook or a CI step) is **recommended and not enforced** in this change. Whether to enforce it, and whether closed products need a contributor licence agreement instead, is **open**.
-- The copyright holder named in [`NOTICE`](../../NOTICE) is the author of the git history. Who holds the copyright when the project has more than one contributor, and whether a legal entity is set up for the products, is **open**.
+- A Developer Certificate of Origin sign-off (`Signed-off-by`, checked by a commit hook or a CI step) is **recommended and not enforced** in this change. Whether to enforce it is **open**.
+- Decided 2026-10-29: the copyright holder named in [`NOTICE`](../../NOTICE) is Philip Bjørknes Krogh, the individual (his sole proprietorship is not a separate legal person). If a company is founded later, the copyright in his own code moves to it by written assignment. Contributions stay with their authors under Apache-2.0, inbound equals outbound, so closed products need no contributor licence agreement.
 
 ## Not decided here
 

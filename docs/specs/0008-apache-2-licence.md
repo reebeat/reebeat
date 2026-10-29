@@ -26,7 +26,7 @@ A reader opens the repository and sees `LICENSE` and `NOTICE`; every `package.js
 | Part | Where |
 | --- | --- |
 | `LICENSE`: the Apache-2.0 text, fetched from `https://www.apache.org/licenses/LICENSE-2.0.txt` (SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`) | `LICENSE` |
-| `NOTICE`: the copyright line. Holder: Philip B. Krogh, the author of every commit in the git history. The README named no owner, so this is the one open question below. | `NOTICE` |
+| `NOTICE`: the copyright line. Holder: Philip Bjørknes Krogh, decided 2026-10-29 (see Revisions). | `NOTICE` |
 | `"license": "Apache-2.0"` in the root and the 15 workspace manifests | every `package.json` |
 | README "Licence" section; AGENTS.md "No LICENSE file yet" line replaced | `README.md`, `AGENTS.md` |
 | Third-party audit | `docs/design/third-party.md`, `docs/design/third-party-packages.md` |
@@ -52,10 +52,11 @@ The GLOSSARY and STATE do not mention the licence and are unchanged.
 
 ## Open questions for the operator
 
-1. **Copyright holder.** `NOTICE` names Philip B. Krogh because that is the author of all commits. If the holder should be an organisation or the project's authors, change one line of `NOTICE`.
+1. **Copyright holder.** Closed 2026-10-29: Philip Bjørknes Krogh, see Revisions.
 2. **The donor repository.** The lifecycle tooling was copied from `phibkro/vektorprogrammet-reimagined`, which has no licence file. If it has contributors besides the author, their files need their consent to be Apache-2.0 here.
-3. The open items of the open-core note: tool protocol, plugin extension points beyond adapters, a gate for experimental types in the public API, DCO enforcement and a contributor agreement for closed products.
+3. The open items of the open-core note: tool protocol, plugin extension points beyond adapters, a gate for experimental types in the public API, and DCO enforcement.
 
 ## Revisions
 
 - **2026-10-29, built with the plan.** The licence check of every manifest is a test, not a one-off edit, so a package added later without `license` fails `bun run test`. The package gate keeps one JSON file of `name@version` to licence because `bun.lock` carries no licences and `node_modules` does not hold the optional packages of other platforms.
+- **2026-10-29, copyright holder decided (supersedes the first open question and the `NOTICE` row's earlier name).** The operator decided that the holder is **Philip Bjørknes Krogh**, his full legal name. His sole proprietorship is not a separate legal person, so the holder is the individual, and `NOTICE` reads `Copyright 2026 Philip Bjørknes Krogh`. If a company is founded later, the copyright in his own code moves to it by written assignment. Contributions stay with their authors under Apache-2.0, inbound equals outbound, so closed products need no contributor licence agreement. No organisation number and no business name is published.

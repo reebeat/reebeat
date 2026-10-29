@@ -7,13 +7,28 @@ import type { Element, PlanJson, Scene } from "@reebeat/core";
 import type { Box } from "@reebeat/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
+/** The row and the column (0 to 2) of each cell of the grid; the type makes the table total. */
+const gridPosition: Record<
+  Element["cell"],
+  { readonly column: number; readonly row: number }
+> = {
+  bc: { column: 1, row: 2 },
+  bl: { column: 0, row: 2 },
+  br: { column: 2, row: 2 },
+  mc: { column: 1, row: 1 },
+  ml: { column: 0, row: 1 },
+  mr: { column: 2, row: 1 },
+  tc: { column: 1, row: 0 },
+  tl: { column: 0, row: 0 },
+  tr: { column: 2, row: 0 },
+};
+
 /** The cell of the grid as a rectangle of the frame: `tl` is the top left ninth, `mc` the middle one. */
 const cellBox = (
   cell: Element["cell"],
   size: { readonly height: number; readonly width: number }
 ): Box => {
-  const row = "tmb".indexOf(cell.charAt(0));
-  const column = "lcr".indexOf(cell.charAt(1));
+  const { column, row } = gridPosition[cell];
   const left = Math.round((column * size.width) / 3);
   const right = Math.round(((column + 1) * size.width) / 3);
   const top = Math.round((row * size.height) / 3);

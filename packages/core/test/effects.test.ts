@@ -1,7 +1,14 @@
 // The effects line (spec 0002): each form reads into the Plan's types, and what is written back reads into the same
 // effect (the law: `parseEffectLine(formatEffect(effect))` is `effect`, with seconds stored as milliseconds).
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Order, Result } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Order,
+  Result,
+  String as Str,
+  pipe,
+} from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { formatAnchor, formatEffect, parseEffectLine } from "../src/effects.ts";
@@ -237,7 +244,10 @@ describe("an effect line through a whole story", () => {
             Order.String
           ),
           Arr.sort(
-            Arr.map(effects, (row) => row.trim().split(" at ")[1] ?? ""),
+            Arr.map(
+              effects,
+              (row) => pipe(row, Str.trim, Str.split(" at "))[1] ?? ""
+            ),
             Order.String
           )
         );

@@ -3,7 +3,7 @@
 // numbers, the five unsupported constructs are flagged on the right line, and a fuzz loop of mutants that insert
 // blank lines and boneyards finds no wrong line number.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
 import { collectErrors } from "../src/build.ts";
 import { parseFountain } from "../src/parse.ts";
@@ -327,7 +327,7 @@ const normalise = (rows: readonly Row[]): readonly string[] =>
     rows,
     ([type, text, line]) =>
       `${type}|${Arr.join(
-        Arr.map(text.split("\n"), (part) => part.trim()),
+        Arr.map(Str.split(text, "\n"), (part) => Str.trim(part)),
         "\n"
       )}|${line}`
   );

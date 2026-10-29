@@ -19,6 +19,7 @@ import {
   Predicate,
   Ref,
   Stream,
+  String as Str,
 } from "effect";
 
 import { buildProgram } from "../src/buildProgram.ts";
@@ -27,12 +28,12 @@ import {
   fakeCapturer,
   fakeRenderer,
   parts,
-  platform,
   storyText,
   tinyFrames,
   worldOf,
 } from "./buildSupport.ts";
 import type { Muxed, Parts } from "./buildSupport.ts";
+import { platform } from "./support.ts";
 
 /** A story file with `text` in a temporary directory; `out` is where the build goes. */
 const setup = (text: string) =>
@@ -147,8 +148,8 @@ describe("buildProgram: a finished build", () => {
           "RIFF"
         );
         assert.isTrue(
-          (yield* fs.readFileString(`${where.out}/build.vtt`)).startsWith(
-            "WEBVTT"
+          Str.startsWith("WEBVTT")(
+            yield* fs.readFileString(`${where.out}/build.vtt`)
           )
         );
       }).pipe(Effect.scoped, Effect.provide(platform))
@@ -221,7 +222,9 @@ describe("buildProgram: a finished build", () => {
           muxed?.request.metadata.comment,
           `reebeat source-sha256 ${timed.sourceSha256}`
         );
-        assert.isTrue((muxed?.request.vtt ?? "").includes(timed.sourceSha256));
+        assert.isTrue(
+          Str.includes(timed.sourceSha256)(muxed?.request.vtt ?? "")
+        );
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
 
@@ -242,7 +245,7 @@ describe("buildProgram: a finished build", () => {
 
         const keys = Arr.map(
           Arr.flatMap(timed.timeline.scenes, (scene) => scene.lines),
-          (line) => line.audio.file.slice(0, -".flac".length)
+          (line) => Str.slice(0, -".flac".length)(line.audio.file)
         );
 
         assert.strictEqual(written.schema, 2);
@@ -345,10 +348,10 @@ describe("buildProgram: the Renderer's lifecycle", () => {
         const fs = yield* FileSystem.FileSystem;
 
         // `a` moves from one cell to another in sc2: its motion starts `startLagFrames` after the slide change.
-        const text = storyText.replace(
+        const text = Str.replace(
           "  f1: focus a",
           "  m1: sound pop at a.move.start\n  f1: focus a"
-        );
+        )(storyText);
 
         const fireOf = (lag: number) =>
           Effect.gen(function* withLag() {

@@ -4,7 +4,7 @@
 // `@reebeat/verify`'s; here they are fakes.
 import { assert, layer } from "@effect/vitest";
 import { writeManifest } from "@reebeat/pipeline";
-import { Effect, Exit, FileSystem, Path } from "effect";
+import { Effect, Exit, FileSystem, Path, String as Str } from "effect";
 
 import type { Verdict } from "../src/verify.ts";
 import {
@@ -35,7 +35,7 @@ const aBuild = Effect.gen(function* build() {
   yield* writeManifest(dir, {
     adapters: [],
     assets: [],
-    source: { path: "story.fountain", sha256: "0".repeat(64) },
+    source: { path: "story.fountain", sha256: Str.repeat(64)("0") },
   });
 
   return dir;

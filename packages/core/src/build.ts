@@ -145,7 +145,7 @@ export const collectErrors = (source: string): readonly PlanError[] =>
 /**
  * Builds the Plan of a Fountain source, or fails with the first error in document order. Deterministic: the
  * same source and hash give the same Plan. `sourceSha256` is the SHA-256 of the `.fountain` bytes, computed by the
- * caller (the CLI, with Effect's Crypto service) and copied verbatim into `plan.sourceSha256`: the core stays pure.
+ * caller (the CLI, with Effect's Digest service) and copied verbatim into `plan.sourceSha256`: the core stays pure.
  */
 export const buildPlan = Effect.fn("buildPlan")(
   (source: string, sourceSha256: string) =>

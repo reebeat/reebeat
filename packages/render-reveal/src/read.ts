@@ -1,7 +1,7 @@
 // Page to model: `readDeck` reads back what a generated `deck.html` holds (spec 0001, F3 to F5). It parses with
 // parse5, the HTML5 parser of jsdom, so the check reads the written file the way a browser would, not with a pattern
 // that happens to match what the generator emits.
-import { Array as Arr, Option, Record } from "effect";
+import { Array as Arr, Option, Record, String as Str } from "effect";
 import { defaultTreeAdapter, parse } from "parse5";
 import type { DefaultTreeAdapterMap } from "parse5";
 
@@ -76,7 +76,7 @@ const attributesOf = (element: Element): Readonly<Record<string, string>> =>
 
 const classesOf = (element: Element): readonly string[] =>
   Arr.filter(
-    (attributesOf(element).class ?? "").split(/\s+/u),
+    Str.split(attributesOf(element).class ?? "", /\s+/u),
     (name) => name !== ""
   );
 
@@ -93,7 +93,7 @@ const withClass =
 /** `data-sounds="whoosh ding"` as a list; absent reads as none. */
 const soundsOf = (attributes: Readonly<Record<string, string>>) =>
   Arr.filter(
-    (attributes["data-sounds"] ?? "").split(/\s+/u),
+    Str.split(attributes["data-sounds"] ?? "", /\s+/u),
     (name) => name !== ""
   );
 

@@ -1,7 +1,7 @@
 // Where two Plans first differ, as a path (`scenes.sc3.lines.sc3.l1.text`). Plain structural comparison with
 // Effect's `Equal`, field by field in document order; the Timeline is not compared (it exists only in `plan.json`).
 import type { Effect, Element, Line, PlanJson, Scene } from "@reebeat/core";
-import { Array as Arr, Equal, Option, Predicate } from "effect";
+import { Array as Arr, Equal, Option, Predicate, String as Str } from "effect";
 
 /** What a field of a Plan can hold. */
 type Leaf =
@@ -21,7 +21,7 @@ const shown = (value: Leaf): string => {
       ? String(value)
       : "(a structure)";
 
-  return text.length > 60 ? `${text.slice(0, 57)}...` : text;
+  return text.length > 60 ? `${Str.slice(0, 57)(text)}...` : text;
 };
 
 /** A leaf field: undefined when equal, else a sentence with the path and both values. */

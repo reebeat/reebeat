@@ -2,7 +2,7 @@
 // waits for the exit code and turns a failure to start into `AdapterUnavailable` (the binary is missing) and a
 // non-zero exit into `AlignmentFailed`.
 import { AdapterUnavailable, AlignmentFailed } from "@reebeat/services";
-import { Effect, Stream } from "effect";
+import { Effect, Stream, String as Str, pipe } from "effect";
 import { ChildProcess } from "effect/process";
 import type { ChildProcessSpawner } from "effect/process";
 
@@ -21,7 +21,8 @@ export const unavailable = (requirement: string, message: string) =>
     service: "WordAligner",
   });
 
-const tail = (output: string): string => output.trim().slice(-400);
+const tail = (output: string): string =>
+  pipe(output, Str.trim, Str.slice(-400));
 
 /** Runs `command` with `args`, returns its combined stdout and stderr; a non-zero exit code fails. */
 export const runTool = Effect.fnUntraced(function* runTool(

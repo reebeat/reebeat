@@ -1,4 +1,5 @@
 import { effectNative, strict } from "@effect/tsgo/oxlint-presets";
+import { String as Str, pipe } from "effect";
 
 import schema from "../../node_modules/@effect/tsgo/schema.json" with { type: "json" };
 
@@ -25,10 +26,12 @@ for (const name of Object.getOwnPropertyNames(defaults)) {
     continue;
   }
 
-  const kebab = name
-    .replaceAll(/(?<left>[A-Z]+)(?<right>[A-Z][a-z])/gu, "$<left>-$<right>")
-    .replaceAll(/(?<left>[a-z0-9])(?<right>[A-Z])/gu, "$<left>-$<right>")
-    .toLowerCase();
+  const kebab = pipe(
+    name,
+    Str.replaceAll(/(?<left>[A-Z]+)(?<right>[A-Z][a-z])/gu, "$<left>-$<right>"),
+    Str.replaceAll(/(?<left>[a-z0-9])(?<right>[A-Z])/gu, "$<left>-$<right>"),
+    Str.toLowerCase
+  );
 
   const rule = `effecttsgo/${kebab}`;
 

@@ -4,7 +4,7 @@
 // the Plan itself (`Effect.when.absoluteMs`), so a Plan that did not come from the parser is held to it too, and it
 // lists every absolute time (severity `info`) so a reviewer sees them all.
 import type { PlanJson } from "@reebeat/core";
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";
 
@@ -26,7 +26,7 @@ export const absoluteTimesNeedReason = (
 
       const seconds = when.absoluteMs / 1000;
 
-      return when.reason.trim() === ""
+      return Str.trim(when.reason) === ""
         ? [
             {
               line: effect.line,

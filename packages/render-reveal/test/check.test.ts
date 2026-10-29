@@ -3,7 +3,7 @@
 // check must fail naming the slide and the position.
 import { assert, describe, it } from "@effect/vitest";
 import type { PlanJson } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import { checkDeck, DeckMismatch, renderDeck } from "../src/index.ts";
 import {
@@ -52,7 +52,7 @@ const failureOf = (plan: PlanJson, written: string, edited: string) => {
 /** What `checkDeck` says about the written story page after `html.replace(search, replacement)`. */
 const afterReplace = (search: string | RegExp, replacement: string) =>
   Effect.flatMap(writtenStory, ({ html, plan }) =>
-    failureOf(plan, html, html.replace(search, replacement))
+    failureOf(plan, html, Str.replace(search, replacement)(html))
   );
 
 /** The place a mismatch names: which check, which slide, which position in it. */
@@ -106,7 +106,7 @@ describe("checkDeck", () => {
         const error = yield* failureOf(
           plan,
           html,
-          html.replace(span(html, "sc2", "r1"), "")
+          Str.replace(span(html, "sc2", "r1"), "")(html)
         );
 
         assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc2", 1]);
@@ -123,10 +123,12 @@ describe("checkDeck", () => {
       const error = yield* failureOf(
         plan,
         html,
-        html
-          .replace(first, "\u0000")
-          .replace(second, first)
-          .replace("\u0000", second)
+        pipe(
+          html,
+          Str.replace(first, "\u0000"),
+          Str.replace(second, first),
+          Str.replace("\u0000", second)
+        )
       );
 
       assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc6", 0]);
@@ -140,16 +142,16 @@ describe("checkDeck", () => {
       const target = yield* failureOf(
         plan,
         html,
-        html.replace('data-target="box"', 'data-target="twin"')
+        Str.replace('data-target="box"', 'data-target="twin"')(html)
       );
 
       const verb = yield* failureOf(
         plan,
         html,
-        html.replace(
+        Str.replace(
           'data-effect-id="f1" data-effect-verb="focus"',
           'data-effect-id="f1" data-effect-verb="show"'
-        )
+        )(html)
       );
 
       assert.deepStrictEqual(
@@ -171,10 +173,10 @@ describe("checkDeck", () => {
         const error = yield* failureOf(
           plan,
           html,
-          html.replace(
+          Str.replace(
             'data-fragment-index="1" data-effect-id="r1"',
             'data-fragment-index="7" data-effect-id="r1"'
-          )
+          )(html)
         );
 
         assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc2", 1]);
@@ -191,19 +193,25 @@ describe("checkDeck", () => {
         const dropped = yield* failureOf(
           plan,
           html,
-          html.replace(' data-sounds="whoosh ding"', "")
+          Str.replace(' data-sounds="whoosh ding"', "")(html)
         );
 
         const reordered = yield* failureOf(
           plan,
           html,
-          html.replace('data-sounds="whoosh ding"', 'data-sounds="ding whoosh"')
+          Str.replace(
+            'data-sounds="whoosh ding"',
+            'data-sounds="ding whoosh"'
+          )(html)
         );
 
         const added = yield* failureOf(
           plan,
           html,
-          html.replace('data-scene="sc2"', 'data-scene="sc2" data-sounds="pop"')
+          Str.replace(
+            'data-scene="sc2"',
+            'data-scene="sc2" data-sounds="pop"'
+          )(html)
         );
 
         assert.deepStrictEqual(
@@ -232,9 +240,11 @@ describe("checkDeck", () => {
         const error = yield* failureOf(
           plan,
           html,
-          html
-            .replace(' data-sounds="ding"', "")
-            .replace('data-target="a"', 'data-target="a" data-sounds="ding"')
+          pipe(
+            html,
+            Str.replace(' data-sounds="ding"', ""),
+            Str.replace('data-target="a"', 'data-target="a" data-sounds="ding"')
+          )
         );
 
         assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc1", 0]);
@@ -245,15 +255,15 @@ describe("checkDeck", () => {
   it.effect("F5 control: a changed hash attribute fails", () =>
     Effect.gen(function* hash() {
       const { html, plan } = yield* writtenStory;
-      const flipped = `${plan.sourceSha256.slice(0, -1)}0`;
+      const flipped = `${Str.slice(0, -1)(plan.sourceSha256)}0`;
 
       const error = yield* failureOf(
         plan,
         html,
-        html.replace(
+        Str.replace(
           `<html lang="en" data-source-sha256="${plan.sourceSha256}">`,
           `<html lang="en" data-source-sha256="${flipped}">`
-        )
+        )(html)
       );
 
       assert.strictEqual(error.check, "F5 source hash");
@@ -270,10 +280,10 @@ describe("checkDeck", () => {
       const changed = yield* failureOf(
         plan,
         html,
-        html.replace(meta, meta.replace(plan.sourceSha256, "stale"))
+        Str.replace(meta, Str.replace(plan.sourceSha256, "stale")(meta))(html)
       );
 
-      const missing = yield* failureOf(plan, html, html.replace(meta, ""));
+      const missing = yield* failureOf(plan, html, Str.replace(meta, "")(html));
 
       assert.strictEqual(changed.check, "F5 source hash");
       assert.include(changed.message, "stale");
@@ -294,10 +304,10 @@ describe("checkDeck", () => {
             ...scene,
             lines: Arr.map(scene.lines, (line) => ({
               ...line,
-              text: line.text.replace("box", "crate"),
+              text: Str.replace("box", "crate")(line.text),
             })),
           })),
-          sourceSha256: "0".repeat(64),
+          sourceSha256: Str.repeat(64)("0"),
         };
 
         assert.strictEqual(
@@ -350,19 +360,19 @@ describe("checkDeck", () => {
       const extra = yield* failureOf(
         plan,
         html,
-        html.replace(
+        Str.replace(
           box,
           `${box}<div class="el" data-id="stray" data-cell="mc">x</div>`
-        )
+        )(html)
       );
 
       const changed = yield* failureOf(
         plan,
         html,
-        html.replace(
+        Str.replace(
           'data-id="box" data-cell="ml"',
           'data-id="box" data-cell="mr"'
-        )
+        )(html)
       );
 
       assert.deepStrictEqual(
@@ -388,7 +398,7 @@ describe("checkDeck", () => {
   ])("control: a lost $what fails", ({ lost, slide }) =>
     Effect.gen(function* marks() {
       const { html, plan } = yield* writtenStory;
-      const error = yield* failureOf(plan, html, html.replace(lost, ""));
+      const error = yield* failureOf(plan, html, Str.replace(lost, "")(html));
 
       assert.deepStrictEqual(
         [error.check, error.slide],
@@ -404,7 +414,7 @@ describe("checkDeck", () => {
       const error = yield* failureOf(
         plan,
         html,
-        html.replace('data-scene="sc1"', 'data-scene="scX"')
+        Str.replace('data-scene="sc1"', 'data-scene="scX"')(html)
       );
 
       assert.deepStrictEqual([error.check, error.index], ["slides", 0]);
@@ -423,7 +433,7 @@ describe("assembleDeck re-reads its own output", () => {
         const error = yield* Effect.flip(
           writtenDeck(plan, {
             ...bundle,
-            html: bundle.html.replace(span(bundle.html, "sc2", "r1"), ""),
+            html: Str.replace(span(bundle.html, "sc2", "r1"), "")(bundle.html),
           })
         );
 

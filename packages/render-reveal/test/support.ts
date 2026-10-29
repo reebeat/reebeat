@@ -12,6 +12,7 @@ import {
   Order,
   Path,
   Predicate,
+  String as Str,
 } from "effect";
 
 import {
@@ -117,7 +118,7 @@ export const readSources = Effect.provide(
     const files = yield* fs.readDirectory(path.join(directory, "src"));
 
     return yield* Effect.forEach(
-      Arr.filter(files, (file) => file.endsWith(".ts")),
+      Arr.filter(files, (file) => Str.endsWith(".ts")(file)),
       (name) =>
         Effect.map(readPackageText(`src/${name}`), (text) => ({ name, text }))
     );

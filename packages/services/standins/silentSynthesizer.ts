@@ -1,7 +1,7 @@
 // The silent stand-in for SpeechSynthesizer: silence as long as the words would take, with synthetic word timings and
 // a trailing silence.
 // Offline and pure; its id ends `-standin`.
-import { Array as Arr, Effect, Layer } from "effect";
+import { Array as Arr, Effect, Layer, String as Str } from "effect";
 
 import { EmptyText } from "../src/errors.ts";
 import { evenSpans } from "../src/spans.ts";
@@ -34,7 +34,7 @@ export const silentSynthesizer = Layer.succeed(
       settings: { perWordMs, sampleRate, trailingMs },
     },
     synthesize: ({ speed, text }) => {
-      const words = Arr.filter(text.split(/\s+/u), (word) => word !== "");
+      const words = Arr.filter(Str.split(text, /\s+/u), (word) => word !== "");
 
       if (words.length === 0) {
         return Effect.fail(

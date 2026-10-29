@@ -2,7 +2,7 @@
 // ids, a `word(...)` phrase that the narration has and that is unambiguous unless `, n` is written), no effect waits
 // for itself, percents only on anchors with a window, `show` only on a `visible=false` Element, and every hidden
 // Element is shown once. Plain functions over the assembled Scene; each returns its errors in the order found.
-import { Array as Arr, Match, Schema } from "effect";
+import { Array as Arr, Match, Schema, String as Str } from "effect";
 
 import { formatAnchor } from "./effects.ts";
 import { planError } from "./errors.ts";
@@ -140,12 +140,16 @@ const wordErrors = (
           ? problem(
               `${text}: "${anchor.phrase}" runs from the end of one Line into the start of the next (a phrase must stay within one Line)`,
               "words that stand next to each other in one Line",
-              close === undefined ? undefined : `word("${close.toLowerCase()}")`
+              close === undefined
+                ? undefined
+                : `word("${Str.toLowerCase(close)}")`
             )
           : problem(
               `${text}: the narration of Scene ${scene.id} has no "${anchor.phrase}"`,
               "words that the Lines of this Scene say",
-              close === undefined ? undefined : `word("${close.toLowerCase()}")`
+              close === undefined
+                ? undefined
+                : `word("${Str.toLowerCase(close)}")`
             )
       ),
     ];

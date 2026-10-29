@@ -9,7 +9,7 @@
 //   - F6 sees the audio: two builds that differ only in their audio fail;
 //   - a Line's audio file is read only from inside the speech cache.
 import { assert, layer } from "@effect/vitest";
-import { Effect, Path } from "effect";
+import { Effect, Path, String as Str } from "effect";
 
 import { BuildInvalid, compareBuilds } from "../src/index.ts";
 import {
@@ -258,7 +258,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const fixture = yield* Fixture;
 
           const first =
-            narrationFile(fixture, "sc1.l1").split("/").at(-1) ?? "";
+            Str.split(narrationFile(fixture, "sc1.l1"), "/").at(-1) ?? "";
 
           for (const [name, file] of [
             ["escape", "../x.flac"],

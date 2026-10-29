@@ -14,6 +14,7 @@ import {
   Path,
   Schema,
   Stream,
+  String as Str,
 } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
@@ -55,7 +56,7 @@ const committed = Effect.gen(function* asset() {
 
   const parts = yield* Effect.forEach(
     Arr.filter(yield* fs.readDirectory(cache), (name) =>
-      name.endsWith(".provenance.json")
+      Str.endsWith(".provenance.json")(name)
     ),
     (name) =>
       Effect.map(
@@ -116,7 +117,7 @@ layer(Layer.merge(aligner, platform))("whisper.cpp on real speech", (it) => {
 
         const { match, spans: heard } = yield* (yield* WordAligner).align({
           clip,
-          words: text.split(" "),
+          words: Str.split(text, " "),
         });
 
         assert.isAtLeast(match, 0.9);

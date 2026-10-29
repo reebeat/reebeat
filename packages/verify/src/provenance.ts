@@ -9,10 +9,10 @@ import {
   serviceNames,
 } from "@reebeat/services";
 import type { Settings } from "@reebeat/services";
-import { Array as Arr, Predicate, Record, Schema } from "effect";
+import { Array as Arr, Predicate, Record, Schema, String as Str } from "effect";
 
 /** The cache key of a Line's audio file `<key>.<name>`: the part before the first dot. */
-const keyOfAudio = (file: string): string => file.split(".")[0] ?? file;
+const keyOfAudio = (file: string): string => Str.split(file, ".")[0] ?? file;
 
 const isSettings = Schema.is(SettingsSchema);
 

@@ -9,7 +9,7 @@
 //   - a cue before the first word of the Scene is the slide change for a sound and the first word for the rest.
 //
 // Plain functions over the Scene's drafts.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, String as Str } from "effect";
 
 import { formatAnchor } from "./effects.ts";
 import { planError } from "./errors.ts";
@@ -41,7 +41,7 @@ export interface CueScene {
 
 /** A word as an anchor names it: without the punctuation around it. */
 const usable = (word: string): string =>
-  word.replaceAll(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+  Str.replaceAll(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")(word);
 
 interface WordAt {
   readonly line: number;

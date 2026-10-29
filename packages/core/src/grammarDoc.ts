@@ -3,7 +3,7 @@
 // reads (a valid one builds; an invalid one fails with the message printed under it, taken from the parser). A test
 // compares the checked-in file with this text and parses every example of it, so the document cannot disagree with
 // the parser; `tools/quality/genGrammar.ts` writes it. A plain function.
-import { Array as Arr, Record } from "effect";
+import { Array as Arr, Record, String as Str } from "effect";
 
 import { collectErrors } from "./build.ts";
 import {
@@ -167,7 +167,7 @@ const invalid: readonly Example[] = [
 ];
 
 /** `|` inside a table cell. */
-const cell = (text: string): string => text.replaceAll("|", "\\|");
+const cell = (text: string): string => Str.replaceAll("|", "\\|")(text);
 
 const code = (text: string): string => `\`${text}\``;
 
@@ -189,7 +189,7 @@ const table = (
 
 const block = (language: string, text: string): readonly string[] => [
   `\`\`\`${language}`,
-  text.trimEnd(),
+  Str.trimEnd(text),
   "```",
   "",
 ];
@@ -252,7 +252,7 @@ export const grammarDocument = (): string =>
       "```text",
       ...Arr.map(
         productions,
-        ({ name, rule }) => `${name.padEnd(widest)}::= ${rule}`
+        ({ name, rule }) => `${Str.padEnd(widest)(name)}::= ${rule}`
       ),
       "```",
       "",

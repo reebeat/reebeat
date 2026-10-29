@@ -1,6 +1,6 @@
 // The contract of Renderer: what every deck renderer (reveal.js, a later motion engine) promises.
 import { assert } from "@effect/vitest";
-import { Array as Arr, Effect, Predicate } from "effect";
+import { Array as Arr, Effect, Predicate, String as Str } from "effect";
 import type { Layer } from "effect";
 
 import type { RenderError } from "../src/errors.ts";
@@ -73,9 +73,9 @@ export const rendererClauses = (
         assert.deepStrictEqual(Arr.dedupe(paths), paths);
 
         for (const path of paths) {
-          assert.isFalse(path.startsWith("/"), `${path} is relative`);
+          assert.isFalse(Str.startsWith("/")(path), `${path} is relative`);
           assert.isFalse(
-            Arr.contains(path.split("/"), ".."),
+            Arr.contains(Str.split(path, "/"), ".."),
             `${path} stays inside`
           );
         }

@@ -10,7 +10,7 @@ and rebuild the Plan from the source with the core's `buildPlan`. It reads `buil
 Spec: [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md).
 
 ```text
-runChecks({ buildDir, sourcePath, cacheDir? })   Effect<readonly Verdict[], BuildInvalid, FileSystem | Path | Crypto | MediaTools>
+runChecks({ buildDir, sourcePath, cacheDir? })   Effect<readonly Verdict[], BuildInvalid, FileSystem | Path | Digest | MediaTools>
 compareBuilds(dirA, dirB)                        Effect<Verdict, BuildInvalid, same>         F6: one Verdict
 renderVerdicts(verdicts) : string                the table                                   pure
 exitCode(verdicts) : 0 | 1                       0 only when there is a Verdict and none fails (`na` does not)   pure

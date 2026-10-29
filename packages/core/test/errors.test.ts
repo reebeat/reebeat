@@ -3,7 +3,7 @@
 // what was expected, the nearest valid form). `buildPlan` fails with the first error in document order;
 // `collectErrors` lists them all in that order.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
@@ -47,12 +47,12 @@ const base = asText([
 /** The base story with its only occurrence of `from` replaced by `to`. */
 const change = (from: string, to: string): string => {
   assert.strictEqual(
-    base.split(from).length,
+    Str.split(base, from).length,
     2,
     `${from} occurs once in the base`
   );
 
-  return base.replace(from, to);
+  return Str.replace(from, to)(base);
 };
 
 const firstError = (source: string) =>
@@ -284,10 +284,10 @@ const cases: readonly Case[] = [
       'word("there goodbye").end: "there goodbye" runs from the end of one Line into the start of the next (a phrase must stay within one Line); expected words that stand next to each other in one Line; did you mean word("there")?',
     name: "a phrase that runs across two Lines states the rule",
     needle: 'word("there goodbye")',
-    source: change('word("hello").end', 'word("there goodbye").end').replace(
+    source: Str.replace(
       "Hello there. Goodbye.",
       "Hello there.\n\nNARRATOR\nGoodbye."
-    ),
+    )(change('word("hello").end', 'word("there goodbye").end')),
     tag: "UnknownReference",
   },
   {
@@ -311,10 +311,10 @@ const cases: readonly Case[] = [
       'h.enter on Element "h", which is visible=false and has no show effect; expected a show effect for h (hidden Elements have enter, from their show effect, and nothing else)',
     name: "an enter anchor on a hidden Element that no show reveals",
     needle: "h.enter.start",
-    source: change(noReveal, "").replace(
+    source: Str.replace(
       "at r1.end +100ms",
       "at h.enter.start"
-    ),
+    )(change(noReveal, "")),
     tag: "NoSuchEvent",
   },
   {
@@ -407,10 +407,10 @@ const cases: readonly Case[] = [
       'Element "h" is visible=false and no effect shows it; expected a line of the [[effects]] block: r1: show h at word("<phrase>").end',
     name: "a visible=false Element that no effect shows",
     needle: "Later {id=h",
-    source: change(noReveal, "").replace(
+    source: Str.replace(
       "at r1.end +100ms",
       'at word("goodbye").end'
-    ),
+    )(change(noReveal, "")),
     tag: "HiddenNeverRevealed",
   },
   {
@@ -459,12 +459,14 @@ const cases: readonly Case[] = [
       "an [[effects]] block after the first dialogue; expected the block before the first NARRATOR line of its Scene",
     name: "an effects block after the dialogue",
     needle: "q1: sound",
-    source: base
-      .replace(/\[\[effects\n {2}r1[\s\S]*?\n\]\]\n\n/u, "")
-      .replace(
+    source: pipe(
+      base,
+      Str.replace(/\[\[effects\n {2}r1[\s\S]*?\n\]\]\n\n/u, ""),
+      Str.replace(
         "Hello there. Goodbye.\n",
         "Hello there. Goodbye.\n\n[[effects\n  q1: sound pop at scene.start\n]]\n"
-      ),
+      )
+    ),
     tag: "BadEffectsBlock",
   },
 ];
@@ -591,10 +593,10 @@ describe("what is valid stays valid", () => {
   });
 
   it("an occurrence number makes a repeated phrase unambiguous", () => {
-    const source = change("Hello there.", "Hello there. Hello again.").replace(
+    const source = Str.replace(
       'word("hello")',
       'word("hello", 2)'
-    );
+    )(change("Hello there.", "Hello there. Hello again."));
 
     assert.deepStrictEqual(collectErrors(source), []);
   });
@@ -620,10 +622,10 @@ describe("what is valid stays valid", () => {
 
 describe("the other errors of the Plan stage", () => {
   it("lists several errors of one source in document order", () => {
-    const source = change("cell=tl", "cell=zz").replace(
+    const source = Str.replace(
       "sound pop",
       "sound pops"
-    );
+    )(change("cell=tl", "cell=zz"));
 
     const tags = Arr.map(collectErrors(source), (found) => [
       found._tag,

@@ -1,6 +1,12 @@
 import { effectNative, strict } from "@effect/tsgo/oxlint-presets";
 import { describe, it } from "@effect/vitest";
-import { Array as Arr, Option, Record as Rec } from "effect";
+import {
+  Array as Arr,
+  Option,
+  Record as Rec,
+  String as Str,
+  pipe,
+} from "effect";
 import { expect } from "vite-plus/test";
 
 import oxlintSchema from "../../../node_modules/@effect/tsgo/oxlint-schema.json" with { type: "json" };
@@ -22,8 +28,9 @@ const checkRule = (name: string, severity: string) => {
   const match = Arr.findFirst(
     available,
     (key) =>
-      key.startsWith("effecttsgo/") &&
-      key.slice(11).replaceAll("-", "") === name.toLowerCase()
+      Str.startsWith("effecttsgo/")(key) &&
+      pipe(key, Str.slice(11), Str.replaceAll("-", "")) ===
+        Str.toLowerCase(name)
   );
 
   const rule = Option.getOrThrow(match);

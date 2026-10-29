@@ -4,7 +4,7 @@
 import { frameToMs } from "@reebeat/core";
 import type { TimedPlan } from "@reebeat/core";
 import type { MuxRequest } from "@reebeat/services";
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, String as Str } from "effect";
 
 import { audioName } from "./speechAsset.ts";
 
@@ -27,7 +27,7 @@ export const narrationStarts = (plan: TimedPlan): readonly NarrationStart[] =>
   Arr.map(
     Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines),
     (line) => ({
-      key: line.audio.file.slice(0, -`.${audioName}`.length),
+      key: Str.slice(0, -`.${audioName}`.length)(line.audio.file),
       lineId: line.lineId,
       startMs: frameToMs(line.startFrame, plan.settings.fps),
     })

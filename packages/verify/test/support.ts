@@ -2,7 +2,7 @@
 // (parse, schedule, reveal.js deck, capture in Chromium, mux with ffmpeg, a filesystem cache) into a build directory,
 // and the helpers that copy it, change one file of the copy and run the checks. The narrator is a test synthesiser
 // whose "speech" is seeded noise, so the narration is audible to the checks (the silent stand-in is not).
-import { NodeServices } from "@effect/platform-node";
+import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { fsAssetCache } from "@reebeat/cache-fs";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
@@ -51,6 +51,7 @@ import {
   Path,
   Ref,
   Stream,
+  String as Str,
 } from "effect";
 import type { PlatformError } from "effect";
 
@@ -58,10 +59,11 @@ import { renderVerdicts, runChecks } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { timedLines } from "../src/planParts.ts";
 
+/** The platform services and the SHA-256 digest the checks and the helpers run on. */
+const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
+
 /** The services the checks and the helpers run on: ffmpeg, the file system and hashing. */
-export const services = MediaTools.layer.pipe(
-  Layer.provideMerge(NodeServices.layer)
-);
+export const services = MediaTools.layer.pipe(Layer.provideMerge(platform));
 
 /**
  * Two Sections, two Scenes: a show (0.1 s after "two"), a focus and a sound (a pop that rides on the focus's step) in the first, then an Auto-Animate
@@ -158,9 +160,10 @@ const noiseAt = (seed: number, index: number): number => {
 /** A seed of the text: the sum of its characters modulo a prime, so every Line has its own noise. */
 const seedOf = (text: string): number =>
   Arr.reduce(
-    text.split(""),
+    Str.split(text, ""),
     17,
-    (sum, char) => (sum * 31 + (char.codePointAt(0) ?? 0)) % 9973
+    (sum, char) =>
+      (sum * 31 + Option.getOrElse(Str.codePointAt(char, 0), () => 0)) % 9973
   );
 
 /**
@@ -179,7 +182,7 @@ const noiseSynthesizer = Layer.succeed(
       text,
     }) {
       const [first, ...rest] = Arr.filter(
-        Arr.fromIterable(text.split(/\s+/u)),
+        Arr.fromIterable(Str.split(text, /\s+/u)),
         (word) => word !== ""
       );
 
@@ -257,7 +260,7 @@ const adapters = (
     frames === undefined ? chromiumCapturer : recordingCapturer(frames),
     ffmpegEncoder,
     fsAssetCache(cacheDir)
-  ).pipe(Layer.provide(NodeServices.layer));
+  ).pipe(Layer.provide(platform));
 
 /** Every file below `dir`, relative to it, in name order. */
 const filesBelow = Effect.fnUntraced(function* filesBelow(dir: string) {
@@ -470,7 +473,7 @@ export const replaceInFile = (file: string, from: string, to: string) =>
   editFile(file, (text) => {
     assert.include(text, from, file);
 
-    return text.replace(from, to);
+    return Str.replace(from, to)(text);
   });
 
 /** Runs ffmpeg with `args` and ignores its output. */
@@ -538,7 +541,7 @@ export const readSources = Effect.gen(function* sources() {
   );
 
   const texts = yield* Effect.forEach(
-    Arr.filter(names, (name) => name.endsWith(".ts")),
+    Arr.filter(names, (name) => Str.endsWith(".ts")(name)),
     (name) => Effect.map(packageFile("src", name), (text) => ({ name, text }))
   );
 
@@ -673,7 +676,7 @@ export const recapture = (plan: TimedPlan, deckDir?: string) =>
 /** What muxing frames under the intact build's Plan needs besides the platform: the sounds, ffmpeg and the cache. */
 const muxing = (cacheDir: string) =>
   Layer.mergeAll(synthSounds, ffmpegEncoder, fsAssetCache(cacheDir)).pipe(
-    Layer.provide(NodeServices.layer)
+    Layer.provide(platform)
   );
 
 /**
@@ -860,7 +863,7 @@ export const soundFile = (fixture: FixtureData, name: string): string =>
 /** The measured rows of a verdict as `name: value` text, to find one effect's row by what starts it. */
 export const rowOf = (verdict: Verdict, start: string): string =>
   Option.getOrThrow(
-    Arr.findFirst(measuredOf(verdict), (row) => row.startsWith(start))
+    Arr.findFirst(measuredOf(verdict), (row) => Str.startsWith(start)(row))
   );
 
 /** The number in the `offset` group of a match of F1's row, or undefined when the row has none. */

@@ -2,7 +2,6 @@
 // selection picks (the offline stand-ins for narration, the real reveal.js Renderer and the real ffmpeg Encoder);
 // only Chromium and the verification are replaced by fakes, through `Composition`, which is the seam the composition
 // root offers. The environment the adapters read is a test's own `ConfigProvider`, never the machine's.
-import { NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
 import { MediaTools } from "@reebeat/encode-ffmpeg";
@@ -27,7 +26,7 @@ import { Verifier } from "../src/verifier.ts";
 import type { Status, Verdict } from "../src/verify.ts";
 
 /** The platform services the tests run on: the tests' one runtime adapter. */
-export const platform = NodeServices.layer;
+export { platform } from "./platform.ts";
 
 /** Joins rows of a source text with newlines. */
 const asText = (rows: readonly string[]): string => Arr.join(rows, "\n");

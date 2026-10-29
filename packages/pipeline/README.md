@@ -14,7 +14,7 @@ Everything is written into `<out>.partial` and renamed to `<out>` once `build.js
 
 | Export | What it is |
 | --- | --- |
-| `buildProgram(options)` | the build above; effects are resolved against the `lifecycle` the selected Renderer declares (`info.lifecycle`), which `build.json` records on the Renderer's adapter record; needs the seven services, `FileSystem`, `Path` and `Crypto`; returns the summary (files, frames, sizes, seconds, the adapters) |
+| `buildProgram(options)` | the build above; effects are resolved against the `lifecycle` the selected Renderer declares (`info.lifecycle`), which `build.json` records on the Renderer's adapter record; needs the seven services, `FileSystem`, `Path` and `Digest`; returns the summary (files, frames, sizes, seconds, the adapters) |
 | `muxStage(plan, frames, { name, outDir })` | the narration, sounds, subtitles and chapters of a Plan muxed with a given frame stream: what the verify tests use to re-mux a changed capture |
 | `writeRenderedDeck`, `writeSounds` | the Renderer's files and the sounds under one directory (a path that leaves it is refused) |
 | `manifestFile`, `BuildManifestSchema`, `writeManifest` | `build.json` |
@@ -33,7 +33,7 @@ Plan ──speechStage(plan, { refresh })──▶ AlignedLine[] ──core `sch
 
 | Export | What it is |
 | --- | --- |
-| `speechStage(plan, { refresh, voice? })` | `Effect<AlignedLine[]>` over `AssetCache`, `SpeechSynthesizer`, `WordAligner`, `Encoder` and `Crypto`; one Line at a time, in order. A hit calls no model |
+| `speechStage(plan, { refresh, voice? })` | `Effect<AlignedLine[]>` over `AssetCache`, `SpeechSynthesizer`, `WordAligner`, `Encoder` and `Digest`; one Line at a time, in order. A hit calls no model |
 | `SpeechCacheMiss`, `AlignmentBelowThreshold`, `SpeechAssetInvalid` | the stage's own tagged errors; the services' errors (`AdapterUnavailable`, `SynthesisFailed`, `CacheFailed`, ...) pass through unchanged |
 | `pipelineVersion`, `defaultVoice` | `speech-v2` (part of every key) and `af_heart` |
 

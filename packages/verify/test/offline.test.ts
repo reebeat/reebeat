@@ -3,7 +3,7 @@
 // still observes every `sound` effect and the whoosh anchored to the slide change against the picture. Without this,
 // the sound anchoring would be unchecked on every offline build.
 import { assert, layer } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { exitCode } from "../src/index.ts";
 import {
@@ -42,9 +42,9 @@ layer(Fixture.offlineLayer, {
           Arr.some(
             measured,
             (row) =>
-              row.startsWith("sc1.p1 sound pop") &&
-              row.includes("sound onset") &&
-              row.includes("match score")
+              Str.startsWith("sc1.p1 sound pop")(row) &&
+              Str.includes("sound onset")(row) &&
+              Str.includes("match score")(row)
           ),
           "the pop is found in the track"
         );

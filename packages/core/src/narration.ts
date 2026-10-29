@@ -2,6 +2,8 @@
 // subtitled, so it contains no `[[...]]` at all). A note in dialogue is a release-1 cue: it is returned with its
 // position, and the Scene (`hints.ts`) turns it into an error that carries the replacement. A plain function.
 
+import { Array as Arr, Option, String as Str, pipe } from "effect";
+
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import { problem } from "./grammar.ts";
@@ -23,14 +25,21 @@ export interface Narration {
 
 const notePattern = /\[\[(?<inner>[\s\S]*?)\]\]/gu;
 
-const collapse = (text: string): string => text.replaceAll(/\s+/gu, " ").trim();
+/** The same pattern as a split: the capture puts the inner text of each note at an odd position of the result. */
+const notePart = new RegExp(notePattern.source, "u");
+
+/** `[[` and `]]` around the inner text of a note. */
+const noteBracketLength = 4;
+
+const collapse = (text: string): string =>
+  pipe(text, Str.replaceAll(/\s+/gu, " "), Str.trim);
 
 const wordsOf = (text: string): readonly string[] =>
-  text === "" ? [] : text.split(" ");
+  text === "" ? [] : Str.split(text, " ");
 
 /** The 1-based source line of `offset` in a dialogue text whose first line is `firstLine`. */
 const lineAt = (text: string, offset: number, firstLine: number): number =>
-  firstLine + text.slice(0, offset).split("\n").length - 1;
+  firstLine + pipe(text, Str.slice(0, offset), Str.split("\n")).length - 1;
 
 /**
  * Splits the dialogue of one Line. `text` is the token text (lines joined by `\n`); `firstLine` is the source line
@@ -40,30 +49,36 @@ export const parseNarration = (text: string, firstLine: number): Narration => {
   const errors: PlanError[] = [];
   const cues: LegacyCue[] = [];
   let before = "";
-  let cursor = 0;
+  let offset = 0;
 
-  for (const match of text.matchAll(notePattern)) {
-    before += text.slice(cursor, match.index);
-    cursor = match.index + match[0].length;
-
-    cues.push({
-      inner: collapse(match.groups?.inner ?? ""),
-      line: lineAt(text, match.index, firstLine),
-      wordsBefore: wordsOf(collapse(before)).length,
-    });
+  for (const [index, part] of Str.split(text, notePart).entries()) {
+    if (index % 2 === 0) {
+      before += part;
+      offset += part.length;
+    } else {
+      cues.push({
+        inner: collapse(part),
+        line: lineAt(text, offset, firstLine),
+        wordsBefore: wordsOf(collapse(before)).length,
+      });
+      offset += part.length + noteBracketLength;
+    }
   }
 
-  const masked = text.replaceAll(notePattern, (note) =>
-    note.replaceAll(/[^\n]/gu, " ")
+  const masked = Arr.join(
+    Arr.map(Str.split(text, notePart), (part, index) =>
+      index % 2 === 1 ? Str.replaceAll(/[^\n]/gu, " ")(`[[${part}]]`) : part
+    ),
+    ""
   );
 
-  const stray = masked.search(/\[\[|\]\]/u);
+  const stray = Str.search(masked, /\[\[|\]\]/u);
 
-  if (stray !== -1) {
+  if (Option.isSome(stray)) {
     errors.push(
       planError(
         "ReleaseOneForm",
-        lineAt(text, stray, firstLine),
+        lineAt(text, stray.value, firstLine),
         problem(
           "unbalanced [[ or ]] in dialogue",
           "no note in dialogue; effects live in the [[effects]] block of the Scene"
@@ -72,13 +87,13 @@ export const parseNarration = (text: string, firstLine: number): Narration => {
     );
   }
 
-  const emphasis = masked.search(/[*_]/u);
+  const emphasis = Str.search(masked, /[*_]/u);
 
-  if (emphasis !== -1) {
+  if (Option.isSome(emphasis)) {
     errors.push(
       planError(
         "EmphasisInDialogue",
-        lineAt(text, emphasis, firstLine),
+        lineAt(text, emphasis.value, firstLine),
         problem(
           "emphasis markers (* and _) in dialogue",
           "plain words: narration, subtitles and notes are one string"
@@ -87,7 +102,7 @@ export const parseNarration = (text: string, firstLine: number): Narration => {
     );
   }
 
-  const narration = collapse(text.replaceAll(notePattern, ""));
+  const narration = collapse(Str.replaceAll(notePattern, "")(text));
 
   return { cues, errors, text: narration, words: wordsOf(narration) };
 };

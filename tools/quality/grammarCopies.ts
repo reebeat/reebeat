@@ -6,7 +6,7 @@
 // member (`effect.verb === "sound"`, an object `{ edge: "end" }`) is not a copy: the type checker holds it to the
 // closed set. The closed sets are DEFINED in `packages/core/src/plan.ts` (cells, classes, sounds, verbs, edges, events)
 // and `grammar.ts` (keywords, anchor words, units), the two files the scan skips. Pure functions over one file's text.
-import { Array as Arr, Record, Schema } from "effect";
+import { Array as Arr, Record, Schema, String as Str, pipe } from "effect";
 import { parseSync } from "oxc-parser";
 
 /** What the syntax is made of, as the scan needs it. */
@@ -106,16 +106,18 @@ const constructedPattern = (node: Node): Node | undefined =>
 /** The letters of a pattern that stand for themselves: without escapes, group names and property classes. */
 const spelledWords = (pattern: string): readonly string[] =>
   Arr.filter(
-    pattern
-      .replaceAll(/\\[pP]\{[^}]*\}/gu, " ")
-      .replaceAll(/\(\?<[A-Za-z_]\w*>/gu, "(")
-      .replaceAll(/\\./gu, " ")
-      .split(/[^A-Za-z]+/u),
+    pipe(
+      pattern,
+      Str.replaceAll(/\\[pP]\{[^}]*\}/gu, " "),
+      Str.replaceAll(/\(\?<[A-Za-z_]\w*>/gu, "("),
+      Str.replaceAll(/\\./gu, " "),
+      Str.split(/[^A-Za-z]+/u)
+    ),
     (word) => word !== ""
   );
 
 const lineOf = (text: string, offset: number): number =>
-  text.slice(0, offset).split("\n").length;
+  pipe(text, Str.slice(0, offset), Str.split("\n")).length;
 
 const regexCopies = (
   pattern: string,
@@ -127,7 +129,7 @@ const regexCopies = (
     ),
     (word) => `a regular expression spells "${word}"`
   ),
-  ...(pattern.includes(vocabulary.idRule)
+  ...(Str.includes(vocabulary.idRule)(pattern)
     ? ["a regular expression repeats the id rule"]
     : []),
 ];
@@ -136,7 +138,7 @@ const alternationCopies = (
   text: string,
   vocabulary: Vocabulary
 ): readonly string[] => {
-  const parts = Arr.map(text.split("|"), (part) => part.trim());
+  const parts = Arr.map(Str.split(text, "|"), (part) => Str.trim(part));
 
   return parts.length < 2
     ? []
@@ -193,7 +195,12 @@ export const copiesIn = (
       found.push({
         line: lineOf(text, node.start),
         reason,
-        text: text.slice(node.start, node.start + 60).split("\n")[0] ?? "",
+        text:
+          pipe(
+            text,
+            Str.slice(node.start, node.start + 60),
+            Str.split("\n")
+          )[0] ?? "",
       });
     }
 

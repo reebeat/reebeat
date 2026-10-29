@@ -1,7 +1,6 @@
 // What the build program's tests run on: the stand-ins of the services, a fake Renderer, a fake FrameCapturer and a
 // fake Encoder that records what `mux` was asked and writes a placeholder file. No model, browser or binary: the
 // tests prove what the program does with the services, not what an adapter does (the contract suites do that).
-import { NodeServices } from "@effect/platform-node";
 import type { RendererLifecycle } from "@reebeat/core";
 import {
   CaptureError,
@@ -34,11 +33,9 @@ import {
   Ref,
   Stream,
 } from "effect";
-import type { Crypto } from "effect";
+import type { Digest } from "effect/crypto";
 
-import { fakeEncoder } from "./support.ts";
-
-export const platform = NodeServices.layer;
+import { fakeEncoder, platform } from "./support.ts";
 
 /** The info of a local fake: nothing is sent out. */
 const localInfo = (id: string): AdapterInfo => ({
@@ -190,7 +187,7 @@ const recordingEncoder = (seen: Ref.Ref<readonly Muxed[]>) =>
 /** The seven layers a build runs on. */
 export interface Parts {
   readonly aligner: Layer.Layer<WordAligner>;
-  readonly cache: Layer.Layer<AssetCache, never, Crypto.Crypto>;
+  readonly cache: Layer.Layer<AssetCache, never, Digest.Digest>;
   readonly capturer: Layer.Layer<
     FrameCapturer,
     never,

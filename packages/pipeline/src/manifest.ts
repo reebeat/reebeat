@@ -14,7 +14,15 @@ import {
   SettingsSchema,
   serviceNames,
 } from "@reebeat/services";
-import { Array as Arr, Effect, FileSystem, Order, Path, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Order,
+  Path,
+  Schema,
+  String as Str,
+} from "effect";
 
 import { outputFailed } from "./errors.ts";
 import { sha256Hex } from "./hash.ts";
@@ -85,7 +93,7 @@ const listFiles = Effect.fnUntraced(function* listFiles(dir: string) {
   );
 
   return Arr.sort(
-    Arr.map(files, (file) => Arr.join(file.split(path.sep), "/")),
+    Arr.map(files, (file) => Arr.join(Str.split(file, path.sep), "/")),
     Order.String
   );
 });

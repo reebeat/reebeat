@@ -15,6 +15,7 @@ import {
   Layer,
   Path,
   Predicate,
+  String as Str,
 } from "effect";
 
 import { revealRenderer } from "../src/index.ts";
@@ -30,7 +31,7 @@ import {
 } from "./support.ts";
 
 const urlsIn = (text: string, pattern: RegExp): readonly string[] =>
-  Arr.map([...text.matchAll(pattern)], ({ groups }) => groups?.url ?? "");
+  Arr.map([...Str.matchAll(pattern)(text)], ({ groups }) => groups?.url ?? "");
 
 const adapter = revealLayer;
 
@@ -121,7 +122,7 @@ describe("control", () => {
           yield* failingClauses(
             broken(
               editText((text) =>
-                text.replaceAll(/data-id="[^"]*"/gu, 'data-id=""')
+                Str.replaceAll(/data-id="[^"]*"/gu, 'data-id=""')(text)
               )
             ),
             clauses

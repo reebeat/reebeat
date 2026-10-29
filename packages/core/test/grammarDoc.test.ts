@@ -3,7 +3,7 @@
 // fails until `bun tools/quality/genGrammar.ts` is run), every `fountain` example must build a Plan, and every
 // `fountain-invalid` example must fail with exactly the error printed under it.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import { grammarDocument } from "../src/grammarDoc.ts";
@@ -22,9 +22,9 @@ interface Example {
 const examplesOf = (document: string): readonly Example[] =>
   Arr.map(
     [
-      ...document.matchAll(
+      ...Str.matchAll(
         /```(?<kind>fountain(?:-invalid)?)\n(?<source>[\s\S]*?)\n```\n(?:\n> line (?<line>\d+), (?<tag>\w+): (?<message>.*)\n)?/gu
-      ),
+      )(document),
     ],
     ({ groups }): Example => ({
       error:

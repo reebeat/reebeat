@@ -1,6 +1,6 @@
 // Shared by the pipeline tests: the platform (for the cache's digest), a two-Line Plan, a tiny fake Encoder and
 // spies that count what the speech services were asked.
-import { NodeServices } from "@effect/platform-node";
+import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { buildPlan } from "@reebeat/core";
 import {
   Encoder,
@@ -9,9 +9,9 @@ import {
   localEgress,
 } from "@reebeat/services";
 import type { AudioClip } from "@reebeat/services";
-import { Array as Arr, Effect, Layer, Ref } from "effect";
+import { Array as Arr, Effect, Layer, Ref, String as Str } from "effect";
 
-export const platform = NodeServices.layer;
+export const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
 
 const source = Arr.join(
   [
@@ -35,7 +35,7 @@ const source = Arr.join(
 );
 
 /** The Plan of `source`: two Lines, the second one slowly. */
-export const fixturePlan = buildPlan(source, "5ca1ab1e".repeat(8));
+export const fixturePlan = buildPlan(source, Str.repeat(8)("5ca1ab1e"));
 
 const headerBytes = 4;
 

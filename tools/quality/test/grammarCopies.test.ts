@@ -13,7 +13,15 @@ import {
   sourceUnits,
   verbs,
 } from "@reebeat/core";
-import { Array as Arr, Effect, FileSystem, Order, Path, Record } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Order,
+  Path,
+  Record,
+  String as Str,
+} from "effect";
 import type { PlatformError } from "effect";
 
 import { copiesIn } from "../grammarCopies.ts";
@@ -179,7 +187,7 @@ const sources: Effect.Effect<
         const files = (yield* fs.exists(src))
           ? Arr.filter(
               yield* fs.readDirectory(src, { recursive: true }),
-              (file) => file.endsWith(".ts")
+              (file) => Str.endsWith(".ts")(file)
             )
           : [];
 

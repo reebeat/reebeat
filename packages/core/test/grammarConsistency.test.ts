@@ -7,7 +7,15 @@
 //   3. Every mutation of one token of a valid sentence (the `at` dropped; a verb, edge, event or unit misspelt) is
 //      an error.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Option, Order, Record, Result } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Option,
+  Order,
+  Record,
+  Result,
+  String as Str,
+} from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import { parseEffectLine } from "../src/effects.ts";
@@ -146,7 +154,7 @@ describe("every production of the grammar has examples that the parser reads as 
     }
 
     assert.deepStrictEqual(
-      Arr.filter(offsetExamples, (offset) => !examples.includes(offset)),
+      Arr.filter(offsetExamples, (offset) => !Str.includes(offset)(examples)),
       []
     );
   });
@@ -224,7 +232,7 @@ const forms: readonly Form[] = [
 const atSlide = (form: Form): boolean =>
   form.text === `${anchorWords.scene}.${firstEdge}` ||
   form.text === `${anchorWords.transition}.${firstEdge}` ||
-  form.text.includes(".exit.");
+  Str.includes(".exit.")(form.text);
 
 interface Sentence {
   readonly line: string;
@@ -340,7 +348,7 @@ describe("sentences generated from the closed sets", () => {
           assert.isDefined(timed, sentence.line);
           assert.strictEqual(
             timed?.intent,
-            sentence.line.split(` ${keywords.at} `)[1],
+            Str.split(sentence.line, ` ${keywords.at} `)[1],
             sentence.line
           );
         }
@@ -353,14 +361,16 @@ const mutants = (sentence: Sentence): readonly string[] => {
   const { line } = sentence;
 
   return [
-    line.replace(` ${keywords.at} `, " "),
-    line.replace(`: ${sentence.verb} `, `: ${sentence.verb}x `),
+    Str.replace(` ${keywords.at} `, " ")(line),
+    Str.replace(`: ${sentence.verb} `, `: ${sentence.verb}x `)(line),
     ...Arr.flatMap(edges, (edge) =>
-      line.includes(`.${edge}`) ? [line.replace(`.${edge}`, `.${edge}x`)] : []
+      Str.includes(`.${edge}`)(line)
+        ? [Str.replace(`.${edge}`, `.${edge}x`)(line)]
+        : []
     ),
     ...Arr.flatMap(elementEvents, (event) =>
-      line.includes(`.${event}.`)
-        ? [line.replace(`.${event}.`, `.${event}x.`)]
+      Str.includes(`.${event}.`)(line)
+        ? [Str.replace(`.${event}.`, `.${event}x.`)(line)]
         : []
     ),
     ...(sentence.unit === undefined ? [] : [`${line}x`]),

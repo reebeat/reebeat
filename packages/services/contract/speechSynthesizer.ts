@@ -1,6 +1,6 @@
 // The contract of SpeechSynthesizer: what every adapter (Kokoro, the silent stand-in, a hosted provider) promises.
 import { assert } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 import type { Layer } from "effect";
 
 import type { SpeechError } from "../src/errors.ts";
@@ -30,7 +30,7 @@ export const speechSynthesizerClauses = (
 ): readonly Clause<Failure, SpeechSynthesizer>[] => {
   const text = options.text ?? "Names are cheap, friend.";
   const voice = options.voice ?? "default";
-  const words = Arr.filter(text.split(/\s+/u), (word) => word !== "");
+  const words = Arr.filter(Str.split(text, /\s+/u), (word) => word !== "");
   const request = { speed: 1, text, voice };
 
   return [

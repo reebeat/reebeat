@@ -2,7 +2,14 @@
 // is listed once per Scene, the identity diff across `> AUTO-ANIMATE` is derived by #id, and `plan.json`
 // decodes and encodes losslessly with a fixed key order.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Exit, Record, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Exit,
+  Record,
+  Schema,
+  String as Str,
+} from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
@@ -239,7 +246,7 @@ describe("the identity diff", () => {
   );
 });
 
-const goodAudioFile = `${"0123456789abcdef".repeat(4)}.flac`;
+const goodAudioFile = `${Str.repeat(4)("0123456789abcdef")}.flac`;
 
 /** The Plan of the fixture with a one-Line timeline whose audio file is `file`, decoded from its JSON text. */
 const decodeWithAudioFile = (file: string) =>
@@ -278,7 +285,7 @@ const decodeWithAudioFile = (file: string) =>
     )(file);
 
     return yield* Effect.exit(
-      decodePlan(text.replace(`"${goodAudioFile}"`, quoted))
+      decodePlan(Str.replace(`"${goodAudioFile}"`, quoted)(text))
     );
   });
 
@@ -290,15 +297,15 @@ describe("plan.json audio file names", () => {
   );
 
   it.effect.each([
-    ["a path separator", `sub/${"a".repeat(64)}.flac`],
-    ["a backslash", `sub\\${"a".repeat(64)}.flac`],
-    ["a parent directory", `../${"a".repeat(64)}.flac`],
-    ["an absolute path", `/${"a".repeat(64)}.flac`],
+    ["a path separator", `sub/${Str.repeat(64)("a")}.flac`],
+    ["a backslash", `sub\\${Str.repeat(64)("a")}.flac`],
+    ["a parent directory", `../${Str.repeat(64)("a")}.flac`],
+    ["an absolute path", `/${Str.repeat(64)("a")}.flac`],
     ["a bare parent", ".."],
-    ["upper-case digits", `${"A".repeat(64)}.flac`],
-    ["63 digits", `${"a".repeat(63)}.flac`],
-    ["another extension", `${"a".repeat(64)}.wav`],
-    ["a trailing newline", `${"a".repeat(64)}.flac\n`],
+    ["upper-case digits", `${Str.repeat(64)("A")}.flac`],
+    ["63 digits", `${Str.repeat(63)("a")}.flac`],
+    ["another extension", `${Str.repeat(64)("a")}.wav`],
+    ["a trailing newline", `${Str.repeat(64)("a")}.flac\n`],
     ["an empty name", ""],
   ])("rejects %s", ([, file]) =>
     Effect.gen(function* rejected() {
@@ -352,11 +359,11 @@ describe("plan.json", () => {
         const text = yield* encodePlan(plan);
 
         const noScenes = yield* Effect.flip(
-          decodePlan(text.replace('"scenes"', '"seen"'))
+          decodePlan(Str.replace('"scenes"', '"seen"')(text))
         );
 
         const badCell = yield* Effect.flip(
-          decodePlan(text.replace('"cell": "tl"', '"cell": "xx"'))
+          decodePlan(Str.replace('"cell": "tl"', '"cell": "xx"')(text))
         );
 
         const notJson = yield* Effect.flip(decodePlan("{"));

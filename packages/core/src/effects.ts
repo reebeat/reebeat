@@ -4,7 +4,15 @@
 //
 // The vocabulary comes from `plan.ts` and `grammar.ts`; this file owns the shape of the line. Every problem is a Plan
 // error with what was found, what was expected and the nearest valid form. Plain functions: no Effect, no service.
-import { Array as Arr, Match, Option, Result, Schema } from "effect";
+import {
+  Array as Arr,
+  Match,
+  Option,
+  Result,
+  Schema,
+  String as Str,
+  pipe,
+} from "effect";
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
@@ -53,7 +61,8 @@ const decodeWhen = Schema.decodeUnknownResult(WhenSchema);
 const bad = (line: number, message: string): PlanError =>
   planError("BadEffect", line, message);
 
-const collapse = (text: string): string => text.replaceAll(/\s+/gu, " ").trim();
+const collapse = (text: string): string =>
+  pipe(text, Str.replaceAll(/\s+/gu, " "), Str.trim);
 
 /** `value` times `factor`, without the float noise of the product (`0.1 * 1000`). */
 const scaled = (value: number, factor: number): number =>
@@ -180,8 +189,8 @@ const pathAnchor = (
   text: string,
   line: number
 ): Result.Result<Anchor, PlanError> => {
-  const parts = text.split(".");
-  const [first = "", second = ""] = parts;
+  const parts = Str.split(text, ".");
+  const [first, second = ""] = parts;
 
   if (first === anchorWords.scene && parts.length === 2) {
     return Result.map(readEdge(second, line, text), (edge): Anchor => ({
@@ -344,11 +353,11 @@ const splitAnchor = (
   if (word !== undefined) {
     return Result.map(wordAnchor(word, line), (anchor) => ({
       anchor,
-      rest: (word.rest ?? "").trim(),
+      rest: Str.trim(word.rest ?? ""),
     }));
   }
 
-  if (text.startsWith("word(")) {
+  if (Str.startsWith("word(")(text)) {
     return Result.fail(
       bad(
         line,
@@ -360,7 +369,7 @@ const splitAnchor = (
     );
   }
 
-  const [token = "", ...others] = text.split(/\s+/u);
+  const [token, ...others] = Str.split(text, /\s+/u);
 
   return Result.map(pathAnchor(token, line), (anchor) => ({
     anchor,

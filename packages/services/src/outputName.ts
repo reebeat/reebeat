@@ -1,7 +1,7 @@
 // The one rule for the base name of the files a build writes (`<name>.mp4`, `<name>.vtt`): a plain file stem, so the
 // files cannot land outside the output directory (`--name ../../escaped`). The CLI, the build program and the
 // encoder each check it at their own boundary; the rule lives here once.
-import { Effect } from "effect";
+import { Effect, String as Str } from "effect";
 
 import { InvalidOutputName } from "./errors.ts";
 
@@ -12,7 +12,7 @@ const stemPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
 export const requireOutputName = (
   name: string
 ): Effect.Effect<string, InvalidOutputName> =>
-  stemPattern.test(name) && !name.includes("..")
+  stemPattern.test(name) && !Str.includes("..")(name)
     ? Effect.succeed(name)
     : Effect.fail(
         new InvalidOutputName({

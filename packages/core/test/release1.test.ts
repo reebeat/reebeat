@@ -4,7 +4,7 @@
 // also wrote, an anchor that is ambiguous, an Element that does not exist, or a position that is wrong, the rewritten
 // story fails and this test names the error.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Option, Predicate } from "effect";
+import { Array as Arr, Effect, Option, Predicate, String as Str } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
@@ -62,8 +62,8 @@ const rewriteCue = (
   const cue = exactly(found, cuePattern, "cue");
   const line = rewrite.lines[found.line - 1] ?? "";
 
-  assert.isTrue(line.includes(cue), `${cue} stands on line ${found.line}`);
-  rewrite.lines[found.line - 1] = line.replace(cue, "");
+  assert.isTrue(Str.includes(cue)(line), `${cue} stands on line ${found.line}`);
+  rewrite.lines[found.line - 1] = Str.replace(cue, "")(line);
 
   const effect = writePattern.exec(found.message)?.groups?.effect;
 
@@ -95,7 +95,7 @@ const apply = (source: string, errors: readonly PlanError[]): string => {
   const rewrite: Rewrite = {
     effects: new Map(),
     lastElement: new Map(),
-    lines: source.split("\n"),
+    lines: Str.split(source, "\n"),
   };
 
   const headings = Arr.map(
@@ -182,7 +182,7 @@ describe("the release-1 story, rewritten by its own error messages", () => {
 
           return effect === undefined
             ? []
-            : [[found.line, effect.split(":")[0]]];
+            : [[found.line, Str.split(effect, ":")[0]]];
         });
 
         assert.deepStrictEqual(written, [

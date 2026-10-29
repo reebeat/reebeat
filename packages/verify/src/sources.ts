@@ -14,8 +14,10 @@ import {
   Path,
   Result,
   Struct,
+  String as Str,
 } from "effect";
-import type { Crypto, PlatformError } from "effect";
+import type { PlatformError } from "effect";
+import type { Digest } from "effect/crypto";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
@@ -33,7 +35,7 @@ interface Carrier {
 }
 
 const short = (hash: string | undefined): string =>
-  hash === undefined ? "absent" : `${hash.slice(0, 12)}...`;
+  hash === undefined ? "absent" : `${Str.slice(0, 12)(hash)}...`;
 
 /** Every place the hash lives, with what the written file says. */
 const carriers = (
@@ -55,8 +57,8 @@ const carriers = (
     { found: vttSourceHash(build.vtt), name: ".vtt NOTE" },
     {
       found:
-        comment !== undefined && comment.startsWith(commentPrefix)
-          ? comment.slice(commentPrefix.length)
+        comment !== undefined && Str.startsWith(commentPrefix)(comment)
+          ? Str.slice(commentPrefix.length)(comment)
           : undefined,
       name: "mp4 comment",
     },
@@ -85,7 +87,7 @@ const fileProblem = (
   ): Effect.fn.Return<
     readonly string[],
     PlatformError.PlatformError,
-    Crypto.Crypto
+    Digest.Digest
   > {
     const read = yield* Effect.result(
       fs.readFile(path.join(build.buildDir, file.path))

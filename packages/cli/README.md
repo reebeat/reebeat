@@ -4,7 +4,7 @@ The `reebeat` command and the only composition root (spec
 [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md),
 design R3). It reads a Fountain file, chooses the adapters from the **selection**, and runs the build program
 (`@reebeat/pipeline`) or the checks (`@reebeat/verify`) on them. `bin/reebeat.ts` provides only the platform (file system,
-path, child processes, crypto); `src/adapters.ts` is the one place that imports an adapter.
+path, child processes) and the SHA-256 digest; `src/adapters.ts` is the one place that imports an adapter.
 
 ```text
 bun run reebeat plan    <story> [--json] [--timing] [--cache-dir <dir>] [selection flags]

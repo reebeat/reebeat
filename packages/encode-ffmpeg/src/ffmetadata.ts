@@ -1,11 +1,11 @@
 import type { MuxRequest } from "@reebeat/services";
 // Chapter marks in the ffmpeg metadata format (https://ffmpeg.org/ffmpeg-formats.html#Metadata-1): one chapter per
 // request chapter, in milliseconds. Plain function.
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
-// `=`, `;`, `#`, `\` and a newline are escaped with a backslash.
+// `=`, `;`, `#`, `\` and a newline are escaped with a backslash (`$&` is the matched character).
 const escapeValue = (text: string): string =>
-  text.replaceAll(/[=;#\\\n]/gu, (char) => `\\${char}`);
+  Str.replaceAll(/[=;#\\\n]/gu, "\\$&")(text);
 
 /** The `ffmetadata` text of the chapters of a mux request. */
 export const ffmetadata = (chapters: MuxRequest["chapters"]): string => {

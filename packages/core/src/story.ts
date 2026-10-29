@@ -1,7 +1,7 @@
 // The adapter from Fountain tokens to the Story: chapters, scenes, Elements, effects and Lines, before the
 // cross-checks exist. Everything the vocabulary does not define becomes a Plan error with its line, never a
 // silent drop. A plain function.
-import { Array as Arr, Option, Result } from "effect";
+import { Array as Arr, Option, Result, String as Str, pipe } from "effect";
 
 import { parseEffectLine } from "./effects.ts";
 import { parseElementLine } from "./elements.ts";
@@ -114,7 +114,7 @@ const currentScene = (state: State): SceneDraft | undefined =>
 const parseParenthetical = (
   token: FountainToken
 ): Result.Result<Parenthetical, PlanError> | undefined => {
-  const text = token.text.trim();
+  const text = Str.trim(token.text);
   const pause = pausePattern.exec(text)?.groups?.seconds;
   const absolute = speedPattern.exec(text)?.groups?.value;
   const { line } = token;
@@ -176,7 +176,7 @@ const speedKey = (state: State, token: FountainToken): void => {
 };
 
 const titlePageToken = (state: State, token: FountainToken): void => {
-  const text = token.text.replaceAll(/\s+/gu, " ").trim();
+  const text = pipe(token.text, Str.replaceAll(/\s+/gu, " "), Str.trim);
 
   if (token.type === "title") {
     state.title = text;
@@ -198,7 +198,7 @@ const sectionToken = (state: State, token: FountainToken): void => {
     state.chapters.push({
       line: token.line,
       synopsis: [],
-      title: token.text.trim(),
+      title: Str.trim(token.text),
     });
   } else {
     unsupported(
@@ -211,7 +211,7 @@ const sectionToken = (state: State, token: FountainToken): void => {
 
 const synopsisToken = (state: State, token: FountainToken): void => {
   const chapter = state.chapters.at(-1);
-  const text = token.text.trim();
+  const text = Str.trim(token.text);
 
   if (chapter === undefined) {
     unsupported(
@@ -227,7 +227,7 @@ const synopsisToken = (state: State, token: FountainToken): void => {
 /** The id of a Scene: the `#id#` of its heading, or the generated fallback after the error that says it is missing. */
 const sceneIdOf = (state: State, token: FountainToken): string => {
   const fallback = `sc${state.scenes.length + 1}`;
-  const heading = token.text.trim();
+  const heading = Str.trim(token.text);
   const id = token.sceneNumber;
 
   if (id === "") {
@@ -244,7 +244,7 @@ const sceneIdOf = (state: State, token: FountainToken): string => {
               `"${heading} #${fallback}#"`
             )
           : problem(
-              `"${written.trim()}" is not a Scene id`,
+              `"${Str.trim(written)}" is not a Scene id`,
               "an identifier: a letter, then letters, digits, _ and -, between #"
             )
       )
@@ -308,7 +308,7 @@ const headingToken = (state: State, token: FountainToken): void => {
     effectsLine: undefined,
     elements: [],
     explicitOccurrences: new Set(),
-    heading: token.text.trim(),
+    heading: Str.trim(token.text),
     hidden: [],
     id,
     invalid: false,
@@ -381,7 +381,7 @@ const effectRows = (
   for (const [index, row] of rows.entries()) {
     const line = first + 1 + index;
 
-    if (row.trim() === "") {
+    if (Str.trim(row) === "") {
       continue;
     }
 
@@ -418,8 +418,8 @@ const effectsBlock = (
   scene: SceneDraft,
   token: FountainToken
 ): void => {
-  const rows = token.text.split("\n");
-  const closed = rows.length > 1 && rows.at(-1)?.trim() === "]]";
+  const rows = Str.split(token.text, "\n");
+  const closed = rows.length > 1 && Str.trim(Arr.lastNonEmpty(rows)) === "]]";
 
   const bad = (message: string): void => {
     state.errors.push(planError("BadEffectsBlock", token.line, message));
@@ -439,10 +439,10 @@ const effectsBlock = (
         "the block before the first NARRATOR line of its Scene"
       )
     );
-  } else if (rows[0]?.trim() !== "[[effects") {
+  } else if (Str.trim(Arr.headNonEmpty(rows)) !== "[[effects") {
     bad(
       problem(
-        `"${rows[0]?.trim() ?? ""}" opens an [[effects]] block`,
+        `"${Str.trim(Arr.headNonEmpty(rows))}" opens an [[effects]] block`,
         '"[[effects" alone on its line, then one effect per line, then "]]" alone on its line'
       )
     );
@@ -469,8 +469,8 @@ const afterUnclosed = (
     return token;
   }
 
-  const rows = token.text.split("\n");
-  const end = Arr.findFirstIndex(rows, (row) => row.trim() === "]]");
+  const rows = Str.split(token.text, "\n");
+  const end = Arr.findFirstIndex(rows, (row) => Str.trim(row) === "]]");
 
   if (Option.isNone(end)) {
     return undefined;
@@ -505,10 +505,12 @@ const actionToken = (state: State, first: FountainToken): void => {
   }
 
   const before = state.errors.length;
-  const rows = token.text.split("\n");
+  const rows = Str.split(token.text, "\n");
 
   const opening = Option.getOrElse(
-    Arr.findFirstIndex(rows, (row) => row.trim().startsWith("[[effects")),
+    Arr.findFirstIndex(rows, (row) =>
+      pipe(row, Str.trim, Str.startsWith("[[effects"))
+    ),
     () => -1
   );
 
@@ -516,7 +518,7 @@ const actionToken = (state: State, first: FountainToken): void => {
     rows,
     opening === -1 ? rows.length : opening
   ).entries()) {
-    if (raw.trim() !== "") {
+    if (Str.trim(raw) !== "") {
       elementLine(state, scene, raw, token.line + offset);
     }
   }
@@ -535,14 +537,14 @@ const actionToken = (state: State, first: FountainToken): void => {
 };
 
 const transitionToken = (state: State, token: FountainToken): void => {
-  const name = token.text.trim().toUpperCase();
+  const name = pipe(token.text, Str.trim, Str.toUpperCase);
 
   if (name !== "AUTO-ANIMATE" && name !== "CUT") {
     state.errors.push(
       planError(
         "BadTransition",
         token.line,
-        `transition "${token.text.trim()}" is not supported: use > AUTO-ANIMATE or > CUT`
+        `transition "${Str.trim(token.text)}" is not supported: use > AUTO-ANIMATE or > CUT`
       )
     );
   } else if (state.transition === undefined) {
@@ -600,7 +602,7 @@ const characterToken = (state: State, token: FountainToken): void => {
     return;
   }
 
-  const speaker = token.text.trim();
+  const speaker = Str.trim(token.text);
 
   if (speaker !== "NARRATOR") {
     dialogue.skip = true;
@@ -633,7 +635,7 @@ const parentheticalToken = (state: State, token: FountainToken): void => {
       planError(
         "BadParenthetical",
         token.line,
-        `parenthetical ${token.text.trim()} is not supported: use (speed N), (slowly), (quickly) or (pause N)`
+        `parenthetical ${Str.trim(token.text)} is not supported: use (speed N), (slowly), (quickly) or (pause N)`
       )
     );
   } else if (Result.isFailure(hint)) {

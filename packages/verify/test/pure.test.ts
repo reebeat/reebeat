@@ -9,7 +9,7 @@ import {
 import type { PlanJson, RendererLifecycle } from "@reebeat/core";
 import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
 import { synthClip } from "@reebeat/sounds-synth";
-import { Array as Arr, Effect, Option } from "effect";
+import { Array as Arr, Effect, Option, String as Str } from "effect";
 
 import { heardAs, judge } from "../src/effects.ts";
 import { observationRange } from "../src/events.ts";
@@ -94,7 +94,7 @@ describe("planDifference", () => {
     "is undefined for equal Plans and names the path of the first difference otherwise",
     () =>
       Effect.gen(function* differences() {
-        const plan = yield* buildPlan(storyText, "0".repeat(64));
+        const plan = yield* buildPlan(storyText, Str.repeat(64)("0"));
         const { scenes } = plan;
         const rest = Arr.drop(scenes, 1);
 
@@ -271,7 +271,7 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
     soundFrames: number,
     change: number
   ) {
-    const plan = yield* buildPlan(storyText, "0".repeat(64));
+    const plan = yield* buildPlan(storyText, Str.repeat(64)("0"));
     const [, scene] = plan.scenes;
     const found = Arr.findFirst(scene?.effects ?? [], (one) => one.id === "s1");
 
@@ -344,11 +344,11 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
 /** The fixture story spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */
 const timedWith = (lifecycle: RendererLifecycle, text: string = storyText) =>
   Effect.gen(function* timed() {
-    const plan = yield* buildPlan(text, "0".repeat(64));
+    const plan = yield* buildPlan(text, Str.repeat(64)("0"));
 
     const aligned = Arr.flatMap(plan.scenes, (scene) =>
       Arr.map(scene.lines, (line) => ({
-        audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
+        audio: { file: `${Str.repeat(64)("a")}.flac`, sha256: "x" },
         durationMs: line.words.length * 300,
         lineId: line.id,
         words: Arr.map(line.words, (w, at) => ({

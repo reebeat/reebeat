@@ -1,7 +1,7 @@
 // Finding a phrase of the narration (spec 0002: `word("matches", 2).end`). A phrase is one or more words that stand
 // next to each other in one Line; words compare in their normalised form (`normaliseWord`: case, punctuation, US
 // spelling, numerals), the same form the aligner uses. Plain functions.
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
 import { normaliseWord } from "./align.ts";
 import type { Line } from "./plan.ts";
@@ -16,7 +16,7 @@ export interface PhraseMatch {
 /** The normalised words of a phrase. */
 export const phraseTokens = (phrase: string): readonly string[] =>
   Arr.map(
-    Arr.filter(phrase.split(/\s+/u), (word) => word !== ""),
+    Arr.filter(Str.split(phrase, /\s+/u), (word) => word !== ""),
     normaliseWord
   );
 
@@ -54,7 +54,7 @@ export const narrationWords = (
   Arr.dedupe(
     Arr.flatMap(lines, ({ words }) =>
       Arr.filter(
-        Arr.map(words, (word) => word.replaceAll(/[^\p{L}\p{N}'-]/gu, "")),
+        Arr.map(words, (word) => Str.replaceAll(/[^\p{L}\p{N}'-]/gu, "")(word)),
         (word) => word !== ""
       )
     )

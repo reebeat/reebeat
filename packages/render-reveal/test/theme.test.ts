@@ -3,14 +3,14 @@
 import { assert, describe, it } from "@effect/vitest";
 import { elementClasses } from "@reebeat/core";
 import { contrast } from "@reebeat/lint";
-import { Array as Arr, Order, Record } from "effect";
+import { Array as Arr, Order, Record, String as Str } from "effect";
 
 import { classColors, palette, themeCss } from "../src/theme.ts";
 import type { DeckSettings } from "../src/theme.ts";
 
 /** A stylesheet with every pixel length replaced by 0px. */
 const blankLengths = (css: string): string =>
-  css.replaceAll(/\d+(?:\.\d+)?px/gu, "0px");
+  Str.replaceAll(/\d+(?:\.\d+)?px/gu, "0px")(css);
 
 const standard: DeckSettings = { height: 720, transition: 0.8, width: 1280 };
 

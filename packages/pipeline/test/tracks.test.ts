@@ -4,7 +4,7 @@
 import { assert, it } from "@effect/vitest";
 import { buildPlan, frameToMs, requireTimeline, schedule } from "@reebeat/core";
 import { alignedLines, contractLifecycle } from "@reebeat/services/contract";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { sfxStarts } from "../src/tracks.ts";
 
@@ -41,7 +41,7 @@ const source = Arr.join(
   "\n"
 );
 
-const digest = "c0".repeat(32);
+const digest = Str.repeat(32)("c0");
 
 it.effect(
   "gives each sound the name of its own effect, though two Scenes both have an `s1`",

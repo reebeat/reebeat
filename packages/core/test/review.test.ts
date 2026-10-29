@@ -2,7 +2,7 @@
 // `+ - ~` marks across auto-animate boundaries, the effects as `intent -> frame`, a summary line, the absolute
 // times with their reasons and their count, and frames with `--timing` once a timeline exists.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, Option, String as Str, pipe } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { reviewText } from "../src/review.ts";
@@ -31,11 +31,13 @@ describe("reviewText", () => {
     "marks enter, exit and update across the auto-animate boundary and nowhere else",
     () =>
       Effect.gen(function* marks() {
-        const rows = reviewText(yield* fixturePlan).split("\n");
+        const rows = Str.split(reviewText(yield* fixturePlan), "\n");
         const marked = Arr.filter(rows, (row) => /^ {6}[-+~] /u.test(row));
 
         assert.deepStrictEqual(
-          Arr.map(marked, (row) => row.trim().split(/\s+/u).slice(0, 3)),
+          Arr.map(marked, (row) =>
+            pipe(row, Str.trim, Str.split(/\s+/u)).slice(0, 3)
+          ),
           [
             ["-", "old", "exit"],
             ["~", "box", "update"],
@@ -53,22 +55,29 @@ describe("reviewText", () => {
       const text = reviewText(plan);
 
       for (const scene of plan.scenes) {
-        const block =
-          text
-            .split(`  Scene ${scene.id}  `)[1]
-            ?.split(/\n {2}Scene |\nChapter |\nPlan: /u)[0] ?? "";
+        const block = pipe(
+          Arr.get(Str.split(text, `  Scene ${scene.id}  `), 1),
+          Option.map((rest) =>
+            Arr.headNonEmpty(
+              Str.split(rest, /\n {2}Scene |\nChapter |\nPlan: /u)
+            )
+          ),
+          Option.getOrElse(() => "")
+        );
 
-        const rows = Arr.filter(block.split("\n"), (row) =>
+        const rows = Arr.filter(Str.split(block, "\n"), (row) =>
           /^ {6}[-+~ ] \S/u.test(row)
         );
 
         const ids = Arr.map(
           rows,
           (row) =>
-            row
-              .trim()
-              .replace(/^[-+~] /u, "")
-              .split(/\s+/u)[0]
+            pipe(
+              row,
+              Str.trim,
+              Str.replace(/^[-+~] /u, ""),
+              Str.split(/\s+/u)
+            )[0]
         );
 
         for (const element of scene.elements) {
@@ -167,7 +176,7 @@ const oneLine = (rows: readonly string[], elements: readonly string[] = []) =>
       plan,
       [
         {
-          audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
+          audio: { file: `${Str.repeat(64)("a")}.flac`, sha256: "x" },
           durationMs: 1000,
           lineId: "a.l1",
           words: words("One", "two."),
@@ -225,7 +234,7 @@ describe("reviewText with timing", () => {
         );
 
         const rows = Arr.filter(
-          reviewText(withTimeline, { timing: true }).split("\n"),
+          Str.split(reviewText(withTimeline, { timing: true }), "\n"),
           (row) => /^ {6}[rs]\d {2}/u.test(row)
         );
 

@@ -1,7 +1,7 @@
 // The two writers and the reader, against a Plan whose frames follow from the core's rules: a Line starts 1 s
 // (30 frames) after its slide frame, a Line lasts 500 ms a word, a Scene ends 0.5 s after its last Line.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import {
   parseVtt,
@@ -16,8 +16,8 @@ import { hash, narrationOf, timed, withLineText } from "./support.ts";
 /** The timing rows of a subtitle file, with `separator` read as the WebVTT dot. */
 const timesOf = (text: string, separator: string) =>
   Arr.map(
-    Arr.filter(text.split("\n"), (row) => row.includes(" --> ")),
-    (row) => row.replaceAll(separator, ".")
+    Arr.filter(Str.split(text, "\n"), (row) => Str.includes(" --> ")(row)),
+    (row) => Str.replaceAll(separator, ".")(row)
   );
 
 const spoken = "Five < six and <b>bold</b> & ok.";
@@ -132,8 +132,9 @@ describe("srt", () => {
         assert.notInclude(text, "&amp;");
         assert.notInclude(text, "&lt;");
 
-        const bodies = Arr.map(text.trimEnd().split("\n\n"), (block) =>
-          Arr.join(block.split("\n").slice(2), "\n")
+        const bodies = Arr.map(
+          pipe(text, Str.trimEnd, Str.split("\n\n")),
+          (block) => Arr.join(Str.split(block, "\n").slice(2), "\n")
         );
 
         assert.deepStrictEqual(bodies, narrationOf(plan));

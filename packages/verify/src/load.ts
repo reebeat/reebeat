@@ -9,8 +9,16 @@ import type {
 } from "@reebeat/core";
 import { decodeBuildManifest, sha256Hex } from "@reebeat/pipeline";
 import type { BuildManifest } from "@reebeat/pipeline";
-import { Array as Arr, Effect, FileSystem, Option, Path } from "effect";
-import type { Crypto, Result } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  String as Str,
+} from "effect";
+import type { Result } from "effect";
+import type { Digest } from "effect/crypto";
 
 import { BuildInvalid } from "./errors.ts";
 
@@ -24,7 +32,7 @@ const silentNarratorOf = (manifest: BuildManifest): Option.Option<string> =>
       ),
       (adapter) => adapter.id
     ),
-    (id) => id.endsWith("-standin")
+    (id) => Str.endsWith("-standin")(id)
   );
 
 interface SourceFile {
@@ -81,7 +89,9 @@ export const locateMp4 = Effect.fn("locateMp4")(function* locate(
       Effect.mapError(invalid(buildDir, "cannot list the build directory"))
     );
 
-  const [only, ...others] = Arr.filter(names, (name) => name.endsWith(".mp4"));
+  const [only, ...others] = Arr.filter(names, (name) =>
+    Str.endsWith(".mp4")(name)
+  );
 
   if (only === undefined || others.length > 0) {
     return yield* new BuildInvalid({
@@ -134,7 +144,7 @@ export const loadBuild = Effect.fn("loadBuild")(function* load(
 ): Effect.fn.Return<
   Build,
   BuildInvalid,
-  FileSystem.FileSystem | Path.Path | Crypto.Crypto
+  FileSystem.FileSystem | Path.Path | Digest.Digest
 > {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

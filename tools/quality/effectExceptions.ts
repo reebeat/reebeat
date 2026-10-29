@@ -1,6 +1,15 @@
 // Provenance: split from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888
 // (tools/quality/checkEffectExceptions.ts) so tests can run the check on fixtures. See PROVENANCE.md.
-import { Array as Arr, Effect, FileSystem, Option, Path, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  Schema,
+  String as Str,
+  pipe,
+} from "effect";
 import { parseSync } from "oxc-parser";
 
 const Exception = Schema.Struct({
@@ -45,10 +54,10 @@ interface Site {
 
 const isScannable = (path: string): boolean =>
   sourcePattern.test(path) &&
-  !path.startsWith("node_modules/") &&
-  !path.includes("/node_modules/") &&
-  !path.startsWith(".devenv/") &&
-  !path.startsWith(".worktrees/");
+  !Str.startsWith("node_modules/")(path) &&
+  !Str.includes("/node_modules/")(path) &&
+  !Str.startsWith(".devenv/")(path) &&
+  !Str.startsWith(".worktrees/")(path);
 
 export interface ExceptionCheckInput {
   /** Repository-relative paths that git tracks or would track. Files missing on disk are skipped. */
@@ -97,10 +106,14 @@ export const checkExceptions = Effect.fn("checkExceptions")(function* check(
           const { comments } = parseSync(path, text);
 
           return Arr.flatMap(comments, (comment) => {
-            const line = text.slice(0, comment.start).split("\n").length;
+            const line = pipe(
+              text,
+              Str.slice(0, comment.start),
+              Str.split("\n")
+            ).length;
 
             return Arr.map(
-              [...comment.value.matchAll(directivePattern)],
+              [...Str.matchAll(directivePattern)(comment.value)],
               ([directive]): Site => ({ directive, line, path })
             );
           });

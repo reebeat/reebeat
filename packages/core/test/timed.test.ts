@@ -1,7 +1,7 @@
 // frameToMs and requireTimeline: a Plan without a Timeline, or with a Timeline that names what the Plan lacks, is
 // refused; a scheduled Plan passes through with its Timeline.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Result } from "effect";
+import { Array as Arr, Effect, Result, String as Str } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import type { PlanJson } from "../src/plan.ts";
@@ -26,7 +26,7 @@ const scheduled = Effect.gen(function* build() {
     plan,
     [
       {
-        audio: { file: `${"1".repeat(64)}.flac`, sha256: "hash" },
+        audio: { file: `${Str.repeat(64)("1")}.flac`, sha256: "hash" },
         durationMs: 1000,
         lineId: "one.l1",
         words: [

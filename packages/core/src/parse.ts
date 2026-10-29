@@ -2,7 +2,7 @@
 // parser"). `fountain-js` gives no line numbers, so the source is cut into blank-line blocks that remember their
 // first line, each block is parsed alone, and each token gets the first block line that contains its text.
 // A plain function: no Effect, no error channel.
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str, pipe } from "effect";
 import { Fountain } from "fountain-js";
 
 /** A `fountain-js` token with the 1-based source line it starts on. */
@@ -25,20 +25,37 @@ interface Block {
   readonly start: number;
 }
 
-/** Replaces every boneyard by its newlines, so the text outside it keeps its line numbers. */
+/**
+ * Replaces every boneyard by its newlines, so the text outside it keeps its line numbers. Splitting on a capturing
+ * pattern keeps each boneyard at an odd position of the result.
+ */
 const maskBoneyards = (source: string): string =>
-  source.replaceAll(/\/\*[\s\S]*?\*\//gu, (boneyard) =>
-    "\n".repeat(boneyard.split("\n").length - 1)
+  Arr.join(
+    Arr.map(
+      Str.split(source, /(?<boneyard>\/\*[\s\S]*?\*\/)/u),
+      (part, index) =>
+        index % 2 === 1
+          ? Str.repeat(Str.split(part, "\n").length - 1)("\n")
+          : part
+    ),
+    ""
   );
 
 /** Fountain's own rule: a line of whitespace is blank, except exactly two spaces (a forced line break). */
-const isBlank = (line: string): boolean => line !== "  " && line.trim() === "";
+const isBlank = (line: string): boolean =>
+  line !== "  " && Str.trim(line) === "";
 
 const toBlocks = (source: string): readonly Block[] => {
   const blocks: Block[] = [];
+
   // A byte order mark is not text; `sourceSha256` still covers it, because the hash is of the source as given.
-  const text = source.replace(/^\uFEFF/u, "").replaceAll(/\r\n?/gu, "\n");
-  const lines = maskBoneyards(text).split("\n");
+  const text = pipe(
+    source,
+    Str.replace(/^\uFEFF/u, ""),
+    Str.replaceAll(/\r\n?/gu, "\n")
+  );
+
+  const lines = Str.split(maskBoneyards(text), "\n");
   let start = 0;
   let current: string[] = [];
 
@@ -74,7 +91,9 @@ const locate = (
   needle: string
 ): number => {
   for (let index = from; index < lines.length; index += 1) {
-    if (lines[index]?.includes(needle) === true) {
+    const line = lines[index];
+
+    if (line !== undefined && Str.includes(needle)(line)) {
       return index;
     }
   }
@@ -97,7 +116,7 @@ const parseBlock = (block: Block, first: boolean): readonly FountainToken[] => {
 
   for (const token of first ? parsed : parsed.slice(1)) {
     const text = token.text ?? "";
-    const needle = (text.split("\n")[0] ?? "").trim();
+    const needle = Str.trim(Arr.headNonEmpty(Str.split(text, "\n")));
     const index = text === "" ? 0 : locate(block.lines, cursor, needle);
 
     tokens.push({
@@ -110,7 +129,7 @@ const parseBlock = (block: Block, first: boolean): readonly FountainToken[] => {
     });
 
     if (text !== "") {
-      cursor = index + text.split("\n").length;
+      cursor = index + Str.split(text, "\n").length;
     }
   }
 

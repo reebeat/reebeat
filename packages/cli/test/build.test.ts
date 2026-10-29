@@ -15,6 +15,7 @@ import {
   Order,
   Path,
   Stream,
+  String as Str,
 } from "effect";
 
 import { readManifest } from "../src/manifest.ts";
@@ -92,11 +93,11 @@ layer(platform)("reebeat build", (it) => {
 
         // Only the sounds the Plan uses, and no narration audio: the cache is not part of the build.
         assert.deepStrictEqual(
-          Arr.filter(files, (file) => file.startsWith("assets/sfx/")),
+          Arr.filter(files, (file) => Str.startsWith("assets/sfx/")(file)),
           ["assets/sfx/pop.wav"]
         );
         assert.deepStrictEqual(
-          Arr.filter(files, (file) => file.endsWith(".flac")),
+          Arr.filter(files, (file) => Str.endsWith(".flac")(file)),
           []
         );
         yield* absent(`${out}.partial`, path.join(out, ".mux-"));
@@ -159,8 +160,8 @@ layer(platform)("reebeat build", (it) => {
 
         assert.strictEqual(
           Arr.length(
-            Arr.filter(stdout.split("\n"), (row) =>
-              row.endsWith("egress: none")
+            Arr.filter(Str.split(stdout, "\n"), (row) =>
+              Str.endsWith("egress: none")(row)
             )
           ),
           7
@@ -201,13 +202,13 @@ layer(platform)("reebeat build", (it) => {
         assert.isAbove(
           Arr.filter(
             yield* fs.readDirectory(path.join(beside.dir, "speech-cache")),
-            (name) => name.endsWith(".flac")
+            (name) => Str.endsWith(".flac")(name)
           ).length,
           0
         );
         assert.isAbove(
           Arr.filter(yield* fs.readDirectory(named), (name) =>
-            name.endsWith(".flac")
+            Str.endsWith(".flac")(name)
           ).length,
           0
         );

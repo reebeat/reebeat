@@ -3,7 +3,7 @@
 // Relative to the Line's first frame `L`, word k (from 0) spans L + 9k .. L + 9k + 9, so `word("three").end` is L + 54
 // and the phrase `box` stands at L + 0, L + 18 and L + 36.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Option, Result } from "effect";
+import { Array as Arr, Effect, Option, Result, String as Str } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { parseEffectLine } from "../src/effects.ts";
@@ -98,7 +98,10 @@ describe("an offset in each unit, resolved to a frame", () => {
     const hint = (offset: string): string => {
       const found = text(`a: sound pop at word("x").end ${offset}`);
 
-      return found.slice(found.lastIndexOf("did you mean ") + 13, -1);
+      return Str.slice(
+        Option.getOrThrow(Str.lastIndexOf("did you mean ")(found)) + 13,
+        -1
+      )(found);
     };
 
     assert.strictEqual(

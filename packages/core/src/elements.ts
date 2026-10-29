@@ -1,7 +1,14 @@
 // One Action line is one Element: `text {id=one cell=mc class=box visible=false}` (spec 0002: `key=value` only, no
 // sigils, no bare flags). A plain function: it returns the Element (when the line has an id and every value is valid)
 // and every problem found on the line, each with what was found, what was expected and the nearest valid form.
-import { Array as Arr, Option, Result, Schema } from "effect";
+import {
+  Array as Arr,
+  Option,
+  Result,
+  Schema,
+  String as Str,
+  pipe,
+} from "effect";
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
@@ -70,17 +77,17 @@ const rewritten = (words: readonly string[]): string =>
         ["@", "cell"],
       ]);
 
-      const key = names.get(word.slice(0, 1));
+      const key = names.get(Str.slice(0, 1)(word));
 
-      return key === undefined ? word : `${key}=${word.slice(1)}`;
+      return key === undefined ? word : `${key}=${Str.slice(1)(word)}`;
     }),
     " "
   );
 
 const hiddenIdOf = (words: readonly string[]): string | undefined =>
   Arr.contains(words, "hidden")
-    ? Arr.findFirst(words, (word) => word.startsWith("#")).pipe(
-        Option.map((word) => word.slice(1)),
+    ? Arr.findFirst(words, (word) => Str.startsWith("#")(word)).pipe(
+        Option.map((word) => Str.slice(1)(word)),
         Option.getOrUndefined
       )
     : undefined;
@@ -100,18 +107,22 @@ const releaseOne = (
   );
 
 const slug = (text: string): string =>
-  text
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, "-")
-    .replaceAll(/^-+|-+$/gu, "")
-    .replace(/^(?=[0-9])/u, "e");
+  pipe(
+    text,
+    Str.toLowerCase,
+    Str.replaceAll(/[^a-z0-9]+/gu, "-"),
+    Str.replaceAll(/^-+|-+$/gu, ""),
+    Str.replace(/^(?=[0-9])/u, "e")
+  );
 
 /**
  * The line with its id added: what the author wrote stays as written, and only a required property that is missing
  * gets an example value, so that the suggestion is a valid line.
  */
 const withId = (text: string, words: readonly string[]): string => {
-  const written = new Set(Arr.map(words, (word) => word.split("=")[0] ?? ""));
+  const written = new Set(
+    Arr.map(words, (word) => Str.split(word, "=")[0] ?? "")
+  );
 
   const filled = Arr.flatMap(elementProperties, (property) =>
     property.required && property.key !== "id" && !written.has(property.key)
@@ -142,9 +153,9 @@ const readPair = (
   word: string,
   line: number
 ): Result.Result<readonly [PropertyKey, string], PlanError> => {
-  const at = word.indexOf("=");
+  const at = Str.indexOf("=")(word);
 
-  if (at === -1) {
+  if (Option.isNone(at)) {
     const owner = Option.getOrUndefined(
       Arr.findFirst(owners, (candidate) => candidate.value === word)
     );
@@ -161,8 +172,8 @@ const readPair = (
     );
   }
 
-  const key = word.slice(0, at);
-  const value = word.slice(at + 1);
+  const key = Str.slice(0, at.value)(word);
+  const value = Str.slice(at.value + 1)(word);
 
   if (!isKey(key)) {
     return Result.fail(
@@ -255,16 +266,16 @@ const missingProperties = (
 
 /** Parses one non-empty line of an Action block; `line` is its 1-based source line. */
 export const parseElementLine = (raw: string, line: number): ParsedElement => {
-  const trimmed = raw.trim();
+  const trimmed = Str.trim(raw);
   const match = attributeBlock.exec(trimmed);
   const text = match?.groups?.text ?? trimmed;
 
   const words = Arr.filter(
-    (match?.groups?.attributes ?? "").split(/\s+/u),
+    Str.split(match?.groups?.attributes ?? "", /\s+/u),
     (word) => word !== ""
   );
 
-  if (trimmed.includes("[[")) {
+  if (Str.includes("[[")(trimmed)) {
     return failed([
       planError(
         "UnsupportedElement",

@@ -1,7 +1,7 @@
 // Plan to page: `renderDeck` is a pure function of the Plan (spec 0001, "Module layout" and the Deck page
 // contract). The same Plan gives the same bytes. Nothing here reads a file; `assembleDeck` adds the binary assets.
 import type { Element, PlanJson, Scene } from "@reebeat/core";
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str, pipe } from "effect";
 
 import { expectedMarks, expectedSlide } from "./expected.ts";
 import type { ExpectedFragment, ExpectedMarks } from "./expected.ts";
@@ -22,12 +22,14 @@ export interface DeckBundle {
 
 /** Escapes text for element content and for double-quoted attribute values. */
 const escapeHtml = (text: string): string =>
-  text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+  pipe(
+    text,
+    Str.replaceAll("&", "&amp;"),
+    Str.replaceAll("<", "&lt;"),
+    Str.replaceAll(">", "&gt;"),
+    Str.replaceAll('"', "&quot;"),
+    Str.replaceAll("'", "&#39;")
+  );
 
 const attribute = (name: string, value: string): string =>
   ` ${name}="${escapeHtml(value)}"`;

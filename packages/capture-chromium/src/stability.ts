@@ -8,7 +8,7 @@
 //                    a screenshot reads the page and changes nothing, so it is retried, at most `screenshotRetries`
 //                    times, with a warning each time
 // Both are plain Effects over a `take` that the caller gives (the page's screenshot): nothing here knows Playwright.
-import { Duration, Effect, Schedule } from "effect";
+import { Duration, Effect, Schedule, String as Str } from "effect";
 
 import { FrameUnstable } from "./errors.ts";
 import type { BrowserFailed } from "./errors.ts";
@@ -69,7 +69,7 @@ export const retryScreenshot = <R>(
 ): Effect.Effect<Uint8Array, BrowserFailed, R> =>
   take.pipe(
     Effect.tapError((failure) =>
-      failure.message.includes(transientMessage)
+      Str.includes(transientMessage)(failure.message)
         ? Effect.logWarning(
             `screenshot failed (at most ${screenshotRetries} retries): ${failure.message}`
           )
@@ -78,6 +78,6 @@ export const retryScreenshot = <R>(
     Effect.retry({
       schedule: Schedule.spaced(Duration.millis(retryDelayMillis)),
       times: screenshotRetries,
-      while: (failure) => failure.message.includes(transientMessage),
+      while: (failure) => Str.includes(transientMessage)(failure.message),
     })
   );

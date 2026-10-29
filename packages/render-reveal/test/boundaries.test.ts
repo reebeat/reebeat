@@ -5,7 +5,7 @@
 // libraries and service contracts, never an adapter. The lint rule `no-restricted-imports` (vite.config.ts) is the second
 // guard; this scan reads every specifier.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Schema } from "effect";
+import { Array as Arr, Effect, Schema, String as Str } from "effect";
 
 import { readPackageText, readSources } from "./support.ts";
 
@@ -23,7 +23,7 @@ interface Found {
 }
 
 const importsOf = (text: string): readonly Found[] =>
-  Arr.map([...text.matchAll(statements)], ({ groups }) => ({
+  Arr.map([...Str.matchAll(statements)(text)], ({ groups }) => ({
     specifier:
       groups?.specifier ??
       (groups?.required === undefined

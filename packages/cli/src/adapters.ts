@@ -22,7 +22,8 @@ import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";
 import { synthSounds } from "@reebeat/sounds-synth";
 import { kokoroSynthesizer } from "@reebeat/speech-kokoro";
 import { Context, Layer } from "effect";
-import type { Crypto, FileSystem, Path } from "effect";
+import type { FileSystem, Path } from "effect";
+import type { Digest } from "effect/crypto";
 import type { ChildProcessSpawner } from "effect/process";
 
 import { Verifier } from "./verifier.ts";
@@ -30,7 +31,7 @@ import { Verifier } from "./verifier.ts";
 /** What every adapter may need of the machine: the platform services the entry point provides. */
 type Platform =
   | ChildProcessSpawner.ChildProcessSpawner
-  | Crypto.Crypto
+  | Digest.Digest
   | FileSystem.FileSystem
   | Path.Path;
 

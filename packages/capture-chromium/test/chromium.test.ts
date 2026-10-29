@@ -21,6 +21,7 @@ import {
   Layer,
   Path,
   Stream,
+  String as Str,
 } from "effect";
 
 import { chromiumCapturer } from "../src/index.ts";
@@ -104,7 +105,7 @@ describe("chromiumCapturer", () => {
         const { info: declared } = yield* FrameCapturer;
 
         assert.include(
-          String(declared.settings.flags).split(" "),
+          Str.split(String(declared.settings.flags), " "),
           "--disable-threaded-animation"
         );
       }).pipe(Effect.provide(adapter))

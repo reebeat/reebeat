@@ -1,6 +1,6 @@
 // alignWords: fixed cases and properties. Hand-worked expectations; the properties hold for any input.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Schema } from "effect";
+import { Array as Arr, Schema, String as Str } from "effect";
 
 import { alignWords, matchThreshold, normaliseWord } from "../src/align.ts";
 import type { HeardWord } from "../src/align.ts";
@@ -42,7 +42,7 @@ const whisper = (second: string, third: string) =>
   );
 
 describe("alignWords on the story Line that whisper mishears at speed 1.1", () => {
-  const shortLine = "Box two has no match, so it leaves.".split(" ");
+  const shortLine = Str.split("Box two has no match, so it leaves.", " ");
 
   it("a heard digit for a spoken number word is no miss: 2 matches two", () => {
     const result = alignWords(shortLine, whisper("2", "has"), 2000);

@@ -3,7 +3,6 @@
 // `put` that stops half way is invisible. `memoryCacheWith` lets a test stop it there.
 import {
   Array as Arr,
-  Crypto,
   Effect,
   Layer,
   Option,
@@ -11,6 +10,7 @@ import {
   Record,
   Ref,
 } from "effect";
+import { Digest } from "effect/crypto";
 
 import { AssetCache } from "../src/assetCache.ts";
 import { assetKey, rejectSecretSettings } from "../src/cacheKey.ts";
@@ -31,12 +31,12 @@ const copy = (files: Files): Files =>
     name,
   }));
 
-/** An AssetCache that keeps its assets in memory; it needs the platform `Crypto` service for the key. */
+/** An AssetCache that keeps its assets in memory; it needs the platform `Digest` service for the key. */
 export const memoryCacheWith = (options: MemoryCacheOptions = {}) =>
   Layer.effect(
     AssetCache,
     Effect.gen(function* build() {
-      const crypto = yield* Crypto.Crypto;
+      const digest = yield* Digest.Digest;
       const files = yield* Ref.make<Readonly<Record<string, Files>>>({});
 
       const metadata = yield* Ref.make<Readonly<Record<string, Provenance>>>(
@@ -67,7 +67,7 @@ export const memoryCacheWith = (options: MemoryCacheOptions = {}) =>
         get,
         info: { egress: localEgress, id: "memory@1-standin", settings: {} },
         key: (request) =>
-          Effect.provideService(assetKey(request), Crypto.Crypto, crypto),
+          Effect.provideService(assetKey(request), Digest.Digest, digest),
         list: Effect.map(Ref.get(metadata), (stored) =>
           Arr.sort(
             Record.values(stored),

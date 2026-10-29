@@ -12,7 +12,7 @@
 import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
 import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
 import { contractLifecycle } from "@reebeat/services/contract";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -63,7 +63,8 @@ const source = Arr.join(
 );
 
 /** A cache file name of the Plan contract: 64 hex digits and `.flac`; `n` picks the digits. */
-const audioFile = (n: number): string => `${n.toString(16).repeat(64)}.flac`;
+const audioFile = (n: number): string =>
+  `${Str.repeat(64)(n.toString(16))}.flac`;
 
 /** How long each Line is spoken, in ms, by Line id. The last word of sc3.l1 ends at 580 ms, the others at `index * 300 + 280`. */
 const durations = new Map([
@@ -89,7 +90,7 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
 /** The Plan of `text` with its Timeline checked against its Scenes. */
 const timedOf = (text: string) =>
   Effect.gen(function* timedFixturePlan() {
-    const plan = yield* buildPlan(text, "5ca1ab1e".repeat(8));
+    const plan = yield* buildPlan(text, Str.repeat(8)("5ca1ab1e"));
 
     return yield* Effect.fromResult(
       requireTimeline(

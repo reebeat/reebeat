@@ -4,7 +4,15 @@ import { assert, layer } from "@effect/vitest";
 import { decodePlan } from "@reebeat/core";
 import type { PlanError } from "@reebeat/core";
 import { sha256Hex } from "@reebeat/pipeline";
-import { Array as Arr, Effect, Exit, FileSystem, Option, Path } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Exit,
+  FileSystem,
+  Option,
+  Path,
+  String as Str,
+} from "effect";
 
 import {
   fillCache,
@@ -185,7 +193,7 @@ layer(platform)("reebeat plan", (it) => {
 const change = (from: string, to: string): string => {
   assert.include(storyText, from);
 
-  return storyText.replace(from, to);
+  return Str.replace(from, to)(storyText);
 };
 
 interface Case {
@@ -297,7 +305,9 @@ const cases: readonly Case[] = [
 /** The 1-based number of the first line of `source` that contains `needle`. */
 const lineOf = (source: string, needle: string): number =>
   Option.getOrThrow(
-    Arr.findFirstIndex(source.split("\n"), (row) => row.includes(needle))
+    Arr.findFirstIndex(Str.split(source, "\n"), (row) =>
+      Str.includes(needle)(row)
+    )
   ) + 1;
 
 layer(platform)("reebeat plan on a story with a mistake (F12)", (it) => {

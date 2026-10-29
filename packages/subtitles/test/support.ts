@@ -7,7 +7,7 @@ import {
   schedule,
 } from "@reebeat/core";
 import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -40,7 +40,7 @@ const source = Arr.join(
   "\n"
 );
 
-export const hash = "5a".repeat(32);
+export const hash = Str.repeat(32)("5a");
 
 const wordMs = 500;
 

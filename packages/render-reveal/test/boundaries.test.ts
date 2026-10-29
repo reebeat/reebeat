@@ -5,12 +5,15 @@
 // libraries and service contracts, never an adapter. The lint rule `no-restricted-imports` (vite.config.ts) is the second
 // guard; this scan reads every specifier.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Schema, String as Str } from "effect";
+import { Array as Arr, Effect, Record, Schema, String as Str } from "effect";
 
 import { readPackageText, readSources } from "./support.ts";
 
 const Manifest = Schema.fromJsonString(
-  Schema.Struct({ dependencies: Schema.Record(Schema.String, Schema.String) })
+  Schema.Struct({
+    dependencies: Schema.Record(Schema.String, Schema.String),
+    peerDependencies: Schema.Record(Schema.String, Schema.String),
+  })
 );
 
 /** `import ... from "x"`, `export ... from "x"`, `import "x"`, `import("x")` and `require(`; the type-only form is marked. */
@@ -46,10 +49,10 @@ const violations = (text: string): readonly string[] =>
 
 describe("F11: packages/render-reveal reads the Plan, never the screenplay", () => {
   it.effect(
-    "depends on exactly the core, the services, the lint rules, effect, reveal.js, Inter and parse5",
+    "requires exactly the core, the services, the lint rules, effect (a peer, spec 0009), reveal.js, Inter and parse5",
     () =>
       Effect.gen(function* manifest() {
-        const { dependencies } = yield* Effect.flatMap(
+        const { dependencies, peerDependencies } = yield* Effect.flatMap(
           readPackageText("package.json"),
           Schema.decodeUnknownEffect(Manifest)
         );
@@ -60,10 +63,10 @@ describe("F11: packages/render-reveal reads the Plan, never the screenplay", () 
           "@reebeat/core": "workspace:*",
           "@reebeat/lint": "workspace:*",
           "@reebeat/services": "workspace:*",
-          effect: "catalog:",
           parse5: "catalog:",
           "reveal.js": "catalog:",
         });
+        assert.deepStrictEqual(Record.keys(peerDependencies), ["effect"]);
       })
   );
 

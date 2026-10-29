@@ -71,7 +71,8 @@
         "checkEffectExceptions.ts",
         "checkTiers.ts",
         "genGrammar.ts",
-        "genJsonSchema.ts"
+        "genJsonSchema.ts",
+        "stagePackages.ts"
       ],
       "project": ["*.ts", "test/**/*.ts"]
     }

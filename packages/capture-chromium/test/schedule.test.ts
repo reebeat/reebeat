@@ -3,10 +3,23 @@
 // lags.test.ts on a real Chromium.
 import { assert, describe, it } from "@effect/vitest";
 import type { TimedPlan } from "@reebeat/core";
+import { stepsOf } from "@reebeat/core";
 import { Array as Arr, Order } from "effect";
 
-import { captureSchedule, sceneChangeLag } from "../src/captureSchedule.ts";
-import { fixture, sharedIds } from "./fixturePlan.ts";
+import {
+  captureSchedule,
+  capturedFps,
+  sceneChangeLag,
+  unsupportedRate,
+} from "../src/captureSchedule.ts";
+import { ended, fixture, sharedIds } from "./fixturePlan.ts";
+
+/** The Timeline entries of an effect of the `ended` Plan, one for each instance. */
+const timedOf = (effectId: string) =>
+  Arr.filter(
+    Arr.flatMap(ended.timeline.scenes, (scene) => scene.effects),
+    (effect) => effect.effectId === effectId
+  );
 
 describe("captureSchedule", () => {
   it("commands each slide change `lag` frames before its slide frame and each fragment at its effect's command frame", () => {
@@ -150,5 +163,82 @@ describe("captureSchedule", () => {
         [81, "f1"],
       ]
     );
+  });
+
+  describe("a focus ring that ends by its own `until`", () => {
+    const [f1] = timedOf("f1");
+    const [f2] = timedOf("f2");
+
+    it("is commanded off at its end command frame, one frame before the ring's last frame", () => {
+      assert.isDefined(f1);
+      assert.strictEqual(f1?.endedBy, "until");
+      assert.strictEqual(f1?.endCommandFrame, (f1?.endFrame ?? 0) - 1);
+
+      assert.deepStrictEqual(
+        Arr.map(
+          Arr.filter(
+            captureSchedule(ended).commands,
+            ({ source }) => source === "f1"
+          ),
+          ({ edge, frame }) => [edge, frame]
+        ),
+        [
+          ["start", f1?.commandFrame],
+          ["end", f1?.endCommandFrame],
+        ]
+      );
+    });
+
+    it("commands a start before an end that falls in the same frame, in the order of `stepsOf`", () => {
+      assert.strictEqual(f2?.commandFrame, f1?.endCommandFrame);
+
+      const { commands } = captureSchedule(ended);
+
+      assert.deepStrictEqual(
+        Arr.map(commands, ({ edge, source }) => [source, edge]),
+        Arr.flatMap(ended.scenes, (scene) =>
+          Arr.map(stepsOf(ended, scene), ({ edge, effect }) => [
+            effect.id,
+            edge,
+          ])
+        )
+      );
+
+      assert.deepStrictEqual(
+        Arr.map(
+          Arr.filter(commands, ({ frame }) => frame === f2?.commandFrame),
+          ({ edge, source }) => [source, edge]
+        ),
+        [
+          ["f2", "start"],
+          ["f1", "end"],
+        ]
+      );
+    });
+
+    it("gives every instance of a sound the same absence of a command", () => {
+      assert.strictEqual(timedOf("p1").length, 2);
+      assert.deepStrictEqual(
+        Arr.filter(
+          captureSchedule(ended).commands,
+          ({ source }) => source === "p1"
+        ),
+        []
+      );
+    });
+  });
+
+  describe("unsupportedRate", () => {
+    it("accepts the rate the lags were measured at and nothing else", () => {
+      assert.isUndefined(unsupportedRate({ fps: capturedFps, ntsc: false }));
+      assert.include(
+        unsupportedRate({ fps: 25, ntsc: false }) ?? "",
+        "settings.fps"
+      );
+      assert.include(
+        unsupportedRate({ fps: 30, ntsc: true }) ?? "",
+        "settings.ntsc"
+      );
+    });
   });
 });

@@ -141,3 +141,35 @@ export const sharedIds: TimedPlan = await Effect.runPromise(
     )
   )
 );
+
+/**
+ * One Scene with a ring that ends by its own `until` (`f1`, an end step), a second focus that starts at the frame the
+ * ring ends (`f2`: a start and an end in one frame), and a sound with two instances (`p1`, no command at all).
+ */
+export const ended: TimedPlan = await Effect.runPromise(
+  timedOf(
+    Arr.join(
+      [
+        "Title: Ended",
+        "",
+        "# Part",
+        "",
+        "INT. ONE #sc1#",
+        "",
+        "Box {id=a cell=tl class=box}",
+        "Other {id=b cell=br class=box}",
+        "",
+        "[[effects",
+        '  f1: focus a at word("one").end until word("three").end',
+        '  f2: focus b at word("three").end',
+        '  p1: sound pop at each(word("one").end, word("two").end)',
+        "]]",
+        "",
+        "NARRATOR",
+        "One two three four.",
+        "",
+      ],
+      "\n"
+    )
+  )
+);

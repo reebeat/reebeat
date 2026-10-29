@@ -1,6 +1,7 @@
-// The page runtime: the reveal.js configuration, the effect of each fragment (a `show` or `focus` effect), the sounds
-// that ride along with a fragment or a slide and `window.reebeatDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that `deck.html` works
-// from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
+// The page runtime: the reveal.js configuration, the effect of each fragment (the start of a `show` or `focus` effect, or
+// the end of a `focus` ring, `data-effect-edge="end"`), the sounds that ride along with a fragment or a slide and
+// `window.reebeatDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that
+// `deck.html` works from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
 import { Array as Arr } from "effect";
 
 import { fontFaces } from "./theme.ts";
@@ -47,6 +48,7 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
   });
   var focused = null;
   var focusBefore = new Map();
+  var ringBefore = new Map();
 
   function target(fragment, id) {
     var slide = fragment.closest("section");
@@ -74,6 +76,35 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     });
   }
 
+  // The end of a ring (\`data-effect-edge="end"\`) takes the ring off ITS target; \`focused\` is cleared only when that
+  // target is the focused one (a later focus may have moved the ring already). Stepping back puts the ring back.
+  function isEnd(fragment) {
+    return fragment.getAttribute("data-effect-edge") === "end";
+  }
+
+  function takeRingOff(fragment) {
+    var ringed = target(fragment, fragment.getAttribute("data-target"));
+    ringBefore.set(fragment, {
+      element: ringed,
+      focused: ringed !== null && focused === ringed,
+      ring: ringed !== null && ringed.classList.contains("focused"),
+    });
+    setFocus(ringed, false);
+    if (ringed !== null && focused === ringed) {
+      focused = null;
+    }
+  }
+
+  function putRingBack(fragment) {
+    var before = ringBefore.get(fragment);
+    if (before) {
+      setFocus(before.element, before.ring);
+      if (before.focused) {
+        focused = before.element;
+      }
+    }
+  }
+
   function show(fragment) {
     var verb = fragment.getAttribute("data-effect-verb");
     if (verb === "show") {
@@ -82,6 +113,8 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
         revealed.classList.remove("hidden");
         revealed.classList.add("shown");
       }
+    } else if (verb === "focus" && isEnd(fragment)) {
+      takeRingOff(fragment);
     } else if (verb === "focus") {
       focusBefore.set(fragment, focused);
       setFocus(focused, false);
@@ -99,6 +132,8 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
         concealed.classList.remove("shown");
         concealed.classList.add("hidden");
       }
+    } else if (verb === "focus" && isEnd(fragment)) {
+      putRingBack(fragment);
     } else if (verb === "focus") {
       setFocus(focused, false);
       focused = focusBefore.get(fragment) || null;

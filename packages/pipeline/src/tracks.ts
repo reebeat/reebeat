@@ -17,6 +17,8 @@ export interface NarrationStart {
 
 export interface SfxStart {
   readonly effectId: string;
+  /** 1-based: the occurrence of the effect's event this start belongs to (`TimedEffect.instance`). */
+  readonly instance: number;
   /** The name the effect asked the `SoundLibrary` for. */
   readonly name: string;
   readonly startMs: number;
@@ -34,8 +36,10 @@ export const narrationStarts = (plan: TimedPlan): readonly NarrationStart[] =>
   );
 
 /**
- * The start of each `sound` effect's sound: the effect's fire frame in milliseconds, in timeline order. Effect ids are
- * unique per Scene, not in the story (two Scenes may each have an `s1`), so an effect is looked up in its own Scene.
+ * The start of each sound INSTANCE: the instance's fire frame in milliseconds, in timeline order. A sound anchored to an
+ * event with several occurrences (`each`) has one entry per occurrence, and the mix places the clip once for each, so
+ * overlapping instances add. Effect ids are unique per Scene, not in the story (two Scenes may each have an `s1`), so an
+ * effect is looked up in its own Scene.
  */
 export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] =>
   Arr.flatMap(plan.timeline.scenes, (timedScene) => {
@@ -65,6 +69,7 @@ export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] =>
         : [
             {
               effectId: timed.effectId,
+              instance: timed.instance,
               name,
               startMs: frameToMs(timed.fireFrame, plan.settings.fps),
             },

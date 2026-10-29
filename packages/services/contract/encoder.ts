@@ -127,6 +127,7 @@ const muxRequest = (outPath: string) =>
       ),
       height: 64,
       metadata,
+      ntsc: false,
       outPath,
       totalMs: 1200,
       tracks: [

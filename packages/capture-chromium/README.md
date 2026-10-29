@@ -31,13 +31,22 @@ screenshot. Measured on the real reveal.js page (`test/lags.test.ts`), the first
 | `focus` effect | 1 (a `.box` shows a sub-pixel change at the call) | `fireFrame - 1` |
 | `sound` effect | no pixels and no command; the sound is mixed at `fireFrame` | - |
 
-The commands of one Scene are the Timeline's `show` and `focus` effects in resolved-time order (a fragment step is the same call
-for every effect, and the Deck's fragments are in that order). An effect is told apart from a sound by its own Scene: effect ids
-are unique per Scene, not in the story (two Scenes may each have an `s1`). A step is never commanded before its own Scene's slide
-change: an effect at `transition.start` has `commandFrame` one before the slide frame, which would step the previous slide, so it
-is commanded with the slide change (`max(commandFrame, slide command)`) and appears one frame after its fire frame, inside the
-tolerance of F1. The lags above are the capture's own: the lifecycle of the renderer's slide change (when its Elements move)
-is the Renderer's declaration (`revealLifecycle`), observed by `@reebeat/verify`.
+The commands of one Scene are the steps of `stepsOf` (`@reebeat/core`, the one definition the Deck, the capture and the
+verifier share), in its order: a start for each `show` and `focus`, commanded at the effect's `commandFrame`, and an END
+step for each `focus` whose ring ends by its own `until` before the Scene ends, commanded at its `endCommandFrame`
+(`endFrame - 1`: the ring leaves by the same one-frame CSS transition, so its lag is the focus start's). A step is the same
+call for every effect, the Deck's fragments are in that order, and a start is commanded before an end in one frame. An
+effect is told apart from a sound by its own Scene: effect ids are unique per Scene, not in the story (two Scenes may each
+have an `s1`). A sound needs no command, however many instances it has. A step is never commanded before its own Scene's
+slide change: an effect at `transition.start` has `commandFrame` one before the slide frame, which would step the previous
+slide, so it is commanded with the slide change (`max(commandFrame, slide command)`) and appears one frame after its fire
+frame, inside the tolerance of F1. The lags above are the capture's own: the lifecycle of the renderer's slide change (when
+its Elements move) is the Renderer's declaration (`revealLifecycle`), observed by `@reebeat/verify`.
+
+**Frame rate.** The lags are frames at `capturedFps` (30), the only rate they were measured at. A Plan at another
+`settings.fps`, or with `settings.ntsc`, is refused with `AdapterUnavailable` (requirement `settings.fps 30 with
+settings.ntsc false`, `service: FrameCapturer`) before a browser starts, rather than a video whose commands are a fraction
+of a frame off (`test/rate.test.ts`).
 
 ## Settle wait
 

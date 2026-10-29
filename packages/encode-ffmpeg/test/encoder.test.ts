@@ -32,6 +32,7 @@ const request = (
   frames,
   height: 64,
   metadata: { comment: "unit", title: "Unit" },
+  ntsc: false,
   outPath,
   totalMs: 400,
   tracks,
@@ -64,6 +65,29 @@ layer(Layer.merge(encoder, toolbox))("ffmpeg encoder", (it) => {
 
       assert.strictEqual(failure._tag, "EncodeFailed");
     })
+  );
+
+  it.effect(
+    "refuses the NTSC fraction of a frame rate, naming settings.ntsc, before it writes anything",
+    () =>
+      Effect.gen(function* ntsc() {
+        const fs = yield* FileSystem.FileSystem;
+        const { directory, path } = yield* inTemp;
+        const encoderService = yield* Encoder;
+        const out = path.join(directory, "out.mp4");
+
+        const failure = yield* Effect.flip(
+          encoderService.mux({
+            ...request(out, Stream.empty),
+            fps: 30,
+            ntsc: true,
+          })
+        );
+
+        assert.strictEqual(failure._tag, "AdapterUnavailable");
+        assert.include(failure.message, "settings.ntsc true");
+        assert.isFalse(yield* fs.exists(out));
+      })
   );
 
   it.effect(

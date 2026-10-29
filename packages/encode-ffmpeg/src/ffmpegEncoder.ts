@@ -121,6 +121,16 @@ const encoderLayer = Layer.effect(
     });
 
     const mux = Effect.fn("Encoder.mux")(function* mux(request: MuxRequest) {
+      // The mux writes `fps` as a whole frame rate; the 1000/1001 fraction is refused, not rounded to a wrong video.
+      if (request.ntsc) {
+        return yield* new AdapterUnavailable({
+          adapter,
+          message: `the ffmpeg encoder writes whole frame rates only: settings.ntsc ${request.ntsc} (${request.fps * 1000}/1001 fps) is not supported`,
+          requirement: "settings.ntsc false",
+          service: "Encoder",
+        });
+      }
+
       return yield* available(Effect.scoped(muxMedia(request))).pipe(
         Effect.catchTags({
           InvalidOutputName: (cause) =>

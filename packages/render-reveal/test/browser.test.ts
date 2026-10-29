@@ -2,6 +2,7 @@
 // notes, and reveal.js Auto-Animate keeping the identity of a matched Element. These tests use the real clock; the
 // controlled clock belongs to packages/capture-chromium. One browser per test, closed with the test's scope.
 import { assert, describe, it } from "@effect/vitest";
+import { stepsOf } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Order, Schema, String as Str } from "effect";
 import type { Page } from "playwright-core";
@@ -20,6 +21,7 @@ import {
 import {
   asText,
   planOf,
+  ringSource,
   scheduledOf,
   scheduledStory,
   storyPlan,
@@ -75,9 +77,9 @@ const step = "reebeatDeck.stepFragment()";
 const hasClass = (classes: string, name: string): boolean =>
   Str.split(classes, " ").includes(name);
 
-/** How many fragment steps a Scene has: one per `show` or `focus` effect. */
-const stepCount = (scene: PlanJson["scenes"][number]): number =>
-  Arr.filter(scene.effects, (effect) => effect.verb !== "sound").length;
+/** How many fragment steps a Scene has: `stepsOf`, a start for each `show` and `focus` and an end for each ring that ends by its `until`. */
+const stepCount = (plan: PlanJson, scene: PlanJson["scenes"][number]): number =>
+  stepsOf(plan, scene).length;
 
 /** Three steps, in the order of their words, and a pop that rides on the last one. */
 const effectScreenplay = asText([
@@ -259,10 +261,10 @@ describe("the Deck page", () => {
   );
 
   it.live(
-    "steps exactly one fragment per show or focus effect in every scene, then reports none left",
+    "steps exactly one fragment per step (a start per show or focus, an end per ring that ends by its until) in every scene, then reports none left",
     () =>
       Effect.gen(function* stepping() {
-        const plan = yield* storyPlan;
+        const plan = yield* scheduledStory;
         const { page } = yield* openDeck(yield* writtenDeck(plan));
 
         const outcomes = yield* Effect.forEach(plan.scenes, (scene) =>
@@ -270,11 +272,11 @@ describe("the Deck page", () => {
             yield* evaluate(page, goTo(scene.id), Schema.Undefined);
 
             const steps = yield* Effect.forEach(
-              Arr.range(0, stepCount(scene)),
+              Arr.range(0, stepCount(plan, scene)),
               () => evaluate(page, step, Schema.Boolean)
             );
 
-            return { count: stepCount(scene), id: scene.id, steps };
+            return { count: stepCount(plan, scene), id: scene.id, steps };
           })
         );
 
@@ -482,6 +484,42 @@ describe("the Deck page", () => {
 
         yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
         assert.deepStrictEqual(yield* focused(), ["a"]);
+      })
+  );
+
+  it.live(
+    "the end step takes the ring off its own target, stepping back puts it back, and the next focus is untouched",
+    () =>
+      Effect.gen(function* ring() {
+        const plan = yield* scheduledOf(ringSource);
+        const { page } = yield* openDeck(yield* writtenDeck(plan));
+
+        const focused = () =>
+          evaluate(
+            page,
+            `[...document.querySelectorAll(".el.focused")].map((e) => e.dataset.id)`,
+            Strings
+          );
+
+        // Three fragments: the start of `f1`, the end of `f1`, the start of `f2`.
+        yield* evaluate(page, step, Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), ["a"]);
+
+        yield* evaluate(page, step, Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), []);
+
+        yield* evaluate(page, step, Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), ["b"]);
+        assert.isFalse(yield* evaluate(page, step, Schema.Boolean));
+
+        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), []);
+
+        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), ["a"]);
+
+        yield* evaluate(page, "Reveal.prevFragment()", Schema.Boolean);
+        assert.deepStrictEqual(yield* focused(), []);
       })
   );
 

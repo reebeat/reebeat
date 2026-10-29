@@ -237,6 +237,7 @@ const fakePage = (
 const schedule = (commandFrames: readonly number[]): CaptureSchedule => ({
   commands: Arr.map(commandFrames, (frame) => ({
     command: { kind: "stepFragment" },
+    edge: "start",
     frame,
     source: `c${frame}`,
   })),

@@ -86,6 +86,29 @@ export const carrySource = asText([
   "One two three four five six seven eight.",
 ]);
 
+/**
+ * A ring that ends by its own `until` (`f1`: a start and an end step), a second focus after it (`f2`), and two sounds
+ * that ride the start of `f1`.
+ */
+export const ringSource = asText([
+  "# One",
+  "",
+  "INT. A - DAY #sc1#",
+  "",
+  "Alpha {id=a cell=ml class=box}",
+  "Beta {id=b cell=mr class=box}",
+  "",
+  "[[effects",
+  '  p1: sound ding at word("two").end',
+  '  f1: focus a at word("one").end until word("three").end',
+  '  f2: focus b at word("five").end',
+  '  s1: sound pop at word("three").end',
+  "]]",
+  "",
+  "NARRATOR",
+  "One two three four five six seven eight.",
+]);
+
 /** The Plan of a screenplay text, scheduled against the lifecycle reveal.js declares. */
 export const scheduledOf = (source: string) =>
   Effect.flatMap(planOf(source), (plan) =>

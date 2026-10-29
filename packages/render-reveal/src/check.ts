@@ -1,6 +1,7 @@
 // The Deck against its Plan (spec 0001, F3 to F5, deck side; spec 0002, F4). `checkDeck` reads a written `deck.html`
 // with `readDeck` and compares it with the Plan: the source hash, the slides in order, the notes (F3), the fragments
-// (F4: one per `show` or `focus` effect in resolved order, and the `data-sounds` of every sound), the Elements and the
+// (F4/F5: one per step, a start for each `show` or `focus` effect and an end for each ring that ends by its `until`, in
+// resolved order, and the `data-sounds` of every sound), the Elements and the
 // slide marks. It reports the first difference, naming the slide and the position in it.
 import type { PlanJson, Scene } from "@reebeat/core";
 import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
@@ -88,7 +89,8 @@ const notesMismatch = (
 /** The fragments of every slide as the lint rule reads them: neutral, in page order. */
 const pageFragments = (model: DeckModel): readonly Fragment[] =>
   Arr.flatMap(model.slides, (slide) =>
-    Arr.map(slide.fragments, ({ effectId, target, verb }) => ({
+    Arr.map(slide.fragments, ({ edge, effectId, target, verb }) => ({
+      edge,
       effectId,
       sceneId: slide.sceneId,
       target,
@@ -96,7 +98,7 @@ const pageFragments = (model: DeckModel): readonly Fragment[] =>
     }))
   );
 
-/** F4 as the lint rule `effect-fragment-agreement` says it: the effects' ids, verbs and targets, in resolved order. */
+/** F4 as the lint rule `effect-fragment-agreement` says it: the steps' effect ids, edges, verbs and targets, in resolved order. */
 const agreementMismatch = (
   scene: Scene,
   diagnostics: readonly Diagnostic[]
@@ -154,13 +156,14 @@ const stepsMismatch = (
     slide.fragments,
     (want, have) =>
       String(want.index) === have.index &&
+      want.edge === have.edge &&
       listed(want.sounds) === listed(have.sounds)
   );
 
   return position === undefined
     ? undefined
     : fail(
-        `the Plan has index ${wanted.fragments[position]?.index ?? "none"} playing ${listed(wanted.fragments[position]?.sounds ?? [])}, the page has index ${show(slide.fragments[position]?.index)} playing ${listed(slide.fragments[position]?.sounds ?? [])}`,
+        `the Plan has index ${wanted.fragments[position]?.index ?? "none"} (${wanted.fragments[position]?.edge ?? "no edge"}) playing ${listed(wanted.fragments[position]?.sounds ?? [])}, the page has index ${show(slide.fragments[position]?.index)} (${slide.fragments[position]?.edge ?? "no edge"}) playing ${listed(slide.fragments[position]?.sounds ?? [])}`,
         position
       );
 };
@@ -280,9 +283,9 @@ const firstMismatch = (
 };
 
 /**
- * Checks a written `deck.html` against its Plan: F3 (notes equal the narration), F4 (fragments equal the Cues, in
- * kind, argument and order), the F5 hash, the slides, the Elements and the slide marks. Fails with the first
- * `DeckMismatch`.
+ * Checks a written `deck.html` against its Plan: F3 (notes equal the narration), F4 (fragments equal the steps of
+ * `stepsOf`: effect, edge, verb and target, in order), the F5 hash, the slides, the Elements and the slide marks. Fails
+ * with the first `DeckMismatch`.
  */
 export const checkDeck = (plan: PlanJson, html: string) =>
   Effect.suspend(() => {

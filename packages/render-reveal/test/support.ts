@@ -110,24 +110,31 @@ export const ringSource = asText([
 ]);
 
 /**
- * One Element is rung twice: `f1` rings `a` until "four" ends, and `f2` rings `a` again at "three". The ring is `f2`'s
- * from "three" on and lasts to the slide change, so the end step of `f1` (at "four") has nothing to take off.
+ * A ring that a later focus takes over, on the same Element (`reringSource`: `f1` rings `a` until "four" ends, `f2`
+ * rings `a` again at "three") and on another (`takeoverSource`: `f2` rings `b`). The ring is the later focus's from
+ * "three" on and lasts to the slide change, so the earlier focus (`endedBy` `replaced`) has no end step: two fragments.
  */
-export const reringSource = asText([
-  "# One",
-  "",
-  "INT. A - DAY #sc1#",
-  "",
-  "Alpha {id=a cell=ml class=box}",
-  "",
-  "[[effects",
-  '  f1: focus a at word("one").end until word("four").end',
-  '  f2: focus a at word("three").end',
-  "]]",
-  "",
-  "NARRATOR",
-  "One two three four five six seven eight.",
-]);
+const takeover = (second: string): string =>
+  asText([
+    "# One",
+    "",
+    "INT. A - DAY #sc1#",
+    "",
+    "Alpha {id=a cell=ml class=box}",
+    "Beta {id=b cell=mr class=box}",
+    "",
+    "[[effects",
+    '  f1: focus a at word("one").end until word("four").end',
+    `  f2: focus ${second} at word("three").end`,
+    "]]",
+    "",
+    "NARRATOR",
+    "One two three four five six seven eight.",
+  ]);
+
+export const reringSource = takeover("a");
+
+export const takeoverSource = takeover("b");
 
 /** The Plan of a screenplay text, scheduled against the lifecycle reveal.js declares. */
 export const scheduledOf = (source: string) =>

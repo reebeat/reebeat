@@ -78,12 +78,13 @@ const expandAlias = (tokens: readonly string[]): readonly string[] =>
     }
   );
 
-/** The spelling an alias gives a canonical path, if one does (`scene.shown.leave` is `scene.end`). */
+/** The spelling an alias gives a canonical path, if one does (`scene.before.leave` is `scene.start`). */
 const aliased = (path: readonly string[]): readonly string[] =>
   Option.match(
     Arr.findFirst(
       aliases,
       (alias) =>
+        alias.shift === undefined &&
         path.length >= alias.for.length &&
         Arr.every(alias.for, (word, index) => path[index] === word)
     ),
@@ -336,3 +337,37 @@ export const formatAnchor = (anchor: Anchor, explicit = false): string =>
   anchor.kind === "word"
     ? `${anchorWords.word}("${anchor.phrase}"${anchor.occurrence === 1 && !explicit && !anchor.explicit ? "" : `, ${anchor.occurrence}`}).${anchor.edge}`
     : pipe(pathOf(anchor), aliased, Arr.join("."));
+
+/**
+ * The frames an alias adds to the moment it stands for, when the whole path is a spelling that shifts (`scene.end` is
+ * the first frame out of `scene.shown` minus one frame); 0 for every other path. The reader wraps such an anchor in an
+ * offset of this many frames, so the alias means what the data says and the anchor stays the canonical one.
+ */
+export const aliasShift = (path: string): number =>
+  Option.match(
+    Arr.findFirst(
+      aliases,
+      (alias) =>
+        alias.shift !== undefined && Arr.join(alias.spelled, ".") === path
+    ),
+    { onNone: () => 0, onSome: (alias) => alias.shift ?? 0 }
+  );
+
+/** The alias spelling of an anchor moved by `frames` output frames (`scene.end` for `scene.shown.leave` minus 1), if one. */
+export const shiftedAlias = (
+  anchor: Anchor,
+  frames: number
+): string | undefined =>
+  anchor.kind === "word"
+    ? undefined
+    : Option.getOrUndefined(
+        Option.map(
+          Arr.findFirst(
+            aliases,
+            (alias) =>
+              alias.shift === frames &&
+              Arr.join(alias.for, ".") === Arr.join(pathOf(anchor), ".")
+          ),
+          (alias) => Arr.join(alias.spelled, ".")
+        )
+      );

@@ -122,7 +122,13 @@ export const endingOf = (
 ): Ending => {
   const { until } = fact.effect;
 
-  if (until === undefined || own.start === undefined) {
+  // A focus a later focus took the ring from ended at that focus's start, before its own `until` would have (a tie goes
+  // to the takeover): the `until` is not what ended it, and the ring's end is judged by `ringFinding`.
+  if (
+    until === undefined ||
+    own.start === undefined ||
+    fact.timed.endedBy === "replaced"
+  ) {
     return { tag: "none" };
   }
 

@@ -33,7 +33,7 @@ export interface World {
 /** Why a moment is that frame: a picture or sound that shows it, or the Timeline for what has no picture. */
 export type Basis =
   | "first frame of the Scene"
-  | "last frame of the Scene"
+  | "end of the Scene"
   | "observed"
   | "timeline";
 
@@ -265,7 +265,7 @@ export const runOf = (
       );
     }
 
-    if (ring.tag === "replaced") {
+    if (ring.tag === "retaken") {
       const resolved = Arr.findFirst(
         timed.effects,
         (candidate) =>
@@ -378,12 +378,16 @@ export const beatOf = (world: World, index: number, n: number): Found<Window> =>
     )
   );
 
-/** State `n` (1-based) as observed: from the end of the last Beat before it (`stateStart`) to the start of the Beat after it. */
-export const dwellOf = (
+/**
+ * State `n` (1-based) as observed: its dwell, from the end of the last Beat before it (`stateStart`) to the start of the
+ * Beat after it (the Scene's last frame for the last State, which is then `last`: it is left at the frame after, the
+ * next slide change).
+ */
+export const dwellDetail = (
   world: World,
   index: number,
   n: number
-): Found<Window> =>
+): Found<{ readonly last: boolean; readonly window: Window }> =>
   Result.gen(function* dwell() {
     const beats = yield* beatsOf(world, index);
     const bounds = yield* sceneWindowOf(world, index);
@@ -402,10 +406,21 @@ export const dwellOf = (
     );
 
     return {
-      end: Option.match(Arr.get(beats, n - 1), {
-        onNone: () => bounds.end,
-        onSome: (beat) => Math.max(start, beat.start),
-      }),
-      start,
+      last: n === beats.length + 1,
+      window: {
+        end: Option.match(Arr.get(beats, n - 1), {
+          onNone: () => bounds.end,
+          onSome: (beat) => Math.max(start, beat.start),
+        }),
+        start,
+      },
     };
   });
+
+/** The window State `n` is scoped to by `within`: both ends included. */
+export const dwellOf = (
+  world: World,
+  index: number,
+  n: number
+): Found<Window> =>
+  Result.map(dwellDetail(world, index, n), ({ window }) => window);

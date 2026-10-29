@@ -47,6 +47,14 @@ export const combinatorWords = {
   within: "within",
 } as const;
 
+/**
+ * Names a combinator used to have, with the word that replaced it: the message for `all(...)` says `did you mean last`
+ * (SMIL's `endsync="all"` means something else than this combinator did). The one place a retired name is spelled.
+ */
+export const retiredCombinators: Readonly<Record<string, string>> = {
+  all: combinatorWords.last,
+};
+
 /** The options of `each(...)` that thin or space its occurrences (`throttle=250ms`, `stagger=0.3s`). */
 export const optionWords = {
   stagger: "stagger",
@@ -400,7 +408,10 @@ const aliasSpellings: readonly AnchorSpelling[] = Arr.flatMap(
                   [...alias.spelled, ...Arr.drop(path, alias.for.length)],
                   "."
                 ),
-                meaning: `the same as \`${Arr.join(path, ".")}\``,
+                meaning:
+                  alias.shift === undefined
+                    ? `the same as \`${Arr.join(path, ".")}\``
+                    : `\`${Arr.join(path, ".")}\` moved by ${alias.shift} frame${Math.abs(alias.shift) === 1 ? "" : "s"}: the Scene's last frame, one frame before the first frame out of \`${Arr.join(Arr.take(path, 2), ".")}\``,
               },
             ]
           : [];

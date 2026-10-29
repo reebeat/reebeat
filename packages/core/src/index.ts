@@ -61,7 +61,12 @@ export type { Form, Machine } from "./machines.ts";
 
 export { initialState } from "./events.ts";
 
-export { occupancies, stateEvent, stateStart } from "./occupancy.ts";
+export {
+  lastFrameLeave,
+  occupancies,
+  stateEvent,
+  stateStart,
+} from "./occupancy.ts";
 
 export {
   flicksOfFrames,

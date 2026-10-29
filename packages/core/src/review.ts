@@ -203,6 +203,7 @@ const carrierText = (carrier: Carrier): string =>
 const endedByText: Readonly<
   Record<NonNullable<TimedEffect["endedBy"]>, string>
 > = {
+  replaced: "by the next focus",
   "slide-change": "interrupted by the slide change",
   until: "by until",
   window: "by its window",

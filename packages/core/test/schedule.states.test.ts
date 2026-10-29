@@ -6,10 +6,11 @@
 //   steps    r1 `show note` at charlie.end (120, a fade of 4 frames to 124) and f1 `focus box` at foxtrot.start (138):
 //            Beat 1 is 120..124 and Beat 2 is 138..138, so State 1 holds 63..120, State 2 124..138, State 3 138..179.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Result } from "effect";
+import { Array as Arr, Effect, Result, String as Str } from "effect";
 
 import { collectErrors } from "../src/build.ts";
 import { parseEffectLine } from "../src/effects.ts";
+import { reviewText } from "../src/review.ts";
 import { stepsOf } from "../src/steps.ts";
 import {
   firesOf,
@@ -225,9 +226,10 @@ describe("the spellings of 0002 and release 1 mean what they meant", () => {
     "puts scene.end, transition.start, r1.end and the rest at the frames of their canonical spelling",
     () =>
       assertProbes([
-        // scene.end is the last frame of the Scene, 179; scene.start the slide change, 63.
+        // scene.end is the last frame of the Scene, 179, which is the first frame out of `shown` (180) minus one; scene.start
+        // the slide change, 63.
         ["k1", "scene.end", [179]],
-        ["k2", "scene.shown.leave", [179]],
+        ["k2", "scene.shown.leave -1f", [179]],
         ["k3", "scene.end -1f", [178]],
         ["k4", "scene.start", [63]],
         ["k5", "scene.before.leave", [63]],
@@ -253,11 +255,11 @@ describe("the machines' state events", () => {
         ["m2", "box.moving.enter", [65]],
         ["m3", "r1.active.enter", [120]],
         ["m4", "r1.active.leave", [124]],
-        ["m5", "scene.shown.leave", [179]],
+        ["m5", "scene.shown.leave -1f", [179]],
         ["m6", "scene.shown.enter", [87]],
         // a state still held at the end of the Scene is left at its last frame.
-        ["m7", "fresh.present.leave", [179]],
-        ["m8", "r1.done.leave", [179]],
+        ["m7", "fresh.present.leave -1f", [179]],
+        ["m8", "r1.done.leave -1f", [179]],
       ])
   );
 });
@@ -276,7 +278,7 @@ describe("the Beats and the States of a Scene", () => {
         ["s3", "state(2).enter", [124]],
         ["s4", "state(2).leave", [138]],
         ["s5", "state(3).enter", [138]],
-        ["s6", "state(3).leave", [179]],
+        ["s6", "state(3).leave -1f", [179]],
       ])
   );
 
@@ -335,7 +337,7 @@ describe("the Beats and the States of a Scene", () => {
           ["v2", "state(2).enter", [124]],
           ["v3", "state(2).leave", [124]],
           ["v4", "state(3).enter", [124]],
-          ["v5", "state(3).leave", [179]],
+          ["v5", "state(3).leave -1f", [179]],
         ],
         [
           'r1: show note at word("charlie").end',
@@ -359,17 +361,18 @@ const untilRows = [
 describe("until: the end of an effect with a window", () => {
   /** `[id, fire, command, end, ended by, end command]`. */
   const windows = [
-    // fire 102; delta starts at 120, after it: the ring ends there, commanded one frame before.
+    // fire 102; delta starts at 120, after it, and the next focus (u2) fires at 129: the ring ends at its own until,
+    // commanded off one frame before.
     ["u1", 102, 101, 120, "until", 119],
-    // echo starts at 129, the fire frame itself: an equal frame is not an end, and nothing later ends it.
-    ["u2", 129, 128, 179, "slide-change", null],
-    // alpha ends at 102, before the fire frame 138: never after it.
-    ["u3", 138, 137, 179, "slide-change", null],
-    // hotel ends at 165, and one second later is 195, after the Scene's last frame 179: the slide change ends it.
-    ["u4", 147, 146, 179, "slide-change", null],
-    // alpha starts at 93, the fire frame: ignored; charlie starts at 111.
-    ["u5", 93, 92, 111, "until", 110],
-    // no until: the ring is on until the slide change.
+    // echo starts at 129, the fire frame itself: an equal frame is not an end; u3 takes the ring over at 138.
+    ["u2", 129, 128, 138, "replaced", null],
+    // alpha ends at 102, before the fire frame 138: never after it; u4 takes the ring over at 147.
+    ["u3", 138, 137, 147, "replaced", null],
+    // hotel ends at 165, and one second later is 195, after the Scene's last frame; f1 takes the ring over at 156.
+    ["u4", 147, 146, 156, "replaced", null],
+    // alpha starts at 93, the fire frame: ignored; charlie starts at 111, but u1 takes the ring over at 102, earlier.
+    ["u5", 93, 92, 102, "replaced", null],
+    // no until and no later focus: the ring is on until the slide change.
     ["f1", 156, 155, 179, "slide-change", null],
     // a show fades for 4 frames.
     ["r1", 120, 119, 124, "window", null],
@@ -419,7 +422,7 @@ describe("until: the end of an effect with a window", () => {
   );
 
   it.effect(
-    "gives the Deck an end step for each ring its own until ended, and none for one the slide change ended",
+    "gives the Deck an end step for each ring its own until ended, and none for one a later focus replaced or the slide change ended",
     () =>
       Effect.gen(function* steps() {
         const plan = yield* scheduledAt(statesSource(untilRows));
@@ -434,10 +437,7 @@ describe("until: the end of an effect with a window", () => {
             Arr.filter(found, ({ edge }) => edge === "end"),
             ({ effect, timed }) => [effect.id, timed?.endFrame]
           ),
-          [
-            ["u5", 111],
-            ["u1", 120],
-          ]
+          [["u1", 120]]
         );
         assert.deepStrictEqual(
           Arr.map(
@@ -599,4 +599,118 @@ describe("a show or a focus whose fire anchor or until reads a State or a Beat o
       []
     );
   });
+});
+
+const ringOf = (rows: readonly string[]) =>
+  Effect.map(
+    scheduledAt(statesSource(['r1: show note at word("hotel").end', ...rows])),
+    (plan) =>
+      Arr.map(
+        Arr.filter(mainOf(plan).effects, ({ effectId }) =>
+          Arr.contains(["g1", "g2"], effectId)
+        ),
+        ({ effectId, endCommandFrame, endFrame, endedBy, fireFrame }) => [
+          effectId,
+          fireFrame,
+          endFrame,
+          endedBy,
+          endCommandFrame,
+        ]
+      )
+  );
+
+describe("the one ring: a later focus takes it over, whatever its target", () => {
+  const rings: readonly (readonly [string, readonly string[], unknown])[] = [
+    [
+      "ends a focus at the fire frame of the next one when its until comes later (replaced, no end step)",
+      [
+        'g1: focus tag at word("alpha").start until word("foxtrot").start',
+        'g2: focus fresh at word("charlie").start',
+      ],
+      [
+        ["g1", 93, 111, "replaced", null],
+        ["g2", 111, 179, "slide-change", null],
+      ],
+    ],
+    [
+      "keeps its own until, and the end step, when that comes before the next focus",
+      [
+        'g1: focus tag at word("alpha").start until word("bravo").start',
+        'g2: focus fresh at word("charlie").start',
+      ],
+      [
+        ["g1", 93, 102, "until", 101],
+        ["g2", 111, 179, "slide-change", null],
+      ],
+    ],
+    [
+      "is interrupted by the slide change when no focus follows",
+      ['g1: focus tag at word("alpha").start'],
+      [["g1", 93, 179, "slide-change", null]],
+    ],
+    [
+      "takes the ring over from a focus of the same target as from another",
+      [
+        'g1: focus tag at word("alpha").start',
+        'g2: focus tag at word("charlie").start',
+      ],
+      [
+        ["g1", 93, 111, "replaced", null],
+        ["g2", 111, 179, "slide-change", null],
+      ],
+    ],
+    [
+      "gives the later declaration the ring when two focuses fire at one frame",
+      [
+        'g1: focus tag at word("alpha").start',
+        'g2: focus fresh at word("alpha").start',
+      ],
+      [
+        ["g1", 93, 93, "replaced", null],
+        ["g2", 93, 179, "slide-change", null],
+      ],
+    ],
+    [
+      "still lets a focus start at the end of another: the takeover is the same frame",
+      [
+        'g1: focus tag at word("alpha").start until word("charlie").start',
+        "g2: focus fresh at g1.end",
+      ],
+      [
+        ["g1", 93, 111, "until", 110],
+        ["g2", 111, 179, "slide-change", null],
+      ],
+    ],
+  ];
+
+  for (const [name, rows, expected] of rings) {
+    it.effect(name, () =>
+      Effect.gen(function* ring() {
+        assert.deepStrictEqual(yield* ringOf(rows), expected);
+      })
+    );
+  }
+});
+
+describe("plan --timing says a focus was replaced by the next one", () => {
+  it.effect(
+    "prints 'by the next focus' under the focus that a later focus took the ring from",
+    () =>
+      Effect.gen(function* review() {
+        const plan = yield* scheduledAt(
+          statesSource([
+            'r1: show note at word("hotel").end',
+            'g1: focus tag at word("alpha").start until word("foxtrot").start',
+            'g2: focus fresh at word("charlie").start',
+          ])
+        );
+
+        const rows = Str.split(reviewText(plan, { timing: true }), "\n");
+
+        assert.include(
+          rows,
+          "        ends frame 111 (3.70 s), by the next focus"
+        );
+      })
+  );
 });

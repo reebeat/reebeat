@@ -71,10 +71,18 @@ export const labelOf = (fact: EffectFact): string =>
     " "
   );
 
-/** What the observed sources say of the instance: where they put it, and whether that is where it is. */
+/**
+ * What the observed sources say of the instance: where they put it, and whether that is where the Timeline resolved it.
+ *
+ * There is deliberately NO comparison of the effect's own observed frame with the frame its observed anchor gives. The
+ * two are independent observations, each judged against the resolved frame within one frame (`ownFinding` the effect,
+ * this function the anchor: the expression over the observed leaves). A comparison of one with the other would have to
+ * allow the SUM of the two tolerances, two frames, and the two verdicts already imply that (|own - anchor| <= |own -
+ * resolved| + |resolved - anchor| <= 2), so such a check could never fail on its own. With the old one-frame tolerance
+ * it failed valid stories, where the anchor is observed one frame late and the ring one frame early (+1 and -1).
+ */
 const anchorFinding = (
   fact: EffectFact,
-  own: Own,
   anchored: Anchored,
   leaves: string
 ): Finding => {
@@ -96,13 +104,6 @@ const anchorFinding = (
         `${label}: the observed anchor puts it at frame ${frameText(anchored.frame)}, ${signedFrames(early)} frames from its resolved frame ${fireFrame}`,
       ];
 
-  const placed =
-    own.start === undefined || withinOneFrame(own.start - anchored.frame)
-      ? []
-      : [
-          `${label}: it is observed at frame ${frameText(own.start)}, ${signedFrames(own.start - anchored.frame)} frames from where its observed anchor puts it`,
-        ];
-
   const counted =
     fact.timed.instance === 1 && anchored.count !== anchored.instances
       ? [
@@ -110,7 +111,7 @@ const anchorFinding = (
         ]
       : [];
 
-  return { measured: [part], problems: [...resolved, ...placed, ...counted] };
+  return { measured: [part], problems: [...resolved, ...counted] };
 };
 
 /** What the effect itself did: the sound's onset, or the step in its target's cell, against its resolved frame. */
@@ -152,10 +153,10 @@ const ringFinding = (fact: EffectFact, own: Own, endFrame: number): Finding => {
     };
   }
 
-  if (ring.tag === "replaced") {
+  if (ring.tag === "retaken") {
     return {
       measured: [
-        `ring replaced by ${ring.by} at frame ${ring.frame}: its end is not observed`,
+        `ring kept: ${ring.by} rings the same Element again at frame ${ring.frame}, so the ring never leaves its cell (no end to observe)`,
       ],
       problems: [],
     };
@@ -233,12 +234,7 @@ const endFinding = (fact: EffectFact, evidence: Evidence): Finding => {
 
 /** One instance's findings, printed as one row. */
 export const judge = (fact: EffectFact, evidence: Evidence): Finding => {
-  const found = anchorFinding(
-    fact,
-    evidence.own,
-    evidence.anchored,
-    evidence.leaves
-  );
+  const found = anchorFinding(fact, evidence.anchored, evidence.leaves);
 
   const did = ownFinding(fact, evidence.own);
   const ended = endFinding(fact, evidence);

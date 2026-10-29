@@ -323,7 +323,7 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
   });
 
   it.effect(
-    "passes a sound 0.99 frame from its resolved frame and from the observed first changed frame, and fails 1.02 frames, on both sides and with the picture moved",
+    "passes a sound and a picture each 0.99 frame from the resolved frame (2 frames from each other), and fails either at 1.02 frames, on both sides",
     () =>
       Effect.gen(function* boundary() {
         // The sound is where its effect says (0.99 frame late), the picture changes at the slide frame.
@@ -333,12 +333,16 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
         assert.deepStrictEqual(yield* problemsOf(0, 1), []);
         assert.deepStrictEqual(yield* problemsOf(0, -1), []);
         assert.deepStrictEqual(yield* problemsOf(0.01, 1), []);
+        // The two are independent observations, each within one frame of the resolved frame: a sound a frame early
+        // under a picture a frame late is 2 frames apart and passes (the sum of the two tolerances).
+        assert.deepStrictEqual(yield* problemsOf(-0.99, 0.99), []);
+        assert.deepStrictEqual(yield* problemsOf(0.99, -0.99), []);
 
         for (const [soundFrames, change, shown] of [
           [1.02, 0, "+1.02"],
           [-1.02, 0, "-1.02"],
-          [-0.02, 1, "-1.02"],
-          [0.02, -1, "+1.02"],
+          [0, 1.02, "+1.02"],
+          [0, -1.02, "-1.02"],
         ] as const) {
           const problems = yield* problemsOf(soundFrames, change);
 

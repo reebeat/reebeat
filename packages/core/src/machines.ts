@@ -55,9 +55,14 @@ export interface Transition {
   readonly to: string;
 }
 
-/** An alternative spelling of a path (head included): a prefix of the path is replaced by another. */
+/**
+ * An alternative spelling of a path (head included): a prefix of the path is replaced by another. `shift` is a number
+ * of frames the alias adds to what it stands for: the spelling is that moment moved by `shift` output frames, not the
+ * moment itself (`scene.end` is the first frame out of `scene.shown`, minus one frame: the Scene's last frame).
+ */
 export interface Alias {
   readonly for: readonly string[];
+  readonly shift?: number;
   readonly spelled: readonly string[];
 }
 
@@ -197,7 +202,7 @@ const effect: Machine = {
 
 /**
  * The slide change into a Scene, one step of the sequence of Scenes. `scene.start` is the frame the slide change is
- * shown (leaving `before`) and `scene.end` the Scene's last frame (leaving `shown`); `transition.<point>` is the
+ * shown (leaving `before`) and `scene.end` the Scene's last frame (one frame before the first frame out of `shown`); `transition.<point>` is the
  * transition of the Scene.
  */
 const slide: Machine = {
@@ -212,6 +217,7 @@ const slide: Machine = {
     },
     {
       for: [machineWords.scene, "shown", "leave"],
+      shift: -1,
       spelled: [machineWords.scene, "end"],
     },
   ],
@@ -367,7 +373,7 @@ const stateForms = (machine: Machine, state: State): readonly Form[] =>
     event,
     kind: "state",
     machine,
-    means: `the first frame the machine ${event === "enter" ? "enters" : "leaves"} this state (${state.means})`,
+    means: `${event === "enter" ? "the first frame the machine is in this state" : "the first frame out of this state (a state still held at the end of the Scene is left at the next slide change)"} (${state.means})`,
     state,
     tail: [
       ...(machine.stateElided ? [] : [state.name]),
@@ -450,4 +456,20 @@ export const elementMachineOf = (
             )
           : Arr.some(machine.states, (state) => state.name === name)
     )
+  );
+
+/**
+ * The final states of a machine: the states no transition leaves (derived, never stored: a transition leaves its `from`
+ * state and, when its window ends, its `during` state). `done` of an effect and of a Beat, `shown` of the Scene, the one
+ * state of a State; no state of an Element is final, since an Element's presence can always `exit` and its position and
+ * style return to where they began.
+ */
+export const finalStates = (machine: Machine): readonly State[] =>
+  Arr.filter(
+    machine.states,
+    ({ name }) =>
+      !Arr.some(
+        machine.transitions,
+        (transition) => transition.from === name || transition.during === name
+      )
   );

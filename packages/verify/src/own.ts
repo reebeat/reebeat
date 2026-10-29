@@ -26,7 +26,7 @@ const soundWindowMs = 150;
 export type Ring =
   | { readonly tag: "none" }
   | { readonly tag: "slide-change" }
-  | { readonly by: string; readonly frame: number; readonly tag: "replaced" }
+  | { readonly by: string; readonly frame: number; readonly tag: "retaken" }
   | { readonly reason: string; readonly tag: "missing" }
   | { readonly gone: number; readonly off: number; readonly tag: "seen" };
 

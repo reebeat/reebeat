@@ -35,7 +35,7 @@ The commands of one Scene are the steps of `stepsOf` (`@reebeat/core`, the one d
 verifier share), in its order: a start for each `show` and `focus`, commanded at the effect's `commandFrame`, and an END
 step for each `focus` whose ring ends by its own `until` before the Scene ends, commanded at its `endCommandFrame`
 (`endFrame - 1`: the ring leaves by the same one-frame CSS transition, so its lag is the focus start's). A step is the same
-call for every effect, the Deck's fragments are in that order, and a start is commanded before an end in one frame. An
+call for every effect, the Deck's fragments are in that order, and a ring a later focus takes over (`endedBy` `replaced`) has no end: the start of that focus moves the Deck's one ring. An
 effect is told apart from a sound by its own Scene: effect ids are unique per Scene, not in the story (two Scenes may each
 have an `s1`). A sound needs no command, however many instances it has. A step is never commanded before its own Scene's
 slide change: an effect at `transition.start` has `commandFrame` one before the slide frame, which would step the previous

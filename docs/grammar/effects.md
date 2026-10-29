@@ -152,15 +152,17 @@ The `restart` and `fill` columns are the SMIL 3.0 attributes of the same names, 
 
 A **machine** says which states a thing passes through and which timed transitions connect them. The anchors below are generated from these declarations (`packages/core/src/machines.ts`); an anchor that names none of them is an error. Graph model: a **State** (node) holds for a dwell interval, a **Beat** (edge) is the transition the engine generates from one State to the next, and a **Scene** is a compound State (a superstate) that groups the States sharing one identity scope. Each Element's lifecycle (presence, position, style) and each effect run as parallel regions inside a Scene.
 
-| machine | subject | initial state | states | transitions |
-| --- | --- | --- | --- | --- |
-| `presence` | `<id>` | `absent` | `absent`, `entering`, `present`, `exiting` | `enter`: absent -> entering -> present (time); `exit`: present -> exiting -> absent (time) |
-| `position` | `<id>` | `still` | `still`, `moving` | `move`: still -> moving -> still (eased) |
-| `style` | `<id>` | `steady` | `steady`, `updating` | `update`: steady -> updating -> steady (eased) |
-| `effect` | `<id>` | `idle` | `idle`, `active`, `done` | `run`: idle -> active -> done (time) |
-| `slide` | `scene` | `before` | `before`, `changing`, `shown` | `transition`: before -> changing -> shown (time) |
-| `dwell` | `state(<n>)` | `dwell` | `dwell` | none |
-| `beat` | `beat(<n>)` | `waiting` | `waiting`, `changing`, `done` | `change`: waiting -> changing -> done (time) |
+| machine | subject | initial state | states | final | transitions |
+| --- | --- | --- | --- | --- | --- |
+| `presence` | `<id>` | `absent` | `absent`, `entering`, `present`, `exiting` | none | `enter`: absent -> entering -> present (time); `exit`: present -> exiting -> absent (time) |
+| `position` | `<id>` | `still` | `still`, `moving` | none | `move`: still -> moving -> still (eased) |
+| `style` | `<id>` | `steady` | `steady`, `updating` | none | `update`: steady -> updating -> steady (eased) |
+| `effect` | `<id>` | `idle` | `idle`, `active`, `done` | `done` | `run`: idle -> active -> done (time) |
+| `slide` | `scene` | `before` | `before`, `changing`, `shown` | `shown` | `transition`: before -> changing -> shown (time) |
+| `dwell` | `state(<n>)` | `dwell` | `dwell` | `dwell` | none |
+| `beat` | `beat(<n>)` | `waiting` | `waiting`, `changing`, `done` | `done` | `change`: waiting -> changing -> done (time) |
+
+A state is **final** when no transition leaves it (derived from the transitions, never stored). `enter` is the first frame the machine is in a state and `leave` the first frame **out** of it: the frame a Beat starts or a transition ends for a state left inside the Scene, and the frame of the next slide change (the Scene's last frame plus one) for a state still held when the Scene ends, so a sound anchored at such a `leave` is outside its Scene; `scene.end` is the Scene's last frame, one frame before the first frame out of `scene.shown`.
 
 ### Anchors
 
@@ -205,7 +207,7 @@ An anchor names a moment of the Plan. It resolves to a frame in the schedule sta
 | `transition.end` | the same as `scene.transition.end` |
 | `transition.<N>%` | the same as `scene.transition.<N>%` |
 | `scene.start` | the same as `scene.before.leave` |
-| `scene.end` | the same as `scene.shown.leave` |
+| `scene.end` | `scene.shown.leave` moved by -1 frame: the Scene's last frame, one frame before the first frame out of `scene.shown` |
 
 A percent is only valid on an anchor that has a window (a move, an update, a show, a focus, a Beat, the transition of a Scene that is not `> CUT`, a word); an instant (an exit, `scene.start`, a sound) has none.
 

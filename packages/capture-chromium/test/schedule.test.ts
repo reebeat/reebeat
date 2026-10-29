@@ -189,8 +189,12 @@ describe("captureSchedule", () => {
       );
     });
 
-    it("commands a start before an end that falls in the same frame, in the order of `stepsOf`", () => {
-      assert.strictEqual(f2?.commandFrame, f1?.endCommandFrame);
+    it("commands the steps in the order of `stepsOf`, and a ring a later focus takes over has no end step", () => {
+      const [f3] = timedOf("f3");
+
+      assert.strictEqual(f2?.endedBy, "replaced");
+      assert.strictEqual(f2?.endFrame, f3?.fireFrame);
+      assert.isNull(f2?.endCommandFrame);
 
       const { commands } = captureSchedule(ended);
 
@@ -204,14 +208,14 @@ describe("captureSchedule", () => {
         )
       );
 
+      // f1 starts and ends; f2 and f3 only start: the start of f3 takes the ring from f2.
       assert.deepStrictEqual(
-        Arr.map(
-          Arr.filter(commands, ({ frame }) => frame === f2?.commandFrame),
-          ({ edge, source }) => [source, edge]
-        ),
+        Arr.map(commands, ({ edge, source }) => [source, edge]),
         [
-          ["f2", "start"],
+          ["f1", "start"],
           ["f1", "end"],
+          ["f2", "start"],
+          ["f3", "start"],
         ]
       );
     });

@@ -2,8 +2,10 @@
 // transitions that happen and the windows they have. The initial state holds from the Scene's first frame to the start
 // of the first transition; a transition's `during` state for its window; the state it reaches until the next
 // transition or the end of the Scene. The slide change at the end of the Scene leaves every state, so the last interval
-// ends at the Scene's last frame (SMIL: the parent ends its children). `enter` is the start of the first interval of a
-// state and `leave` the end of it. Plain functions; the windows are frames when a Scene is scheduled and any increasing
+// ends at the Scene's last frame (SMIL: the parent ends its children). `enter` is the first frame of the first interval
+// of a state and `leave` the FIRST FRAME OUT of it: the start of what follows (a Beat's start, a transition's window
+// start), and for the interval still held at the end of the Scene the frame after its last frame, which is the next
+// slide change (`lastFrameLeave`). Plain functions; the windows are frames when a Scene is scheduled and any increasing
 // numbers when the question is only which states a Scene reaches.
 import { Array as Arr, Option, Order } from "effect";
 
@@ -86,7 +88,13 @@ export const occupancies = (
   ];
 };
 
-/** The event of a state: its first interval's start (`enter`) or end (`leave`); never when the state is not reached. */
+/** The frame after the Scene's last frame: the first frame out of a state still held when the Scene ends. */
+export const lastFrameLeave = (lastFrame: number): number => lastFrame + 1;
+
+/**
+ * The event of a state: the first frame of its first interval (`enter`) or the first frame out of it (`leave`); never
+ * when the state is not reached. The interval held to the end of the Scene is left at the frame after the Scene's last.
+ */
 export const stateEvent = (
   intervals: readonly Interval[],
   state: string,
@@ -96,8 +104,13 @@ export const stateEvent = (
     Arr.findFirst(intervals, (interval) => interval.state === state),
     {
       onNone: () => [],
-      onSome: ({ window }) =>
-        once(event === "enter" ? window.start : window.end, window),
+      onSome: ({ open, window }) => {
+        if (event === "enter") {
+          return once(window.start, window);
+        }
+
+        return once(open ? lastFrameLeave(window.end) : window.end, window);
+      },
     }
   );
 

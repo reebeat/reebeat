@@ -21,7 +21,7 @@ import {
   sourceUnits,
   verbArguments,
 } from "./grammar.ts";
-import { headPlaceholder, machines } from "./machines.ts";
+import { finalStates, headPlaceholder, machines } from "./machines.ts";
 import { cells, elementClasses, sfxNames, verbs } from "./plan.ts";
 
 /** One example of the document: a whole story, valid or not. */
@@ -359,12 +359,22 @@ export const grammarDocument = (): string =>
       "A **machine** says which states a thing passes through and which timed transitions connect them. The anchors below are generated from these declarations (`packages/core/src/machines.ts`); an anchor that names none of them is an error. Graph model: a **State** (node) holds for a dwell interval, a **Beat** (edge) is the transition the engine generates from one State to the next, and a **Scene** is a compound State (a superstate) that groups the States sharing one identity scope. Each Element's lifecycle (presence, position, style) and each effect run as parallel regions inside a Scene.",
       "",
       ...table(
-        ["machine", "subject", "initial state", "states", "transitions"],
+        [
+          "machine",
+          "subject",
+          "initial state",
+          "states",
+          "final",
+          "transitions",
+        ],
         Arr.map(machines, (machine) => [
           code(machine.id),
           code(headPlaceholder[machine.subject]),
           code(machine.initial),
           list(Arr.map(machine.states, ({ name }) => name)),
+          finalStates(machine).length === 0
+            ? "none"
+            : list(Arr.map(finalStates(machine), ({ name }) => name)),
           machine.transitions.length === 0
             ? "none"
             : Arr.join(
@@ -377,6 +387,8 @@ export const grammarDocument = (): string =>
               ),
         ])
       ),
+      "A state is **final** when no transition leaves it (derived from the transitions, never stored). `enter` is the first frame the machine is in a state and `leave` the first frame **out** of it: the frame a Beat starts or a transition ends for a state left inside the Scene, and the frame of the next slide change (the Scene's last frame plus one) for a state still held when the Scene ends, so a sound anchored at such a `leave` is outside its Scene; `scene.end` is the Scene's last frame, one frame before the first frame out of `scene.shown`.",
+      "",
       "### Anchors",
       "",
       "An anchor names a moment of the Plan. It resolves to a frame in the schedule stage, from the aligned words, the machines and the renderer's declared lifecycle; `reebeat plan --timing` prints `intent -> frame` for each effect and each derived event.",

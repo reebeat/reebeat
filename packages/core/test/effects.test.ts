@@ -43,6 +43,18 @@ const eventOf = (text: string): EventExpr | undefined => {
 
 const anchored = (anchor: Anchor): EventExpr => ({ anchor, kind: "anchor" });
 
+/** `scene.end`: the first frame out of the Scene's `shown` state, one frame back (the alias declares the shift). */
+const sceneEnd: EventExpr = {
+  kind: "shift",
+  of: anchored({
+    event: "leave",
+    kind: "occupancy",
+    state: "shown",
+    subject: { kind: "scene" },
+  }),
+  offset: { unit: "f", value: -1 },
+};
+
 /** Whether the word the effect line is timed by wrote its occurrence. */
 const explicit = (text: string): boolean | undefined => {
   const event = eventOf(text);
@@ -113,12 +125,7 @@ describe("reading an effect line", () => {
           occurrence: 1,
           phrase: "x",
         }),
-        anchored({
-          event: "leave",
-          kind: "occupancy",
-          state: "shown",
-          subject: { kind: "scene" },
-        }),
+        sceneEnd,
         anchored({
           event: "leave",
           kind: "occupancy",
@@ -204,7 +211,7 @@ describe("reading an effect line", () => {
 
     assert.deepStrictEqual(
       read(
-        'f1: focus box at each(word("a").end, settled, stagger=0.3s, throttle=5f) until first(word("b").start, scene.end)'
+        'f1: focus box at each(word("a").end, settled, throttle=5f, stagger=0.3s) until first(word("b").start, scene.end)'
       ),
       {
         id: "f1",
@@ -221,12 +228,7 @@ describe("reading an effect line", () => {
                 occurrence: 1,
                 phrase: "b",
               }),
-              anchored({
-                event: "leave",
-                kind: "occupancy",
-                state: "shown",
-                subject: { kind: "scene" },
-              }),
+              sceneEnd,
             ],
           },
         },
@@ -423,10 +425,23 @@ describe("writing an effect line", () => {
         (path) => {
           const found = eventOf(`a: sound pop at ${path}`);
 
+          if (found?.kind === "shift") {
+            return formatEvent(found);
+          }
+
           return found?.kind === "anchor" ? formatAnchor(found.anchor) : "";
         }
       ),
       ["scene.end", "scene.start", "transition.50%", "box.update.end"]
+    );
+    // The anchor on its own is the canonical path: `scene.end` is that moment moved by the frame its alias declares.
+    const sceneEndEvent = eventOf("a: sound pop at scene.end");
+
+    assert.strictEqual(
+      sceneEndEvent?.kind === "shift" && sceneEndEvent.of.kind === "anchor"
+        ? formatAnchor(sceneEndEvent.of.anchor)
+        : "",
+      "scene.shown.leave"
     );
   });
 

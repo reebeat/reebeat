@@ -23,6 +23,7 @@ import {
   planOf,
   reringSource,
   ringSource,
+  takeoverSource,
   scheduledOf,
   scheduledStory,
   storyPlan,
@@ -524,9 +525,14 @@ describe("the Deck page", () => {
   );
 
   it.live(
-    "the end step of a ring that a later focus on the same Element has taken over takes nothing off, and stepping back restores each owner",
-    // Three fragments: the start of `f1`, the start of `f2` (the ring is its now), the end of `f1` (a no-op).
-    () => walkRings(reringSource, [["a"], ["a"], ["a"]], [["a"], ["a"], []])
+    "a ring that a later focus on the same Element takes over has no end step: the later start keeps the ring, and stepping back restores it",
+    // Two fragments: the start of `f1`, the start of `f2` (the ring is its now).
+    () => walkRings(reringSource, [["a"], ["a"]], [["a"], []])
+  );
+
+  it.live(
+    "a ring that a later focus on another Element takes over has no end step: the later start moves the ring, and stepping back moves it back",
+    () => walkRings(takeoverSource, [["a"], ["b"]], [["a"], []])
   );
 
   it.live(

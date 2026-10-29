@@ -38,7 +38,13 @@ import { verbArguments } from "./grammar.ts";
 import { effectOf } from "./lookup.ts";
 import { elementMachineOf, machines } from "./machines.ts";
 import type { Machine } from "./machines.ts";
-import { occupancies, reaches, stateEvent, stateStart } from "./occupancy.ts";
+import {
+  lastFrameLeave,
+  occupancies,
+  reaches,
+  stateEvent,
+  stateStart,
+} from "./occupancy.ts";
 import type {
   Anchor,
   Effect,
@@ -585,11 +591,14 @@ const beatWindow = (
  * The dwell of State `n`: from the end of the Beat before it (the Scene's first frame for State 1) to the start of the
  * Beat after it (the Scene's last frame for the last State).
  */
-const stateWindow = (
+const stateDwell = (
   context: Context,
   n: number,
   tools: Tools
-): Result.Result<Window, ScheduleError> =>
+): Result.Result<
+  { readonly last: boolean; readonly window: Window },
+  ScheduleError
+> =>
   Result.flatMap(beatWindows(context, tools), (beats) => {
     if (n > beats.length + 1) {
       return Result.fail(
@@ -607,13 +616,24 @@ const stateWindow = (
     );
 
     return Result.succeed({
-      end: Option.match(Arr.get(beats, n - 1), {
-        onNone: () => lastFrame(context),
-        onSome: (beat) => Math.max(first, beat.start),
-      }),
-      start: first,
+      last: n === beats.length + 1,
+      window: {
+        end: Option.match(Arr.get(beats, n - 1), {
+          onNone: () => lastFrame(context),
+          onSome: (beat) => Math.max(first, beat.start),
+        }),
+        start: first,
+      },
     });
   });
+
+/** The dwell of State `n` as the window `within` scopes to: both ends included (the Scene's last frame for the last State). */
+const stateWindow = (
+  context: Context,
+  n: number,
+  tools: Tools
+): Result.Result<Window, ScheduleError> =>
+  Result.map(stateDwell(context, n, tools), ({ window }) => window);
 
 /** The state events of a State (the dwell) or a Beat (waiting, changing, done) of the Scene. */
 const numberedState = (
@@ -623,9 +643,11 @@ const numberedState = (
   tools: Tools
 ): Result.Result<Event, ScheduleError> => {
   if (anchor.subject.kind === "state") {
-    return Result.map(stateWindow(context, n, tools), (window) =>
-      once(anchor.event === "enter" ? window.start : window.end, window)
-    );
+    return Result.map(stateDwell(context, n, tools), ({ last, window }) => {
+      const leaves = last ? lastFrameLeave(window.end) : window.end;
+
+      return once(anchor.event === "enter" ? window.start : leaves, window);
+    });
   }
 
   return Result.flatMap(beatWindow(context, n, tools), (window) =>
@@ -742,11 +764,16 @@ const outsideScene = (
   });
 };
 
-/** The end of a run that starts at `fire`: a `show` fades, a `focus` is held to its `until` or the slide change. */
+/**
+ * The end of a run that starts at `fire`: a `show` fades, a `focus` is held to its `until`, to the start of the later
+ * `focus` that takes the one ring over (`taken`), or to the slide change, whichever comes first (a tie goes to the
+ * takeover: the later focus's start moves the ring, so no end step is needed).
+ */
 const endOf = (
   context: Context,
   effect: Effect,
   fire: number,
+  taken: number | undefined,
   tools: Tools
 ): Result.Result<Run, ScheduleError> => {
   if (effect.verb === "sound") {
@@ -761,22 +788,22 @@ const endOf = (
     });
   }
 
+  const ringEnd = (
+    ended: number,
+    endedBy: Run["endedBy"]
+  ): Result.Result<Run, ScheduleError> =>
+    taken !== undefined && taken <= ended
+      ? Result.succeed({ end: taken, endedBy: "replaced", fire })
+      : Result.succeed({ end: ended, endedBy, fire });
+
   if (effect.until === undefined) {
-    return Result.succeed({
-      end: lastFrame(context),
-      endedBy: "slide-change",
-      fire,
-    });
+    return ringEnd(lastFrame(context), "slide-change");
   }
 
-  return Result.map(tools.evaluate(effect.until.event), (ends) => {
+  return Result.flatMap(tools.evaluate(effect.until.event), (ends) => {
     const found = endsAfter(fire, ends, lastFrame(context));
 
-    return {
-      end: found.frame,
-      endedBy: found.interrupted ? "slide-change" : "until",
-      fire,
-    };
+    return ringEnd(found.frame, found.interrupted ? "slide-change" : "until");
   });
 };
 
@@ -832,6 +859,45 @@ const checked = (
   });
 };
 
+/**
+ * The frame at which a LATER `focus` of the Scene takes over the one ring from the run of `effect` that fires at
+ * `fire`: the earliest fire frame of another focus after it (at the same frame, one declared later). Only fire frames
+ * are read, and a focus whose own event cannot be resolved here (it waits for this ring's end, or has an error that is
+ * reported when it is resolved itself) takes nothing over.
+ */
+const takeover = (
+  context: Context,
+  effect: Effect,
+  fire: number,
+  tools: Tools
+): number | undefined => {
+  const position = (id: string): number =>
+    Option.getOrElse(
+      Arr.findFirstIndex(context.scene.effects, (other) => other.id === id),
+      () => -1
+    );
+
+  const later = Arr.flatMap(
+    Arr.filter(
+      context.scene.effects,
+      (other) => other.verb === "focus" && other.id !== effect.id
+    ),
+    (other: Effect): readonly number[] =>
+      Result.match(firesOf(context, other, tools), {
+        onFailure: () => [],
+        onSuccess: (otherFires) =>
+          Arr.filter(
+            otherFires,
+            (otherFire) =>
+              otherFire > fire ||
+              (otherFire === fire && position(other.id) > position(effect.id))
+          ),
+      })
+  );
+
+  return later.length === 0 ? undefined : Math.min(...later);
+};
+
 /** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
 const runsOf = (
   context: Context,
@@ -863,7 +929,19 @@ const runsOf = (
       checked(context, effect, fires)
     ),
     (fires) =>
-      Result.all(Arr.map(fires, (fire) => endOf(context, effect, fire, tools)))
+      Result.all(
+        Arr.map(fires, (fire) =>
+          endOf(
+            context,
+            effect,
+            fire,
+            effect.verb === "focus"
+              ? takeover(context, effect, fire, tools)
+              : undefined,
+            tools
+          )
+        )
+      )
   );
 
   context.active.delete(effect.id);

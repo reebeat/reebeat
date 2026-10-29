@@ -205,6 +205,9 @@ const occupancy = (
   event: "enter" | "leave"
 ): Anchor => ({ event, kind: "occupancy", state, subject });
 
+/** The n-th State of the Scene as a subject. */
+const stateOf = (n: number) => ({ kind: "state", n }) as const;
+
 /** The evidence F1 collects for one instance, as `effectTiming` collects it. */
 const evidenceOf = (world: World, fact: EffectFact): Evidence => {
   const evaluate = evaluateObserved(world, fact.sceneIndex);
@@ -353,14 +356,31 @@ describe("an event expression evaluated over the observed frames", () => {
 
         assert.strictEqual(
           leaf(occupancy(scene, "shown", "leave")).basis,
-          "last frame of the Scene"
+          "end of the Scene"
         );
+        // `leave` is the first frame OUT: the next slide change, one after the Scene's last frame (170).
         assert.deepStrictEqual(
           Arr.map(
             leaf(occupancy(scene, "shown", "leave")).event,
             ({ frame }) => frame
           ),
-          [170]
+          [171]
+        );
+
+        // States of the Scene (resolved: State 2 from 129 to the start of Beat 2 at 138; State 3 from 142 to the end):
+        // a State in the middle is left where it ends, the last State at the frame after the Scene's last.
+        assert.deepStrictEqual(
+          [
+            Arr.map(
+              leaf(occupancy(stateOf(2), "dwell", "leave")).event,
+              ({ frame }) => frame
+            ),
+            Arr.map(
+              leaf(occupancy(stateOf(3), "dwell", "leave")).event,
+              ({ frame }) => frame
+            ),
+          ],
+          [[138], [171]]
         );
         assert.deepStrictEqual(
           Arr.map(
@@ -465,6 +485,42 @@ describe("an event expression evaluated over the observed frames", () => {
             }
           )[1].problems,
           []
+        );
+      })
+  );
+
+  it.effect(
+    "regression: an anchor observed one frame late and the effect one frame early are two frames apart and pass, each being within one frame of its own resolved frame; an effect three frames off its resolved frame fails",
+    () =>
+      Effect.gen(function* tolerance() {
+        const plan = yield* timedWith(referenceLifecycle, story);
+        const key = "sc2.s2#1";
+
+        // settled = all(move.end, update.end) is resolved at 105 and observed at 106 (+1): the ding (settled +2f) is
+        // resolved at 107, its anchor puts it at 108. The ding itself is heard at 106 (-1 from 107, -2 from 108).
+        const world = withOwn(
+          withSeen(worldOf(plan), moveKey, moveSeen(106, 89)),
+          key,
+          { end: 106, start: 106 }
+        );
+
+        assert.deepStrictEqual(problemsOf(world, key), []);
+
+        const row = Arr.join(
+          judge(factOf(plan, key), evidenceOf(world, factOf(plan, key)))
+            .measured,
+          "; "
+        );
+
+        assert.include(row, "observed 108 (+1)");
+        assert.include(row, "sound onset 106 (-1)");
+
+        // The control: the ding heard three frames from its resolved frame fails, naming both frames.
+        const off = withOwn(world, key, { end: 110, start: 110 });
+
+        assert.include(
+          Arr.join(problemsOf(off, key), "\n"),
+          "it is observed +3 frames from its resolved frame 107"
         );
       })
   );
@@ -657,7 +713,7 @@ Five six seven eight nine.
           "the observed sources end it at frame 150, +3 frames from its resolved end 147"
         );
 
-        // A ring that was not seen is a problem; one that ends by the slide change, or is replaced, is reported, not judged.
+        // A ring that was not seen is a problem; one that ends by the slide change, or is rung again by a later focus on the same Element, is reported, not judged.
         const missing = judge(fact, {
           ...evidence,
           own: {
@@ -668,18 +724,18 @@ Five six seven eight nine.
 
         assert.include(Arr.join(missing.problems, "\n"), "nothing differs");
 
-        const replaced = judge(fact, {
+        const retaken = judge(fact, {
           ...evidence,
           own: {
             ...evidence.own,
-            ring: { by: "sc2.f2#1", frame: 138, tag: "replaced" },
+            ring: { by: "sc2.f2#1", frame: 138, tag: "retaken" },
           },
         });
 
-        assert.deepStrictEqual(replaced.problems, []);
+        assert.deepStrictEqual(retaken.problems, []);
         assert.include(
-          Arr.join(replaced.measured, "; "),
-          "ring replaced by sc2.f2#1 at frame 138: its end is not observed"
+          Arr.join(retaken.measured, "; "),
+          "ring kept: sc2.f2#1 rings the same Element again at frame 138"
         );
 
         const lasting = judge(fact, {
@@ -696,7 +752,7 @@ Five six seven eight nine.
   );
 
   it.effect(
-    "plans the ring end: observed for a focus that ends by its own until, replaced when a later focus takes the ring first, the slide change otherwise",
+    "plans the ring end: observed for a focus that ends by its own until or because a later focus on another Element takes the ring, kept when the same Element is rung again, the slide change otherwise",
     () =>
       Effect.gen(function* plans() {
         const plan = yield* timedWith(referenceLifecycle, story);
@@ -723,13 +779,27 @@ Five six seven eight nine.
           )(story)
         );
 
+        // Another Element: the ring leaves f1's cell at f2's fire frame (138), which is f1's resolved end.
         assert.deepStrictEqual(
           ringPlanOf(factOf(crowded, "sc2.f1#1"), effectFacts(crowded)),
           {
-            by: "sc2.f2#1",
-            frame: 138,
-            tag: "replaced",
+            subject: { endFrame: 138, id: "a", kind: "ring-end", sceneIndex },
+            tag: "observe",
           }
+        );
+
+        // The same Element: the ring never leaves its cell, so there is no end to observe.
+        const rerung = yield* timedWith(
+          referenceLifecycle,
+          Str.replace(
+            "  r1: show h",
+            '  f2: focus a at word("seven").end\n  r1: show h'
+          )(story)
+        );
+
+        assert.deepStrictEqual(
+          ringPlanOf(factOf(rerung, "sc2.f1#1"), effectFacts(rerung)),
+          { by: "sc2.f2#1", frame: 138, tag: "retaken" }
         );
         assert.deepStrictEqual(
           ringPlanOf(factOf(crowded, "sc2.f2#1"), effectFacts(crowded)),

@@ -18,7 +18,12 @@ import {
   pipe,
 } from "effect";
 
-import { formatAnchor, readAnchorPath } from "./anchors.ts";
+import {
+  aliasShift,
+  formatAnchor,
+  readAnchorPath,
+  shiftedAlias,
+} from "./anchors.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import {
@@ -36,6 +41,7 @@ import {
   offsetPattern,
   keywords,
   reservedIds,
+  retiredCombinators,
 } from "./grammar.ts";
 import { progressToken } from "./machines.ts";
 import { EdgeSchema, edges, idPattern } from "./plan.ts";
@@ -346,9 +352,20 @@ const readPathTerm = (
     return Result.map(readName(token, line), (expr) => [expr, end] as const);
   }
 
+  const shift = aliasShift(token);
+
   return Result.map(
     readAnchorPath(token, line),
-    (anchor) => [{ anchor, kind: "anchor" } satisfies EventExpr, end] as const
+    (anchor): readonly [EventExpr, number] => {
+      const read: EventExpr = { anchor, kind: "anchor" };
+
+      return [
+        shift === 0
+          ? read
+          : { kind: "shift", of: read, offset: { unit: "f", value: shift } },
+        end,
+      ];
+    }
   );
 };
 
@@ -387,6 +404,59 @@ const optionOf = (text: string, at: number): string | undefined =>
   Arr.findFirst(Record.values(optionWords), (word) =>
     Str.startsWith(`${word}=`)(Str.slice(at)(text))
   ).pipe(Option.getOrUndefined);
+
+/** The option-shaped word (`throtle=`) at `at` that is not an option of `each`, if there is one. */
+const unknownOption = (text: string, at: number): string | undefined => {
+  const word = wordOf(text, at);
+
+  return word !== "" &&
+    charAt(text, at + word.length) === "=" &&
+    !Arr.contains(Record.values(optionWords), word)
+    ? word
+    : undefined;
+};
+
+/** `throttle=` for `throtle`, when one is near enough. */
+const nearOption = (misspelt: string): string | undefined => {
+  const near = didYouMean(misspelt, Record.values(optionWords));
+
+  return near === undefined ? undefined : `${near}=`;
+};
+
+const optionProblem = (
+  line: number,
+  found: string,
+  expected: string
+): PlanError => bad(line, problem(found, expected));
+
+/** The order of an `each`: its events, then `throttle=`, then `stagger=`, each option once. */
+const eachOrder = `${combinatorWords.each}(<events>, ${optionWords.throttle}=<duration>, ${optionWords.stagger}=<duration>), each option at most once`;
+
+/** Why an option may not follow what `each` has read so far, or `undefined` when it may. */
+const optionRefusal = (
+  option: string,
+  found: Arguments,
+  line: number
+): PlanError | undefined => {
+  if (
+    (option === optionWords.throttle && found.throttle !== undefined) ||
+    (option === optionWords.stagger && found.stagger !== undefined)
+  ) {
+    return optionProblem(
+      line,
+      `${option}= given twice in ${combinatorWords.each}(...)`,
+      eachOrder
+    );
+  }
+
+  return option === optionWords.throttle && found.stagger !== undefined
+    ? optionProblem(
+        line,
+        `${optionWords.throttle}= after ${optionWords.stagger}= in ${combinatorWords.each}(...)`,
+        eachOrder
+      )
+    : undefined;
+};
 
 /** Reads one event; the parser passes `readEvent` down to the readers of the terms that hold events. */
 type EventReader = (
@@ -447,6 +517,31 @@ const nextArgument = (
   const more = (position: number, args: Arguments): Parsed<Arguments> =>
     nextArgument(text, position, line, name, args, read);
 
+  const misspelt =
+    name === combinatorWords.each ? unknownOption(text, start) : undefined;
+
+  if (misspelt !== undefined) {
+    return Result.fail(
+      bad(
+        line,
+        problem(
+          `unknown option ${misspelt}= in ${combinatorWords.each}(...)`,
+          oneOf(
+            Arr.map(Record.values(optionWords), (word) => `${word}=<duration>`)
+          ),
+          nearOption(misspelt)
+        )
+      )
+    );
+  }
+
+  const refused =
+    option === undefined ? undefined : optionRefusal(option, found, line);
+
+  if (refused !== undefined) {
+    return Result.fail(refused);
+  }
+
   if (option !== undefined) {
     return Result.flatMap(
       readOption(text, start, line, option),
@@ -465,14 +560,22 @@ const nextArgument = (
   }
 
   return Result.flatMap(read(text, start, line), ([event, end]) =>
-    afterArgument(
-      text,
-      end,
-      line,
-      name,
-      { ...found, events: [...found.events, event] },
-      more
-    )
+    found.throttle !== undefined || found.stagger !== undefined
+      ? Result.fail(
+          optionProblem(
+            line,
+            `"${Str.slice(start, end)(text)}" after an option of ${name}(...)`,
+            eachOrder
+          )
+        )
+      : afterArgument(
+          text,
+          end,
+          line,
+          name,
+          { ...found, events: [...found.events, event] },
+          more
+        )
   );
 };
 
@@ -553,12 +656,24 @@ const readWithin = (
       ).exec(Str.slice(stateAt)(text));
 
       if (charAt(text, comma) !== "," || found?.groups?.n === undefined) {
+        const written = /^(?<word>[A-Za-z]+)\((?<n>\d+)\)/u.exec(
+          Str.slice(stateAt)(text)
+        )?.groups;
+
+        const near =
+          written?.word === undefined
+            ? undefined
+            : didYouMean(written.word, [anchorWords.state]);
+
         return Result.fail(
           bad(
             line,
             problem(
-              `${combinatorWords.within}(...) without its State`,
-              `${combinatorWords.within}(<event>, ${anchorWords.state}(<n>))`
+              written === undefined
+                ? `${combinatorWords.within}(...) without its State`
+                : `"${written.word}(${written.n ?? ""})" is not a State in ${combinatorWords.within}(...)`,
+              `${combinatorWords.within}(<event>, ${anchorWords.state}(<n>))`,
+              near === undefined ? undefined : `${near}(${written?.n ?? "<n>"})`
             )
           )
         );
@@ -576,6 +691,20 @@ const whenPattern = new RegExp(
   "u"
 );
 
+/** The threshold written with `progress` spelt right, when the last word of the path is near it. */
+const nearProgress = (
+  path: string,
+  value: string | undefined
+): string | undefined => {
+  const words = Str.split(path, ".");
+  const last = words.at(-1) ?? "";
+  const near = didYouMean(last, [progressToken]);
+
+  return near === undefined || value === undefined || words.length < 2
+    ? undefined
+    : `${combinatorWords.when}(${Arr.join([...Arr.dropRight(words, 1), near], ".")} >= ${value}${percentUnit.token})`;
+};
+
 const readWhen = (
   text: string,
   at: number,
@@ -591,7 +720,8 @@ const readWhen = (
         line,
         problem(
           `"${pipe(text, Str.slice(at), Str.split(")"))[0] ?? ""})" is not a progress threshold`,
-          `${combinatorWords.when}(<subject>.<transition>.${progressToken} >= <N>${percentUnit.token})`
+          `${combinatorWords.when}(<subject>.<transition>.${progressToken} >= <N>${percentUnit.token})`,
+          nearProgress(path, found?.groups?.value)
         )
       )
     );
@@ -631,7 +761,11 @@ const unknownCall = (name: string, line: number): PlanError =>
     problem(
       `unknown combinator "${name}"`,
       oneOf(Record.values(combinatorWords)),
-      didYouMean(name, Record.values(combinatorWords))
+      Option.getOrUndefined(
+        Option.orElse(Record.get(retiredCombinators, name), () =>
+          Option.fromNullishOr(didYouMean(name, Record.values(combinatorWords)))
+        )
+      )
     )
   );
 
@@ -751,6 +885,20 @@ const formatAnchorEvent = (anchor: Anchor): string => {
   return formatAnchor(anchor);
 };
 
+/** An offset after its event; an anchor moved by the frames an alias declares is written as that alias (`scene.end`). */
+const formatShift = (
+  of: EventExpr,
+  offset: Offset,
+  format: (expr: EventExpr) => string
+): string => {
+  const alias =
+    of.kind === "anchor" && offset.unit === "f"
+      ? shiftedAlias(of.anchor, offset.value)
+      : undefined;
+
+  return alias ?? `${format(of)} ${formatOffset(offset)}`;
+};
+
 const formatGroup = (
   name: string,
   of: readonly EventExpr[],
@@ -782,8 +930,7 @@ export const formatEvent = (expr: EventExpr): string =>
         formatGroup(combinatorWords.first, found.of, formatEvent),
       last: (found) => formatGroup(combinatorWords.last, found.of, formatEvent),
       ref: (found) => found.name,
-      shift: (found) =>
-        `${formatEvent(found.of)} ${formatOffset(found.offset)}`,
+      shift: (found) => formatShift(found.of, found.offset, formatEvent),
       within: (found) =>
         `${combinatorWords.within}(${formatEvent(found.of)}, ${anchorWords.state}(${found.state}))`,
     })

@@ -673,11 +673,14 @@ export const TimedEffectSchema = Schema.Struct({
   /** The last frame of the effect's window: a `show`'s fade, a `focus`'s ring. Absent for a `sound`. */
   endFrame: Schema.NullOr(Frame),
   /**
-   * How the effect's window ended: `until` (its own end event), `slide-change` (the Scene ended while it ran: the slide
-   * change interrupts every running effect) or `window` (a `show` runs its declared fade). Absent for a `sound`, which
-   * has no window.
+   * How the effect's window ended: `until` (its own end event), `replaced` (a LATER `focus` took the one ring over: its
+   * start moves the ring, so a replaced focus has no end step of its own), `slide-change` (the Scene ended while it ran:
+   * the slide change interrupts every running effect) or `window` (a `show` runs its declared fade). Absent for a
+   * `sound`, which has no window. `endFrame` is the earliest of them.
    */
-  endedBy: Schema.NullOr(Schema.Literals(["until", "slide-change", "window"])),
+  endedBy: Schema.NullOr(
+    Schema.Literals(["until", "replaced", "slide-change", "window"])
+  ),
   /** The resolved frame of the effect: anchor frame plus offset, always inside the Scene. It is not when the capture commands it: see `commandFrame`. */
   fireFrame: Frame,
   /** 1-based: an effect whose `at` event has several occurrences (`each`) runs once per occurrence, in time order. */

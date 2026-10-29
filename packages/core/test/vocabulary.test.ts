@@ -23,6 +23,12 @@ import {
 } from "../src/machines.ts";
 import type { Form, Machine, SubjectKind } from "../src/machines.ts";
 
+/** The aliases that move the moment they stand for (`scene.end`). */
+const shiftingAliases = Arr.filter(
+  aliases,
+  (alias) => alias.shift !== undefined
+);
+
 /** The heads the paths are tried with: an id (an Element or an effect), the Scene, a State, a Beat, and an alias head. */
 const heads: readonly {
   readonly kinds: readonly SubjectKind[];
@@ -50,12 +56,20 @@ const prefixed = (tokens: readonly string[], prefix: readonly string[]) =>
   tokens.length >= prefix.length &&
   Arr.every(prefix, (word, index) => tokens[index] === word);
 
-/** The spelling an alias gives a canonical path, or the path itself when no alias reaches it. */
-const aliasedPath = (path: string): string => {
+/**
+ * The spelling an alias gives a canonical path, or the path itself when no alias reaches it. `shifting` says whether the
+ * aliases that move the moment (`scene.end`) count: a shifting alias is another moment, so the anchor on its own never
+ * writes back as one (`formatEvent` does, with the offset).
+ */
+const aliasedPath = (path: string, shifting = false): string => {
   const tokens = Str.split(path, ".");
 
-  const alias = Arr.findFirst(aliases, (candidate) =>
-    prefixed(tokens, candidate.for)
+  const alias = Arr.findFirst(
+    aliases,
+    (candidate) =>
+      (shifting
+        ? candidate.shift !== undefined
+        : candidate.shift === undefined) && prefixed(tokens, candidate.for)
   );
 
   return Option.match(alias, {
@@ -79,7 +93,11 @@ const generated = (progress: boolean): readonly string[] => {
     )
   );
 
-  return [...canonical, ...Arr.map(canonical, aliasedPath)];
+  return [
+    ...canonical,
+    ...Arr.map(canonical, (path) => aliasedPath(path)),
+    ...Arr.map(canonical, (path) => aliasedPath(path, true)),
+  ];
 };
 
 const tokens = Arr.dedupe([
@@ -126,7 +144,22 @@ describe("the parser accepts exactly the vocabulary", () => {
       assert.isTrue(Result.isSuccess(read), path);
 
       if (Result.isSuccess(read)) {
-        assert.strictEqual(formatAnchor(read.success), aliasedPath(path), path);
+        // The anchor read from a shifting alias is the canonical one (`scene.end` reads as `scene.shown.leave`).
+        const stands = Option.match(
+          Arr.head(
+            Arr.filter(
+              shiftingAliases,
+              (alias) => Arr.join(alias.spelled, ".") === path
+            )
+          ),
+          { onNone: () => path, onSome: (alias) => Arr.join(alias.for, ".") }
+        );
+
+        assert.strictEqual(
+          formatAnchor(read.success),
+          aliasedPath(stands),
+          path
+        );
       }
     }
   });

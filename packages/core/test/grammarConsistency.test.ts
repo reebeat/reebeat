@@ -10,7 +10,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import {
   Array as Arr,
-  Cause,
   Effect,
   Exit,
   Option,
@@ -485,6 +484,8 @@ describe("sentences generated from the closed sets and from the machines", () =>
 
   it.effect("resolve to a frame, for every instance", () =>
     Effect.gen(function* resolved() {
+      const outside: string[] = [];
+
       for (const sentence of sentences) {
         const plan = yield* buildPlan(withSentence(sentence), fixtureSha256);
 
@@ -493,7 +494,8 @@ describe("sentences generated from the closed sets and from the machines", () =>
         );
 
         if (Exit.isFailure(scheduled)) {
-          assert.fail(`${sentence.timing}: ${Cause.pretty(scheduled.cause)}`);
+          outside.push(sentence.timing);
+          continue;
         }
 
         assert.isAbove(
@@ -504,6 +506,29 @@ describe("sentences generated from the closed sets and from the machines", () =>
           0,
           sentence.timing
         );
+      }
+
+      // The first frame OUT of a state still held at the end of the Scene is the frame of the next slide change: a sound
+      // there is outside its Scene, and `-1f` (the Scene's last frame, which `scene.end` is) puts it back inside.
+      assert.deepStrictEqual(outside, [
+        "e.present.leave",
+        "r1.done.leave",
+        "scene.shown.leave",
+        "state(2).leave",
+        "beat(1).done.leave",
+      ]);
+
+      for (const timing of outside) {
+        const plan = yield* buildPlan(
+          withSentence(sentenceOf("sound", `${timing} -1f`)),
+          fixtureSha256
+        );
+
+        const again = yield* Effect.exit(
+          schedule(plan, evenlySpoken(plan, 300), lifecycle)
+        );
+
+        assert.isTrue(Exit.isSuccess(again), `${timing} -1f`);
       }
     })
   );

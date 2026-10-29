@@ -25,6 +25,7 @@ import {
   findPhrase,
   framesOfFlicks,
   initialState,
+  lastFrameLeave,
   machines,
   occupancies,
   once,
@@ -53,6 +54,7 @@ import { Array as Arr, Match, Option, Result } from "effect";
 import type { Observed, Subject } from "./events.ts";
 import {
   beatOf,
+  dwellDetail,
   dwellOf,
   elementSpanOf,
   elementSubject,
@@ -141,7 +143,7 @@ const basisOf = (
   }
 
   return event === "leave" && Option.exists(interval, ({ open }) => open)
-    ? "last frame of the Scene"
+    ? "end of the Scene"
     : "observed";
 };
 
@@ -356,10 +358,15 @@ const dwellState = (
   anchor: StateAnchor,
   n: number
 ): Found<Leaf> =>
-  Result.map(dwellOf(world, index, n), (window) => ({
-    basis: "observed",
-    event: once(anchor.event === "enter" ? window.start : window.end, window),
-  }));
+  Result.map(dwellDetail(world, index, n), ({ last, window }) => {
+    // The same rule as the schedule: the last State is left at the frame after the Scene's last (`lastFrameLeave`).
+    const leaves = last ? lastFrameLeave(window.end) : window.end;
+
+    return {
+      basis: "observed",
+      event: once(anchor.event === "enter" ? window.start : leaves, window),
+    };
+  });
 
 const sceneState = (
   world: World,

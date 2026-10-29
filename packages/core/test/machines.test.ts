@@ -8,12 +8,13 @@
 // The frames (30 fps; `stateStories.ts` has the arithmetic): the slide change into `main` runs 63 to 87 and the Scene's
 // last frame is 179; `box` moves 65 to 87 and `tag` updates 65 to 87 (50 percent by the declared ease is frame 71);
 // `fresh` enters 71 to 85; `gone` exits at 63; `note` is shown by `r1` 120 to 124; the `focus` `f1` fires at 138. The
-// engine's Beats are 120 to 124 and 138 to 138, so State 1 holds 63 to 120, State 2 124 to 138 and State 3 138 to 179.
+// engine's Beats are 120 to 124 and 138 to 138, so State 1 holds 63 to 120, State 2 124 to 138 and State 3 138 to 179 (left at 180, the first frame out).
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Record, String as Str } from "effect";
+import { Array as Arr, Effect, Option, Record, String as Str } from "effect";
 
 import {
   aliases,
+  finalStates,
   headPlaceholder,
   machines,
   percentToken,
@@ -176,14 +177,23 @@ describe("the vocabulary is a pure function of the machines", () => {
 /** What a fixture anchor is expected to do: fire at a frame from a head, or be refused with a Plan error. */
 type Expectation =
   | { readonly frame: number; readonly head: string }
-  | { readonly head: string; readonly refused: string };
+  | {
+      readonly head: string;
+      readonly includes: string;
+      readonly refused: string;
+    };
 
 const at = (head: string, frame: number): Expectation => ({ frame, head });
 
-const refused = (head: string, tag: string): Expectation => ({
+const refused = (head: string, tag: string, includes = ""): Expectation => ({
   head,
+  includes,
   refused: tag,
 });
+
+/** The first frame out of a state held to the end of the Scene is 180, the next slide change: outside this Scene. */
+const outsideAt180 = (head: string): Expectation =>
+  refused(head, "EffectOutsideScene", "resolves to frame 180");
 
 /** Every form of every machine, keyed by machine and spelling (placeholder head), and where it fires. */
 const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
@@ -201,7 +211,7 @@ const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
   ["presence <id>.entering.enter", at("fresh", 71)],
   ["presence <id>.entering.leave", at("fresh", 85)],
   ["presence <id>.present.enter", at("fresh", 85)],
-  ["presence <id>.present.leave", at("fresh", 179)],
+  ["presence <id>.present.leave", outsideAt180("fresh")],
   ["presence <id>.exiting.enter", at("gone", 63)],
   ["presence <id>.exiting.leave", at("gone", 63)],
   // position: `box` moves 65 to 87, 50 percent of the progress by the declared ease at 65 + round(0.2933 x 22) = 71.
@@ -232,7 +242,7 @@ const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
   ["effect <id>.active.enter", at("r1", 120)],
   ["effect <id>.active.leave", at("r1", 124)],
   ["effect <id>.done.enter", at("r1", 124)],
-  ["effect <id>.done.leave", at("r1", 179)],
+  ["effect <id>.done.leave", outsideAt180("r1")],
   // slide: the slide change is 63 to 87, 50 percent at 63 + 12; the Scene is left at its last frame.
   ["slide scene.transition.start", at("scene", 63)],
   ["slide scene.transition.end", at("scene", 87)],
@@ -243,7 +253,7 @@ const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
   ["slide scene.changing.enter", at("scene", 63)],
   ["slide scene.changing.leave", at("scene", 87)],
   ["slide scene.shown.enter", at("scene", 87)],
-  ["slide scene.shown.leave", at("scene", 179)],
+  ["slide scene.shown.leave", outsideAt180("scene")],
   // dwell: State 2 holds from the end of Beat 1 (124) to the start of Beat 2 (138).
   ["dwell state(<n>).enter", at("state(2)", 124)],
   ["dwell state(<n>).leave", at("state(2)", 138)],
@@ -257,7 +267,7 @@ const expectations: Readonly<Record<string, Expectation>> = Record.fromEntries([
   ["beat beat(<n>).changing.enter", at("beat(1)", 120)],
   ["beat beat(<n>).changing.leave", at("beat(1)", 124)],
   ["beat beat(<n>).done.enter", at("beat(1)", 124)],
-  ["beat beat(<n>).done.leave", at("beat(1)", 179)],
+  ["beat beat(<n>).done.leave", outsideAt180("beat(1)")],
 ]);
 
 const keyOf = (form: Form): string =>
@@ -294,6 +304,7 @@ describe("every form of every machine resolves", () => {
             const error = yield* Effect.flip(scheduledAt(source));
 
             assert.strictEqual(error._tag, expected.refused, keyOf(form));
+            assert.include(error.message, expected.includes, keyOf(form));
           } else {
             assert.deepStrictEqual(
               firesOf(yield* scheduledAt(source), "x1"),
@@ -304,4 +315,61 @@ describe("every form of every machine resolves", () => {
         })
       )
   );
+});
+
+const finalOf = (id: string) =>
+  Arr.map(
+    finalStates(
+      Option.getOrThrowWith(
+        Arr.findFirst(machines, (machine) => machine.id === id),
+        () => new Error(`no machine ${id}`)
+      )
+    ),
+    ({ name }) => name
+  );
+
+describe("the final states are derived, never stored", () => {
+  it("is the state no transition leaves: done of an effect and of a Beat, shown of the Scene, the dwell of a State", () => {
+    assert.deepStrictEqual(finalOf("effect"), ["done"]);
+    assert.deepStrictEqual(finalOf("beat"), ["done"]);
+    assert.deepStrictEqual(finalOf("slide"), ["shown"]);
+    assert.deepStrictEqual(finalOf("dwell"), ["dwell"]);
+  });
+
+  it("is no state of an Element: presence can always exit, position and style return to where they began", () => {
+    assert.deepStrictEqual(finalOf("presence"), []);
+    assert.deepStrictEqual(finalOf("position"), []);
+    assert.deepStrictEqual(finalOf("style"), []);
+  });
+
+  it("follows the declaration: in a copy of the effect machine with a transition out of `done`, `done` is no longer final", () => {
+    const effect = Option.getOrThrowWith(
+      Arr.findFirst(machines, ({ id }) => id === "effect"),
+      () => new Error("no effect machine")
+    );
+
+    const grown = {
+      ...effect,
+      states: [
+        ...effect.states,
+        { means: "the effect repeats", name: "again" },
+      ],
+      transitions: [
+        ...effect.transitions,
+        {
+          during: "again",
+          from: "done",
+          means: "",
+          name: "repeat",
+          progress: "time",
+          to: "idle",
+        },
+      ],
+    } as const;
+
+    assert.deepStrictEqual(
+      Arr.map(finalStates(grown), ({ name }) => name),
+      []
+    );
+  });
 });

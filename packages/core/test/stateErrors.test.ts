@@ -367,8 +367,109 @@ const cases: readonly Case[] = [
   },
 ];
 
+const optionCases: readonly Case[] = [
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at each(word("alpha").start, word("echo").start, throttle=1f, throttle=2f)',
+        "throttle= given twice in each(...); expected each(<events>, throttle=<duration>, stagger=<duration>), each option at most once",
+      ],
+    ],
+    name: "a repeated option of each",
+    rows: [
+      'x1: sound pop at each(word("alpha").start, word("echo").start, throttle=1f, throttle=2f)',
+    ],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at each(word("alpha").start, throttle=1f, word("echo").start)',
+        '"word("echo").start" after an option of each(...); expected each(<events>, throttle=<duration>, stagger=<duration>), each option at most once',
+      ],
+    ],
+    name: "an event after an option of each",
+    rows: [
+      'x1: sound pop at each(word("alpha").start, throttle=1f, word("echo").start)',
+    ],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at each(throttle=1f, word("alpha").start, word("echo").start)',
+        '"word("alpha").start" after an option of each(...); expected each(<events>, throttle=<duration>, stagger=<duration>), each option at most once',
+      ],
+    ],
+    name: "an option before the events of each",
+    rows: [
+      'x1: sound pop at each(throttle=1f, word("alpha").start, word("echo").start)',
+    ],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at each(word("alpha").start, word("echo").start, stagger=1f, throttle=2f)',
+        "throttle= after stagger= in each(...); expected each(<events>, throttle=<duration>, stagger=<duration>), each option at most once",
+      ],
+    ],
+    name: "stagger before throttle in each",
+    rows: [
+      'x1: sound pop at each(word("alpha").start, word("echo").start, stagger=1f, throttle=2f)',
+    ],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at each(word("alpha").start, word("echo").start, throtle=1f)',
+        "unknown option throtle= in each(...); expected stagger=<duration> or throttle=<duration>; did you mean throttle=?",
+      ],
+    ],
+    name: "a misspelt option of each",
+    rows: [
+      'x1: sound pop at each(word("alpha").start, word("echo").start, throtle=1f)',
+    ],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at within(word("alpha").start, stat(2))',
+        '"stat(2)" is not a State in within(...); expected within(<event>, state(<n>)); did you mean state(2)?',
+      ],
+    ],
+    name: "a misspelt State in within",
+    rows: ['x1: sound pop at within(word("alpha").start, stat(2))'],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        "x1: sound pop at when(box.move.progres >= 50%)",
+        '"when(box.move.progres >= 50%)" is not a progress threshold; expected when(<subject>.<transition>.progress >= <N>%); did you mean when(box.move.progress >= 50%)?',
+      ],
+    ],
+    name: "a misspelt progress in when",
+    rows: ["x1: sound pop at when(box.move.progres >= 50%)"],
+  },
+  {
+    errors: [
+      [
+        "BadEffect",
+        'x1: sound pop at all(word("alpha").start, word("echo").start)',
+        'unknown combinator "all"; expected each, first, last, when or within; did you mean last?',
+      ],
+    ],
+    name: "the retired combinator all",
+    rows: ['x1: sound pop at all(word("alpha").start, word("echo").start)'],
+  },
+];
+
 describe("nonsense is a Plan error with a message an author can act on", () => {
-  for (const { errors, name, rows } of cases) {
+  for (const { errors, name, rows } of [...cases, ...optionCases]) {
     it(`reports ${name}`, () => {
       const source = statesSource([...stepRows, ...rows]);
 
@@ -425,4 +526,23 @@ describe("an event that can never happen is caught when the Scene is scheduled",
         );
       })
   );
+});
+
+describe("each takes its events, then throttle, then stagger, each option once", () => {
+  it("reads the options in that order, and each alone", () => {
+    for (const written of [
+      'each(word("alpha").start, word("echo").start, throttle=1f, stagger=2f)',
+      'each(word("alpha").start, word("echo").start, throttle=1f)',
+      'each(word("alpha").start, word("echo").start, stagger=2f)',
+      'each(word("alpha").start, word("echo").start)',
+    ]) {
+      assert.deepStrictEqual(
+        collectErrors(
+          statesSource([...stepRows, `x1: sound pop at ${written}`])
+        ),
+        [],
+        written
+      );
+    }
+  });
 });

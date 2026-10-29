@@ -10,7 +10,10 @@
 //   hasNewAnimations()      whether an animation started that the layer has not seen
 //   twoRealFrames()         resolves after two real animation frames
 //   seek(frame, fps, skewMs) pauses every new animation and sets each to `(frame - firstFrame) * 1000 / fps` ms plus
-//                           the growth of `skewMs` since the animation was first seen (0 when the clock is on time)
+//                           the growth of `skewMs` since the animation was first seen (0 when the clock is on time);
+//                           returns how many animations the document had when the seek began (the capture shoots a
+//                           frame with a live animation until two PNGs agree; an animation that has run to its end
+//                           and left the document no longer counts)
 export const pageRuntime = `
 (() => {
   const tracked = new Map();
@@ -21,7 +24,9 @@ export const pageRuntime = `
   window.__reebeatTwoRealFrames = () =>
     new Promise((resolve) => realRequestFrame(() => realRequestFrame(() => resolve(0))));
   window.__reebeatSeek = (frame, fps, skewMs) => {
-    for (const animation of document.getAnimations()) {
+    const live = document.getAnimations();
+
+    for (const animation of live) {
       if (!tracked.has(animation)) {
         animation.pause();
         tracked.set(animation, { frame, skewMs });
@@ -36,7 +41,7 @@ export const pageRuntime = `
       }
     }
 
-    return tracked.size;
+    return live.length;
   };
 })();
 `;

@@ -5,19 +5,20 @@
 //      initialises Reveal), and frame 0 is the virtual time T0 = 500 ms;
 //   2. each frame f: the virtual clock goes to T0 + f * 1000 / fps (`virtualTimeOf`), the commands scheduled for f
 //      run, every animation is paused and set to its time at f (the seek layer, with its settle wait), one
-//      screenshot.
+//      screenshot (when an animation is live or a command ran: until two consecutive PNGs are identical).
 //
 // The commands run after the clock step, as in the measurement. The lag between a Reveal call and the first
 // changed frame, measured on the real deck (spec Revision "capture lags re-measured", `captureSchedule.ts`): an
 // Auto-Animate scene change and a cut 0 frames, a default fade 1, `next` and `focus` 1, and `sfx` changes no pixel.
 import type { AdapterUnavailable } from "@reebeat/services";
-import { Duration, Effect, Stream } from "effect";
+import { Duration, Effect, Ref, Stream } from "effect";
 
 import { Browser } from "./browser.ts";
 import type { DeckPage } from "./browser.ts";
 import type { CaptureCommand, CaptureSchedule } from "./captureSchedule.ts";
 import { CaptureTimeout } from "./errors.ts";
-import type { BrowserFailed } from "./errors.ts";
+import type { BrowserFailed, FrameUnstable } from "./errors.ts";
+import { stableFrame } from "./stability.ts";
 
 /** The virtual time of frame 0, in milliseconds. */
 export const clockOrigin = 500;
@@ -68,46 +69,73 @@ const commandsByFrame = (
   return byFrame;
 };
 
+/** How many frames were shot until two PNGs agreed, and how many of those needed more than two shots. */
+interface StabilityCount {
+  readonly checked: number;
+  readonly recaptured: number;
+}
+
 const captureFrame = (
   page: DeckPage,
   schedule: CaptureSchedule,
   commands: ReadonlyMap<number, readonly CaptureCommand[]>,
-  options: CaptureOptions
+  options: CaptureOptions,
+  count: Ref.Ref<StabilityCount>
 ) => {
   const nominal = nominalVirtualTime(schedule.fps);
   const virtualTimeOf = options.virtualTimeOf ?? nominal;
 
   return Effect.fnUntraced(function* frameAt(frame: number) {
     const virtualMs = virtualTimeOf(frame);
+    const own = commands.get(frame) ?? [];
 
     yield* page.clockGoTo(virtualMs);
 
-    for (const command of commands.get(frame) ?? []) {
+    for (const command of own) {
       yield* page.command(command);
     }
 
-    yield* page.seek(
+    const live = yield* page.seek(
       frame,
       schedule.fps,
       options.settleNewAnimations,
       virtualMs - nominal(frame)
     );
 
-    return yield* page.screenshot;
+    // A still frame with no command is one screenshot; a frame in which an animation is live or a command ran is
+    // shot until two consecutive PNGs agree (README, "Determinism under load").
+    if (live === 0 && own.length === 0) {
+      return yield* page.screenshot;
+    }
+
+    const { png, shots } = yield* stableFrame(frame, page.screenshot);
+
+    yield* Ref.update(count, ({ checked, recaptured }) => ({
+      checked: checked + 1,
+      recaptured: recaptured + (shots > 2 ? 1 : 0),
+    }));
+
+    if (shots > 2) {
+      yield* Effect.logWarning(
+        `frame ${frame} needed ${shots} screenshots before two agreed`
+      );
+    }
+
+    return png;
   });
 };
 
 /**
  * The PNG frames `0 .. totalFrames - 1` of the deck, one at a time and in order. The browser lives as long as the
  * stream runs. A machine without Chromium fails with `AdapterUnavailable`; a capture that outlasts its deadline fails
- * with `CaptureTimeout`.
+ * with `CaptureTimeout`; a frame that never settles fails with `FrameUnstable`.
  */
 export const captureFrames = (
   schedule: CaptureSchedule,
   options: CaptureOptions
 ): Stream.Stream<
   Uint8Array,
-  AdapterUnavailable | BrowserFailed | CaptureTimeout,
+  AdapterUnavailable | BrowserFailed | CaptureTimeout | FrameUnstable,
   Browser
 > => {
   const seconds =
@@ -117,6 +145,11 @@ export const captureFrames = (
 
   const frames = Effect.gen(function* open() {
     const browser = yield* Browser;
+
+    const count = yield* Ref.make<StabilityCount>({
+      checked: 0,
+      recaptured: 0,
+    });
 
     const page = yield* browser.open({
       height: schedule.height,
@@ -131,7 +164,14 @@ export const captureFrames = (
     yield* page.ready;
 
     return Stream.range(0, schedule.totalFrames - 1).pipe(
-      Stream.mapEffect(captureFrame(page, schedule, commands, options))
+      Stream.mapEffect(captureFrame(page, schedule, commands, options, count)),
+      Stream.onEnd(
+        Effect.flatMap(Ref.get(count), ({ checked, recaptured }) =>
+          Effect.logInfo(
+            `stability: ${checked} of ${schedule.totalFrames} frames checked, ${recaptured} needed a re-capture`
+          )
+        )
+      )
     );
   });
 

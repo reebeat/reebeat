@@ -24,6 +24,7 @@ import type { Page } from "playwright-core";
 import type { CaptureCommand } from "./captureSchedule.ts";
 import { BrowserFailed } from "./errors.ts";
 import { pageRuntime } from "./pageRuntime.ts";
+import { retryScreenshot } from "./stability.ts";
 
 export interface OpenOptions {
   readonly height: number;
@@ -42,27 +43,34 @@ export interface DeckPage {
   ) => Effect.Effect<void, BrowserFailed>;
   /** Resolves when the deck's `reebeatDeck.ready` and the page's fonts are ready. */
   readonly ready: Effect.Effect<void, BrowserFailed>;
-  /** One PNG of the viewport. */
+  /** One PNG of the viewport; a `Page.captureScreenshot` that Chromium could not serve is called again twice at most. */
   readonly screenshot: Effect.Effect<Uint8Array, BrowserFailed>;
   /**
-   * Sets every running animation to its time at `frame`; `settle` waits two real frames before a new one; `skewMs` is
-   * how far the virtual clock is from its nominal time at `frame` (0 for a clock that is on time).
+   * Sets every running animation to its time at `frame` and gives how many animations the seek layer now holds (0
+   * when the page is still). `settle` waits two real frames before a new one; `skewMs` is how far the virtual clock
+   * is from its nominal time at `frame` (0 for a clock that is on time).
    */
   readonly seek: (
     frame: number,
     fps: number,
     settle: boolean,
     skewMs: number
-  ) => Effect.Effect<void, BrowserFailed>;
+  ) => Effect.Effect<number, BrowserFailed>;
 }
 
-/** The Chromium flags of the capture (spec 0001, "Risks": fixed rendering); they change the pixels. */
+/**
+ * The Chromium flags of the capture (spec 0001, "Risks": fixed rendering); they change the pixels.
+ * `--disable-threaded-animation` is the fix of the F6 flake under load (README, "Determinism under load"): without it
+ * the compositor thread keeps its own clock for a transition that starts in a command frame, and a frame is
+ * sometimes drawn with that clock instead of the one the seek layer set.
+ */
 export const chromiumFlags = [
   "--force-color-profile=srgb",
   "--disable-gpu",
   "--font-render-hinting=none",
   "--disable-lcd-text",
   "--hide-scrollbars",
+  "--disable-threaded-animation",
 ];
 
 const failure = (operation: string) => (cause: unknown) =>
@@ -80,6 +88,8 @@ const evaluateCommand = (command: CaptureCommand): string =>
     ? `window.reebeatDeck.goToScene(${JSON.stringify(command.sceneId)})`
     : "window.reebeatDeck.stepFragment()";
 
+const decodeLiveCount = Schema.decodeUnknownEffect(Schema.Int);
+
 // Three round trips, as the seek layer asks (see pageRuntime.ts): look, settle, seek.
 const seekAnimations = (page: Page): DeckPage["seek"] =>
   Effect.fnUntraced(function* seek(frame, fps, settle, skewMs) {
@@ -93,8 +103,13 @@ const seekAnimations = (page: Page): DeckPage["seek"] =>
       );
     }
 
-    yield* inPage("seek", () =>
+    const live = yield* inPage("seek", () =>
       page.evaluate(`window.__reebeatSeek(${frame}, ${fps}, ${skewMs})`)
+    );
+
+    return yield* Effect.mapError(
+      decodeLiveCount(live),
+      failure("seek result")
     );
   });
 
@@ -110,8 +125,10 @@ const deckPage = (page: Page): DeckPage => ({
       "Promise.all([window.reebeatDeck.ready, document.fonts.ready]).then(() => 0)"
     )
   ),
-  screenshot: inPage("screenshot", () =>
-    page.screenshot({ animations: "allow", caret: "initial", type: "png" })
+  screenshot: retryScreenshot(
+    inPage("screenshot", () =>
+      page.screenshot({ animations: "allow", caret: "initial", type: "png" })
+    )
   ),
   seek: seekAnimations(page),
 });

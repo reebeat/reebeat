@@ -22,6 +22,15 @@ export type {
 
 export { chromiumCapturer, chromiumCapturerWith } from "./chromium.ts";
 
+export {
+  maxShots,
+  retryScreenshot,
+  screenshotRetries,
+  stableFrame,
+} from "./stability.ts";
+
+export type { StableFrame } from "./stability.ts";
+
 export type { ChromiumOptions } from "./chromium.ts";
 
 export * from "./errors.ts";

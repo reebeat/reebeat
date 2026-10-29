@@ -21,3 +21,13 @@ export class CaptureTimeout extends Schema.TaggedError<
   message: Schema.String,
   seconds: Schema.Finite,
 }) {}
+
+/** A frame that kept changing between consecutive screenshots of the same page state (spec 0001, F6); no output. */
+export class FrameUnstable extends Schema.TaggedError<
+  FrameUnstable,
+  { readonly brand: unique symbol }
+>()("FrameUnstable", {
+  frame: Schema.Int,
+  message: Schema.String,
+  shots: Schema.Int,
+}) {}

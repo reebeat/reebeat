@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # cleanup.sh <run-directory> [--worktree <path>]
-# Stops what a verification run left behind and keeps the evidence. It stops only the process groups that run.sh started and
-# recorded in `<run>/pids.txt` ("<pid> <start time>" per step, each step being its own session, so Chromium is in its group),
-# and only while the pid still has the recorded start time (a reused pid is not ours). It never searches for processes by
-# name or pattern. It also removes half-written `<out>.partial` builds under the run directory and, with --worktree, the
-# detached review worktree when it is clean. The run directory, REPORT.md and every artifact stay. Safe to run twice.
+# Stops what a verification run left behind and keeps the evidence. It stops only the process groups recorded in
+# `<run>/pids.txt` ("<pid> <start time>" per line): run.sh records each step (its own session and group), and observe.ts records
+# the Chromium it launches, which Playwright starts detached in a group of its own. A Chromium launched by `reebeat build` or
+# `journey` is not recorded and is not stopped here. A live pid whose start time differs from the record is a reused pid and
+# is left alone. It never searches for processes by name or pattern. It also removes half-written `<out>.partial` builds under
+# the run directory and, with --worktree, the detached review worktree when it is clean. The run directory, REPORT.md and every
+# artifact stay. Safe to run twice.
 set -euo pipefail
 
 [ $# -ge 1 ] || { echo "usage: cleanup.sh <run-directory> [--worktree <path>]" >&2; exit 64; }
@@ -23,7 +25,8 @@ if [ -f "$run/pids.txt" ]; then
     # another start time is a reused pid: not ours, left alone.
     if [ -z "$now" ] || [ "$now" = "$begun" ]; then
       if kill -TERM -- "-$pid" 2>/dev/null; then
-        echo "stopped process group $pid recorded by run.sh"
+        kill -CONT -- "-$pid" 2>/dev/null || true # a stopped (hung) group acts on the TERM only once it runs
+        echo "stopped process group $pid recorded in pids.txt"
         stopped=$((stopped + 1))
       fi
     fi

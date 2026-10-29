@@ -43,7 +43,10 @@ build=$run/build/$name
 steps=()
 
 # Every step runs in its own session (setsid) so that its pid is also its process group, and `<run>/pids.txt` records
-# "<pid> <start time>" for it: cleanup.sh stops exactly those groups (Chromium included) and nothing it merely finds by name.
+# "<pid> <start time>" for it. Playwright launches Chromium detached, in a group of its own, so `observe.ts` appends the
+# browser's own "<pid> <start time>" to the same file (REEBEAT_VERIFY_PIDS). cleanup.sh stops exactly the recorded groups
+# and nothing it merely finds by name. A Chromium that `reebeat build` or `journey` launches is not recorded.
+export REEBEAT_VERIFY_PIDS="$run/pids.txt"
 step() { # step <name> <command...>: writes <run>/<name>.txt, "$ command" first, then the raw output
   local n=$1; shift
   local started; started=$(date +%s)

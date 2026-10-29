@@ -6,6 +6,8 @@ import { mkdir } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { recordBrowser } from "./recordPid.ts";
+
 interface Effect {
   readonly effectId: string;
   readonly fireFrame: number;
@@ -386,6 +388,9 @@ const deck = async (): Promise<void> => {
     args: ["--force-color-profile=srgb", "--disable-gpu"],
     executablePath: chromiumPath,
   });
+
+  // Playwright starts Chromium detached, in a group of its own: record it so that cleanup.sh can stop it after an interruption.
+  await recordBrowser(browser);
 
   const page = await browser.newPage({
     viewport: { height: 720, width: 1280 },

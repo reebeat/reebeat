@@ -249,7 +249,7 @@ The report proposed a larger set; the operator ratified **only what 0004 and 000
 | Area | v1 (0004 and 0005) | Later (an issue when needed) | Dropped |
 | --- | --- | --- | --- |
 | Time | exact time in flicks; the negative-begin cut-off rule (0005) | `min`, `max`, `repeat` (`repeatCount`, `repeatDur`, `repeat(n)` events) | `wallclock`, `accesskey`, DOM and hyperlink begin, `indefinite` as a begin, `syncBehavior`, `syncTolerance`, `syncMaster`, `fillDefault`, `restartDefault`, `fill="auto"`, `fill="transition"` |
-| Begin and end | syncbase anchors; `each`, `first`, `last`; `until`. **`all` is not a name**: SMIL's `endsync="all"` is an alias of `last` (0004's `all` is the maximum, which is `last`) | | `endsync="all"`, `endsync="media"` |
+| Begin and end | syncbase anchors; `each`, `first`, `last`; `until`. **`all` is not a name**: SMIL's `endsync="all"` differs from `last` only for children with an unresolved or indefinite begin, which reebeat forbids, so in reebeat it collapses into `last` (0004's `all` is the maximum, which is `last`) | | `endsync="all"`, `endsync="media"` |
 | Instances | explicit `restart`: `always`, `whenNotActive`, `never`, `overlap` (0004 uses `overlap`) | | the one-current-interval rule as an implicit default |
 | Fill | explicit `fill`: `remove`, `freeze` | `hold` (needs `seq`) | `auto` |
 | Containers | none beyond the statechart | `par`, `seq` and `excl` beyond what the statechart already gives, including `excl` with `pause` | |

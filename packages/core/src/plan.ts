@@ -188,6 +188,11 @@ export const EffectSchema = Schema.Struct({
   target: Schema.optionalKey(Id),
   verb: VerbSchema,
   when: WhenSchema,
+  /**
+   * The `when` exactly as the author wrote it after `at` (whitespace collapsed): `word("box", 1).end +0.1s`. The
+   * review text and the Timeline `intent` print it back; `when` is its parsed meaning.
+   */
+  written: Schema.NonEmptyString,
 });
 
 /**

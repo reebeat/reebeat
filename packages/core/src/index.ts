@@ -6,13 +6,7 @@ export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
 export { buildPlan, collectErrors } from "./build.ts";
 
-export {
-  formatAnchor,
-  formatEffect,
-  formatOffset,
-  formatWhen,
-  parseEffectLine,
-} from "./effects.ts";
+export { formatAnchor, formatEffect, parseEffectLine } from "./effects.ts";
 
 export * from "./errors.ts";
 

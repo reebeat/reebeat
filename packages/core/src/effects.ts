@@ -471,12 +471,14 @@ export const parseEffectLine = (
 
   return Result.flatMap(
     readArgument(verb, body.argument ?? "", line),
-    (argument) =>
-      Result.map(parseWhen(body.when ?? "", line), (when): ParsedEffect => ({
-        effect: { id, line, verb, when, ...argument },
-        explicitOccurrence:
-          wordPattern.exec(body.when ?? "")?.groups?.n !== undefined,
-      }))
+    (argument) => {
+      const written = body.when ?? "";
+
+      return Result.map(parseWhen(written, line), (when): ParsedEffect => ({
+        effect: { id, line, verb, when, written, ...argument },
+        explicitOccurrence: wordPattern.exec(written)?.groups?.n !== undefined,
+      }));
+    }
   );
 };
 
@@ -497,22 +499,6 @@ export const formatAnchor = (anchor: Anchor): string =>
     })
   );
 
-/** The offset as written, always signed: `+100ms`, `-3f`, `+50%`. */
-export const formatOffset = (offset: Offset): string =>
-  `${offset.value < 0 ? "-" : "+"}${Math.abs(offset.value)}${offset.unit === "percent" ? "%" : offset.unit}`;
-
-/** What the author wrote for the timing, as the review prints it. An absolute time prints its reason. */
-export const formatWhen = (when: When): string =>
-  "absoluteMs" in when
-    ? `${when.absoluteMs / 1000}s because "${when.reason}"`
-    : Arr.join(
-        [
-          formatAnchor(when.anchor),
-          ...(when.offset === undefined ? [] : [formatOffset(when.offset)]),
-        ],
-        " "
-      );
-
-/** The effect as one line of an `[[effects]]` block; `parseEffectLine` reads it back. */
+/** The effect as one line of an `[[effects]]` block, its `when` as the author wrote it; `parseEffectLine` reads it back. */
 export const formatEffect = (effect: Effect): string =>
-  `${effect.id}: ${effect.verb} ${effect.name ?? effect.target ?? ""} at ${formatWhen(effect.when)}`;
+  `${effect.id}: ${effect.verb} ${effect.name ?? effect.target ?? ""} at ${effect.written}`;

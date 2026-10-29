@@ -13,7 +13,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | --- | --- |
 | `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Crypto` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
-| `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, and each effect's `fireFrame`, `commandFrame` and `intent`. `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
+| `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, and each effect's `fireFrame`, `commandFrame` and `intent` (the effect's `written` text: its `when` exactly as the author wrote it, including an explicit occurrence and the offset unit). `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
 | `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (`show` and `focus`, in resolved-time order) and, for each `sound`, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@reebeat/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
 | `grammarDocument()` | The text of `docs/grammar/effects.md` |
 | `reviewText(plan, { timing })` | the review text, deterministic |

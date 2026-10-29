@@ -1,18 +1,16 @@
 // The effects line (spec 0002): each form reads into the Plan's types, and what is written back reads into the same
 // effect (the law: `parseEffectLine(formatEffect(effect))` is `effect`, with seconds stored as milliseconds).
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Result } from "effect";
+import { Array as Arr, Effect, Order, Result } from "effect";
 
-import {
-  formatAnchor,
-  formatEffect,
-  formatOffset,
-  formatWhen,
-  parseEffectLine,
-} from "../src/effects.ts";
-import type { Effect } from "../src/plan.ts";
+import { buildPlan } from "../src/build.ts";
+import { formatAnchor, formatEffect, parseEffectLine } from "../src/effects.ts";
+import type { Effect as PlanEffect } from "../src/plan.ts";
+import { reviewText } from "../src/review.ts";
+import { schedule } from "../src/schedule.ts";
+import { asText, evenlySpoken, fixtureSha256, lifecycle } from "./support.ts";
 
-const read = (text: string): Effect => {
+const read = (text: string): PlanEffect => {
   const parsed = parseEffectLine(text, 3);
 
   if (Result.isFailure(parsed)) {
@@ -46,6 +44,7 @@ describe("reading an effect line", () => {
           },
           offset: { unit: "ms", value: 100 },
         },
+        written: 'word("big idea", 2).end +0.1s',
       }
     );
   });
@@ -133,10 +132,12 @@ describe("reading an effect line", () => {
 describe("writing an effect line", () => {
   const lines = [
     's1: sound whoosh at word("matches").end +100ms',
+    's5: sound whoosh at word("matches", 1).end +0.1s',
     "s2: sound ding at one.move.50%",
     'f1: focus hint at word("slides", 2).start -200ms',
+    'f2: focus hint at word("slides", 2).start -0.2s',
     "r1: show note at transition.end -3f",
-    "s3: sound pop at s2.end +50%",
+    "s3: sound pop at r1.end +50%",
     'a1: sound pop at 12.5s because "a reason"',
     "s4: sound pop at scene.end",
   ];
@@ -149,22 +150,99 @@ describe("writing an effect line", () => {
     }
   });
 
-  it("writes the author's own form for lines already in it", () => {
+  it("writes the author's own form: the occurrence and the unit stay as written", () => {
     assert.deepStrictEqual(
       Arr.map(lines, (line) => formatEffect(read(line))),
       lines
     );
   });
 
-  it("writes parts: an anchor, a signed offset and a `when`", () => {
+  it("keeps the `when` as written, whitespace collapsed", () => {
+    assert.strictEqual(
+      read('a: sound pop at   word("x  y", 2).end   -3f').written,
+      'word("x y", 2).end -3f'
+    );
+  });
+
+  it("writes an anchor on its own", () => {
     const { when } = read('a: sound pop at word("x y", 2).end -3f');
 
     assert.strictEqual(
       "anchor" in when ? formatAnchor(when.anchor) : "",
       'word("x y", 2).end'
     );
-    assert.strictEqual(formatOffset({ unit: "percent", value: 50 }), "+50%");
-    assert.strictEqual(formatOffset({ unit: "ms", value: -200 }), "-200ms");
-    assert.strictEqual(formatWhen(when), 'word("x y", 2).end -3f');
   });
+});
+
+const storyOf = (block: readonly string[]) =>
+  asText([
+    "# P",
+    "",
+    "INT. A #a#",
+    "",
+    "Box {id=b cell=mc class=box}",
+    "Note {id=note cell=br class=label visible=false}",
+    "",
+    "[[effects",
+    ...block,
+    "]]",
+    "",
+    "NARRATOR",
+    "Box one two three four five six seven eight nine ten.",
+    "",
+  ]);
+
+describe("an effect line through a whole story", () => {
+  const effects = [
+    '  r1: show note at word("box", 1).end +0.1s',
+    '  s1: sound pop at word("box", 1).end +100ms',
+    '  s2: sound pop at word("box", 1).end +3f',
+    '  s3: sound pop at word("box", 1).end -0.05s',
+    '  s4: sound pop at word("box", 1).end +50%',
+    "  s5: sound pop at r1.start -10%",
+    '  s6: sound pop at 0.5s because "a beat"',
+  ];
+
+  it.effect(
+    "writing every effect back gives the same Plan, the same intent and the same review text",
+    () =>
+      Effect.gen(function* storyLevel() {
+        const first = yield* buildPlan(storyOf(effects), fixtureSha256);
+
+        const rewritten = Arr.map(
+          first.scenes[0]?.effects ?? [],
+          (effect) => `  ${formatEffect(effect)}`
+        );
+
+        assert.deepStrictEqual(rewritten, effects);
+
+        const second = yield* buildPlan(storyOf(rewritten), fixtureSha256);
+
+        assert.deepStrictEqual(second, first);
+        assert.strictEqual(reviewText(second), reviewText(first));
+
+        const timed = yield* schedule(
+          first,
+          evenlySpoken(first, 300),
+          lifecycle
+        );
+
+        // The Timeline's intent is what was written: the explicit occurrence 1, `+0.1s` and `+100ms` as they stand.
+        assert.deepStrictEqual(
+          Arr.sort(
+            Arr.map(
+              timed.timeline?.scenes[0]?.effects ?? [],
+              (timedEffect) => timedEffect.intent
+            ),
+            Order.String
+          ),
+          Arr.sort(
+            Arr.map(effects, (row) => row.trim().split(" at ")[1] ?? ""),
+            Order.String
+          )
+        );
+        assert.include(reviewText(first), 'word("box", 1).end +0.1s');
+        assert.include(reviewText(first), 'word("box", 1).end +100ms');
+      })
+  );
 });

@@ -253,8 +253,8 @@ const cases: readonly Case[] = [
     tag: "NoSuchEvent",
   },
   {
-    needle: "p1: sound pop at p1.end",
-    source: change('word("five").end', "p1.end"),
+    needle: "p1: sound pop at p1.start",
+    source: change('word("five").end', "p1.start"),
     tag: "EffectCycle",
   },
   {

@@ -3,7 +3,6 @@
 // its Lines, and one summary line. Deterministic: the same Plan gives the same text. A plain function.
 import { Array as Arr, Option } from "effect";
 
-import { formatWhen } from "./effects.ts";
 import type {
   Effect,
   Element,
@@ -198,7 +197,7 @@ const effectRows = (
       )
     )?.fireFrame;
 
-    const when = `${doing(effect).padEnd(doingWidth)}  ${formatWhen(effect.when)}`;
+    const when = `${doing(effect).padEnd(doingWidth)}  ${effect.written}`;
 
     return `      ${effect.id.padEnd(idWidth)}  ${when}${fire === undefined ? "" : `  ->  frame ${fire}`}`;
   });
@@ -249,7 +248,7 @@ const absoluteRows = (plan: PlanJson): readonly string[] =>
     Arr.flatMap(scene.effects, (effect) =>
       "absoluteMs" in effect.when
         ? [
-            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${formatWhen(effect.when)}`,
+            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${effect.written}`,
           ]
         : []
     )

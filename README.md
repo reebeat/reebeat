@@ -1,11 +1,11 @@
 # reebeat
 
-Explainer videos from a screenplay. You write one [Fountain](https://fountain.io/syntax) file: what is on screen (Action), what is said (the narrator's dialogue) and when things happen (cues in `[[double brackets]]`). reebeat turns it into a **Plan** you can review, then into two renderings generated from that one file:
+Explainer videos from a screenplay. You write one [Fountain](https://fountain.io/syntax) file: what is on screen (Action), what is said (the narrator's dialogue) and when things happen (one `[[effects]]` block per Scene: each sound, `show` and `focus` effect says **when**, at a word, at the slide change or at a moment of an Element's own motion). reebeat turns it into a **Plan** you can review, then into two renderings generated from that one file:
 
-- a **Deck**: a reveal.js presentation with the narration as speaker notes and the cues as fragments;
-- a **Video**: the same reveal.js page captured frame by frame on a controlled clock, stepped through slides and fragments at the moment the narrator says each cue word, muxed with narration (Kokoro speech aligned by whisper.cpp), sound effects, WebVTT subtitles and chapter marks.
+- a **Deck**: a reveal.js presentation with the narration as speaker notes, the `show` and `focus` effects as fragments in the order of their time, and the sounds that go with a step or a slide;
+- a **Video**: the same reveal.js page captured frame by frame on a controlled clock, stepped through slides and fragments at the frame each effect resolves to, muxed with narration (Kokoro speech aligned by whisper.cpp), sound effects, WebVTT subtitles and chapter marks.
 
-Status: **release 1** ([spec 0001](docs/specs/0001-release-1-screenplay-to-deck-and-video.md)): one original story, [`stories/same-id`](stories/same-id), builds end to end and every falsifier of the spec is checked on the written files.
+Status: **release 1** ([spec 0001](docs/specs/0001-release-1-screenplay-to-deck-and-video.md)) and the explicit anchors of [spec 0002](docs/specs/0002-explicit-anchors-and-syntax.md): one original story, [`stories/same-id`](stories/same-id), builds end to end, every falsifier of both specs is checked on the written files, and `check` reports for every effect where it was resolved and where the video and the audio show it (the grammar of the source is in [`docs/grammar/effects.md`](docs/grammar/effects.md)).
 
 ## Try it
 
@@ -27,11 +27,11 @@ devenv shell -- bun run reebeat build stories/same-id/story.fountain --speech si
 devenv shell -- bun run reebeat check build/offline --source stories/same-id/story.fountain --cache-dir /tmp/standin
 ```
 
-The silent narrator makes the narration check (F8) meaningless: it prints `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator. The sounds of an offline build are real, so the cue check (F1) still observes them.
+The silent narrator makes the narration check (F8) meaningless: it prints `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator. The sounds of an offline build are real, so the effect check (F1) still observes them.
 
 ## Where to read
 
-- [`GLOSSARY.md`](GLOSSARY.md): the vocabulary and the screenplay mapping (Story, Scene, Beat, Keyframe, Line, Cue, Hint, Element, Identity diff, Rendering).
+- [`GLOSSARY.md`](GLOSSARY.md): the vocabulary and the screenplay mapping (Story, Scene, Beat, Keyframe, Line, effect, anchor, Hint, Element, Identity diff, Rendering).
 - [`docs/design/keyframe-engine.md`](docs/design/keyframe-engine.md): the design and its dated revisions (R1: Effect in the core; R2: screenplay-first; R3: composable pieces).
 - [`docs/specs/`](docs/specs/): one spec per felt journey; [`STATE.md`](STATE.md) says which is active.
 - [`docs/design/4em-regression-baseline.md`](docs/design/4em-regression-baseline.md): facts kept for a later release (a pixel-identical port of an earlier explainer as a regression test).

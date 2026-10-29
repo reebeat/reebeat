@@ -9,18 +9,21 @@
 //                                  (the transition itself then lasts 24 frames from the call)
 //   scene change, cut           0  `data-transition="none"` swaps the slide synchronously
 //   scene change, default fade  1  the fade is a CSS transition that starts on the next frame
-//   fragment, `next`            1  the hidden Element fades in by a CSS transition
+//   fragment, `show`            1  the hidden Element fades in by a CSS transition
 //   fragment, `focus`           1  a ring and a scale by a CSS transition; the first sub-pixel change of a `.box`
 //                                  (a compositor layer is promoted) shows at the call, hence the +-1 frame of F1
-//   fragment, `sfx`             -  no pixel changes; the sound is mixed at `fireFrame`
+//   sound                       -  no pixel changes and no command; the sound is mixed at `fireFrame`
 //
-// so a Scene's slide change is commanded `lag` frames before its `slideFrame` and a fragment at its Cue's
-// `commandFrame` (`fireFrame - 1` for next and focus, `fireFrame` for sfx). A fragment step is the same call for
-// every Cue: the Nth step shows the Nth fragment. The commands of one Scene are therefore kept in Cue order: a Cue
-// whose own command frame is later than a following Cue's (an `sfx` at `fireFrame` followed by a `next` at
-// `fireFrame - 1`) is commanded no later than that Cue.
-import type { Scene, TimedPlan } from "@reebeat/core";
-import { Array as Arr, Order } from "effect";
+// so a Scene's slide change is commanded `lag` frames before its `slideFrame` and a fragment step at its effect's
+// `commandFrame` (`fireFrame - 1`). Only `show` and `focus` effects are steps: a `sound` is mixed at its `fireFrame`
+// and needs no command. A step is the same call for every effect: the Nth step shows the Nth fragment, and the
+// fragments are the Scene's `show` and `focus` effects in resolved-time order (`@reebeat/render-reveal`), which is the
+// order of `Timeline.scenes[].effects`, so the steps are commanded in that order. A step is never commanded before
+// its Scene's own slide change (an effect at `transition.start` has its command frame one before the slide frame:
+// stepping then would step the PREVIOUS slide), so it is commanded at the slide change instead and appears one frame
+// after its fire frame, inside the tolerance of F1.
+import type { Scene, TimedPlan, TimedScene } from "@reebeat/core";
+import { Array as Arr, Option, Order } from "effect";
 
 export type CaptureCommand =
   | { readonly kind: "goToScene"; readonly sceneId: string }
@@ -29,7 +32,7 @@ export type CaptureCommand =
 export interface ScheduledCommand {
   readonly command: CaptureCommand;
   readonly frame: number;
-  /** The Scene id for a slide change, the Cue id for a fragment step. */
+  /** The Scene id for a slide change, the effect id for a fragment step. */
   readonly source: string;
 }
 
@@ -55,40 +58,42 @@ const byFrame = Order.mapInput(
   (step: ScheduledCommand) => step.frame
 );
 
-/** Each Scene's fragment steps, in Cue order, each no later than any step after it. */
-const fragmentSteps = (
-  plan: TimedPlan
-): ReadonlyMap<string, readonly ScheduledCommand[]> =>
-  new Map(
-    Arr.map(
-      plan.timeline.scenes,
-      (scene): [string, readonly ScheduledCommand[]] => {
-        const own = Arr.map(
-          Arr.flatMap(scene.lines, (line) => line.cues),
-          (cue): ScheduledCommand => ({
-            command: { kind: "stepFragment" },
-            frame: cue.commandFrame,
-            source: cue.cueId,
-          })
-        );
-
-        // The smallest command frame at or after each position: a step never runs after a later Cue's step.
-        return [
-          scene.sceneId,
-          Arr.map(own, (step, index) => ({
-            ...step,
-            frame: Math.min(
-              ...Arr.map(Arr.drop(own, index), (later) => later.frame)
-            ),
-          })),
-        ];
+/** The effects of Scene `sceneId` that are sounds, by effect id: ids are unique per Scene, not in the story. */
+const soundsOf = (plan: TimedPlan, sceneId: string): ReadonlySet<string> =>
+  new Set(
+    Option.match(
+      Arr.findFirst(plan.scenes, (scene) => scene.id === sceneId),
+      {
+        onNone: () => [],
+        onSome: (scene) =>
+          Arr.flatMap(scene.effects, (effect) =>
+            effect.verb === "sound" ? [effect.id] : []
+          ),
       }
     )
   );
 
+/** The fragment steps of one Scene: one per `show` or `focus` effect, in resolved-time order, none before `notBefore`. */
+const fragmentSteps = (
+  scene: TimedScene,
+  sounds: ReadonlySet<string>,
+  notBefore: number
+): readonly ScheduledCommand[] =>
+  Arr.flatMap(scene.effects, (effect) =>
+    sounds.has(effect.effectId)
+      ? []
+      : [
+          {
+            command: { kind: "stepFragment" },
+            frame: Math.max(effect.commandFrame, notBefore),
+            source: effect.effectId,
+          },
+        ]
+  );
+
 const slideChange = (
   plan: TimedPlan
-): ((sceneId: string, slideFrame: number) => ScheduledCommand) => {
+): ((scene: TimedScene) => ScheduledCommand) => {
   const transitions = new Map(
     Arr.map(plan.scenes, (scene): [string, Scene["transition"]] => [
       scene.id,
@@ -96,7 +101,7 @@ const slideChange = (
     ])
   );
 
-  return (sceneId, slideFrame) => ({
+  return ({ sceneId, slideFrame }) => ({
     command: { kind: "goToScene", sceneId },
     frame: slideFrame - sceneChangeLag[transitions.get(sceneId) ?? "default"],
     source: sceneId,
@@ -106,12 +111,19 @@ const slideChange = (
 /** Every command of the capture, sorted by frame; commands of one frame keep their order in the story. */
 export const captureSchedule = (plan: TimedPlan): CaptureSchedule => {
   const slideChangeFor = slideChange(plan);
-  const fragments = fragmentSteps(plan);
 
-  const ordered = Arr.flatMap(plan.timeline.scenes, (timed, index) => [
-    ...(index === 0 ? [] : [slideChangeFor(timed.sceneId, timed.slideFrame)]),
-    ...(fragments.get(timed.sceneId) ?? []),
-  ]);
+  const ordered = Arr.flatMap(plan.timeline.scenes, (timed, index) => {
+    const change = index === 0 ? undefined : slideChangeFor(timed);
+
+    return [
+      ...(change === undefined ? [] : [change]),
+      ...fragmentSteps(
+        timed,
+        soundsOf(plan, timed.sceneId),
+        change?.frame ?? 0
+      ),
+    ];
+  });
 
   return {
     commands: Arr.sort(ordered, byFrame),

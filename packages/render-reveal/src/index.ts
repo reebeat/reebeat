@@ -12,6 +12,8 @@ export { checkDeck } from "./check.ts";
 
 export { DeckAssetMissing, DeckMismatch } from "./errors.ts";
 
+export { revealLifecycle } from "./lifecycle.ts";
+
 export { readDeck } from "./read.ts";
 
 export type {

@@ -62,6 +62,8 @@ interface Transition {
   readonly intermediate: number;
   /** The largest growth of the distance to the settled frame between two intermediate frames, relative to the whole change. */
   readonly largestRise: number;
+  /** The distance of the last intermediate frame to the settled frame minus the first's, relative to the whole change; negative when it approaches. */
+  readonly netRise: number;
   readonly sceneId: string;
 }
 
@@ -97,7 +99,13 @@ const observeTransition = Effect.fn("observeTransition")(function* transition(
   const settled = Arr.last(clip.frames);
 
   if (first === undefined || Option.isNone(settled)) {
-    return { distinct: 0, intermediate: 0, largestRise: 0, sceneId };
+    return {
+      distinct: 0,
+      intermediate: 0,
+      largestRise: 0,
+      netRise: 0,
+      sceneId,
+    };
   }
 
   const between = Arr.filter(
@@ -111,12 +119,18 @@ const observeTransition = Effect.fn("observeTransition")(function* transition(
     absoluteDifference(frame, settled.value)
   );
 
+  const whole = Math.max(1, absoluteDifference(first, settled.value));
+  const [nearest] = distances;
+  const farthest = distances.at(-1);
+
   return {
     distinct: new Set(hashes).size,
     intermediate: between.length,
-    largestRise:
-      largestRise(distances) /
-      Math.max(1, absoluteDifference(first, settled.value)),
+    largestRise: largestRise(distances) / whole,
+    netRise:
+      nearest === undefined || farthest === undefined
+        ? 0
+        : (farthest - nearest) / whole,
     sceneId,
   } satisfies Transition;
 });
@@ -126,6 +140,13 @@ const problemOf = (found: Transition): readonly string[] => [
     ? []
     : [
         `the transition into ${found.sceneId} shows ${found.distinct} distinct intermediate frames, at least ${minIntermediate} are needed`,
+      ]),
+  // A transition played backwards rises by a little at every frame, none of them over the slack; but it ends farther from
+  // the settled frame than it began, which no approach does.
+  ...(found.netRise <= 0
+    ? []
+    : [
+        `the transition into ${found.sceneId} does not approach its settled frame monotonically: its last intermediate frame is ${Math.round(found.netRise * 1000) / 10}% of the whole change farther from it than its first`,
       ]),
   ...(found.largestRise <= riseSlack
     ? []

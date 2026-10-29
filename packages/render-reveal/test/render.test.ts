@@ -5,48 +5,56 @@ import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect, Option, Order } from "effect";
 
 import { readDeck, renderDeck } from "../src/index.ts";
-import { asText, fixtureSha256, planOf, storyPlan } from "./support.ts";
+import {
+  asText,
+  carrySource,
+  fixtureSha256,
+  planOf,
+  scheduledOf,
+  scheduledStory,
+  storyPlan,
+} from "./support.ts";
 
 const chainSource = asText([
   "# One",
   "",
-  "INT. A - DAY",
+  "INT. A - DAY #s1#",
   "",
-  "Alpha {#a @ml .box}",
+  "Alpha {id=a cell=ml class=box}",
   "",
   "NARRATOR",
   "First.",
   "",
   "> AUTO-ANIMATE",
   "",
-  "INT. B - DAY",
+  "INT. B - DAY #s2#",
   "",
-  "Alpha {#a @mr .box}",
+  "Alpha {id=a cell=mr class=box}",
   "",
   "NARRATOR",
   "Second.",
   "",
-  "INT. C - DAY",
+  "INT. C - DAY #s3#",
   "",
-  "Alpha {#a @mc .box}",
+  "Alpha {id=a cell=mc class=box}",
   "",
   "NARRATOR",
   "Third.",
   "",
   "> AUTO-ANIMATE",
   "",
-  "INT. D - DAY",
+  "INT. D - DAY #s4#",
   "",
-  "Alpha {#a @bl .box}",
+  "Alpha {id=a cell=bl class=box}",
   "",
   "NARRATOR",
   "Fourth.",
   "",
   "> CUT",
   "",
-  "INT. E - DAY",
+  "INT. E - DAY #s5#",
   "",
-  "Alpha {#a @tl .box}",
+  "Alpha {id=a cell=tl class=box}",
   "",
   "NARRATOR",
   "Fifth.",
@@ -62,6 +70,10 @@ const deckScript = (plan: PlanJson): string =>
     { onNone: () => "", onSome: ({ text }) => text }
   );
 
+/** The item at `index`, or undefined: a test reads a slide by its place without indexing. */
+const nth = <A>(items: readonly A[], index: number): A | undefined =>
+  Option.getOrUndefined(Arr.get(items, index));
+
 describe("renderDeck", () => {
   it.effect("is a pure function: the same Plan gives the same bytes", () =>
     Effect.gen(function* twice() {
@@ -72,7 +84,7 @@ describe("renderDeck", () => {
   );
 
   it.effect(
-    "writes the contract's page: hash, one flat section per Scene, notes, cues",
+    "writes the contract's page: hash, one flat section per Scene, notes, fragments",
     () =>
       Effect.gen(function* contract() {
         const plan = yield* storyPlan;
@@ -116,9 +128,10 @@ describe("renderDeck", () => {
             Arr.map(scene.lines, (line) => line.text)
           );
           assert.deepStrictEqual(
-            Arr.map(slide?.fragments ?? [], (fragment) => fragment.cueId),
-            Arr.flatMap(scene.lines, (line) =>
-              Arr.map(line.cues, (cue) => cue.id)
+            Arr.map(slide?.fragments ?? [], (fragment) => fragment.effectId),
+            Arr.map(
+              Arr.filter(scene.effects, (effect) => effect.verb !== "sound"),
+              (effect) => effect.id
             )
           );
           assert.deepStrictEqual(
@@ -136,7 +149,7 @@ describe("renderDeck", () => {
   );
 
   it.effect(
-    "writes each Element as div.el with data-id, data-cell and its classes",
+    "writes each Element as div.el with data-id, data-cell, its class and hidden when it is not visible",
     () =>
       Effect.gen(function* elements() {
         const plan = yield* storyPlan;
@@ -158,25 +171,94 @@ describe("renderDeck", () => {
   );
 
   it.effect(
-    "writes one fragment per Cue with kind, argument and the Element a next reveals",
+    "writes one fragment per show or focus effect with verb and target, and none for a sound",
     () =>
-      Effect.gen(function* cues() {
+      Effect.gen(function* effects() {
         const plan = yield* storyPlan;
         const { html } = renderDeck(plan);
 
         assert.include(
           html,
-          '<span class="fragment cue" data-fragment-index="0" data-cue-id="sc2.l1.c1" data-cue-kind="focus" data-cue-arg="box" data-reveals=""></span>'
+          '<span class="fragment effect" data-fragment-index="0" data-effect-id="f1" data-effect-verb="focus" data-target="box"></span>'
         );
         assert.include(
           html,
-          '<span class="fragment cue" data-fragment-index="1" data-cue-id="sc2.l2.c1" data-cue-kind="next" data-cue-arg="" data-reveals="twin"></span>'
+          '<span class="fragment effect" data-fragment-index="1" data-effect-id="r1" data-effect-verb="show" data-target="twin"></span>'
+        );
+        assert.notInclude(html, 'data-effect-verb="sound"');
+      })
+  );
+
+  it.effect(
+    "orders the fragments of a Scene by resolved time, not by the order they were written in",
+    () =>
+      Effect.gen(function* order() {
+        const plan = yield* scheduledStory;
+        const slide = nth(readDeck(renderDeck(plan).html).slides, 3);
+        const scene = nth(plan.scenes, 3);
+
+        // sc4 writes `f1` (the focus, 0.2 s before "slides") before `r1` (the show, 0.1 s after "matches"): "matches"
+        // is spoken first, so the show resolves first.
+        assert.deepStrictEqual(
+          Arr.map(scene?.effects ?? [], (effect) => effect.id),
+          ["s1", "s2", "f1", "r1"]
+        );
+        assert.deepStrictEqual(
+          Arr.map(slide?.fragments ?? [], (fragment) => fragment.effectId),
+          ["r1", "f1"]
+        );
+
+        const fires = new Map(
+          Arr.map(
+            nth(plan.timeline?.scenes ?? [], 3)?.effects ?? [],
+            (timed): [string, number] => [timed.effectId, timed.fireFrame]
+          )
+        );
+
+        assert.isBelow(fires.get("r1") ?? 0, fires.get("f1") ?? 0);
+      })
+  );
+
+  it.effect(
+    "carries each sound as data-sounds: on the slide or on the step it plays with, never as a fragment",
+    () =>
+      Effect.gen(function* sounds() {
+        const story = readDeck(renderDeck(yield* scheduledStory).html).slides;
+
+        // sc4: the whoosh is anchored to the slide change and the ding to the box's motion: both ride on the slide.
+        assert.deepStrictEqual(nth(story, 3)?.sounds, ["whoosh", "ding"]);
+        assert.deepStrictEqual(
+          Arr.flatMap(
+            nth(story, 3)?.fragments ?? [],
+            (fragment) => fragment.sounds
+          ),
+          []
+        );
+        assert.deepStrictEqual(nth(story, 4)?.sounds, ["ding"]);
+        // sc7: an absolute time with no step before it plays alone, which a Deck can only do with the slide.
+        assert.deepStrictEqual(nth(story, 6)?.sounds, ["pop"]);
+
+        const carried = nth(
+          readDeck(renderDeck(yield* scheduledOf(carrySource)).html).slides,
+          0
+        );
+
+        assert.deepStrictEqual(carried?.sounds, ["whoosh", "pop"]);
+        assert.deepStrictEqual(
+          Arr.map(carried?.fragments ?? [], (fragment) => [
+            fragment.effectId,
+            fragment.sounds,
+          ]),
+          [
+            ["r1", ["ding"]],
+            ["f1", []],
+          ]
         );
       })
   );
 
   it.effect(
-    "marks Auto-Animate scenes on both sides of the join, a cut on the Scene it leads into",
+    "marks Auto-Animate scenes on both sides of the join and a cut on the Scene it leads into",
     () =>
       Effect.gen(function* marks() {
         const plan = yield* planOf(chainSource);

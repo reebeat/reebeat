@@ -30,7 +30,7 @@ layer(platform)("reebeat plan", (it) => {
       assert.isTrue(Exit.isSuccess(exit));
       assert.include(
         stdout,
-        "Plan: 7 scenes, 12 lines, 7 cues; 2 to enter, 2 to exit, 4 to update"
+        "Plan: 7 scenes, 12 lines, 11 effects; 3 to enter, 3 to exit, 4 to update"
       );
       assert.include(stdout, "Scene sc4  INT. THE NEXT SCREEN - DAY");
     })
@@ -194,7 +194,7 @@ interface Case {
   readonly tag: PlanError["_tag"];
 }
 
-// One mutation per error class of the Plan stage (F10's list, plus the classes the core adds).
+// One mutation per error class of the Plan stage (F10's list of release 1, plus the classes spec 0002 adds).
 const cases: readonly Case[] = [
   {
     needle: "## Deeper",
@@ -202,33 +202,69 @@ const cases: readonly Case[] = [
     tag: "UnsupportedElement",
   },
   {
-    needle: "[[wave]]",
-    source: change("[[sfx: pop]]", "[[wave]]"),
-    tag: "UnknownCue",
+    needle: "[[next]]",
+    source: change("One two three. Four", "One two three. [[next]] Four"),
+    tag: "ReleaseOneForm",
   },
   {
-    needle: "Again {#a",
-    source: change("Box {#a @mc .box}", "Box {#a @mc .box}\nAgain {#a @tr}"),
+    needle: "Again {id=a",
+    source: change(
+      "Box {id=a cell=mc class=box}",
+      "Box {id=a cell=mc class=box}\nAgain {id=a cell=tr class=box}"
+    ),
     tag: "DuplicateId",
   },
   {
     needle: "No id here",
-    source: change("Box {#a @mc .box}", "Box {#a @mc .box}\nNo id here"),
+    source: change(
+      "Box {id=a cell=mc class=box}",
+      "Box {id=a cell=mc class=box}\nNo id here"
+    ),
     tag: "MissingId",
   },
   {
-    needle: "[[focus: nope]]",
-    source: change("[[focus: a]]", "[[focus: nope]]"),
-    tag: "CueTargetMissing",
+    needle: "cell=zz",
+    source: change("cell=mc", "cell=zz"),
+    tag: "BadProperty",
   },
   {
-    needle: "Six seven. [[next]]",
-    source: change("[[focus: a]]", "[[next]]"),
-    tag: "NextWithNothingHidden",
+    needle: "INT. TWO",
+    source: change("INT. TWO #sc2#", "INT. TWO"),
+    tag: "BadSceneId",
   },
   {
-    needle: "Later {#b",
-    source: change("[[next]] ", ""),
+    needle: "f1: focus nope",
+    source: change("f1: focus a", "f1: focus nope"),
+    tag: "UnknownReference",
+  },
+  {
+    needle: 'word("nine")',
+    source: change('word("five")', 'word("nine")'),
+    tag: "UnknownReference",
+  },
+  {
+    needle: 'r1: show b at word("three")',
+    source: change("One two three. Four five.", "One two three. Three five."),
+    tag: "AmbiguousWord",
+  },
+  {
+    needle: "p1: sound pop at a.move.start",
+    source: change('word("five").end', "a.move.start"),
+    tag: "NoSuchEvent",
+  },
+  {
+    needle: "p1: sound pop at p1.start",
+    source: change('word("five").end', "p1.start"),
+    tag: "EffectCycle",
+  },
+  {
+    needle: "at 1.5s",
+    source: change('word("five").end', "1.5s"),
+    tag: "AbsoluteNeedsReason",
+  },
+  {
+    needle: "Later {id=b",
+    source: change('  r1: show b at word("three").end\n', ""),
     tag: "HiddenNeverRevealed",
   },
   {
@@ -242,8 +278,8 @@ const cases: readonly Case[] = [
     tag: "BadTransition",
   },
   {
-    needle: "[[sfx: boom]]",
-    source: change("[[sfx: pop]]", "[[sfx: boom]]"),
+    needle: "sound boom",
+    source: change("sound pop", "sound boom"),
     tag: "UnknownSfx",
   },
   {

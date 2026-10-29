@@ -187,7 +187,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           assert.strictEqual(f8.status, "na");
           assert.include(f8.detail, "N/A (silent stand-in)");
           assert.deepStrictEqual(failedIds(verdicts), ["F1"]);
-          assert.include(verdictOf(verdicts, "F1").detail, "sfx");
+          assert.include(verdictOf(verdicts, "F1").detail, "sound");
           assert.strictEqual(exitCode(verdicts), 1);
         })
     );

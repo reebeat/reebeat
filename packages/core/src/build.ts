@@ -1,14 +1,15 @@
-// `buildPlan`: Fountain source in, Plan out (spec 0001, "The source" and "The Plan contract").
+// `buildPlan`: Fountain source in, Plan out (spec 0001, "The source" and "The Plan contract"; spec 0002 for the
+// effects).
 import { Array as Arr, Effect, Order, Result } from "effect";
 
-import { resolveCues } from "./cues.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import { identityDiff } from "./identity.ts";
 import { parseFountain } from "./parse.ts";
-import type { Chapter, Cue, Line, PlanJson, Scene, Settings } from "./plan.ts";
+import type { Chapter, Line, PlanJson, Scene, Settings } from "./plan.ts";
 import { adaptTokens } from "./story.ts";
 import type { LineDraft, SceneDraft, Story } from "./story.ts";
+import { validateScene } from "./validate.ts";
 
 /** The pacing and canvas defaults of release 1 (spec 0001, "Time"); the speech rate comes from the Story. */
 const defaultSettings: Omit<Settings, "speed"> = {
@@ -28,18 +29,6 @@ const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
   const id = `${sceneId}.l${index + 1}`;
 
   return {
-    cues: Arr.map(draft.cues, (cue, cueIndex): Cue => ({
-      afterWord: cue.afterWord,
-      // An sfx before the first word of a Scene's first Line sounds with the slide change into the Scene.
-      anchor:
-        cue.kind === "sfx" && cue.afterWord === -1 && index === 0
-          ? "transition-start"
-          : "word",
-      arg: cue.arg,
-      id: `${id}.c${cueIndex + 1}`,
-      kind: cue.kind,
-      line: cue.line,
-    })),
     hints: draft.hints,
     id,
     line: draft.line,
@@ -50,11 +39,12 @@ const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
 
 const buildScenes = (story: Story): readonly Scene[] =>
   Arr.map(story.scenes, (draft: SceneDraft, index): Scene => {
-    const id = `sc${index + 1}`;
+    const { id } = draft;
     const previous = story.scenes[index - 1];
 
     return {
       chapterId: `ch${draft.chapterIndex + 1}`,
+      effects: draft.effects,
       elements: draft.elements,
       heading: draft.heading,
       id,
@@ -75,8 +65,8 @@ const buildChapters = (story: Story): readonly Chapter[] =>
     const chapter: Chapter = {
       id: `ch${index + 1}`,
       line: draft.line,
-      sceneIds: Arr.flatMap(story.scenes, (scene, sceneIndex) =>
-        scene.chapterIndex === index ? [`sc${sceneIndex + 1}`] : []
+      sceneIds: Arr.flatMap(story.scenes, (scene) =>
+        scene.chapterIndex === index ? [scene.id] : []
       ),
       title: draft.title,
     };
@@ -93,7 +83,17 @@ const errorsOf = (story: Story): readonly PlanError[] =>
   Arr.sort(
     [
       ...story.errors,
-      ...Arr.flatMap(story.scenes, (scene) => resolveCues(scene)),
+      ...Arr.flatMap(buildScenes(story), (scene, index) => {
+        const draft = story.scenes[index];
+        const previous = story.scenes[index - 1];
+
+        // A Scene with an error on an Element or effect line is not cross-checked: its references would only echo it.
+        return draft === undefined ||
+          draft.invalid ||
+          (scene.identity !== null && previous?.invalid === true)
+          ? []
+          : validateScene(scene, draft.explicitOccurrences);
+      }),
       ...(story.scenes.length === 0
         ? [
             planError(

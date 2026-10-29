@@ -1,15 +1,19 @@
-// The adapter from Fountain tokens to the Story: chapters, scenes, Elements, Lines and Cues, before ids and
+// The adapter from Fountain tokens to the Story: chapters, scenes, Elements, effects and Lines, before the
 // cross-checks exist. Everything the vocabulary does not define becomes a Plan error with its line, never a
 // silent drop. A plain function.
 import { Array as Arr, Option, Result } from "effect";
 
+import { parseEffectLine } from "./effects.ts";
 import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
+import { oneOf, problem, reservedIds } from "./grammar.ts";
+import { cueErrors } from "./hints.ts";
+import type { SceneCue } from "./hints.ts";
 import { parseNarration } from "./narration.ts";
-import type { CueDraft } from "./narration.ts";
 import type { FountainToken } from "./parse.ts";
-import type { Element, Line, Scene } from "./plan.ts";
+import { idPattern } from "./plan.ts";
+import type { Effect, Element, Line, Scene } from "./plan.ts";
 import {
   defaultSpeed,
   parseSpeed,
@@ -23,17 +27,29 @@ export interface LineDraft {
   readonly text: string;
   readonly words: readonly string[];
   readonly hints: Line["hints"];
-  readonly cues: readonly CueDraft[];
 }
 
 export interface SceneDraft {
   readonly heading: string;
+  /** The author's `#id#` of the heading. */
+  readonly id: string;
   readonly line: number;
   readonly transition: Scene["transition"];
   /** Index into `Story.chapters`; -1 for a Scene before any Section. */
   readonly chapterIndex: number;
+  readonly effects: Effect[];
+  /** The line of the `[[effects` block; none: the Scene has no block yet. */
+  effectsLine: number | undefined;
+  /** Ids of the effects whose `word(...)` wrote an occurrence number. */
+  readonly explicitOccurrences: Set<string>;
+  /** An Element or effect line of the Scene has an error: its references are not checked until it is fixed. */
+  invalid: boolean;
   readonly elements: Element[];
+  /** The release-1 cues of the Scene's dialogue, in order, each with the Line it stood in. */
+  readonly cues: SceneCue[];
   readonly lines: LineDraft[];
+  /** The ids of the hidden Elements in document order (release 1's `hidden` included): what `[[next]]` cues revealed. */
+  readonly hidden: string[];
 }
 
 interface ChapterDraft {
@@ -77,6 +93,8 @@ interface State {
   readonly scenes: SceneDraft[];
   readonly errors: PlanError[];
   transition: PendingTransition | undefined;
+  /** An `[[effects` block was not closed: the rows up to its `]]` are not Elements. */
+  unclosed: boolean;
   /** Inside a dialogue block: whether its Lines are skipped, and the Parentheticals waiting for dialogue. */
   dialogue: { skip: boolean; pending: Parenthetical[] } | undefined;
 }
@@ -126,8 +144,8 @@ const parseParenthetical = (
   return absolute === undefined
     ? undefined
     : Result.mapBoth(parseSpeed(absolute), {
-        onFailure: (problem) =>
-          planError("BadSpeed", line, `${text}: ${problem}`),
+        onFailure: (reason) =>
+          planError("BadSpeed", line, `${text}: ${reason}`),
         onSuccess: (value): Parenthetical => ({
           kind: "speed",
           line,
@@ -206,17 +224,62 @@ const synopsisToken = (state: State, token: FountainToken): void => {
   }
 };
 
+/** The id of a Scene: the `#id#` of its heading, or the generated fallback after the error that says it is missing. */
+const sceneIdOf = (state: State, token: FountainToken): string => {
+  const fallback = `sc${state.scenes.length + 1}`;
+  const heading = token.text.trim();
+  const id = token.sceneNumber;
+
+  if (id === "") {
+    const written = /#[^#]*#\s*$/u.exec(heading)?.[0];
+
+    state.errors.push(
+      planError(
+        "BadSceneId",
+        token.line,
+        written === undefined
+          ? problem(
+              `Scene heading "${heading}" has no id`,
+              'the id between # at the end of the heading, as "INT. THE NEXT SCREEN - DAY #sc4#"',
+              `"${heading} #${fallback}#"`
+            )
+          : problem(
+              `"${written.trim()}" is not a Scene id`,
+              "an identifier: a letter, then letters, digits, _ and -, between #"
+            )
+      )
+    );
+  } else if (!idPattern.test(id) || Arr.contains(reservedIds, id)) {
+    state.errors.push(
+      planError(
+        "BadSceneId",
+        token.line,
+        problem(
+          `Scene id "#${id}#" is not usable`,
+          `an identifier (a letter, then letters, digits, _ and -) that is not ${oneOf(reservedIds)}`
+        )
+      )
+    );
+  } else if (Arr.some(state.scenes, (scene) => scene.id === id)) {
+    state.errors.push(
+      planError(
+        "DuplicateId",
+        token.line,
+        problem(
+          `Scene id "${id}" is already used`,
+          "a different id for each Scene"
+        )
+      )
+    );
+  }
+
+  return id === "" ? fallback : id;
+};
+
 const headingToken = (state: State, token: FountainToken): void => {
   const pending = state.transition;
   state.transition = undefined;
-
-  if (token.sceneNumber !== "") {
-    unsupported(
-      state,
-      token.line,
-      `scene number #${token.sceneNumber}# is not supported: Scene ids are generated (sc1, sc2, ...)`
-    );
-  }
+  const id = sceneIdOf(state, token);
 
   if (state.chapters.length === 0) {
     state.errors.push(
@@ -240,56 +303,234 @@ const headingToken = (state: State, token: FountainToken): void => {
 
   state.scenes.push({
     chapterIndex: state.chapters.length - 1,
+    cues: [],
+    effects: [],
+    effectsLine: undefined,
     elements: [],
+    explicitOccurrences: new Set(),
     heading: token.text.trim(),
+    hidden: [],
+    id,
+    invalid: false,
     line: token.line,
     lines: [],
     transition: pending?.kind ?? "default",
   });
 };
 
-const actionToken = (state: State, token: FountainToken): void => {
+const reservedId = (line: number, what: string, id: string): PlanError =>
+  planError(
+    "BadProperty",
+    line,
+    problem(
+      `${what} id "${id}" is reserved by the anchor grammar`,
+      `an identifier that is not ${oneOf(reservedIds)}`
+    )
+  );
+
+const elementLine = (
+  state: State,
+  scene: SceneDraft,
+  raw: string,
+  line: number
+): void => {
+  const { element, errors, releaseOneHidden } = parseElementLine(raw, line);
+  state.errors.push(...errors);
+
+  if (releaseOneHidden !== undefined) {
+    scene.hidden.push(releaseOneHidden);
+  }
+
+  if (element === undefined) {
+    return;
+  }
+
+  const earlier = Arr.findFirst(
+    scene.elements,
+    (other) => other.id === element.id
+  );
+
+  if (Option.isSome(earlier)) {
+    state.errors.push(
+      planError(
+        "DuplicateId",
+        line,
+        problem(
+          `Element id "${element.id}" is already used in this Scene (line ${earlier.value.line})`,
+          "a different id for each Element of a Scene"
+        )
+      )
+    );
+  } else if (Arr.contains(reservedIds, element.id)) {
+    state.errors.push(reservedId(line, "Element", element.id));
+  } else {
+    scene.elements.push(element);
+
+    if (!element.visible) {
+      scene.hidden.push(element.id);
+    }
+  }
+};
+
+const effectRows = (
+  state: State,
+  scene: SceneDraft,
+  first: number,
+  rows: readonly string[]
+): void => {
+  for (const [index, row] of rows.entries()) {
+    const line = first + 1 + index;
+
+    if (row.trim() === "") {
+      continue;
+    }
+
+    const parsed = parseEffectLine(row, line);
+
+    if (Result.isFailure(parsed)) {
+      state.errors.push(parsed.failure);
+    } else if (
+      Arr.some(scene.effects, (other) => other.id === parsed.success.effect.id)
+    ) {
+      state.errors.push(
+        planError(
+          "DuplicateId",
+          line,
+          problem(
+            `effect id "${parsed.success.effect.id}" is already used in this Scene`,
+            "a different id for each effect of a Scene"
+          )
+        )
+      );
+    } else {
+      scene.effects.push(parsed.success.effect);
+
+      if (parsed.success.explicitOccurrence) {
+        scene.explicitOccurrences.add(parsed.success.effect.id);
+      }
+    }
+  }
+};
+
+/** Reads the lines of an `[[effects ... ]]` block into the Scene's effects. */
+const effectsBlock = (
+  state: State,
+  scene: SceneDraft,
+  token: FountainToken
+): void => {
+  const rows = token.text.split("\n");
+  const closed = rows.length > 1 && rows.at(-1)?.trim() === "]]";
+
+  const bad = (message: string): void => {
+    state.errors.push(planError("BadEffectsBlock", token.line, message));
+  };
+
+  if (scene.effectsLine !== undefined) {
+    bad(
+      problem(
+        `a second [[effects]] block in this Scene (the first is on line ${scene.effectsLine})`,
+        "one [[effects]] block per Scene"
+      )
+    );
+  } else if (scene.lines.length > 0) {
+    bad(
+      problem(
+        "an [[effects]] block after the first dialogue",
+        "the block before the first NARRATOR line of its Scene"
+      )
+    );
+  } else if (rows[0]?.trim() !== "[[effects") {
+    bad(
+      problem(
+        `"${rows[0]?.trim() ?? ""}" opens an [[effects]] block`,
+        '"[[effects" alone on its line, then one effect per line, then "]]" alone on its line'
+      )
+    );
+  } else if (closed) {
+    scene.effectsLine = token.line;
+    effectRows(state, scene, token.line, rows.slice(1, -1));
+  } else {
+    state.unclosed = true;
+    bad(
+      problem(
+        "an [[effects]] block that never closes with ]] on a line of its own",
+        'no blank line inside the block, and "]]" alone on its last line'
+      )
+    );
+  }
+};
+
+/** The Action token without the tail of an unclosed `[[effects` block; `undefined` when it is all tail. */
+const afterUnclosed = (
+  state: State,
+  token: FountainToken
+): FountainToken | undefined => {
+  if (!state.unclosed) {
+    return token;
+  }
+
+  const rows = token.text.split("\n");
+  const end = Arr.findFirstIndex(rows, (row) => row.trim() === "]]");
+
+  if (Option.isNone(end)) {
+    return undefined;
+  }
+
+  state.unclosed = false;
+
+  return {
+    ...token,
+    line: token.line + end.value + 1,
+    text: Arr.join(Arr.drop(rows, end.value + 1), "\n"),
+  };
+};
+
+const actionToken = (state: State, first: FountainToken): void => {
   const scene = currentScene(state);
 
   if (scene === undefined) {
     unsupported(
       state,
-      token.line,
+      first.line,
       "an Element must be inside a Scene: start one with a scene heading"
     );
 
     return;
   }
 
-  for (const [offset, raw] of token.text.split("\n").entries()) {
-    if (raw.trim() === "") {
-      continue;
+  const token = afterUnclosed(state, first);
+
+  if (token === undefined) {
+    return;
+  }
+
+  const before = state.errors.length;
+  const rows = token.text.split("\n");
+
+  const opening = Option.getOrElse(
+    Arr.findFirstIndex(rows, (row) => row.trim().startsWith("[[effects")),
+    () => -1
+  );
+
+  for (const [offset, raw] of Arr.take(
+    rows,
+    opening === -1 ? rows.length : opening
+  ).entries()) {
+    if (raw.trim() !== "") {
+      elementLine(state, scene, raw, token.line + offset);
     }
+  }
 
-    const line = token.line + offset;
-    const { element, errors } = parseElementLine(raw, line);
-    state.errors.push(...errors);
+  if (opening !== -1) {
+    effectsBlock(state, scene, {
+      ...token,
+      line: token.line + opening,
+      text: Arr.join(rows.slice(opening), "\n"),
+    });
+  }
 
-    if (element === undefined) {
-      continue;
-    }
-
-    const earlier = Arr.findFirst(
-      scene.elements,
-      (other) => other.id === element.id
-    );
-
-    if (Option.isSome(earlier)) {
-      state.errors.push(
-        planError(
-          "DuplicateId",
-          line,
-          `Element #${element.id} is already used in this Scene (line ${earlier.value.line})`
-        )
-      );
-    } else {
-      scene.elements.push(element);
-    }
+  if (state.errors.length > before) {
+    scene.invalid = true;
   }
 };
 
@@ -415,18 +656,24 @@ const dialogueToken = (state: State, token: FountainToken): void => {
   const narration = parseNarration(token.text, token.line);
   state.errors.push(...narration.errors);
 
+  scene.cues.push(
+    ...Arr.map(narration.cues, (cue): SceneCue => ({
+      ...cue,
+      lineIndex: scene.lines.length,
+    }))
+  );
+
   if (narration.text === "") {
     unsupported(
       state,
       token.line,
-      "a Line has no narration text (only Cues): write the words the narrator says"
+      "a Line has no narration text: write the words the narrator says"
     );
 
     return;
   }
 
   scene.lines.push({
-    cues: narration.cues,
     hints,
     line: token.line,
     text: narration.text,
@@ -465,12 +712,12 @@ const unsupportedReason = (type: string): string => {
       return "lyrics are not supported";
     }
 
-    case "note": {
-      return "a [[note]] outside dialogue is not supported: Cues belong in NARRATOR dialogue";
-    }
-
     case "page_break": {
       return "page breaks are not supported";
+    }
+
+    case "note": {
+      return "a [[note]] outside an [[effects]] block is not supported: write the block as [[effects NEWLINE <lines> NEWLINE ]]";
     }
 
     default: {
@@ -600,6 +847,15 @@ const finish = (state: State): void => {
         `Scene "${scene.heading}" has no NARRATOR dialogue: a Scene needs at least one Line`
       );
     }
+
+    state.errors.push(
+      ...cueErrors({
+        cues: scene.cues,
+        effects: scene.effects,
+        hidden: scene.hidden,
+        lines: scene.lines,
+      })
+    );
   }
 };
 
@@ -614,6 +870,7 @@ export const adaptTokens = (tokens: readonly FountainToken[]): Story => {
     speed: undefined,
     title: undefined,
     transition: undefined,
+    unclosed: false,
   };
 
   for (const token of tokens) {

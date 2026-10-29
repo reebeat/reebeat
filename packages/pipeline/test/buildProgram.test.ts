@@ -4,6 +4,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { decodePlan, frameToMs, requireTimeline } from "@reebeat/core";
 import { CaptureError } from "@reebeat/services";
+import { contractLifecycle } from "@reebeat/services/contract";
 import {
   Array as Arr,
   Deferred,
@@ -33,17 +34,18 @@ import {
 } from "./buildSupport.ts";
 import type { Muxed, Parts } from "./buildSupport.ts";
 
-/** A story file in a temporary directory; `out` is where the build goes. */
-const setup = Effect.gen(function* setup() {
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-build-" });
-  const story = path.join(dir, "story.fountain");
+/** A story file with `text` in a temporary directory; `out` is where the build goes. */
+const setup = (text: string) =>
+  Effect.gen(function* setupStory() {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-build-" });
+    const story = path.join(dir, "story.fountain");
 
-  yield* fs.writeFileString(story, storyText);
+    yield* fs.writeFileString(story, text);
 
-  return { dir, out: path.join(dir, "out"), story };
-});
+    return { dir, out: path.join(dir, "out"), story };
+  });
 
 /** The build options for a story; `refreshSpeech` defaults to true, as the stand-ins need no model. */
 const optionsFor = (
@@ -53,11 +55,12 @@ const optionsFor = (
 
 /** `chosen` parts (default: the stand-ins) built once; `run` builds a story on them, `seen` records every mux. */
 const withWorld = Effect.fnUntraced(function* withWorld(
-  choose: (seen: Ref.Ref<readonly Muxed[]>) => Parts = parts
+  choose: (seen: Ref.Ref<readonly Muxed[]>) => Parts = parts,
+  text: string = storyText
 ) {
   const seen = yield* Ref.make<readonly Muxed[]>([]);
   const context = yield* Layer.build(worldOf(choose(seen)));
-  const where = yield* setup;
+  const where = yield* setup(text);
 
   return {
     run: (refreshSpeech = true) =>
@@ -152,7 +155,7 @@ describe("buildProgram: a finished build", () => {
   );
 
   it.effect(
-    "asks the Encoder for the Timeline: its frames, narration at each Line's start, the sound at its Cue's fire frame, the chapters and the source hash",
+    "asks the Encoder for the Timeline: its frames, narration at each Line's start, the sound at its effect's fire frame, the chapters and the source hash",
     () =>
       Effect.gen(function* request() {
         const { run, seen, where } = yield* withWorld();
@@ -171,9 +174,9 @@ describe("buildProgram: a finished build", () => {
         const tracks = muxed?.request.tracks ?? [];
         const second = timed.timeline.chapters[1]?.startFrame ?? -1;
 
-        const sfx = Arr.findFirst(
-          Arr.flatMap(lines, (line) => line.cues),
-          (cue) => cue.cueId === "sc1.l1.c2"
+        const sound = Arr.findFirst(
+          Arr.flatMap(timed.timeline.scenes, (scene) => scene.effects),
+          (effect) => effect.effectId === "p1"
         );
 
         assert.strictEqual(muxed?.frames, timed.timeline.totalFrames);
@@ -181,12 +184,12 @@ describe("buildProgram: a finished build", () => {
         assert.strictEqual(muxed?.request.width, width);
         assert.strictEqual(muxed?.request.height, height);
 
-        // One narration clip per Line in order, then the one sfx at its Cue's fire frame.
+        // One narration clip per Line in order, then the one sound at its effect's fire frame.
         assert.deepStrictEqual(
           Arr.map(tracks, (track) => track.startMs),
           [
             ...Arr.map(lines, (line) => frameToMs(line.startFrame, fps)),
-            frameToMs(Option.getOrThrow(sfx).fireFrame, fps),
+            frameToMs(Option.getOrThrow(sound).fireFrame, fps),
           ]
         );
 
@@ -325,9 +328,80 @@ describe("buildProgram: a finished build", () => {
           {
             egress: { kind: "integration", sends: ["the plan"] },
             id: "fake-hosted@1",
+            lifecycle: contractLifecycle,
             service: "Renderer",
             settings: { region: "eu" },
           }
+        );
+      }).pipe(Effect.scoped, Effect.provide(platform))
+  );
+});
+
+describe("buildProgram: the Renderer's lifecycle", () => {
+  it.effect(
+    "resolves an effect anchored to an Element's motion against the lifecycle the selected Renderer declares, and records it",
+    () =>
+      Effect.gen(function* declared() {
+        const fs = yield* FileSystem.FileSystem;
+
+        // `a` moves from one cell to another in sc2: its motion starts `startLagFrames` after the slide change.
+        const text = storyText.replace(
+          "  f1: focus a",
+          "  m1: sound pop at a.move.start\n  f1: focus a"
+        );
+
+        const fireOf = (lag: number) =>
+          Effect.gen(function* withLag() {
+            const { run, where } = yield* withWorld(
+              (seen) => ({
+                ...parts(seen),
+                renderer: fakeRenderer(undefined, {
+                  ...contractLifecycle,
+                  matched: {
+                    ...contractLifecycle.matched,
+                    startLagFrames: lag,
+                  },
+                }),
+              }),
+              text
+            );
+
+            yield* run();
+
+            const timed = yield* writtenPlan(where.out);
+            const [, second] = timed.timeline.scenes;
+
+            const manifest = yield* decodeBuildManifest(
+              yield* fs.readFileString(`${where.out}/build.json`)
+            );
+
+            return {
+              fire: Arr.findFirst(
+                second?.effects ?? [],
+                (effect) => effect.effectId === "m1"
+              ),
+              recorded: Arr.findFirst(
+                manifest.adapters,
+                (adapter) => adapter.service === "Renderer"
+              ),
+              slide: second?.slideFrame ?? -1,
+            };
+          });
+
+        const early = yield* fireOf(1);
+        const late = yield* fireOf(5);
+
+        assert.strictEqual(
+          Option.getOrThrow(early.fire).fireFrame,
+          early.slide + 1
+        );
+        assert.strictEqual(
+          Option.getOrThrow(late.fire).fireFrame,
+          late.slide + 5
+        );
+        assert.strictEqual(
+          Option.getOrThrow(late.recorded).lifecycle?.matched.startLagFrames,
+          5
         );
       }).pipe(Effect.scoped, Effect.provide(platform))
   );

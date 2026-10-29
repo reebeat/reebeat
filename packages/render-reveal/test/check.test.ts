@@ -6,7 +6,13 @@ import type { PlanJson } from "@reebeat/core";
 import { Array as Arr, Effect } from "effect";
 
 import { checkDeck, DeckMismatch, renderDeck } from "../src/index.ts";
-import { readIn, storyPlan, writtenDeck } from "./support.ts";
+import {
+  carrySource,
+  readIn,
+  scheduledOf,
+  storyPlan,
+  writtenDeck,
+} from "./support.ts";
 
 /** The written deck.html of the committed story and its Plan. */
 const writtenStory = Effect.gen(function* written() {
@@ -16,13 +22,22 @@ const writtenStory = Effect.gen(function* written() {
   return { html, plan };
 });
 
-const span = (html: string, cueId: string): string => {
-  const found = new RegExp(
-    `\\s*<span class="fragment cue"[^>]*data-cue-id="${cueId}"[^>]*></span>`,
+/** The fragment of effect `effectId` of the slide of Scene `sceneId`, with the whitespace before it. */
+const span = (html: string, sceneId: string, effectId: string): string => {
+  const slide = new RegExp(
+    `<section data-scene="${sceneId}"[\\s\\S]*?</section>`,
     "u"
   ).exec(html);
 
-  assert.isNotNull(found, `the page has a fragment for ${cueId}`);
+  const found = new RegExp(
+    `\\s*<span class="fragment effect"[^>]*data-effect-id="${effectId}"[^>]*></span>`,
+    "u"
+  ).exec(slide?.[0] ?? "");
+
+  assert.isNotNull(
+    found,
+    `the slide ${sceneId} has a fragment for ${effectId}`
+  );
 
   return found?.[0] ?? "";
 };
@@ -91,7 +106,7 @@ describe("checkDeck", () => {
         const error = yield* failureOf(
           plan,
           html,
-          html.replace(span(html, "sc2.l2.c1"), "")
+          html.replace(span(html, "sc2", "r1"), "")
         );
 
         assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc2", 1]);
@@ -102,8 +117,8 @@ describe("checkDeck", () => {
   it.effect("F4 control: two swapped fragments fail at the first of them", () =>
     Effect.gen(function* fragments() {
       const { html, plan } = yield* writtenStory;
-      const first = span(html, "sc6.l3.c1");
-      const second = span(html, "sc6.l3.c2");
+      const first = span(html, "sc6", "r1");
+      const second = span(html, "sc6", "r2");
 
       const error = yield* failureOf(
         plan,
@@ -118,27 +133,27 @@ describe("checkDeck", () => {
     })
   );
 
-  it.effect("F4 control: a changed argument or kind fails", () =>
+  it.effect("F4 control: a changed target or verb fails", () =>
     Effect.gen(function* fragments() {
       const { html, plan } = yield* writtenStory;
 
-      const argument = yield* failureOf(
+      const target = yield* failureOf(
         plan,
         html,
-        html.replace('data-cue-arg="box"', 'data-cue-arg="twin"')
+        html.replace('data-target="box"', 'data-target="twin"')
       );
 
-      const kind = yield* failureOf(
+      const verb = yield* failureOf(
         plan,
         html,
         html.replace(
-          'data-cue-id="sc2.l1.c1" data-cue-kind="focus"',
-          'data-cue-id="sc2.l1.c1" data-cue-kind="sfx"'
+          'data-effect-id="f1" data-effect-verb="focus"',
+          'data-effect-id="f1" data-effect-verb="show"'
         )
       );
 
       assert.deepStrictEqual(
-        [placeOf(argument), placeOf(kind)],
+        [placeOf(target), placeOf(verb)],
         [
           ["F4 fragments", "sc2", 0],
           ["F4 fragments", "sc2", 0],
@@ -148,19 +163,82 @@ describe("checkDeck", () => {
   );
 
   it.effect(
-    "F4 control: a fragment that reveals another Element fails, though its kind and argument agree",
+    "F4 control: a fragment with another index fails, though its verb and target agree",
     () =>
-      Effect.gen(function* reveals() {
+      Effect.gen(function* indices() {
         const { html, plan } = yield* writtenStory;
 
         const error = yield* failureOf(
           plan,
           html,
-          html.replace('data-reveals="twin"', 'data-reveals=""')
+          html.replace(
+            'data-fragment-index="1" data-effect-id="r1"',
+            'data-fragment-index="7" data-effect-id="r1"'
+          )
         );
 
         assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc2", 1]);
-        assert.include(error.message, 'the Plan reveals "twin"');
+        assert.include(error.message, "the Plan has index 1");
+      })
+  );
+
+  it.effect(
+    "F4 control: a sound dropped from, added to or reordered on the slide fails (data-sounds)",
+    () =>
+      Effect.gen(function* sounds() {
+        const { html, plan } = yield* writtenStory;
+
+        const dropped = yield* failureOf(
+          plan,
+          html,
+          html.replace(' data-sounds="whoosh ding"', "")
+        );
+
+        const reordered = yield* failureOf(
+          plan,
+          html,
+          html.replace('data-sounds="whoosh ding"', 'data-sounds="ding whoosh"')
+        );
+
+        const added = yield* failureOf(
+          plan,
+          html,
+          html.replace('data-scene="sc2"', 'data-scene="sc2" data-sounds="pop"')
+        );
+
+        assert.deepStrictEqual(
+          [placeOf(dropped), placeOf(reordered), placeOf(added)],
+          [
+            ["F4 fragments", "sc4", null],
+            ["F4 fragments", "sc4", null],
+            ["F4 fragments", "sc2", null],
+          ]
+        );
+        assert.include(
+          dropped.message,
+          "the Plan plays whoosh ding when the slide is shown, the page's data-sounds is no sound"
+        );
+      })
+  );
+
+  it.effect(
+    "F4 control: a sound moved to another step fails, naming the step",
+    () =>
+      Effect.gen(function* carried() {
+        const plan = yield* scheduledOf(carrySource);
+        const html = yield* readIn(yield* writtenDeck(plan), "deck.html");
+
+        // `ding` rides on the step r1; the page puts it on f1, the step after.
+        const error = yield* failureOf(
+          plan,
+          html,
+          html
+            .replace(' data-sounds="ding"', "")
+            .replace('data-target="a"', 'data-target="a" data-sounds="ding"')
+        );
+
+        assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc1", 0]);
+        assert.include(error.message, "playing ding");
       })
   );
 
@@ -243,11 +321,11 @@ describe("checkDeck", () => {
                   ...scene.elements,
                   {
                     cell: "bl",
-                    classes: ["muted"],
-                    hidden: false,
+                    class: "muted",
                     id: "late",
                     line: 1,
                     text: "Late",
+                    visible: true,
                   },
                 ],
               }
@@ -296,17 +374,26 @@ describe("checkDeck", () => {
     })
   );
 
-  it.effect("control: a lost data-auto-animate fails", () =>
+  it.effect.each([
+    {
+      lost: / data-auto-animate="" data-auto-animate-id="aa1"/u,
+      slide: "sc3",
+      what: "data-auto-animate",
+    },
+    {
+      lost: / data-transition="none"/u,
+      slide: "sc3",
+      what: "data-transition (the incoming slide of a cut would fade in, and the one it replaces would fade out)",
+    },
+  ])("control: a lost $what fails", ({ lost, slide }) =>
     Effect.gen(function* marks() {
       const { html, plan } = yield* writtenStory;
+      const error = yield* failureOf(plan, html, html.replace(lost, ""));
 
-      const lost = yield* failureOf(
-        plan,
-        html,
-        html.replace(/ data-auto-animate="" data-auto-animate-id="aa1"/u, "")
+      assert.deepStrictEqual(
+        [error.check, error.slide],
+        ["transitions", slide]
       );
-
-      assert.deepStrictEqual([lost.check, lost.slide], ["transitions", "sc3"]);
     })
   );
 
@@ -336,7 +423,7 @@ describe("assembleDeck re-reads its own output", () => {
         const error = yield* Effect.flip(
           writtenDeck(plan, {
             ...bundle,
-            html: bundle.html.replace(span(bundle.html, "sc2.l2.c1"), ""),
+            html: bundle.html.replace(span(bundle.html, "sc2", "r1"), ""),
           })
         );
 

@@ -32,29 +32,38 @@ export const platform = NodeServices.layer;
 /** Joins rows of a source text with newlines. */
 const asText = (rows: readonly string[]): string => Arr.join(rows, "\n");
 
-/** A story of two Scenes joined by `> AUTO-ANIMATE`, with a `[[next]]`, a `[[focus]]` and a `[[sfx]]`. */
+/** A story of two Scenes joined by `> AUTO-ANIMATE`, with a `show`, a `focus` and a `sound`. */
 export const storyText = asText([
   "Title: Cli",
   "Author: Test",
   "",
   "# Part",
   "",
-  "INT. ONE",
+  "INT. ONE #sc1#",
   "",
-  "Box {#a @mc .box}",
-  "Later {#b @bc .label hidden}",
+  "Box {id=a cell=mc class=box}",
+  "Later {id=b cell=bc class=label visible=false}",
+  "",
+  "[[effects",
+  '  r1: show b at word("three").end',
+  '  p1: sound pop at word("five").end',
+  "]]",
   "",
   "NARRATOR",
-  "One two three. [[next]] Four five. [[sfx: pop]]",
+  "One two three. Four five.",
   "",
   "> AUTO-ANIMATE",
   "",
-  "INT. TWO",
+  "INT. TWO #sc2#",
   "",
-  "Box {#a @tl .box}",
+  "Box {id=a cell=tl class=box}",
+  "",
+  "[[effects",
+  '  f1: focus a at word("seven").end',
+  "]]",
   "",
   "NARRATOR",
-  "Six seven. [[focus: a]] Eight.",
+  "Six seven. Eight.",
   "",
 ]);
 

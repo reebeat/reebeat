@@ -21,7 +21,7 @@ export type { CaptureRequest } from "./frameCapturer.ts";
 
 export { Renderer } from "./renderer.ts";
 
-export type { RenderedDeck } from "./renderer.ts";
+export type { RenderedDeck, RendererInfo } from "./renderer.ts";
 
 export {
   choices,

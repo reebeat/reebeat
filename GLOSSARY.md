@@ -17,11 +17,11 @@ The one source file of a Story, written in [Fountain](https://fountain.io/syntax
 _Avoid_: Script (ambiguous with the narration and with code), storyboard
 
 **Scene**:
-One visual context inside a Story, introduced by a scene heading, shown as one slide. It is the boundary of identity: Element ids are matched between two consecutive Scenes only when the Transition between them says so (`> AUTO-ANIMATE`); otherwise nothing is matched.
+One visual context inside a Story, introduced by a scene heading that carries its id between `#` (`INT. THE NEXT SCREEN - DAY #sc4#`), shown as one slide. It is the boundary of identity: Element ids are matched between two consecutive Scenes only when the Transition between them says so (`> AUTO-ANIMATE`); otherwise nothing is matched. A Scene may hold one `[[effects]]` block.
 _Avoid_: Slide (the Deck's word for it), section, shot
 
 **Beat**:
-The smallest unit of story: one change the viewer should notice. It holds a Keyframe, a Line, Cues and Hints. In a Screenplay a Beat is derived, not written: the opening of a Scene, or the step one Cue causes.
+The smallest unit of story: one change the viewer should notice. It holds a Keyframe, a Line, Effects and Hints. In a Screenplay a Beat is derived, not written: the opening of a Scene, or the step one `show` or `focus` Effect causes.
 _Avoid_: Step, frame, slide, keyframe (the Keyframe is only its visual part)
 
 **Keyframe**:
@@ -29,12 +29,24 @@ The visual state a Beat ends in: every visible Element with its properties.
 _Avoid_: Snapshot, state (alone), slide
 
 **Line**:
-The narration that carries a Beat: the dialogue of the `NARRATOR`, as manuscript text aligned to words. Its **narration text** is the dialogue with its Cues removed; subtitles and speaker notes carry exactly that string.
+The narration that carries a Beat: the dialogue of the `NARRATOR`, as manuscript text aligned to words. Its **narration text** is the dialogue itself, which holds no `[[...]]` at all; subtitles and speaker notes carry exactly that string.
 _Avoid_: Caption, voice-over text, script line
 
-**Cue**:
-An inline note `[[...]]` inside a Line, anchored to the spoken word before it and firing at that word's end (an `[[sfx: name]]` written before the first word of the first Line of a Scene is anchored to the Scene's slide change instead, so the sound goes with the motion): `[[next]]` reveals the next hidden Element, `[[focus: id]]` emphasises an Element, `[[sfx: name]]` plays a sound. In the Deck a Cue is a fragment; in the Video it is the step or sound at that moment.
-_Avoid_: Trigger, event, note (Fountain's word for the syntax)
+**Effect**:
+One line of a Scene's `[[effects]]` block: `<id>: <verb> <argument> at <when>`. The verb is `sound` (plays a sound of the catalogue), `show` (reveals an Element that is `visible=false`) or `focus` (rings and scales an Element). `<when>` is an **Anchor** and an optional offset, or an absolute time with its reason. In the Deck a `show` or `focus` is a fragment step in resolved-time order and a `sound` rides along with the step or the slide it is anchored to; in the Video it is the visible change or the sound at the resolved frame. The Plan keeps what was written (intent) and the Timeline the frame it resolves to.
+_Avoid_: Cue (release 1's inline `[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, now errors), trigger, event, note (Fountain's word for the syntax)
+
+**Anchor**:
+The named moment an Effect is timed against, never a guess: a word or phrase of the Scene's narration (`word("matches").end`; `, 2` picks the second occurrence), the Scene's start or end (`scene.start`, `scene.end`), the incoming **Transition anchor**, a **Lifecycle event** of an Element (`one.move.50%`), or another Effect's start or end (`r1.end`). An **offset** moves it by a signed time (`+0.1s`, `-3f`) or a share of the anchored window (`+50%`). Every reference is explicit and resolved in the schedule stage from the aligned words and the renderer's declared lifecycle; an absolute time (`at 2.5s because "..."`) is the escape hatch and needs its reason.
+_Avoid_: Timestamp, marker, position
+
+**Lifecycle event**:
+What happens to an Element in a Scene, from the identity diff and its `show` Effect: `enter` (only in this Scene), `exit` (only in the previous Scene, seen at the transition), `move` (the cell changes) and `update` (the class or text changes). Each has a start, an end and so a percent of the way; `move` and `update` follow the renderer's declared easing, the others are linear in time. An instant (an exit, a sound) has no window, and no percent.
+_Avoid_: Animation, tween, keyframe
+
+**Transition anchor**:
+The Scene's incoming slide transition as an Anchor: `transition.start` (the frame the slide change is shown), `transition.end` and `transition.<N>%`. A sound that belongs to the slide change (a whoosh) is anchored here, so it follows the motion and not the voice-over.
+_Avoid_: Scene start (the same frame, but a Scene has no window; the transition has one)
 
 **Hint**:
 An optional instruction that the content alone does not carry: a Parenthetical before a Line (delivery: `(speed N)`, `(slowly)`, `(quickly)`, `(pause N)`) or a Transition between Scenes (`> AUTO-ANIMATE`, `> CUT`).
@@ -42,12 +54,12 @@ _Avoid_: Animation, tween (those are derived, not declared)
 
 **Behaviour**:
 Continuous motion that belongs to the time between Keyframes, such as a token travelling along a process or a counter rising.
-_Avoid_: Loop, effect
+_Avoid_: Loop, animation
 
 ## Identity and motion
 
 **Element**:
-A visible thing with a stable id within a Scene: a shape, link, label or icon. The same id in two Keyframes means the same thing.
+A visible thing with a stable id within a Scene: a shape, link, label or icon, written `text {id=one cell=mc class=box}` (every property named; `visible=false` starts it hidden until a `show` Effect reveals it). The same id in two Keyframes means the same thing.
 _Avoid_: Node (graph term), object, layer
 
 **Identity diff**:
@@ -75,11 +87,11 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 |---|---|---|---|
 | `Title:`, `Author:`, `Speed:` | Story metadata (`Speed:` is the default speech rate, 0.5 to 2.0, 1.1 when absent) | title | title tag |
 | `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
-| scene heading | Scene (identity boundary) | slide | stretch between two slide changes |
-| Action | Keyframe: the Elements on screen | slide content | the same page |
+| scene heading `#id#` | Scene (identity boundary) | slide | stretch between two slide changes |
+| Action `text {id= cell= class= visible=}` | Keyframe: the Elements on screen | slide content | the same page |
 | `NARRATOR` dialogue | Line | speaker notes | narration and subtitles |
 | Parenthetical | Hint: delivery | none | speech settings |
-| `[[...]]` in a Line | Cue | fragment | step or sound at the aligned word |
+| `[[effects ... ]]` block of a Scene | Effects | fragment step per `show` and `focus`; `data-sounds` for a sound | the visible change and the sound at the resolved frame |
 | `> AUTO-ANIMATE`, `> CUT` | Hint: transition | `data-auto-animate` or none | transition frames |
 
 ## Pieces of the pipeline

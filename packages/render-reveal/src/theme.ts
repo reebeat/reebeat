@@ -6,7 +6,7 @@ import { Array as Arr } from "effect";
 
 type Cell = Element["cell"];
 
-type ElementClass = Element["classes"][number];
+type ElementClass = Element["class"];
 
 /** Colours of the theme as `#rrggbb`. */
 export const palette = {
@@ -207,7 +207,7 @@ ${cellCss()}
   transform: scale(1.04);
 }
 
-.cue {
+.effect {
   display: none;
 }
 

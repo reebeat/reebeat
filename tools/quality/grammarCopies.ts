@@ -21,6 +21,8 @@ export interface Vocabulary {
   readonly idRule: string;
   /** Words `machines.ts` defines once: a constant or a self-spelled property that repeats one is a second definition. */
   readonly singular: readonly string[];
+  /** Words whose self-spelled property (`{ beat: "beat" }`) is a second definition too: only where the scan applies it. */
+  readonly selfSpelled: readonly string[];
 }
 
 export interface Copy {
@@ -174,32 +176,72 @@ const arrayCopies = (node: Node, vocabulary: Vocabulary): readonly string[] => {
   );
 };
 
-const ConstantDefinition = Schema.Struct({
-  id: Schema.Struct({
-    name: Schema.String,
-    type: Schema.Literal("Identifier"),
-  }),
-  init: StringLiteral,
-  start: Schema.Finite,
+const Identifier = Schema.Struct({
+  name: Schema.String,
+  type: Schema.Literal("Identifier"),
+});
+
+const Declarator = Schema.Struct({
+  id: Identifier,
+  init: NodeSchema,
   type: Schema.Literal("VariableDeclarator"),
 });
 
-const isConstantDefinition = Schema.is(ConstantDefinition);
+const Property = Schema.Struct({
+  key: Identifier,
+  type: Schema.Literal("Property"),
+  value: NodeSchema,
+});
+
+const TypeAssertion = Schema.Struct({
+  expression: NodeSchema,
+  type: Schema.Literals(["TSAsExpression", "TSSatisfiesExpression"]),
+});
+
+const isDeclarator = Schema.is(Declarator);
+const isProperty = Schema.is(Property);
+const isTypeAssertion = Schema.is(TypeAssertion);
+
+/** The string a node is: a literal, a template literal with nothing in it, either under `as const` or `satisfies`. */
+const stringOf = (node: Node): string | undefined => {
+  if (isTypeAssertion(node)) {
+    return stringOf(node.expression);
+  }
+
+  if (isTemplateLiteral(node) && node.quasis.length === 1) {
+    return node.quasis[0]?.value.raw;
+  }
+
+  return isStringLiteral(node) ? node.value : undefined;
+};
 
 /**
  * A second DEFINITION of a word the machines define once (`progress`, the heads `scene`, `state`, `beat`,
- * `transition`): a constant that is that word (`const progressWord = "progress"`). A typed use of the word
- * (`kind: "progress"`, `{ transition: "transition" }` of an anchor) is not a definition: the type checker holds it to
- * the closed set.
+ * `transition`): a constant that is that word (`const progressWord = "progress" as const`, or the same in a template
+ * literal) and, for the words in `selfSpelled`, a property whose key is its own string value (`{ beat: "beat" }`). A
+ * typed use of the word elsewhere (`kind: "progress"`) is not a definition: the type checker holds it to the closed set.
  */
 const redefinitions = (
   node: Node,
   vocabulary: Vocabulary
-): readonly string[] =>
-  isConstantDefinition(node) &&
-  Arr.contains(vocabulary.singular, node.init.value)
-    ? [`a second definition of "${node.init.value}"`]
-    : [];
+): readonly string[] => {
+  const defined = isDeclarator(node) ? stringOf(node.init) : undefined;
+
+  const spelledByKey =
+    isProperty(node) && stringOf(node.value) === node.key.name
+      ? stringOf(node.value)
+      : undefined;
+
+  return [
+    ...(defined !== undefined && Arr.contains(vocabulary.singular, defined)
+      ? [`a second definition of "${defined}"`]
+      : []),
+    ...(spelledByKey !== undefined &&
+    Arr.contains(vocabulary.selfSpelled, spelledByKey)
+      ? [`a second definition of "${spelledByKey}" as a property`]
+      : []),
+  ];
+};
 
 /** Every copy of the grammar in one file's text. */
 export const copiesIn = (

@@ -151,6 +151,28 @@ const cases: readonly Case[] = [
   {
     errors: [
       [
+        "EffectCycle",
+        'f2: focus tag at word("alpha").start until beat(2).start',
+        `effects and derived events wait for each other: f2 -> f2; ${cycleHint}`,
+      ],
+    ],
+    name: "a focus whose until reads a Beat",
+    rows: ['f2: focus tag at word("alpha").start until beat(2).start'],
+  },
+  {
+    errors: [
+      [
+        "EffectCycle",
+        'f2: focus tag at word("alpha").start until state(2).enter',
+        `effects and derived events wait for each other: f2 -> f2; ${cycleHint}`,
+      ],
+    ],
+    name: "a focus whose until reads a State",
+    rows: ['f2: focus tag at word("alpha").start until state(2).enter'],
+  },
+  {
+    errors: [
+      [
         "BadEffect",
         'f2: focus tag at each(word("alpha").start, word("echo").start)',
         `f2: each(word("alpha").start, word("echo").start) can happen 2 times, but a focus happens once; ${manyHint}`,

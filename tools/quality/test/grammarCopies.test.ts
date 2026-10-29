@@ -25,6 +25,7 @@ import {
   Array as Arr,
   Effect,
   FileSystem,
+  Option,
   Order,
   Path,
   Record,
@@ -37,6 +38,7 @@ import type { Vocabulary } from "../grammarCopies.ts";
 
 const vocabulary: Vocabulary = {
   idRule: "A-Za-z0-9_-",
+  selfSpelled: [],
   sets: [
     verbs,
     edges,
@@ -136,6 +138,50 @@ describe("a copy of the grammar outside grammar.ts is reported", () => {
     assert.deepStrictEqual(
       reasonsOf('const name = "scene"; const path = name;'),
       ['a second definition of "scene"']
+    );
+  });
+
+  it("negative control: the same definition under `as const`, in a template literal, and as a self-spelled property", () => {
+    assert.deepStrictEqual(
+      reasonsOf('export const progressWord = "progress" as const;'),
+      ['a second definition of "progress"']
+    );
+    assert.deepStrictEqual(
+      reasonsOf("export const progressWord = `progress`;"),
+      ['a second definition of "progress"']
+    );
+    assert.deepStrictEqual(
+      Arr.map(
+        copiesIn(
+          'export const heads = { beat: "beat", scene: "scene" } as const;',
+          {
+            ...vocabulary,
+            selfSpelled: Record.values(machineWords),
+          }
+        ),
+        ({ reason }) => reason
+      ),
+      [
+        'a second definition of "beat" as a property',
+        'a second definition of "scene" as a property',
+      ]
+    );
+  });
+
+  it("control: a property that is not its own spelling, and a self-spelled one where the scan does not apply it", () => {
+    assert.deepStrictEqual(
+      Arr.map(
+        copiesIn('const a = { beat: machineWords.beat, kind: "progress" };', {
+          ...vocabulary,
+          selfSpelled: Record.values(machineWords),
+        }),
+        ({ reason }) => reason
+      ),
+      []
+    );
+    assert.deepStrictEqual(
+      reasonsOf('const a = { transition: "transition" };'),
+      []
     );
   });
 
@@ -328,7 +374,24 @@ describe("this repository", () => {
             )
         );
 
-        assert.deepStrictEqual(copies, []);
+        const grammar = Option.getOrUndefined(
+          Arr.findFirst(files, ({ name }) => name === "core/src/grammar.ts")
+        );
+
+        // `grammar.ts` may spell the syntax, but not DEFINE a word of the machines again, as a constant or as a property.
+        const redefined = Arr.map(
+          copiesIn(grammar?.text ?? "", {
+            idRule: "\u0000",
+            selfSpelled: Record.values(machineWords),
+            sets: [],
+            singular: Record.values(machineWords),
+            words: [],
+          }),
+          (copy) => `core/src/grammar.ts:${copy.line}: ${copy.reason}`
+        );
+
+        assert.isDefined(grammar);
+        assert.deepStrictEqual([...copies, ...redefined], []);
       }).pipe(Effect.provide(NodeServices.layer))
   );
 

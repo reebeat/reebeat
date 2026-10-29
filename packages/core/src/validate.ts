@@ -648,16 +648,12 @@ const stepIds = (scene: Scene): readonly string[] =>
   Arr.map(Arr.filter(scene.effects, isStep), (effect) => effect.id);
 
 /**
- * What an effect or a derived event waits for: other effects, derived events, and, for a moment that fires a step, the
- * steps a State or Beat is made of (conservative: which step opens which Beat is not known before the Scene is
- * resolved, so any step timed by any State or Beat is a cycle). An `until` (`ends`) never changes a Beat (it is a window
- * end, and a `focus` is an instant), so a State or Beat it names depends on nothing.
+ * What an effect or a derived event waits for: other effects, derived events, and, for anything that reads a State or
+ * a Beat of its own Scene, every step (conservative and sound: which step opens which Beat is not known before the
+ * Scene is resolved, so a show or a focus whose fire anchor OR `until` reads a State or a Beat, directly, through a
+ * `let` or through another effect's end, is a cycle).
  */
-const dependencies = (
-  scene: Scene,
-  expr: EventExpr,
-  ends = false
-): readonly string[] => {
+const dependencies = (scene: Scene, expr: EventExpr): readonly string[] => {
   const effects = Arr.flatMap(anchorsOf(expr), (anchor): readonly string[] => {
     if (anchor.kind === "word") {
       return [];
@@ -673,13 +669,13 @@ const dependencies = (
       return shown !== undefined && anchorsEnter(anchor) ? [shown.id] : [];
     }
 
-    return anchor.subject.kind === "scene" || ends ? [] : stepIds(scene);
+    return anchor.subject.kind === "scene" ? [] : stepIds(scene);
   });
 
   return [
     ...effects,
     ...refsOf(expr),
-    ...(statesOf(expr).length > 0 && !ends ? stepIds(scene) : []),
+    ...(statesOf(expr).length > 0 ? stepIds(scene) : []),
   ];
 };
 
@@ -700,7 +696,7 @@ const nodesOf = (scene: Scene): readonly Node[] => [
         : dependencies(scene, effect.when.event)),
       ...(effect.until === undefined
         ? []
-        : dependencies(scene, effect.until.event, true)),
+        : dependencies(scene, effect.until.event)),
     ],
   })),
   ...Arr.map(scene.events, (derived): Node => ({

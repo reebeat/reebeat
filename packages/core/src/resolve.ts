@@ -78,10 +78,6 @@ interface Context {
   readonly active: Set<string>;
   /** The effect or derived event being resolved, for the error messages. */
   current: { readonly id: string; readonly line: number };
-  /** The effects whose fire frames are being resolved (a cycle guard apart from `active`). */
-  readonly firing: Set<string>;
-  /** The checked fire frames of each effect resolved so far. */
-  readonly fires: Map<string, readonly number[]>;
   readonly lifecycle: RendererLifecycle;
   readonly runs: Map<string, readonly Run[]>;
   readonly scene: Scene;
@@ -92,9 +88,6 @@ interface Context {
 /** What the helpers need besides the Scene: to evaluate an event, and to resolve another effect of the Scene. */
 interface Tools {
   readonly evaluate: Evaluate<ScheduleError>;
-  readonly fires: (
-    effect: Effect
-  ) => Result.Result<readonly number[], ScheduleError>;
   readonly runs: (
     effect: Effect
   ) => Result.Result<readonly Run[], ScheduleError>;
@@ -540,10 +533,10 @@ const beatWindows = (
   Result.map(
     Result.all(
       Arr.map(Arr.filter(context.scene.effects, isStep), (step) =>
-        Result.map(tools.fires(step), (fires) =>
-          Arr.map(fires, (fire): StepRun => ({
-            end: step.verb === "show" ? fire + showFrames(context) : fire,
-            fire,
+        Result.map(tools.runs(step), (runs) =>
+          Arr.map(runs, (run): StepRun => ({
+            end: step.verb === "show" ? run.end : run.fire,
+            fire: run.fire,
           }))
         )
       )
@@ -840,19 +833,13 @@ const checked = (
   });
 };
 
-/**
- * Resolves `effect` once: the memoised answer if there is one, an `UnresolvedAnchor` when the effect is already being
- * resolved (it waits for itself), else `compute`, which is memoised when it succeeds. `active` is the cycle guard of
- * this kind of answer.
- */
-const memoised = <A>(
+/** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
+const runsOf = (
   context: Context,
   effect: Effect,
-  memo: Map<string, A>,
-  active: Set<string>,
-  compute: () => Result.Result<A, ScheduleError>
-): Result.Result<A, ScheduleError> => {
-  const known = memo.get(effect.id);
+  tools: Tools
+): Result.Result<readonly Run[], ScheduleError> => {
+  const known = context.runs.get(effect.id);
 
   if (known !== undefined) {
     return Result.succeed(known);
@@ -862,7 +849,7 @@ const memoised = <A>(
 
   context.current = { id: effect.id, line: effect.line };
 
-  if (active.has(effect.id)) {
+  if (context.active.has(effect.id)) {
     context.current = before;
 
     return Result.fail(
@@ -870,47 +857,25 @@ const memoised = <A>(
     );
   }
 
-  active.add(effect.id);
+  context.active.add(effect.id);
 
-  const resolved = compute();
+  const resolved = Result.flatMap(
+    Result.flatMap(firesOf(context, effect, tools), (fires) =>
+      checked(context, effect, fires)
+    ),
+    (fires) =>
+      Result.all(Arr.map(fires, (fire) => endOf(context, effect, fire, tools)))
+  );
 
-  active.delete(effect.id);
+  context.active.delete(effect.id);
   context.current = before;
 
   if (Result.isSuccess(resolved)) {
-    memo.set(effect.id, resolved.success);
+    context.runs.set(effect.id, resolved.success);
   }
 
   return resolved;
 };
-
-/**
- * The fire frames of an effect, checked against its Scene and memoised. A fire frame never needs the effect's `until`
- * (a window end), so the Beats of the Scene, which only need where the steps fire, are built from these and an `until`
- * that names a State or a Beat is not a cycle.
- */
-const firesResolved = (
-  context: Context,
-  effect: Effect,
-  tools: Tools
-): Result.Result<readonly number[], ScheduleError> =>
-  memoised(context, effect, context.fires, context.firing, () =>
-    Result.flatMap(firesOf(context, effect, tools), (fires) =>
-      checked(context, effect, fires)
-    )
-  );
-
-/** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
-const runsOf = (
-  context: Context,
-  effect: Effect,
-  tools: Tools
-): Result.Result<readonly Run[], ScheduleError> =>
-  memoised(context, effect, context.runs, context.active, () =>
-    Result.flatMap(firesResolved(context, effect, tools), (fires) =>
-      Result.all(Arr.map(fires, (fire) => endOf(context, effect, fire, tools)))
-    )
-  );
 
 /** The helpers' tools: evaluating an event of the Scene, and resolving another effect (memoised, cycle-checked). */
 const toolsOf = (
@@ -919,7 +884,6 @@ const toolsOf = (
 ): Tools => {
   const tools: Tools = {
     evaluate,
-    fires: (effect) => firesResolved(context, effect, tools),
     runs: (effect) => runsOf(context, effect, tools),
   };
 
@@ -979,8 +943,6 @@ export const resolveEffects = (
   const context: Context = {
     active: new Set(),
     current: { id: "", line: 0 },
-    fires: new Map(),
-    firing: new Set(),
     lifecycle,
     runs: new Map(),
     scene,

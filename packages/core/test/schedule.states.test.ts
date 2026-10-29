@@ -554,49 +554,49 @@ describe("simultaneous events: one moment is one occurrence", () => {
   );
 });
 
-describe("an until may name a State or a Beat: it is a window end and never changes a Beat", () => {
-  it.effect(
-    "ends a focus at a Beat of its own Scene, and at a State, with no cycle",
-    () =>
-      Effect.gen(function* untilBeat() {
-        const rows = [
-          ...stepRows,
-          'u9: focus tag at word("alpha").start until beat(2).start',
-          'u8: focus fresh at word("alpha").start +1f until state(2).enter',
-        ];
-
-        assert.deepStrictEqual(collectErrors(statesSource(rows)), []);
-
-        const plan = yield* scheduledAt(statesSource(rows));
-
-        // u9 and u8 fire at 93 and 94, so the Beats are 93, 94, 120 (r1) and 138 (f1): beat(2) starts at 94, state(2)
-        // is entered at the end of Beat 1 (93, an instant).
-        assert.deepStrictEqual(
-          Arr.map(instancesOf(plan, "u9"), (timed) => [
-            timed.endFrame,
-            timed.endedBy,
-          ]),
-          [[94, "until"]]
-        );
-        assert.deepStrictEqual(
-          Arr.map(instancesOf(plan, "u8"), (timed) => [
-            timed.endFrame,
-            timed.endedBy,
-          ]),
-          [[179, "slide-change"]]
-        );
-      })
+const cycleTags = (rows: readonly string[]) =>
+  Arr.map(
+    collectErrors(statesSource([...stepRows, ...rows])),
+    ({ _tag }) => _tag
   );
 
-  it("still refuses a step that is timed by a State or a Beat of its own Scene", () => {
+describe("a show or a focus whose fire anchor or until reads a State or a Beat of its own Scene is a cycle", () => {
+  for (const [name, rows] of [
+    ["a fire anchor on a Beat", ["f2: focus tag at beat(1).end"]],
+    [
+      "an until on a Beat",
+      ['f2: focus tag at word("alpha").start until beat(2).start'],
+    ],
+    [
+      "an until on a State",
+      ['f2: focus tag at word("alpha").start until state(2).enter'],
+    ],
+    [
+      "an until on a let that reads a Beat",
+      ["let e = beat(2).start", 'f2: focus tag at word("alpha").start until e'],
+    ],
+    [
+      "a focus that starts at the end of a focus whose until reads a Beat",
+      [
+        'f2: focus tag at word("alpha").start until beat(2).start',
+        "f3: focus fresh at f2.end",
+      ],
+    ],
+  ] as const) {
+    it(`refuses ${name}`, () => {
+      assert.include(cycleTags(rows), "EffectCycle");
+    });
+  }
+
+  it("controls: a sound may read a Beat or a State, and a focus may end at a word or at another effect's start", () => {
     assert.deepStrictEqual(
-      Arr.map(
-        collectErrors(
-          statesSource([...stepRows, "f2: focus tag at beat(1).end"])
-        ),
-        ({ _tag }) => _tag
-      ),
-      ["EffectCycle"]
+      cycleTags([
+        "s2: sound pop at beat(1).end",
+        "s3: sound pop at state(2).enter",
+        'f2: focus tag at word("alpha").start until word("bravo").start',
+        'f3: focus fresh at word("alpha").start until f2.start',
+      ]),
+      []
     );
   });
 });

@@ -11,7 +11,7 @@ import { eventKind, hasWindow, showEffectOf } from "./events.ts";
 import { didYouMean, oneOf, problem } from "./grammar.ts";
 import { effectOf, elementOf } from "./lookup.ts";
 import { EdgeSchema } from "./plan.ts";
-import type { Anchor, Effect, Offset, Scene } from "./plan.ts";
+import type { Anchor, Effect, ElementEvent, Offset, Scene } from "./plan.ts";
 import { findPhrase, narrationWords, phraseTokens } from "./words.ts";
 
 const names = (values: readonly string[]): string =>
@@ -123,6 +123,7 @@ const wordErrors = (
 
   if (found.length === 0) {
     const first = phraseTokens(anchor.phrase)[0] ?? anchor.phrase;
+    const close = nearest(first, narrationWords(scene.lines));
 
     return [
       planError(
@@ -131,7 +132,7 @@ const wordErrors = (
         problem(
           `${text}: the narration of Scene ${scene.id} has no "${anchor.phrase}"`,
           "words that the Lines of this Scene say",
-          nearest(first, narrationWords(scene.lines))
+          close === undefined ? undefined : `word("${close.toLowerCase()}")`
         )
       ),
     ];
@@ -165,6 +166,14 @@ const wordErrors = (
     : [];
 };
 
+/** What an Element needs for an event to happen in a Scene that is joined to the previous one by `> AUTO-ANIMATE`. */
+const needs: Readonly<Record<ElementEvent, string>> = {
+  enter: "an Element that the previous Scene lacks",
+  exit: "an Element of the previous Scene that this Scene lacks",
+  move: "a cell that differs from the previous Scene",
+  update: "a class or text that differs from the previous Scene",
+};
+
 const eventsOf = (scene: Scene, id: string): string => {
   const happening = Arr.filter(
     ["enter", "exit", "move", "update"] as const,
@@ -172,12 +181,12 @@ const eventsOf = (scene: Scene, id: string): string => {
   );
 
   return happening.length === 0
-    ? `${id} has no event in this Scene (it is the same in both Scenes)`
+    ? "no event in this Scene"
     : Arr.join(happening, ", ");
 };
 
 /** Why an Element has no `event` in this Scene: what was found and what was expected. */
-const missingEvent = (scene: Scene, id: string, event: string) => {
+const missingEvent = (scene: Scene, id: string, event: ElementEvent) => {
   const element = elementOf(scene, id);
 
   if (element !== undefined && !element.visible) {
@@ -196,7 +205,7 @@ const missingEvent = (scene: Scene, id: string, event: string) => {
   }
 
   return {
-    expected: `an event that happens: ${eventsOf(scene, id)}`,
+    expected: `${needs[event]} (${id} has ${eventsOf(scene, id)})`,
     found: `Element "${id}" has no ${event} in Scene ${scene.id}`,
   };
 };

@@ -5,6 +5,8 @@ import { assert } from "@effect/vitest";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
 import type { HeardWord } from "../src/align.ts";
+import type { PlanJson, RendererLifecycle } from "../src/plan.ts";
+import type { AlignedLine } from "../src/schedule.ts";
 
 /** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
 export const fixtureSha256 =
@@ -74,3 +76,36 @@ export const perfectlyHeard = (
     startMs: index * 100,
     w,
   }));
+
+/**
+ * A renderer's declared lifecycle, for the tests (numbers as measured on the reveal.js adapter): Auto-Animate 800 ms,
+ * a default fade 400 ms, a cut instant, matched Elements start 2 frames in and ease like CSS `ease`, an unmatched
+ * Element fades in over frames 8 to 22, and a `show` fades over 133 ms (4 frames at 30 fps).
+ */
+export const lifecycle: RendererLifecycle = {
+  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
+  showMs: 133,
+  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
+  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
+};
+
+/** The audio file name of a Line `digit`: 64 hexadecimal digits and `.flac`. */
+export const audioOf = (digit: number) => ({
+  file: `${String(digit).repeat(64)}.flac`,
+  sha256: `hash-${digit}`,
+});
+
+/** Every Line of `plan` spoken evenly: `wordMs` per word, each word ending where the next starts. */
+export const evenlySpoken = (plan: PlanJson, wordMs: number): AlignedLine[] =>
+  Arr.flatMap(plan.scenes, (scene) =>
+    Arr.map(scene.lines, (line, index) => ({
+      audio: audioOf((index % 9) + 1),
+      durationMs: line.words.length * wordMs,
+      lineId: line.id,
+      words: Arr.map(line.words, (w, at) => ({
+        endMs: (at + 1) * wordMs,
+        startMs: at * wordMs,
+        w,
+      })),
+    }))
+  );

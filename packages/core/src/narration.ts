@@ -25,15 +25,7 @@ const wordsOf = (text: string): readonly string[] =>
 const lineAt = (text: string, offset: number, firstLine: number): number =>
   firstLine + text.slice(0, offset).split("\n").length - 1;
 
-/** The effects line that replaces the release-1 Cue `inner`, timed against the word before it. */
-const replacement = (inner: string, before: readonly string[]): string => {
-  const last = before.at(-1);
-
-  const after =
-    last === undefined
-      ? "transition.start"
-      : `word("${last.replaceAll(/["]/gu, "")}").end`;
-
+const releaseLine = (inner: string, after: string): string | undefined => {
   const focus = focusPattern.exec(inner)?.groups?.id;
   const sfx = sfxPattern.exec(inner)?.groups?.name;
 
@@ -45,9 +37,21 @@ const replacement = (inner: string, before: readonly string[]): string => {
     return `f1: focus ${focus} at ${after}`;
   }
 
-  return sfx === undefined
-    ? "an effects line of the [[effects]] block"
-    : `s1: sound ${sfx} at ${after}`;
+  return sfx === undefined ? undefined : `s1: sound ${sfx} at ${after}`;
+};
+
+/** The effects line that replaces the release-1 Cue `inner`, timed against the word before it. */
+const replacement = (inner: string, before: readonly string[]): string => {
+  const last = before
+    .at(-1)
+    ?.replaceAll(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+
+  const after = last === undefined ? "transition.start" : `word("${last}").end`;
+  const line = releaseLine(inner, after);
+
+  return line === undefined
+    ? "remove it: effects live in the [[effects]] block of the Scene"
+    : `write ${line} in the [[effects]] block of the Scene`;
 };
 
 /**
@@ -71,7 +75,7 @@ export const parseNarration = (text: string, firstLine: number): Narration => {
         lineAt(text, match.index, firstLine),
         problem(
           `release-1 cue [[${inner}]] in dialogue`,
-          `no note in dialogue; write ${replacement(inner, wordsOf(collapse(before)))} in the [[effects]] block`
+          `no note in dialogue; ${replacement(inner, wordsOf(collapse(before)))}`
         )
       )
     );

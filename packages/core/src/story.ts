@@ -40,6 +40,8 @@ export interface SceneDraft {
   effectsLine: number | undefined;
   /** Ids of the effects whose `word(...)` wrote an occurrence number. */
   readonly explicitOccurrences: Set<string>;
+  /** An Element or effect line of the Scene has an error: its references are not checked until it is fixed. */
+  invalid: boolean;
   readonly elements: Element[];
   readonly lines: LineDraft[];
 }
@@ -85,6 +87,8 @@ interface State {
   readonly scenes: SceneDraft[];
   readonly errors: PlanError[];
   transition: PendingTransition | undefined;
+  /** An `[[effects` block was not closed: the rows up to its `]]` are not Elements. */
+  unclosed: boolean;
   /** Inside a dialogue block: whether its Lines are skipped, and the Parentheticals waiting for dialogue. */
   dialogue: { skip: boolean; pending: Parenthetical[] } | undefined;
 }
@@ -299,6 +303,7 @@ const headingToken = (state: State, token: FountainToken): void => {
     explicitOccurrences: new Set(),
     heading: token.text.trim(),
     id,
+    invalid: false,
     line: token.line,
     lines: [],
     transition: pending?.kind ?? "default",
@@ -429,6 +434,7 @@ const effectsBlock = (
     scene.effectsLine = token.line;
     effectRows(state, scene, token.line, rows.slice(1, -1));
   } else {
+    state.unclosed = true;
     bad(
       problem(
         "an [[effects]] block that never closes with ]] on a line of its own",
@@ -438,19 +444,51 @@ const effectsBlock = (
   }
 };
 
-const actionToken = (state: State, token: FountainToken): void => {
+/** The Action token without the tail of an unclosed `[[effects` block; `undefined` when it is all tail. */
+const afterUnclosed = (
+  state: State,
+  token: FountainToken
+): FountainToken | undefined => {
+  if (!state.unclosed) {
+    return token;
+  }
+
+  const rows = token.text.split("\n");
+  const end = Arr.findFirstIndex(rows, (row) => row.trim() === "]]");
+
+  if (Option.isNone(end)) {
+    return undefined;
+  }
+
+  state.unclosed = false;
+
+  return {
+    ...token,
+    line: token.line + end.value + 1,
+    text: Arr.join(Arr.drop(rows, end.value + 1), "\n"),
+  };
+};
+
+const actionToken = (state: State, first: FountainToken): void => {
   const scene = currentScene(state);
 
   if (scene === undefined) {
     unsupported(
       state,
-      token.line,
+      first.line,
       "an Element must be inside a Scene: start one with a scene heading"
     );
 
     return;
   }
 
+  const token = afterUnclosed(state, first);
+
+  if (token === undefined) {
+    return;
+  }
+
+  const before = state.errors.length;
   const rows = token.text.split("\n");
 
   const opening = Option.getOrElse(
@@ -473,6 +511,10 @@ const actionToken = (state: State, token: FountainToken): void => {
       line: token.line + opening,
       text: Arr.join(rows.slice(opening), "\n"),
     });
+  }
+
+  if (state.errors.length > before) {
+    scene.invalid = true;
   }
 };
 
@@ -796,6 +838,7 @@ export const adaptTokens = (tokens: readonly FountainToken[]): Story => {
     speed: undefined,
     title: undefined,
     transition: undefined,
+    unclosed: false,
   };
 
   for (const token of tokens) {

@@ -258,11 +258,14 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
 
   const id = pairs.get("id");
 
-  const all = [
-    ...errors,
-    ...(id === undefined ? [missingId(text, line)] : []),
-    ...missingProperties(pairs, text, line),
-  ];
+  // A property that was written wrongly is not also reported as missing.
+  const all =
+    errors.length > 0
+      ? errors
+      : [
+          ...(id === undefined ? [missingId(text, line)] : []),
+          ...missingProperties(pairs, text, line),
+        ];
 
   if (all.length > 0) {
     return failed(all);

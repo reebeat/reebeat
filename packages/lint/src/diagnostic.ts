@@ -7,8 +7,10 @@ export interface Diagnostic {
   /** The source line the rule points at, when the data carries one. */
   readonly line?: number;
   readonly message: string;
-  /** The rule's name, such as `cue-fragment-agreement`. */
+  /** The rule's name, such as `effect-fragment-agreement`. */
   readonly rule: string;
   /** The Scene the diagnostic concerns, when it concerns one. */
   readonly sceneId?: string;
+  /** `error` (the default) fails `reebeat lint`; `info` only lists, such as an absolute time that has its reason. */
+  readonly severity?: "error" | "info";
 }

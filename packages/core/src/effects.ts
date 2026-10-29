@@ -261,7 +261,9 @@ const readOffset = (
       bad(
         line,
         problem(
-          `unknown unit "${groups.unit ?? ""}" in offset "${text}"`,
+          groups.unit === ""
+            ? `offset "${text}" has no unit`
+            : `unknown unit "${groups.unit ?? ""}" in offset "${text}"`,
           oneOf(Arr.map(sourceUnits, (known) => known.token)),
           didYouMean(
             groups.unit ?? "",

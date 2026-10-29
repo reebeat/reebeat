@@ -83,12 +83,17 @@ const errorsOf = (story: Story): readonly PlanError[] =>
   Arr.sort(
     [
       ...story.errors,
-      ...Arr.flatMap(buildScenes(story), (scene, index) =>
-        validateScene(
-          scene,
-          story.scenes[index]?.explicitOccurrences ?? new Set()
-        )
-      ),
+      ...Arr.flatMap(buildScenes(story), (scene, index) => {
+        const draft = story.scenes[index];
+        const previous = story.scenes[index - 1];
+
+        // A Scene with an error on an Element or effect line is not cross-checked: its references would only echo it.
+        return draft === undefined ||
+          draft.invalid ||
+          (scene.identity !== null && previous?.invalid === true)
+          ? []
+          : validateScene(scene, draft.explicitOccurrences);
+      }),
       ...(story.scenes.length === 0
         ? [
             planError(

@@ -13,13 +13,14 @@
         "Effect.promise and Effect.callback: the same Promise-returning thunk, so the same conflict",
         "One helper `promised(run)` with a single directive: the arrow at each call site is itself a function that returns a Promise, so the rule still fires there",
         "Stream.fromAsyncIterable over KokoroTTS.stream: streams sentence chunks, no cancellation, and would still need the dynamic imports and from_pretrained Promises",
-        "a child process running kokoro: no CLI ships with kokoro-js, and the 311 MiB model would load once per Line"
+        "a child process running kokoro: no CLI ships with kokoro-js, and the 311 MiB model would load once per Line",
+        "Re-examined 2026-10-29 against effect 4.1.0 and @effect/tsgo 0.63.0: Effect.tryPromise still takes a thunk or `{ try, catch }`, 4.1.0 adds no Effect-native speech client, and with these directives removed typescript/promise-function-async reports 5 errors in the run."
       ],
       "owner": "packages/speech-kokoro",
       "versions": {
-        "effect": "4.0.6",
+        "effect": "4.1.0",
         "kokoro-js": "1.2.1",
-        "@effect/tsgo": "0.53.1",
+        "@effect/tsgo": "0.63.0",
         "typescript": "7.0.2"
       },
       "retirementTrigger": "typescript/promise-function-async stops flagging thunks passed to Effect.tryPromise, or kokoro-js is replaced by an Effect-native text-to-speech client"
@@ -34,13 +35,14 @@
       "nativeAlternativesExamined": [
         "Effect.promise and Effect.tryPromise take a thunk that returns the Promise; they have no overload that takes a method and its arguments.",
         "Making the thunks async: effecttsgo/async-function is an Effect diagnostic at error severity and eslint/require-await rejects an async function that only returns the Promise.",
-        "An Effect-native browser driver: none in the installed effect 4.0.6 or @effect/platform-node 4.0.6."
+        "An Effect-native browser driver: none in the installed effect 4.1.0 or @effect/platform-node 4.1.0.",
+        "Re-examined 2026-10-29 against effect 4.1.0 and @effect/tsgo 0.63.0: Effect.tryPromise still takes a thunk or `{ try, catch }` (no method-and-arguments form), and with this file's directive removed typescript/promise-function-async reports 14 errors in the run."
       ],
       "owner": "packages/render-reveal",
       "versions": {
-        "effect": "4.0.6",
+        "effect": "4.1.0",
         "playwright-core": "1.64.1",
-        "@effect/tsgo": "0.53.1",
+        "@effect/tsgo": "0.63.0",
         "typescript": "7.0.2"
       },
       "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.promise and Effect.tryPromise."
@@ -55,13 +57,14 @@
       "nativeAlternativesExamined": [
         "Effect.tryPromise and Effect.promise take a thunk that returns the Promise; they have no overload that takes a method and its arguments.",
         "Making the thunks async: async-function is an Effect diagnostic at error severity and require-await rejects an async function that only returns the Promise.",
-        "An Effect-native browser driver: none in the installed effect 4.0.6 or @effect/platform-node 4.0.6."
+        "An Effect-native browser driver: none in the installed effect 4.1.0 or @effect/platform-node 4.1.0.",
+        "Re-examined 2026-10-29 against effect 4.1.0 and @effect/tsgo 0.63.0: Effect.tryPromise still takes a thunk or `{ try, catch }` (no method-and-arguments form), and with this file's directive removed typescript/promise-function-async reports 15 errors in the run."
       ],
       "owner": "packages/capture-chromium",
       "versions": {
-        "effect": "4.0.6",
+        "effect": "4.1.0",
         "playwright-core": "1.64.1",
-        "@effect/tsgo": "0.53.1",
+        "@effect/tsgo": "0.63.0",
         "typescript": "7.0.2"
       },
       "retirementTrigger": "An Effect-native browser driver ships in the installed Effect packages, or the lint preset stops flagging thunks passed straight to Effect.tryPromise."

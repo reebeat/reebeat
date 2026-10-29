@@ -1,8 +1,17 @@
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import { Effect, FileSystem, Path } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Path,
+  Record,
+  Result,
+  Schema,
+  String as Str,
+} from "effect";
 
-import { effectFamilyDrift } from "../effectFamily.ts";
+import { effectFamilyDrift, tsgoDrift } from "../effectFamily.ts";
 
 const readLock = Effect.gen(function* readLock() {
   const fs = yield* FileSystem.FileSystem;
@@ -51,10 +60,10 @@ describe("Effect family versions", () => {
         const version = /"effect@(?<version>[^"]+)"/u.exec(lock)?.groups
           ?.version;
 
-        const scratch = lock.replace(
+        const scratch = Str.replace(
           /"@effect\/vitest@[^"]+"/u,
           '"@effect/vitest@0.0.1"'
-        );
+        )(lock);
 
         assert.notStrictEqual(scratch, lock);
         assert.deepStrictEqual(effectFamilyDrift(scratch), [
@@ -85,5 +94,126 @@ describe("Effect family versions", () => {
       1
     );
     assert.lengthOf(effectFamilyDrift(entry("@effect/sql-pg", "4.0.6")), 1);
+  });
+});
+
+const nested = (host: string, version: string) =>
+  `    "${host}/@effect/tsgo": ["@effect/tsgo@${version}", "", {}, "sha512-x"],\n`;
+
+describe("one @effect/tsgo for the repository", () => {
+  it.effect(
+    "the real bun.lock has one version for the root and the workspace packages",
+    () =>
+      Effect.gen(function* aligned() {
+        assert.deepStrictEqual(tsgoDrift(yield* readLock), []);
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+
+  it("negative control: a workspace package locked at another version is named with the version of the root", () => {
+    const lock = `${entry("@effect/tsgo", "0.63.0")}${nested("@reebeat/quality", "0.53.1")}`;
+
+    assert.deepStrictEqual(tsgoDrift(lock), [
+      "@effect/tsgo is locked at 0.53.1 under @reebeat/quality, at 0.63.0 at the root",
+    ]);
+  });
+
+  it.effect(
+    "negative control: the same drift added to the real bun.lock is reported",
+    () =>
+      Effect.gen(function* drifted() {
+        const lock = `${yield* readLock}${nested("@reebeat/quality", "0.53.1")}`;
+
+        assert.lengthOf(tsgoDrift(lock), 1);
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+
+  it("tolerates the copy inside @phibkro/oxlint-effect-plugin, which imports no @effect/tsgo module", () => {
+    const lock = `${entry("@effect/tsgo", "0.63.0")}${nested("@phibkro/oxlint-effect-plugin", "0.48.0")}`;
+
+    assert.deepStrictEqual(tsgoDrift(lock), []);
+  });
+
+  it("names a copy under any other dependency, and a lock without a root copy", () => {
+    assert.lengthOf(
+      tsgoDrift(
+        `${entry("@effect/tsgo", "0.63.0")}${nested("somebody-else", "0.48.0")}`
+      ),
+      1
+    );
+    assert.deepStrictEqual(tsgoDrift(nested("@reebeat/quality", "0.53.1")), [
+      "@effect/tsgo has no root entry in bun.lock",
+    ]);
+  });
+});
+
+const Registry = Schema.Struct({
+  exceptions: Schema.Array(
+    Schema.Struct({
+      id: Schema.String,
+      versions: Schema.Record(Schema.String, Schema.String),
+    })
+  ),
+});
+
+const readRegistry = Effect.gen(function* readRegistry() {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+
+  return yield* Schema.decodeEffect(Schema.fromJsonString(Registry))(
+    yield* fs.readFileString(
+      yield* path.fromFileUrl(
+        new URL("../effect-exceptions.json", import.meta.url)
+      )
+    )
+  );
+});
+
+/** What a record that names `name` at `recorded` says when the lock holds `locked`: nothing when they agree. */
+const staleRecord = (
+  id: string,
+  name: string,
+  recorded: string | undefined,
+  locked: string | undefined
+) =>
+  recorded === undefined || recorded === locked
+    ? Result.failVoid
+    : Result.succeed(
+        `${id} records ${name} ${recorded}, the lock holds ${locked}`
+      );
+
+describe("registered exceptions follow the upgrade", () => {
+  it.effect(
+    "every exception records the effect and @effect/tsgo versions the lock holds, so a bump reopens it",
+    () =>
+      Effect.gen(function* recorded() {
+        const lock = yield* readLock;
+
+        const held = {
+          "@effect/tsgo":
+            /"@effect\/tsgo": \["@effect\/tsgo@(?<version>[^"]+)"/u.exec(lock)
+              ?.groups?.version,
+          effect: /"effect@(?<version>[^"]+)"/u.exec(lock)?.groups?.version,
+        };
+
+        const stale = Arr.flatMap(
+          (yield* readRegistry).exceptions,
+          ({ id, versions }) =>
+            Arr.filterMap(Record.toEntries(held), ([name, version]) =>
+              staleRecord(id, name, versions[name], version)
+            )
+        );
+
+        assert.deepStrictEqual(stale, []);
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+
+  it("negative control: a record behind the lock is named", () => {
+    assert.deepStrictEqual(
+      Result.getOrElse(
+        staleRecord("EX-0001", "effect", "4.0.6", "4.1.0"),
+        () => ""
+      ),
+      "EX-0001 records effect 4.0.6, the lock holds 4.1.0"
+    );
   });
 });

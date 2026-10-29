@@ -13,7 +13,7 @@
     "oxc-parser": "catalog:"
   },
   "devDependencies": {
-    "@effect/tsgo": "0.53.1",
+    "@effect/tsgo": "catalog:",
     "@effect/vitest": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:",

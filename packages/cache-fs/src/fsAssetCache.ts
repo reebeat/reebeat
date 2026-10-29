@@ -21,6 +21,7 @@ import {
   Order,
   Path,
   Schema,
+  String as Str,
 } from "effect";
 import { Digest } from "effect/crypto";
 
@@ -56,7 +57,7 @@ const requireName = (
   what: string,
   name: string
 ) =>
-  plainName.test(name) && !name.includes("..")
+  plainName.test(name) && !Str.includes("..")(name)
     ? Effect.void
     : Effect.fail(
         failure(
@@ -235,7 +236,7 @@ export const fsAssetCache = (dir: string) =>
           );
 
           const records = Arr.sort(
-            Arr.filter(names, (name) => name.endsWith(provenanceSuffix)),
+            Arr.filter(names, (name) => Str.endsWith(provenanceSuffix)(name)),
             Order.String
           );
 

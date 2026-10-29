@@ -20,7 +20,7 @@ import {
 } from "@reebeat/services";
 import type { Asset, Egress, Provenance } from "@reebeat/services";
 import type { Schema } from "effect";
-import { Array as Arr, Effect, Option } from "effect";
+import { Array as Arr, Effect, Option, String as Str } from "effect";
 
 import {
   AlignmentBelowThreshold,
@@ -50,7 +50,7 @@ export interface SpeechStageOptions {
 }
 
 const excerpt = (text: string): string =>
-  text.length <= 48 ? text : `${text.slice(0, 45)}...`;
+  text.length <= 48 ? text : `${Str.slice(0, 45)(text)}...`;
 
 /** What leaves the machine when both adapters run: the larger kind and every kind of data either sends. */
 const mergedEgress = (left: Egress, right: Egress): Egress => ({

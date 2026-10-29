@@ -1,7 +1,7 @@
 // The contract of AssetCache: what every store (memory, filesystem) promises: a content address that reacts to
 // everything that changes the output and never to a secret, whole-or-nothing writes and the provenance of every asset.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Option } from "effect";
+import { Array as Arr, Effect, Option, String as Str } from "effect";
 import type { Layer } from "effect";
 
 import { AssetCache } from "../src/assetCache.ts";
@@ -175,7 +175,7 @@ export const assetCacheClauses: readonly Clause<Failure, AssetCache>[] = [
 
         assert.strictEqual(failure._tag, "SecretLikeSetting");
         assert.strictEqual(failure.setting, name);
-        assert.isFalse(failure.message.includes("hunter2"));
+        assert.isFalse(Str.includes("hunter2")(failure.message));
       }
     }),
   },
@@ -203,7 +203,7 @@ export const assetCacheClauses: readonly Clause<Failure, AssetCache>[] = [
       "put rejects a secret-looking setting in the provenance and stores nothing",
     run: Effect.gen(function* clause() {
       const cache = yield* AssetCache;
-      const key = "f".repeat(64);
+      const key = Str.repeat(64)("f");
       const stored = asset(key, "secret");
 
       const failure = yield* failureOf(
@@ -235,7 +235,7 @@ export const atomicWriteClause: Clause<Failure, AssetCache> = {
     "put is atomic: a put that fails half way is invisible to get and list (files first, metadata last)",
   run: Effect.gen(function* clause() {
     const cache = yield* AssetCache;
-    const key = "a".repeat(64);
+    const key = Str.repeat(64)("a");
 
     yield* Effect.ignore(cache.put(key, asset(key, "half written")));
 

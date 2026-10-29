@@ -2,7 +2,7 @@
 // readDeck and with plain string checks, so they need no browser.
 import { assert, describe, it } from "@effect/vitest";
 import type { PlanJson } from "@reebeat/core";
-import { Array as Arr, Effect, Option, Order } from "effect";
+import { Array as Arr, Effect, Option, Order, String as Str } from "effect";
 
 import { readDeck, renderDeck } from "../src/index.ts";
 import { asText, fixtureSha256, planOf, storyPlan } from "./support.ts";
@@ -100,11 +100,12 @@ describe("renderDeck", () => {
 
         // Flat: every section is a direct child of `.slides`, none inside another section.
         assert.strictEqual(
-          html.match(/<section /gu)?.length,
+          Arr.fromIterable(Str.matchAll(/<section /gu)(html)).length,
           plan.scenes.length
         );
         assert.strictEqual(
-          html.match(/<aside class="notes">/gu)?.length,
+          Arr.fromIterable(Str.matchAll(/<aside class="notes">/gu)(html))
+            .length,
           plan.scenes.length
         );
 

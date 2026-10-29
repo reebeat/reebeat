@@ -3,7 +3,7 @@
 // controlled clock belongs to packages/capture-chromium. One browser per test, closed with the test's scope.
 import { assert, describe, it } from "@effect/vitest";
 import type { PlanJson } from "@reebeat/core";
-import { Array as Arr, Effect, Order, Schema } from "effect";
+import { Array as Arr, Effect, Order, Schema, String as Str } from "effect";
 import type { Page } from "playwright-core";
 
 import { renderDeck } from "../src/index.ts";
@@ -66,7 +66,7 @@ const goTo = (scene: string): string => `reebeatDeck.goToScene("${scene}")`;
 const step = "reebeatDeck.stepFragment()";
 
 const hasClass = (classes: string, name: string): boolean =>
-  classes.split(" ").includes(name);
+  Str.split(classes, " ").includes(name);
 
 /** The cue ids of a Scene, in order. */
 const cueCount = (scene: PlanJson["scenes"][number]): number =>
@@ -283,8 +283,8 @@ describe("the Deck page", () => {
 
         assert.deepStrictEqual(
           Arr.filter(
-            shown.split("\n"),
-            (row) => row.trim() !== "" && row !== "NOTES"
+            Str.split(shown, "\n"),
+            (row) => Str.trim(row) !== "" && row !== "NOTES"
           ),
           Arr.map(plan.scenes[3]?.lines ?? [], (line) => line.text)
         );

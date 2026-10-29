@@ -2,7 +2,14 @@
 // uses the probes (ffprobe and ffmpeg), never the Encoder under test.
 import { NodeServices } from "@effect/platform-node";
 import type { MuxProbe } from "@reebeat/services/contract";
-import { Array as Arr, Effect, Layer, Option } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Layer,
+  Option,
+  String as Str,
+  pipe,
+} from "effect";
 
 import { MediaTools } from "../src/mediaTools.ts";
 import { decodeMonoPcm, probeMedia } from "../src/probe.ts";
@@ -16,10 +23,13 @@ export const toolbox = Layer.provideMerge(MediaTools.layer, platform);
 /** The text of each cue of a WebVTT text: the rows after its timing row. */
 const cueTexts = (text: string): string[] =>
   Arr.map(
-    Arr.filter(text.split("\n\n"), (block) => block.includes("-->")),
+    Arr.filter(Str.split(text, "\n\n"), (block) => Str.includes("-->")(block)),
     (block) => {
-      const rows = block.trim().split("\n");
-      const timing = Arr.findFirstIndex(rows, (row) => row.includes("-->"));
+      const rows = pipe(block, Str.trim, Str.split("\n"));
+
+      const timing = Arr.findFirstIndex(rows, (row) =>
+        Str.includes("-->")(row)
+      );
 
       return Arr.join(
         Arr.drop(rows, Option.getOrElse(timing, () => 0) + 1),

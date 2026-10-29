@@ -17,6 +17,7 @@ import {
   Layer,
   Path,
   Schema,
+  String as Str,
 } from "effect";
 import { Digest } from "effect/crypto";
 import { ChildProcessSpawner } from "effect/process";
@@ -65,9 +66,9 @@ export const heardWords = (json: string) =>
     ),
     ({ transcription }) =>
       Arr.flatMap(transcription, ({ offsets, text }): readonly HeardWord[] =>
-        text.trim() === ""
+        Str.trim(text) === ""
           ? []
-          : [{ endMs: offsets.to, startMs: offsets.from, w: text.trim() }]
+          : [{ endMs: offsets.to, startMs: offsets.from, w: Str.trim(text) }]
       )
   );
 

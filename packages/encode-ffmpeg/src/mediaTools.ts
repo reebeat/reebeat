@@ -1,7 +1,15 @@
 // ffmpeg and ffprobe as child processes. The service owns the processes: each one lives in the caller's Scope, its
 // output is read while it runs (so a full pipe never blocks it), and a code other than 0 is a typed failure that
 // carries the end of its error output.
-import { Array as Arr, Context, Effect, Fiber, Layer, Stream } from "effect";
+import {
+  Array as Arr,
+  Context,
+  Effect,
+  Fiber,
+  Layer,
+  Stream,
+  String as Str,
+} from "effect";
 import type { Scope } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
@@ -84,7 +92,7 @@ export class MediaTools extends Context.Service<
           Stream.runFold(
             () => "",
             (tail: string, chunk: string) =>
-              `${tail}${chunk}`.slice(-stderrTailChars)
+              Str.slice(-stderrTailChars)(`${tail}${chunk}`)
           ),
           Effect.orElseSucceed(() => ""),
           Effect.forkScoped

@@ -2,7 +2,7 @@
 // error's tag and the exact source line. `buildPlan` fails with the first error in document order;
 // `collectErrors` lists them all in that order.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
@@ -26,12 +26,12 @@ const base = asText([
 /** The base story with its only occurrence of `from` replaced by `to`. */
 const change = (from: string, to: string): string => {
   assert.strictEqual(
-    base.split(from).length,
+    Str.split(base, from).length,
     2,
     `${from} occurs once in the base`
   );
 
-  return base.replace(from, to);
+  return Str.replace(from, to)(base);
 };
 
 const firstError = (source: string) =>
@@ -261,10 +261,10 @@ describe("F10: every error is raised for its mutation, with its line", () => {
     () =>
       Effect.gen(function* ordered() {
         // The emphasis (line 11) is found while reading dialogue; the hidden Element (line 8) when checking Cues.
-        const source = change("[[next]] ", "").replace(
+        const source = Str.replace(
           "Hello there.",
           "Hello *there*."
-        );
+        )(change("[[next]] ", ""));
 
         const first = yield* firstError(source);
 

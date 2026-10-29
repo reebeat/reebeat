@@ -3,7 +3,7 @@
 import { audioClipToWav } from "@reebeat/core";
 import { SoundLibrary } from "@reebeat/services";
 import type { RenderedDeck } from "@reebeat/services";
-import { Effect, FileSystem, Path, Predicate } from "effect";
+import { Effect, FileSystem, Path, Predicate, String as Str } from "effect";
 
 import { BuildOutputFailed, outputFailed } from "./errors.ts";
 
@@ -21,7 +21,7 @@ export const writeRenderedDeck = Effect.fn("writeRenderedDeck")(
       (file) => {
         const target = path.resolve(dir, file.path);
 
-        return target.startsWith(root)
+        return Str.startsWith(root)(target)
           ? Effect.mapError(
               Effect.andThen(
                 fs.makeDirectory(path.dirname(target), { recursive: true }),

@@ -2,7 +2,7 @@
 // expected timestamps can be worked out by hand (a Line starts `sceneLead` = 1 s after its slide frame).
 import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
 import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -35,7 +35,7 @@ const source = Arr.join(
   "\n"
 );
 
-export const hash = "5a".repeat(32);
+export const hash = Str.repeat(32)("5a");
 
 const wordMs = 500;
 

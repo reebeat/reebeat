@@ -22,10 +22,9 @@ export const audioClipToWav = (clip: WavClip): Uint8Array => {
   const bytes = new Uint8Array(headerBytes + dataBytes);
   const view = new DataView(bytes.buffer);
 
+  // The tags are ASCII, so each character is one byte.
   const tag = (offset: number, text: string): void => {
-    for (let index = 0; index < text.length; index += 1) {
-      view.setUint8(offset + index, text.codePointAt(index) ?? 0);
-    }
+    bytes.set(new TextEncoder().encode(text), offset);
   };
 
   tag(0, "RIFF");

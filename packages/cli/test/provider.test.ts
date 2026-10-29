@@ -18,6 +18,7 @@ import {
   Option,
   Path,
   Redacted,
+  String as Str,
 } from "effect";
 
 import type { Parts } from "../src/adapters.ts";
@@ -121,10 +122,10 @@ const leaks = Effect.fnUntraced(function* leaks(
 
   return [
     ...Arr.flatMap(files, ({ name, text }) =>
-      name.includes(canary) || text.includes(canary) ? [name] : []
+      Str.includes(canary)(name) || Str.includes(canary)(text) ? [name] : []
     ),
     ...Arr.flatMap(printed, (text, index) =>
-      text.includes(canary) ? [index === 0 ? "stdout" : "stderr"] : []
+      Str.includes(canary)(text) ? [index === 0 ? "stdout" : "stderr"] : []
     ),
   ];
 });

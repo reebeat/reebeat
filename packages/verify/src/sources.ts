@@ -14,6 +14,7 @@ import {
   Path,
   Result,
   Struct,
+  String as Str,
 } from "effect";
 import type { PlatformError } from "effect";
 import type { Digest } from "effect/crypto";
@@ -34,7 +35,7 @@ interface Carrier {
 }
 
 const short = (hash: string | undefined): string =>
-  hash === undefined ? "absent" : `${hash.slice(0, 12)}...`;
+  hash === undefined ? "absent" : `${Str.slice(0, 12)(hash)}...`;
 
 /** Every place the hash lives, with what the written file says. */
 const carriers = (
@@ -56,8 +57,8 @@ const carriers = (
     { found: vttSourceHash(build.vtt), name: ".vtt NOTE" },
     {
       found:
-        comment !== undefined && comment.startsWith(commentPrefix)
-          ? comment.slice(commentPrefix.length)
+        comment !== undefined && Str.startsWith(commentPrefix)(comment)
+          ? Str.slice(commentPrefix.length)(comment)
           : undefined,
       name: "mp4 comment",
     },

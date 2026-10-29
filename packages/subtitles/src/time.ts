@@ -1,7 +1,8 @@
+import { String as Str } from "effect";
 // Subtitle timestamps: plain functions over integer milliseconds.
 
 const pad = (value: number, width: number): string =>
-  String(value).padStart(width, "0");
+  Str.padStart(width, "0")(String(value));
 
 /** `HH:MM:SS` and `mmm` of a millisecond, the parts both subtitle formats write. */
 const clockParts = (totalMs: number): readonly [string, string] => {

@@ -13,6 +13,7 @@ import {
   Order,
   Path,
   Predicate,
+  String as Str,
 } from "effect";
 
 import { platform } from "./platform.ts";
@@ -54,7 +55,7 @@ layer(platform)("the committed speech cache", (it) => {
       );
 
       const names = Arr.flatMap(aligned, ({ audio }) => {
-        const key = audio.file.replace(/\.flac$/u, "");
+        const key = Str.replace(/\.flac$/u, "")(audio.file);
 
         return [`${key}.flac`, `${key}.provenance.json`, `${key}.words.json`];
       });
@@ -111,7 +112,7 @@ layer(platform)("the committed speech cache", (it) => {
         );
 
         const victim = yield* Effect.fromNullishOr(aligned[3]);
-        const key = victim.audio.file.replace(/\.flac$/u, "");
+        const key = Str.replace(/\.flac$/u, "")(victim.audio.file);
 
         yield* fs.remove(path.join(copy, `${key}.provenance.json`));
 

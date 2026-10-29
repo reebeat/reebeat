@@ -9,7 +9,15 @@ import {
   memoryCache,
   silentSynthesizer,
 } from "@reebeat/services/standins";
-import { Array as Arr, Effect, Layer, Option, Predicate, Ref } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Layer,
+  Option,
+  Predicate,
+  Ref,
+  String as Str,
+} from "effect";
 import { Digest } from "effect/crypto";
 
 import { speechStage } from "../src/speechStage.ts";
@@ -55,7 +63,7 @@ const rateStory = (speed: number, middleHint: string) =>
 
 /** The Plan of the rate story at `speed` with `middleHint` before its second Line. */
 const ratePlan = (speed: number, middleHint: string) =>
-  buildPlan(rateStory(speed, middleHint), "5ca1ab1e".repeat(8));
+  buildPlan(rateStory(speed, middleHint), Str.repeat(8)("5ca1ab1e"));
 
 /** The audio file names of every Line of the rate story at `speed`, narrated into a fresh cache. */
 const audioFilesAt = (speed: number) =>
@@ -125,7 +133,11 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
 
         for (const [index, line] of (yield* linesOf).entries()) {
           const entry = aligned[index];
-          const key = entry?.audio.file.replace(/\.flac$/u, "") ?? "";
+
+          const key =
+            entry === undefined
+              ? ""
+              : Str.replace(/\.flac$/u, "")(entry.audio.file);
 
           const flac = Option.flatMap(yield* cache.get(key), (found) =>
             Arr.findFirst(found.files, (file) => file.name === "flac")
@@ -452,7 +464,7 @@ layer(platform)("speech stage: the key and determinism", (it) => {
 /** The spoken length of every Line: the end of its last word (the stand-in adds a constant 400 ms of silence). */
 const spokenMs = (source: string) =>
   Effect.map(
-    Effect.flatMap(buildPlan(source, "5ca1ab1e".repeat(8)), (plan) =>
+    Effect.flatMap(buildPlan(source, Str.repeat(8)("5ca1ab1e")), (plan) =>
       Effect.provide(speechStage(plan, { refresh: true }), world)
     ),
     Arr.map((line) => line.words.at(-1)?.endMs ?? 0)

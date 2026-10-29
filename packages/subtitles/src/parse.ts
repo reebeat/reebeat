@@ -1,6 +1,6 @@
 // WebVTT text to cues: the times in milliseconds and the text lines. Reads what ffmpeg writes for a `mov_text`
 // stream as well as what `vtt` writes; the header, NOTE and STYLE blocks are skipped.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, String as Str, pipe } from "effect";
 
 export interface VttCue {
   readonly endMs: number;
@@ -23,10 +23,15 @@ const toMs = (
   Number(millis ?? "0");
 
 const unescape = (text: string): string =>
-  text.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+  pipe(
+    text,
+    Str.replaceAll("&lt;", "<"),
+    Str.replaceAll("&gt;", ">"),
+    Str.replaceAll("&amp;", "&")
+  );
 
 const cueOf = (block: string): Option.Option<VttCue> => {
-  const rows = block.split("\n");
+  const rows = Str.split(block, "\n");
 
   return Option.flatMap(
     Arr.findFirstIndex(rows, (row) => timing.test(row)),
@@ -49,11 +54,14 @@ export const parseVtt = (text: string): readonly VttCue[] =>
   Arr.getSomes(
     Arr.map(
       Arr.filter(
-        text
-          .replaceAll("\r\n", "\n")
-          .trim()
-          .split(/\n{2,}/u),
-        (block) => !block.startsWith("WEBVTT") && !block.startsWith("NOTE")
+        pipe(
+          text,
+          Str.replaceAll("\r\n", "\n"),
+          Str.trim,
+          Str.split(/\n{2,}/u)
+        ),
+        (block) =>
+          !Str.startsWith("WEBVTT")(block) && !Str.startsWith("NOTE")(block)
       ),
       cueOf
     )
@@ -65,8 +73,10 @@ export const vttSourceHash = (text: string): string | undefined => {
 
   return Option.getOrUndefined(
     Option.map(
-      Arr.findFirst(text.split("\n"), (row) => row.startsWith(prefix)),
-      (row) => row.slice(prefix.length).trim()
+      Arr.findFirst(Str.split(text, "\n"), (row) =>
+        Str.startsWith(prefix)(row)
+      ),
+      (row) => pipe(row, Str.slice(prefix.length), Str.trim)
     )
   );
 };

@@ -3,7 +3,15 @@
 // ffmpeg, reveal.js, a UI runtime or a Node built-in. The lint rule `no-restricted-imports` (vite.config.ts) is
 // the second guard; this scan is the one that reads every specifier.
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect, Order, Record, Schema } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Order,
+  Record,
+  Schema,
+  String as Str,
+  pipe,
+} from "effect";
 import { parseSync } from "oxc-parser";
 
 import { readLocal, readSources } from "./support.ts";
@@ -21,10 +29,14 @@ const specifiersOf = (text: string): readonly string[] => {
   const { module } = parseSync("scan.ts", text);
 
   const dynamic = Arr.map(module.dynamicImports, ({ moduleRequest }) => {
-    const written = text.slice(moduleRequest.start, moduleRequest.end).trim();
+    const written = pipe(
+      text,
+      Str.slice(moduleRequest.start, moduleRequest.end),
+      Str.trim
+    );
 
     return /^["'][^"']+["']$/u.test(written)
-      ? written.slice(1, -1)
+      ? Str.slice(1, -1)(written)
       : "<computed>";
   });
 
@@ -35,7 +47,7 @@ const specifiersOf = (text: string): readonly string[] => {
   );
 
   const required = Arr.map(
-    [...text.matchAll(/\brequire\s*\(/gu)],
+    [...Str.matchAll(/\brequire\s*\(/gu)(text)],
     () => "require()"
   );
 

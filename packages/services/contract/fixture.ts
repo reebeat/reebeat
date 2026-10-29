@@ -8,7 +8,7 @@ import type {
   PlanJson,
   ScheduleError,
 } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -30,7 +30,7 @@ const source = Arr.join(
 );
 
 /** A stand-in digest: the contract suites never hash, and the core only copies `sourceSha256` into the Plan. */
-const digest = "c0".repeat(32);
+const digest = Str.repeat(32)("c0");
 
 const wordMs = 400;
 

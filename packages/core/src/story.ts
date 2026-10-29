@@ -1,7 +1,7 @@
 // The adapter from Fountain tokens to the Story: chapters, scenes, Elements, Lines and Cues, before ids and
 // cross-checks exist. Everything the vocabulary does not define becomes a Plan error with its line, never a
 // silent drop. A plain function.
-import { Array as Arr, Option, Result } from "effect";
+import { Array as Arr, Option, Result, String as Str, pipe } from "effect";
 
 import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
@@ -96,7 +96,7 @@ const currentScene = (state: State): SceneDraft | undefined =>
 const parseParenthetical = (
   token: FountainToken
 ): Result.Result<Parenthetical, PlanError> | undefined => {
-  const text = token.text.trim();
+  const text = Str.trim(token.text);
   const pause = pausePattern.exec(text)?.groups?.seconds;
   const absolute = speedPattern.exec(text)?.groups?.value;
   const { line } = token;
@@ -158,7 +158,7 @@ const speedKey = (state: State, token: FountainToken): void => {
 };
 
 const titlePageToken = (state: State, token: FountainToken): void => {
-  const text = token.text.replaceAll(/\s+/gu, " ").trim();
+  const text = pipe(token.text, Str.replaceAll(/\s+/gu, " "), Str.trim);
 
   if (token.type === "title") {
     state.title = text;
@@ -180,7 +180,7 @@ const sectionToken = (state: State, token: FountainToken): void => {
     state.chapters.push({
       line: token.line,
       synopsis: [],
-      title: token.text.trim(),
+      title: Str.trim(token.text),
     });
   } else {
     unsupported(
@@ -193,7 +193,7 @@ const sectionToken = (state: State, token: FountainToken): void => {
 
 const synopsisToken = (state: State, token: FountainToken): void => {
   const chapter = state.chapters.at(-1);
-  const text = token.text.trim();
+  const text = Str.trim(token.text);
 
   if (chapter === undefined) {
     unsupported(
@@ -241,7 +241,7 @@ const headingToken = (state: State, token: FountainToken): void => {
   state.scenes.push({
     chapterIndex: state.chapters.length - 1,
     elements: [],
-    heading: token.text.trim(),
+    heading: Str.trim(token.text),
     line: token.line,
     lines: [],
     transition: pending?.kind ?? "default",
@@ -261,8 +261,8 @@ const actionToken = (state: State, token: FountainToken): void => {
     return;
   }
 
-  for (const [offset, raw] of token.text.split("\n").entries()) {
-    if (raw.trim() === "") {
+  for (const [offset, raw] of Str.split(token.text, "\n").entries()) {
+    if (Str.trim(raw) === "") {
       continue;
     }
 
@@ -294,14 +294,14 @@ const actionToken = (state: State, token: FountainToken): void => {
 };
 
 const transitionToken = (state: State, token: FountainToken): void => {
-  const name = token.text.trim().toUpperCase();
+  const name = pipe(token.text, Str.trim, Str.toUpperCase);
 
   if (name !== "AUTO-ANIMATE" && name !== "CUT") {
     state.errors.push(
       planError(
         "BadTransition",
         token.line,
-        `transition "${token.text.trim()}" is not supported: use > AUTO-ANIMATE or > CUT`
+        `transition "${Str.trim(token.text)}" is not supported: use > AUTO-ANIMATE or > CUT`
       )
     );
   } else if (state.transition === undefined) {
@@ -359,7 +359,7 @@ const characterToken = (state: State, token: FountainToken): void => {
     return;
   }
 
-  const speaker = token.text.trim();
+  const speaker = Str.trim(token.text);
 
   if (speaker !== "NARRATOR") {
     dialogue.skip = true;
@@ -392,7 +392,7 @@ const parentheticalToken = (state: State, token: FountainToken): void => {
       planError(
         "BadParenthetical",
         token.line,
-        `parenthetical ${token.text.trim()} is not supported: use (speed N), (slowly), (quickly) or (pause N)`
+        `parenthetical ${Str.trim(token.text)} is not supported: use (speed N), (slowly), (quickly) or (pause N)`
       )
     );
   } else if (Result.isFailure(hint)) {

@@ -2,7 +2,7 @@
 // which words it meant. The two are matched by a dynamic-programming longest common subsequence over normalised
 // words, so a misheard word, an extra word or a spelling difference moves no other word. A word that has no
 // partner gets a time interpolated between its neighbours. Plain functions: total and deterministic.
-import { Array as Arr, Record } from "effect";
+import { Array as Arr, Record, String as Str, pipe } from "effect";
 
 /** A word whisper heard, with its time span in the audio. */
 export interface HeardWord {
@@ -95,7 +95,7 @@ const ordinals = new Map<string, string>(
 
 /** The comparison form of a word: lower case, letters and digits only, US spelling, numerals and ordinals as words. */
 export const normaliseWord = (word: string): string => {
-  const plain = word.toLowerCase().replaceAll(/[^a-z0-9]/gu, "");
+  const plain = pipe(word, Str.toLowerCase, Str.replaceAll(/[^a-z0-9]/gu, ""));
 
   return (
     numerals.get(plain) ?? ordinals.get(plain) ?? spelling.get(plain) ?? plain

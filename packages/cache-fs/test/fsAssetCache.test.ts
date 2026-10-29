@@ -11,6 +11,7 @@ import {
   Option,
   Order,
   Path,
+  String as Str,
 } from "effect";
 
 import { fsAssetCache } from "../src/fsAssetCache.ts";
@@ -32,7 +33,7 @@ const asset = (key: string, text: string): Asset => ({
   },
 });
 
-const key = "ab".repeat(32);
+const key = Str.repeat(32)("ab");
 
 const inTemp = <A, E>(
   use: Use<A, E>,

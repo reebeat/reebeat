@@ -2,7 +2,7 @@
 // has silent narration but audible sounds, so only F8 (narration onsets) is N/A; F1 still observes every `sfx` Cue and
 // the anchored whoosh against the motion. Without this, the sound anchoring would be unchecked on every offline build.
 import { assert, layer } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { exitCode } from "../src/index.ts";
 import {
@@ -37,12 +37,12 @@ layer(Fixture.offlineLayer, {
         assert.strictEqual(f1.measured[0]?.[1], 4);
         assert.isTrue(
           Arr.some(measured, (row) =>
-            row.startsWith("sc1.l1.c2 sfx match score")
+            Str.startsWith("sc1.l1.c2 sfx match score")(row)
           ),
           "the pop is found in the track"
         );
         assert.isTrue(
-          Arr.some(measured, (row) => row.startsWith(whooshMotion)),
+          Arr.some(measured, (row) => Str.startsWith(whooshMotion)(row)),
           "the whoosh is compared with the motion"
         );
         assert.deepStrictEqual(failedIds(verdicts), []);

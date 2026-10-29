@@ -10,7 +10,15 @@ import { assert, layer } from "@effect/vitest";
 import { buildPlan, encodePlan } from "@reebeat/core";
 import { sha256Hex } from "@reebeat/pipeline";
 import { renderDeck } from "@reebeat/render-reveal";
-import { Array as Arr, Effect, FileSystem, Option, Path, Stream } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  Stream,
+  String as Str,
+} from "effect";
 
 import {
   BuildInvalid,
@@ -378,7 +386,10 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             "f4-deleted",
             (dir) =>
               editFile(path.join(dir, "deck.html"), (text) =>
-                text.replace(new RegExp(fragment("sc1\\.l1\\.c2"), "u"), "")
+                Str.replace(
+                  new RegExp(fragment("sc1\\.l1\\.c2"), "u"),
+                  ""
+                )(text)
               ),
             ["F4"]
           );
@@ -387,13 +398,13 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
             "f4-swapped",
             (dir) =>
               editFile(path.join(dir, "deck.html"), (text) =>
-                text.replace(
+                Str.replace(
                   new RegExp(
                     `(?<first>${fragment("sc1\\.l1\\.c1")})(?<second>${fragment("sc1\\.l1\\.c2")})`,
                     "u"
                   ),
                   "$<second>$<first>"
-                )
+                )(text)
               ),
             ["F4"]
           );
@@ -417,7 +428,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           const fixture = yield* Fixture;
           const dir = yield* copyBuild("f5-unsealed");
           const hash = fixture.plan.sourceSha256;
-          const flipped = `${hash.startsWith("0") ? "1" : "0"}${hash.slice(1)}`;
+          const flipped = `${Str.startsWith("0")(hash) ? "1" : "0"}${Str.slice(1)(hash)}`;
 
           yield* replaceInFile(path.join(dir, "plan.json"), hash, flipped);
 
@@ -529,7 +540,7 @@ layer(Fixture.layer, { excludeTestServices: true, timeout: "300 seconds" })(
           // The encoder's own refinement of the first frames after a cut is all that is left between the two ends.
           const distinct = Option.getOrThrow(
             Arr.findFirst(verdict.measured, ([name]) =>
-              name.endsWith("distinct intermediate frames")
+              Str.endsWith("distinct intermediate frames")(name)
             )
           );
 

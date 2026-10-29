@@ -1,6 +1,6 @@
 // Rule `contrast` (spec 0001, the theme): the WCAG 2.x contrast ratio of a text colour on its background. The
 // Deck's theme asserts that every class colour keeps 4.5:1 (AA, normal text) on every background it can meet.
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";
 
@@ -23,7 +23,7 @@ const linear = (channel: number): number => {
 /** The WCAG relative luminance of `#rrggbb`. */
 const luminance = (hex: string): number => {
   const [red = 0, green = 0, blue = 0] = Arr.map([1, 3, 5], (start) =>
-    Number.parseInt(hex.slice(start, start + 2), 16)
+    Number.parseInt(Str.slice(start, start + 2)(hex), 16)
   );
 
   return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue);

@@ -3,7 +3,7 @@
 // Element's ninth of the 1280 x 720 frame (the three columns are 427, 426 and 427 pixels wide, so they tile it).
 import { assert, it } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
-import { Array as Arr, Effect, Option } from "effect";
+import { Array as Arr, Effect, Option, String as Str } from "effect";
 
 import { cueRegion } from "../src/cueRegion.ts";
 
@@ -28,7 +28,7 @@ it.effect(
   "is the cell of the Element a Cue reveals or emphasises, and none for a sound or an unknown Cue",
   () =>
     Effect.gen(function* regions() {
-      const planned = yield* buildPlan(source, "0".repeat(64));
+      const planned = yield* buildPlan(source, Str.repeat(64)("0"));
 
       const region = (cue: string) =>
         Option.getOrUndefined(cueRegion(planned, cue));

@@ -2,7 +2,15 @@
 // with the fixture deck and reveal.js next to it, and ffmpeg as the PNG decoder (`image2pipe`) for what the frames
 // show. ffmpeg is the tests' tool here, not the adapter's: the capture only emits the PNG stream.
 import { NodeServices } from "@effect/platform-node";
-import { Array as Arr, Effect, FileSystem, Layer, Path, Stream } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Stream,
+  String as Str,
+} from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import { Browser } from "../src/browser.ts";
@@ -116,10 +124,10 @@ export const pngFrameHashes = <E, R>(frames: Stream.Stream<Uint8Array, E, R>) =>
   Effect.map(ffmpegOver(frames, ["-f", "framemd5"]), (output) =>
     Arr.map(
       Arr.filter(
-        new TextDecoder().decode(output).split("\n"),
-        (row) => row !== "" && !row.startsWith("#")
+        Str.split(new TextDecoder().decode(output), "\n"),
+        (row) => row !== "" && !Str.startsWith("#")(row)
       ),
-      (row) => (row.split(",").at(-1) ?? "").trim()
+      (row) => Str.trim(Arr.lastNonEmpty(Str.split(row, ",")))
     )
   );
 

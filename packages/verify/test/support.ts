@@ -45,6 +45,7 @@ import {
   Path,
   Ref,
   Stream,
+  String as Str,
 } from "effect";
 import type { PlatformError } from "effect";
 
@@ -136,9 +137,10 @@ const noiseAt = (seed: number, index: number): number => {
 /** A seed of the text: the sum of its characters modulo a prime, so every Line has its own noise. */
 const seedOf = (text: string): number =>
   Arr.reduce(
-    text.split(""),
+    Str.split(text, ""),
     17,
-    (sum, char) => (sum * 31 + (char.codePointAt(0) ?? 0)) % 9973
+    (sum, char) =>
+      (sum * 31 + Option.getOrElse(Str.codePointAt(char, 0), () => 0)) % 9973
   );
 
 /**
@@ -157,7 +159,7 @@ const noiseSynthesizer = Layer.succeed(
       text,
     }) {
       const [first, ...rest] = Arr.filter(
-        Arr.fromIterable(text.split(/\s+/u)),
+        Arr.fromIterable(Str.split(text, /\s+/u)),
         (word) => word !== ""
       );
 
@@ -419,7 +421,7 @@ export const replaceInFile = (file: string, from: string, to: string) =>
   editFile(file, (text) => {
     assert.include(text, from, file);
 
-    return text.replace(from, to);
+    return Str.replace(from, to)(text);
   });
 
 /** Runs ffmpeg with `args` and ignores its output. */
@@ -487,7 +489,7 @@ export const readSources = Effect.gen(function* sources() {
   );
 
   const texts = yield* Effect.forEach(
-    Arr.filter(names, (name) => name.endsWith(".ts")),
+    Arr.filter(names, (name) => Str.endsWith(".ts")(name)),
     (name) => Effect.map(packageFile("src", name), (text) => ({ name, text }))
   );
 

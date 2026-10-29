@@ -8,6 +8,7 @@ import {
   Layer,
   Schema,
   Stream,
+  String as Str,
 } from "effect";
 import type { PlatformError } from "effect";
 
@@ -136,8 +137,8 @@ export interface EncoderFlaw {
 /** The cue texts of a WebVTT text: the lines that are neither the header, a timing line nor blank. */
 const cueTexts = (vtt: string): readonly string[] =>
   Arr.filter(
-    vtt.split("\n"),
-    (line) => line !== "" && line !== "WEBVTT" && !line.includes("-->")
+    Str.split(vtt, "\n"),
+    (line) => line !== "" && line !== "WEBVTT" && !Str.includes("-->")(line)
   );
 
 const mix = (request: MuxRequest, flaw: EncoderFlaw): AudioClip => {

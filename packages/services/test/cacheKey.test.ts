@@ -1,7 +1,7 @@
 // assetKey: SHA-256 of the canonical JSON of { adapter id, settings, input, extra }, through the Digest service,
 // and a guard that keeps secrets out of keys.
 import { assert, describe, it, layer } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, String as Str } from "effect";
 import { Digest } from "effect/crypto";
 
 import { assetKey, secretLikeNames } from "../src/cacheKey.ts";
@@ -82,7 +82,7 @@ layer(platform)("assetKey", (suite) => {
           assert.strictEqual(failure._tag, "SecretLikeSetting");
           assert.strictEqual(failure.setting, name);
           assert.strictEqual(failure.adapter, "kokoro@1.2.1");
-          assert.isFalse(failure.message.includes("hunter2"));
+          assert.isFalse(Str.includes("hunter2")(failure.message));
         }
       })
   );

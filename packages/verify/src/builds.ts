@@ -3,7 +3,13 @@
 // not required. The first differing frame is named.
 import { decodeMonoPcm, frameHashes } from "@reebeat/encode-ffmpeg";
 import { sha256Hex } from "@reebeat/pipeline";
-import { Array as Arr, Effect, FileSystem, Option } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  String as Str,
+} from "effect";
 
 import type { BuildInvalid } from "./errors.ts";
 import { guarded } from "./guard.ts";
@@ -96,7 +102,9 @@ const observe = Effect.fnUntraced(function* compare(
     ["audio samples", audio[0].length],
     [
       "audio PCM sha256",
-      pcm[0] === pcm[1] ? `${pcm[0].slice(0, 12)}... (equal)` : "different",
+      pcm[0] === pcm[1]
+        ? `${Str.slice(0, 12)(pcm[0])}... (equal)`
+        : "different",
     ],
     [
       "container bytes",

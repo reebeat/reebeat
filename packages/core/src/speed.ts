@@ -1,7 +1,7 @@
 // The speech rate (spec 0001, Revision "operator feedback after viewing the video"): a story default from the title
 // page key `Speed:`, a per-Line `(speed N)`, and the presets `(slowly)` and `(quickly)` relative to the default.
 // Plain functions: a rate is a number in [`minSpeed`, `maxSpeed`] and nothing else.
-import { Result } from "effect";
+import { Result, String as Str } from "effect";
 
 /** The slowest and the fastest rate the narrator is asked for. */
 export const minSpeed = 0.5;
@@ -20,7 +20,7 @@ const numberPattern = /^\d+(?:\.\d+)?$/u;
 
 /** A decimal number inside the range, or what is wrong with the text. */
 export const parseSpeed = (text: string): Result.Result<number, string> => {
-  const trimmed = text.trim();
+  const trimmed = Str.trim(text);
 
   if (!numberPattern.test(trimmed)) {
     return Result.fail(

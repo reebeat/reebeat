@@ -11,7 +11,7 @@
 // the page that goes with it.
 import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
 import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -53,7 +53,8 @@ const source = Arr.join(
 );
 
 /** A cache file name of the Plan contract: 64 hex digits and `.flac`; `n` picks the digits. */
-const audioFile = (n: number): string => `${n.toString(16).repeat(64)}.flac`;
+const audioFile = (n: number): string =>
+  `${Str.repeat(64)(n.toString(16))}.flac`;
 
 /** How long each Line is spoken, in ms, by Line id. The last word of sc3.l1 ends at 580 ms, the others at `index * 300 + 280`. */
 const durations = new Map([
@@ -79,7 +80,7 @@ const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
 /** The fixture Plan with its Timeline checked against its Scenes. A module value: the tests read it as data. */
 export const fixture: TimedPlan = await Effect.runPromise(
   Effect.gen(function* timedFixturePlan() {
-    const plan = yield* buildPlan(source, "5ca1ab1e".repeat(8));
+    const plan = yield* buildPlan(source, Str.repeat(8)("5ca1ab1e"));
 
     return yield* Effect.fromResult(
       requireTimeline(yield* schedule(plan, alignedLines(plan)))

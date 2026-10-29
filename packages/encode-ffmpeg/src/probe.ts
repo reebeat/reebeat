@@ -1,6 +1,6 @@
 // What the written files show: the decoded frames, the decoded audio, and the container's streams and chapters. The
 // verify slice reads these to check the falsifiers F1 and F6 to F9 on the mp4; the tests here use them too.
-import { Array as Arr, Effect, Schema } from "effect";
+import { Array as Arr, Effect, Schema, String as Str } from "effect";
 
 import { MediaToolFailed } from "./errors.ts";
 import { MediaTools } from "./mediaTools.ts";
@@ -165,11 +165,13 @@ export const frameHashes = Effect.fn("frameHashes")(function* hashes(
   ]);
 
   const rows = Arr.filter(
-    text(output).split("\n"),
-    (line) => line !== "" && !line.startsWith("#")
+    Str.split(text(output), "\n"),
+    (line) => line !== "" && !Str.startsWith("#")(line)
   );
 
-  return Arr.map(rows, (line) => (line.split(",").at(-1) ?? "").trim());
+  return Arr.map(rows, (line) =>
+    Str.trim(Arr.lastNonEmpty(Str.split(line, ",")))
+  );
 });
 
 /** The decoded audio of `file` as mono 32-bit float samples at `sampleRate`. */

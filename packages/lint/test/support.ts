@@ -1,6 +1,6 @@
 // A small Plan built by the real core: three Scenes, four Cues (a `next`, a `focus` and two `sfx`).
 import { buildPlan } from "@reebeat/core";
-import { Array as Arr } from "effect";
+import { Array as Arr, String as Str } from "effect";
 
 const source = Arr.join(
   [
@@ -35,4 +35,4 @@ const source = Arr.join(
 );
 
 /** The Plan of the source above, with a fixed hash. */
-export const plan = buildPlan(source, "5a".repeat(32));
+export const plan = buildPlan(source, Str.repeat(32)("5a"));

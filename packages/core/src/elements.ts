@@ -1,6 +1,6 @@
 // One Action line is one Element: `text {#id @cell .class hidden}`. A plain function: it returns the Element
 // (when its `#id` is known) and every problem found on the line.
-import { Array as Arr, Schema } from "effect";
+import { Array as Arr, Schema, String as Str } from "effect";
 
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
@@ -41,23 +41,23 @@ const applyAttribute = (
   word: string,
   line: number
 ): void => {
-  const value = word.slice(1);
+  const value = Str.slice(1)(word);
 
   if (word === "hidden") {
     attributes.hidden = true;
-  } else if (word.startsWith("#") && idPattern.test(value)) {
+  } else if (Str.startsWith("#")(word) && idPattern.test(value)) {
     if (attributes.id !== undefined) {
       attributes.errors.push(unsupported(line, "an Element has one #id"));
     }
 
     attributes.id = value;
-  } else if (word.startsWith("@") && isCell(value)) {
+  } else if (Str.startsWith("@")(word) && isCell(value)) {
     if (attributes.cell !== undefined) {
       attributes.errors.push(unsupported(line, "an Element has one @cell"));
     }
 
     attributes.cell = value;
-  } else if (word.startsWith(".") && isClass(value)) {
+  } else if (Str.startsWith(".")(word) && isClass(value)) {
     attributes.classes.push(value);
   } else {
     attributes.errors.push(unsupported(line, unknownAttribute(word)));
@@ -72,7 +72,7 @@ export interface ParsedElement {
 
 /** Parses one non-empty line of an Action block; `line` is its 1-based source line. */
 export const parseElementLine = (raw: string, line: number): ParsedElement => {
-  const trimmed = raw.trim();
+  const trimmed = Str.trim(raw);
   const match = attributeBlock.exec(trimmed);
   const text = match?.groups?.text ?? trimmed;
   const errors: PlanError[] = [];
@@ -85,7 +85,7 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
     id: undefined,
   };
 
-  if (trimmed.includes("[[")) {
+  if (Str.includes("[[")(trimmed)) {
     errors.push(
       unsupported(
         line,
@@ -94,7 +94,7 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
     );
   }
 
-  for (const word of (match?.groups?.attributes ?? "").split(/\s+/u)) {
+  for (const word of Str.split(match?.groups?.attributes ?? "", /\s+/u)) {
     if (word !== "") {
       applyAttribute(attributes, word, line);
     }

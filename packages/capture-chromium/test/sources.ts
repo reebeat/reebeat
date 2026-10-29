@@ -1,6 +1,6 @@
 // Reads files of the package under test: its manifest and its sources, through the Node file system.
 import { NodeServices } from "@effect/platform-node";
-import { Array as Arr, Effect, FileSystem } from "effect";
+import { Array as Arr, Effect, FileSystem, String as Str } from "effect";
 
 /** The package directory: the parent of this one. */
 const root = `${import.meta.dirname}/..`;
@@ -22,7 +22,7 @@ export const readSources = Effect.flatMap(
   onNode((fs) => fs.readDirectory(`${root}/src`)),
   (names) =>
     Effect.forEach(
-      Arr.filter(names, (name) => name.endsWith(".ts")),
+      Arr.filter(names, (name) => Str.endsWith(".ts")(name)),
       (name) =>
         Effect.map(readPackageText(`src/${name}`), (text) => ({ name, text }))
     )

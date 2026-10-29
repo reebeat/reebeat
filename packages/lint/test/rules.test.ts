@@ -1,7 +1,7 @@
 // The lint rules, each with a control that shows the rule fails when the thing it guards is broken.
 import { assert, describe, it } from "@effect/vitest";
 import { PlanJsonSchema, encodePlan } from "@reebeat/core";
-import { Array as Arr, Effect, Exit, Schema } from "effect";
+import { Array as Arr, Effect, Exit, Schema, String as Str } from "effect";
 
 import {
   absoluteTimesNeedReason,
@@ -158,10 +158,10 @@ describe("absoluteTimesNeedReason", () => {
       Effect.gen(function* unrepresentable() {
         const text = yield* Effect.flatMap(plan, encodePlan);
 
-        const withAt = text.replaceAll(
+        const withAt = Str.replaceAll(
           '"afterWord"',
           '"at": 1500, "afterWord"'
-        );
+        )(text);
 
         const decode = Schema.decodeUnknownEffect(
           Schema.fromJsonString(PlanJsonSchema),

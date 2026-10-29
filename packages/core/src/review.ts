@@ -1,7 +1,7 @@
 // The review text of `reebeat plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
 // (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its Lines with Cue markers, and one
 // summary line. Deterministic: the same Plan gives the same text. A plain function.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Option, String as Str } from "effect";
 
 import type {
   Cue,
@@ -63,7 +63,7 @@ const elementRow = (
   rest: string,
   idWidth: number
 ): string =>
-  `      ${mark} ${id.padEnd(idWidth)}  ${verb.padEnd(verbWidth)}  ${rest}`;
+  `      ${mark} ${Str.padEnd(idWidth)(id)}  ${Str.padEnd(verbWidth)(verb)}  ${rest}`;
 
 const widest = (ids: readonly string[]): number =>
   Arr.reduce(ids, minimumIdWidth, (width, id) => Math.max(width, id.length));

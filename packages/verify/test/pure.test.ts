@@ -3,7 +3,7 @@ import { assert, describe, it } from "@effect/vitest";
 import { buildPlan } from "@reebeat/core";
 import type { PlanJson } from "@reebeat/core";
 import { synthClip } from "@reebeat/sounds-synth";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str } from "effect";
 
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
@@ -87,7 +87,7 @@ describe("planDifference", () => {
     "is undefined for equal Plans and names the path of the first difference otherwise",
     () =>
       Effect.gen(function* differences() {
-        const plan = yield* buildPlan(storyText, "0".repeat(64));
+        const plan = yield* buildPlan(storyText, Str.repeat(64)("0"));
         const { scenes } = plan;
         const rest = Arr.drop(scenes, 1);
 

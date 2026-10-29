@@ -12,7 +12,15 @@ import {
   localEgress,
 } from "@reebeat/services";
 import type { SynthesizeRequest } from "@reebeat/services";
-import { Array as Arr, Config, Effect, Layer, Option, Record } from "effect";
+import {
+  Array as Arr,
+  Config,
+  Effect,
+  Layer,
+  Option,
+  Record,
+  String as Str,
+} from "effect";
 
 const kokoroJs = "1.2.1";
 const modelId = "onnx-community/Kokoro-82M-v1.0-ONNX";
@@ -130,7 +138,7 @@ export const synthesizerOver = (
 
       const synthesize = Effect.fn("SpeechSynthesizer.synthesize")(
         function* synthesize(request: SynthesizeRequest) {
-          if (request.text.trim() === "") {
+          if (Str.trim(request.text) === "") {
             return yield* new EmptyText({
               message: "the text has no words to speak",
             });

@@ -18,6 +18,7 @@ import {
   Predicate,
   Ref,
   Stream,
+  String as Str,
 } from "effect";
 
 import { buildProgram } from "../src/buildProgram.ts";
@@ -144,8 +145,8 @@ describe("buildProgram: a finished build", () => {
           "RIFF"
         );
         assert.isTrue(
-          (yield* fs.readFileString(`${where.out}/build.vtt`)).startsWith(
-            "WEBVTT"
+          Str.startsWith("WEBVTT")(
+            yield* fs.readFileString(`${where.out}/build.vtt`)
           )
         );
       }).pipe(Effect.scoped, Effect.provide(platform))
@@ -218,7 +219,9 @@ describe("buildProgram: a finished build", () => {
           muxed?.request.metadata.comment,
           `reebeat source-sha256 ${timed.sourceSha256}`
         );
-        assert.isTrue((muxed?.request.vtt ?? "").includes(timed.sourceSha256));
+        assert.isTrue(
+          Str.includes(timed.sourceSha256)(muxed?.request.vtt ?? "")
+        );
       }).pipe(Effect.scoped, Effect.provide(platform))
   );
 
@@ -239,7 +242,7 @@ describe("buildProgram: a finished build", () => {
 
         const keys = Arr.map(
           Arr.flatMap(timed.timeline.scenes, (scene) => scene.lines),
-          (line) => line.audio.file.slice(0, -".flac".length)
+          (line) => Str.slice(0, -".flac".length)(line.audio.file)
         );
 
         assert.strictEqual(written.schema, 2);

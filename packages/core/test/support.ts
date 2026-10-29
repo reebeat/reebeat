@@ -2,7 +2,7 @@
 // Node file system (see the `runtime-adapter` group in vite.config.ts); the tests themselves stay platform-free.
 import { NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
-import { Array as Arr, Effect, FileSystem, Path } from "effect";
+import { Array as Arr, Effect, FileSystem, Path, String as Str } from "effect";
 
 import type { HeardWord } from "../src/align.ts";
 
@@ -41,7 +41,7 @@ export const readSources = Effect.provide(
     );
 
     const names = Arr.filter(yield* fs.readDirectory(directory), (name) =>
-      name.endsWith(".ts")
+      Str.endsWith(".ts")(name)
     );
 
     return yield* Effect.forEach(names, (name) =>
@@ -56,8 +56,8 @@ export const readSources = Effect.provide(
 
 /** The 1-based line of the only line of `source` that contains `needle`. */
 export const lineOf = (source: string, needle: string): number => {
-  const matches = Arr.flatMap(source.split("\n"), (line, index) =>
-    line.includes(needle) ? [index + 1] : []
+  const matches = Arr.flatMap(Str.split(source, "\n"), (line, index) =>
+    Str.includes(needle)(line) ? [index + 1] : []
   );
 
   assert.strictEqual(matches.length, 1, `exactly one line contains ${needle}`);

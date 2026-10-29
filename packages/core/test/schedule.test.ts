@@ -5,7 +5,7 @@
 //   sc1.l2               "Six seven."                  1500 ms, [[sfx: pop]] after "seven."
 //   sc2.l1               "Eight nine."                 1000 ms, [[sfx: whoosh]] before "Eight"
 import { assert, describe, it } from "@effect/vitest";
-import { Array as Arr, Effect } from "effect";
+import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
@@ -41,7 +41,7 @@ const source = asText([
 
 /** The audio of Line `digit`: a cache file name is 64 hexadecimal digits and `.flac`. */
 const audio = (digit: number) => ({
-  file: `${String(digit).repeat(64)}.flac`,
+  file: `${Str.repeat(64)(String(digit))}.flac`,
   sha256: `hash-${digit}`,
 });
 
@@ -181,12 +181,14 @@ describe("schedule: the arithmetic, by hand", () => {
     () =>
       Effect.gen(function* wordAnchored() {
         const moved = yield* buildPlan(
-          source
-            .replace(
+          pipe(
+            source,
+            Str.replace(
               "One two three. [[next]] Four five.",
               "[[next]] One two three. Four five."
-            )
-            .replace("Six seven. [[sfx: pop]]", "[[sfx: pop]] Six seven."),
+            ),
+            Str.replace("Six seven. [[sfx: pop]]", "[[sfx: pop]] Six seven.")
+          ),
           fixtureSha256
         );
 
@@ -210,10 +212,10 @@ describe("schedule: the arithmetic, by hand", () => {
     () =>
       Effect.gen(function* paused() {
         const moved = yield* buildPlan(
-          source.replace(
+          Str.replace(
             "INT. TWO\n\nNARRATOR\n",
             "INT. TWO\n\nNARRATOR\n(pause 0.5)\n"
-          ),
+          )(source),
           fixtureSha256
         );
 

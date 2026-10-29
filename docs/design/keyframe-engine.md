@@ -1251,7 +1251,7 @@ The anchor model of 4.4.1 is built as `@reebeat/core` `Anchor`/`Offset`/`Effect`
 | 4.4.1 | As built | Why |
 |---|---|---|
 | Defaults per cue kind, so most cues need no `at` | `at` is mandatory | "no positional magic": every effect names its anchor |
-| `beat` anchor (start, settle, end) | none | a Beat is derived, not written, in the screenplay source; the Scene, the slide transition (`transition.start|end|N%`), an Element's lifecycle and a word cover the moments that exist |
+| `beat` anchor (start, settle, end) | none | a Beat is derived, not written, in the screenplay source; the Scene, the slide transition (`transition.start`, `.end` or `.N%`), an Element's lifecycle and a word cover the moments that exist |
 | Offset `fraction` | `%` of the anchored window | the same quantity |
 | Absolute times: "`reebeat lint` warns on every" | allowed with `because "<reason>"`, listed by `lint` and `plan` at severity info | operator pick 2026-10-28 |
 | Cue chain: end of another cue | `<effect>.start`; `<show>.end` = end of its window; `.end` of a sound or focus is an error | an instant has no end |

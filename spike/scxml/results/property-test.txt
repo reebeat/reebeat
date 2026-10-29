@@ -1,0 +1,12 @@
+bun test v1.3.13 (bf2e2cec)
+
+src/roundtrip.test.ts:
+(pass) IR <-> SCXML > control: the JSON codec holds the law on the same generator [2208.98ms]
+(pass) IR <-> SCXML > without the escape layer the law is falsified (XML 1.0 cannot carry every String) [18.00ms]
+(pass) IR <-> SCXML > decode(encode(ir)) = ir for generated Graphs [3617.97ms]
+(pass) IR <-> generic structural XML (zero per-field mapping) > decode(encode(ir)) = ir for generated Graphs [4905.96ms]
+
+ 4 pass
+ 0 fail
+ 4 expect() calls
+Ran 4 tests across 1 file. [10.86s]

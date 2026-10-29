@@ -1,0 +1,3 @@
+round trip equal: true
+json bytes 17675 lines 785
+scxml bytes 11726 lines 281

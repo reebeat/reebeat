@@ -1,0 +1,714 @@
+{
+  "declared": {
+    "scenes": [
+      {
+        "id": "sc1",
+        "startMs": 0,
+        "endMs": 9625
+      },
+      {
+        "id": "sc2",
+        "startMs": 9625,
+        "endMs": 18275
+      },
+      {
+        "id": "sc3",
+        "startMs": 18275,
+        "endMs": 23225
+      },
+      {
+        "id": "sc4",
+        "startMs": 23225,
+        "endMs": 33250
+      },
+      {
+        "id": "sc5",
+        "startMs": 33250,
+        "endMs": 38425
+      },
+      {
+        "id": "sc6",
+        "startMs": 38425,
+        "endMs": 50225
+      },
+      {
+        "id": "sc7",
+        "startMs": 50225,
+        "endMs": 55400
+      }
+    ],
+    "states": [
+      {
+        "id": "sc1.s1",
+        "enterMs": 0,
+        "leaveMs": 9625
+      },
+      {
+        "id": "sc2.s1",
+        "enterMs": 9625,
+        "leaveMs": 12385
+      },
+      {
+        "id": "sc2.s2",
+        "enterMs": 12385,
+        "leaveMs": 15515
+      },
+      {
+        "id": "sc2.s3",
+        "enterMs": 15648,
+        "leaveMs": 18275
+      },
+      {
+        "id": "sc3.s1",
+        "enterMs": 18275,
+        "leaveMs": 21075
+      },
+      {
+        "id": "sc3.s2",
+        "enterMs": 21075,
+        "leaveMs": 23225
+      },
+      {
+        "id": "sc4.s1",
+        "enterMs": 23225,
+        "leaveMs": 28265
+      },
+      {
+        "id": "sc4.s2",
+        "enterMs": 28398,
+        "leaveMs": 33250
+      },
+      {
+        "id": "sc5.s1",
+        "enterMs": 33250,
+        "leaveMs": 38425
+      },
+      {
+        "id": "sc6.s1",
+        "enterMs": 38425,
+        "leaveMs": 47805
+      },
+      {
+        "id": "sc6.s2",
+        "enterMs": 47938,
+        "leaveMs": 49475
+      },
+      {
+        "id": "sc6.s3",
+        "enterMs": 49608,
+        "leaveMs": 50225
+      },
+      {
+        "id": "sc7.s1",
+        "enterMs": 50225,
+        "leaveMs": 55400
+      }
+    ],
+    "beats": [
+      {
+        "id": "sc2.b1",
+        "startMs": 12385,
+        "endMs": 12385
+      },
+      {
+        "id": "sc2.b2",
+        "startMs": 15515,
+        "endMs": 15648
+      },
+      {
+        "id": "sc3.b1",
+        "startMs": 21075,
+        "endMs": 21075
+      },
+      {
+        "id": "sc4.b1",
+        "startMs": 28265,
+        "endMs": 28398
+      },
+      {
+        "id": "sc6.b1",
+        "startMs": 47805,
+        "endMs": 47938
+      },
+      {
+        "id": "sc6.b2",
+        "startMs": 49475,
+        "endMs": 49608
+      }
+    ],
+    "cues": [
+      {
+        "id": "sc4.s1",
+        "name": "whoosh",
+        "atMs": 23225
+      },
+      {
+        "id": "sc4.s2",
+        "name": "ding",
+        "atMs": 23625
+      },
+      {
+        "id": "sc5.s1",
+        "name": "ding",
+        "atMs": 33250
+      },
+      {
+        "id": "sc7.p1",
+        "name": "pop",
+        "atMs": 50725
+      }
+    ],
+    "totalMs": 55400
+  },
+  "timing": [
+    {
+      "name": "createEffectActor + TestClock (one adjust)",
+      "entries": 115,
+      "deterministic": true,
+      "equalToPure": true,
+      "coldMs": 60.26,
+      "medianMs": 29.37,
+      "minMs": 23.64,
+      "maxMs": 60.26
+    },
+    {
+      "name": "createEffectActor + TestClock (100 ms steps)",
+      "entries": 115,
+      "deterministic": true,
+      "equalToPure": true,
+      "coldMs": 46.73,
+      "medianMs": 29.02,
+      "minMs": 25.54,
+      "maxMs": 46.73
+    },
+    {
+      "name": "createActor + SimulatedClock",
+      "entries": 115,
+      "deterministic": true,
+      "equalToPure": true,
+      "coldMs": 21.76,
+      "medianMs": 15.38,
+      "minMs": 11.72,
+      "maxMs": 21.76
+    },
+    {
+      "name": "pure systemTransition/advanceSystemTime",
+      "entries": 115,
+      "deterministic": true,
+      "equalToPure": true,
+      "coldMs": 23.57,
+      "medianMs": 21.26,
+      "minMs": 15.12,
+      "maxMs": 28.03
+    }
+  ],
+  "steps": [
+    {
+      "stepMs": 1,
+      "adjusts": 55401,
+      "equalToPure": true,
+      "wallMs": 450
+    },
+    {
+      "stepMs": 7,
+      "adjusts": 7915,
+      "equalToPure": true,
+      "wallMs": 85
+    },
+    {
+      "stepMs": 100,
+      "adjusts": 555,
+      "equalToPure": true,
+      "wallMs": 26
+    },
+    {
+      "stepMs": 1000,
+      "adjusts": 56,
+      "equalToPure": true,
+      "wallMs": 22
+    },
+    {
+      "stepMs": 55400,
+      "adjusts": 2,
+      "equalToPure": true,
+      "wallMs": 23
+    }
+  ],
+  "worstDeltaMs": 0,
+  "demos": [
+    {
+      "feature": "entry/exit order",
+      "observed": [
+        "enter p1",
+        "enter c1",
+        "-- go",
+        "exit c1",
+        "exit p1",
+        "action go",
+        "enter p2",
+        "enter c2"
+      ],
+      "expected": [
+        "enter p1",
+        "enter c1",
+        "-- go",
+        "exit c1",
+        "exit p1",
+        "action go",
+        "enter p2",
+        "enter c2"
+      ],
+      "pass": true
+    },
+    {
+      "feature": "parallel regions",
+      "observed": [
+        "{\"a\":\"a1\",\"b\":\"b1\"}",
+        "{\"a\":\"a2\",\"b\":\"b2\"}",
+        "enter a2",
+        "enter b2"
+      ],
+      "expected": [
+        "{\"a\":\"a1\",\"b\":\"b1\"}",
+        "{\"a\":\"a2\",\"b\":\"b2\"}",
+        "enter a2",
+        "enter b2"
+      ],
+      "pass": true
+    },
+    {
+      "feature": "history (shallow)",
+      "observed": [
+        "{\"m\":\"x\"}",
+        "{\"m\":\"y\"}",
+        "\"off\"",
+        "{\"m\":\"y\"}"
+      ],
+      "expected": [
+        "{\"m\":\"x\"}",
+        "{\"m\":\"y\"}",
+        "\"off\"",
+        "{\"m\":\"y\"}"
+      ],
+      "pass": true
+    },
+    {
+      "feature": "done.state",
+      "observed": [
+        "{\"scene\":\"s\"}",
+        "\"next\""
+      ],
+      "expected": [
+        "{\"scene\":\"s\"}",
+        "\"next\""
+      ],
+      "pass": true
+    },
+    {
+      "feature": "eventless (always)",
+      "observed": [
+        "\"a\"",
+        "\"c\"",
+        "-- go",
+        "exit a",
+        "enter b",
+        "exit b",
+        "enter c"
+      ],
+      "expected": [
+        "\"a\"",
+        "\"c\"",
+        "-- go",
+        "exit a",
+        "enter b",
+        "exit b",
+        "enter c"
+      ],
+      "pass": true
+    },
+    {
+      "feature": "delayed transition + cancel on exit",
+      "observed": [
+        "timers 1 -> 0",
+        "\"c\""
+      ],
+      "expected": [
+        "timers 1 -> 0",
+        "\"c\""
+      ],
+      "pass": true
+    },
+    {
+      "feature": "same-deadline timers (TestClock)",
+      "observed": [
+        "100 enter a2",
+        "100 enter b2"
+      ],
+      "expected": [
+        "100 enter a2",
+        "100 enter b2"
+      ],
+      "pass": true
+    }
+  ],
+  "codec": {
+    "jsonBytes": 41135,
+    "metaBytes": 9504,
+    "nonDataPaths": [],
+    "codeExpressionsInRevived": 0,
+    "textRoundTrip": true,
+    "machineRoundTrip": true,
+    "irRoundTrip": true,
+    "irRoundTripThroughText": true,
+    "irRoundTripThroughMachine": true,
+    "functionConfig": {
+      "codeExpressions": 2,
+      "nonDataPaths": 1,
+      "sample": "{\"id\":\"fn\",\"initial\":\"a\",\"states\":{\"a\":{\"invoke\":{\"src\":\"x\",\"onDone\":{\"@code\":\"({ event }) => ({ target: \\\"b\\\", context: { url: event.output } })\",\"@lang\":\"ts\"}}},\"b\":{\"entry\":{\"@code\":\"(_, enq) => enq(() => {\\n        return;\\n      })\",\"@"
+    }
+  },
+  "decodeCheck": {
+    "decodeIgnoresStructure": true,
+    "decodeFollowsMeta": true
+  },
+  "traversals": [
+    {
+      "machine": "scenes skeleton",
+      "events": "default (all own events)",
+      "adjacencyStates": 20,
+      "shortestPaths": 20,
+      "simplePaths": 9215,
+      "simplePathsToEnd": 4608,
+      "shortestPathToEndSteps": 8,
+      "ms": 50
+    },
+    {
+      "machine": "scenes skeleton",
+      "events": "without xstate.done.state",
+      "adjacencyStates": 20,
+      "shortestPaths": 20,
+      "simplePaths": 20,
+      "simplePathsToEnd": 1,
+      "shortestPathToEndSteps": 20,
+      "ms": 5
+    },
+    {
+      "machine": "full",
+      "events": "default, limit 3000",
+      "adjacencyStates": "limit exceeded",
+      "shortestPaths": "-",
+      "simplePaths": "-",
+      "simplePathsToEnd": "-",
+      "shortestPathToEndSteps": "-",
+      "ms": 8062
+    },
+    {
+      "machine": "full",
+      "events": "without xstate.done.state, limit 3000",
+      "adjacencyStates": "limit exceeded",
+      "shortestPaths": "-",
+      "simplePaths": "-",
+      "simplePathsToEnd": "-",
+      "shortestPathToEndSteps": "-",
+      "ms": 8011
+    },
+    {
+      "machine": "full",
+      "events": "only xstate.after",
+      "adjacencyStates": 20,
+      "shortestPaths": 20,
+      "simplePaths": 20,
+      "simplePathsToEnd": 1,
+      "shortestPathToEndSteps": 20,
+      "ms": 25
+    }
+  ],
+  "elementsAtEnd": "{\"entering\":14}",
+  "directedGraph": {
+    "nodes": 215,
+    "edges": 141,
+    "jsonBytes": 31096,
+    "ms": 0.7
+  },
+  "inspection": {
+    "types": {
+      "@xstate.actor": 1,
+      "@xstate.transition": 67
+    },
+    "statelyInspectImport": "Export named 'toObserver' not found in module '/srv/share/projects/reebeat/.worktrees/scxml-spike/spike/xstate/node_modules/xstate/dist/xstate.cjs.mjs'."
+  },
+  "risk": {
+    "installed": {
+      "xstate": "6.0.0-alpha.70",
+      "@xstate/effect": "1.0.0-alpha.9",
+      "effect": "4.1.0",
+      "@statelyai/inspect": "0.7.2"
+    },
+    "window": {
+      "from": "2026-07-31",
+      "to": "2026-10-29"
+    },
+    "cadence": {
+      "xstate": {
+        "pkg": "xstate",
+        "distTags": {
+          "beta": "5.0.0-beta.54",
+          "latest": "5.33.3",
+          "alpha": "6.0.0-alpha.71"
+        },
+        "published": 349,
+        "inWindow": 46,
+        "inWindowByLine": {
+          "6.0.0-alpha": 41,
+          "5.32.x": 1,
+          "5.33.x": 4
+        },
+        "firstInWindow": "6.0.0-alpha.26",
+        "versions": [
+          "6.0.0-alpha.26",
+          "6.0.0-alpha.27",
+          "6.0.0-alpha.31",
+          "6.0.0-alpha.32",
+          "6.0.0-alpha.33",
+          "6.0.0-alpha.34",
+          "6.0.0-alpha.35",
+          "6.0.0-alpha.36",
+          "6.0.0-alpha.37",
+          "6.0.0-alpha.38",
+          "6.0.0-alpha.39",
+          "6.0.0-alpha.40",
+          "6.0.0-alpha.41",
+          "6.0.0-alpha.43",
+          "6.0.0-alpha.44",
+          "6.0.0-alpha.45",
+          "6.0.0-alpha.46",
+          "6.0.0-alpha.47",
+          "6.0.0-alpha.48",
+          "5.32.6",
+          "6.0.0-alpha.49",
+          "6.0.0-alpha.50",
+          "6.0.0-alpha.51",
+          "6.0.0-alpha.52",
+          "6.0.0-alpha.53",
+          "5.33.0",
+          "6.0.0-alpha.54",
+          "5.33.1",
+          "6.0.0-alpha.55",
+          "5.33.2",
+          "6.0.0-alpha.56",
+          "6.0.0-alpha.57",
+          "6.0.0-alpha.58",
+          "6.0.0-alpha.59",
+          "6.0.0-alpha.60",
+          "6.0.0-alpha.61",
+          "6.0.0-alpha.62",
+          "6.0.0-alpha.63",
+          "6.0.0-alpha.64",
+          "6.0.0-alpha.65",
+          "6.0.0-alpha.66",
+          "5.33.3",
+          "6.0.0-alpha.68",
+          "6.0.0-alpha.69",
+          "6.0.0-alpha.70",
+          "6.0.0-alpha.71"
+        ],
+        "lastRelease": "6.0.0-alpha.71 2026-10-29T13:40:54.167Z",
+        "medianGapHours": 25.6,
+        "longestGapDays": 9.7
+      },
+      "effect": {
+        "pkg": "@xstate/effect",
+        "distTags": {
+          "alpha": "0.1.0-alpha.4",
+          "latest": "1.0.0-alpha.10"
+        },
+        "published": 8,
+        "inWindow": 8,
+        "inWindowByLine": {
+          "0.1.0-alpha": 5,
+          "1.0.0-alpha": 3
+        },
+        "firstInWindow": "0.1.0-alpha.2",
+        "versions": [
+          "0.1.0-alpha.2",
+          "0.1.0-alpha.4",
+          "0.1.0-alpha.5",
+          "0.1.0-alpha.6",
+          "0.1.0-alpha.7",
+          "1.0.0-alpha.8",
+          "1.0.0-alpha.9",
+          "1.0.0-alpha.10"
+        ],
+        "lastRelease": "1.0.0-alpha.10 2026-10-29T13:41:16.345Z",
+        "medianGapHours": 157.2,
+        "longestGapDays": 9.7
+      },
+      "scxml": {
+        "pkg": "@xstate/scxml",
+        "distTags": {
+          "alpha": "1.0.0-alpha.1",
+          "latest": "1.0.0-alpha.4"
+        },
+        "published": 4,
+        "inWindow": 4,
+        "inWindowByLine": {
+          "1.0.0-alpha": 4
+        },
+        "firstInWindow": "1.0.0-alpha.1",
+        "versions": [
+          "1.0.0-alpha.1",
+          "1.0.0-alpha.2",
+          "1.0.0-alpha.3",
+          "1.0.0-alpha.4"
+        ],
+        "lastRelease": "1.0.0-alpha.4 2026-10-29T13:41:27.011Z",
+        "medianGapHours": 232,
+        "longestGapDays": 19.1
+      }
+    },
+    "breaking": {
+      "alphasInWindowWithMajor": 3,
+      "alphasInWindow": 46,
+      "majorChanges": [
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "`ActorRefFrom<T>` accepts actor logic only, and `ActorRefFromLogic<T>` is removed. Replace `ActorRefFromLogic<T>` with `ActorRefFrom<T>`. Pass the logic type in"
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "State keys cannot contain an unescaped `.`, which separates path segments. Creating a machine with such a key throws `State key \"foo.bar\" contains \".\" — nest th"
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "`#` targets, `snapshot.matches('#…')` and `@xstate.stateIn` guards resolve by exact state id. The text after `#` is a state's whole id, either its explicit `id`"
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "The root `xstate` entry no longer exports type-level helpers: `TODO`, `IsAny`, `IsNever`, `Equals`, `Cast`, `Compute`, `Prop`, `HomomorphicOmit`, `LowInfer`, `D"
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "Implicit state and invoke ids no longer use the `(machine)` placeholder."
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "Children invoked with inline logic no longer get a synthetic source name (`xstate.invoke.<index>.<stateId>`). Their persisted entries omit `src`, and restoring "
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "Bare string transition values throw when the machine is created, in every build. This matches the types and `machineFromJSON`, which already rejected them. It c"
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "`invoke` requires `input` when the invoked actor logic requires input, matching `createActor(logic, { input })` and `enq.spawn(logic, { input })`. This applies "
+        },
+        {
+          "version": "6.0.0-alpha.70",
+          "summary": "A machine that declares `version` must also declare `id`, because persisted snapshots record the machine as `{ id, version }`. `createMachine`, `setup(...).crea"
+        },
+        {
+          "version": "6.0.0-alpha.68",
+          "summary": "Public names are consistent before the beta. The old names are not kept as aliases."
+        },
+        {
+          "version": "6.0.0-alpha.68",
+          "summary": "Built-in event and effect type strings follow one rule: events delivered to logic use the `xstate.` prefix, and effect types use the `@xstate.` prefix. Inspecti"
+        },
+        {
+          "version": "6.0.0-alpha.68",
+          "summary": "Serialized actor identity uses one shape everywhere: `{ $actor: address }`, with an optional string `incarnation`."
+        },
+        {
+          "version": "6.0.0-alpha.68",
+          "summary": "Pending timers are a list, and no generated timer ids exist."
+        },
+        {
+          "version": "6.0.0-alpha.27",
+          "summary": "Require history states to declare a non-empty default target. Authored literal"
+        }
+      ],
+      "xstateEffectBreaking": [
+        {
+          "version": "1.0.0-alpha.9",
+          "summary": "`taggedState(...)` tags a root parallel state with the machine `id` instead of `'(machine)'`, or with `''` when the machine has no id. `TaggedState` and `StateT"
+        },
+        {
+          "version": "1.0.0-alpha.8",
+          "summary": "Effect logic creators follow the core `create*Logic` naming:"
+        }
+      ]
+    },
+    "sizes": {
+      "licence": {
+        "xstate": "MIT",
+        "@xstate/effect": "MIT",
+        "effect": "MIT"
+      },
+      "duBytes": {
+        "xstate": 5287207,
+        "@xstate/effect": 114902,
+        "effect": 55918990
+      },
+      "unpackedSize": {
+        "xstate@6.0.0-alpha.70": 5287207,
+        "@xstate/effect@1.0.0-alpha.9": 114902,
+        "xstate@6.0.0-alpha.71": 5505548,
+        "@xstate/effect@1.0.0-alpha.10": 143805
+      },
+      "bundles": [
+        {
+          "name": "effect-only",
+          "bytes": 96125,
+          "gzipBytes": 33736
+        },
+        {
+          "name": "xstate-pure",
+          "bytes": 132988,
+          "gzipBytes": 42925
+        },
+        {
+          "name": "all",
+          "bytes": 249995,
+          "gzipBytes": 84596
+        }
+      ]
+    },
+    "tsc": {
+      "version": "Version 7.0.2+effect-tsgo.0.63.0",
+      "repoFlags": "",
+      "exactFlags": "node_modules/xstate/dist/declarations/src/createActor.d.ts(29,22): error TS2420: Class 'Actor<TLogic>' incorrectly implements interface 'ActorInstance<SnapshotFrom<TLogic>, EventFromLogic<TLogic>, EmittedFrom<TLogic>, SendableEventFromLogic<TLogic>>'.\n  Types of property 'registryKey' are incompatible.\n    Type 'string | undefined' is not assignable to type 'string'.\n      Type 'undefined' is not assignable to type 'string'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(674,32): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(674,75): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(694,57): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(700,88): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(700,220): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(717,31): error TS2344: Type '{ history: unknown; } & { type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Types of property 'type' are incompatible.\n    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.\n      Type 'TType & undefined' is not assignable to type 'SetupStateType'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(748,24): error TS2344: Type '({ type: \"history\"; } | { history: unknown; }) & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.\n  Type '{ history: unknown; } & TStateSchema' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n    Types of property 'history' are incompatible.\n      Type '\"deep\" | \"shallow\" | true | undefined' is not assignable to type '\"deep\" | \"shallow\" | true'.\n        Type 'undefined' is not assignable to type '\"deep\" | \"shallow\" | true'.\nnode_modules/xstate/dist/declarations/src/setup.d.ts(1175,668): error TS2344: Type 'MergeSetupStateSchemas<TStates, TExtendStates>' does not satisfy the constraint 'Record<string, SetupStateSchema>'.\n  Type 'K extends keyof TExtendStates ? K extends keyof TStates ? MergeSetupStateSchema<TStates[K], TExtendStates[K]> : TExtendStates[K] : ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n    Type '(keyof TExtendStates extends keyof TExtendStates ? keyof TExtendStates extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates], TExtendStates[keyof TStates & keyof TExtendStates]> : TExtendStates[keyof TExtendStates] : ...) | ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n      Type 'keyof TExtendStates extends keyof TExtendStates ? keyof TExtendStates extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates], TExtendStates[keyof TStates & keyof TExtendStates]> : TExtendStates[keyof TExtendStates] : ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n        Type '(string extends keyof TExtendStates ? keyof TExtendStates & string extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & ... 1 more ... & string]> : TExtendStates[keyof TExtendStates & string] : ...) | ... | ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n          Type 'string extends keyof TExtendStates ? keyof TExtendStates & string extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & ... 1 more ... & string]> : TExtendStates[keyof TExtendStates & string] : ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n            Type '(keyof TExtendStates & string extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & ... 1 more ... & string]> : TExtendStates[keyof TExtendStates & string]) | ...' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n              Type 'keyof TExtendStates & string extends keyof TStates ? MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & ... 1 more ... & string]> : TExtendStates[keyof TExtendStates & string]' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n                Type 'TExtendStates[keyof TExtendStates & string] | MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & ... 1 more ... & string]>' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n                  Type 'MergeSetupStateSchema<TStates[keyof TStates & keyof TExtendStates & string], TExtendStates[keyof TStates & keyof TExtendStates & string]>' is not assignable to type 'SetupStateSchema' with 'exactOptionalPropertyTypes: true'. Consider adding 'undefined' to the types of the target's properties.\n                    Types of property 'type' are incompatible.\n                      Type 'TExtendStates[keyof TStates & keyof TExtendStates & string][\"type\"]' is not assignable to type 'SetupStateType'.\n                        Type 'TExtendStates[string][\"type\"]' is not assignable to type 'SetupStateType'.\n                          Type 'SetupStateType | undefined' is not assignable to type 'SetupStateType'.\n                            Type 'undefined' is not assignable to type 'SetupStateType'."
+    }
+  },
+  "frames": [
+    {
+      "fps": 24,
+      "frames": 1330,
+      "randomAccessSamples": 167,
+      "mismatches": 0,
+      "randomAccessMedianUs": 6783,
+      "randomAccessMaxUs": 20203,
+      "sequentialMedianUs": 19,
+      "firstMismatch": "-"
+    },
+    {
+      "fps": 30,
+      "frames": 1662,
+      "randomAccessSamples": 208,
+      "mismatches": 0,
+      "randomAccessMedianUs": 6240,
+      "randomAccessMaxUs": 63502,
+      "sequentialMedianUs": 15,
+      "firstMismatch": "-"
+    },
+    {
+      "fps": 60,
+      "frames": 3324,
+      "randomAccessSamples": 416,
+      "mismatches": 0,
+      "randomAccessMedianUs": 5407,
+      "randomAccessMaxUs": 21516,
+      "sequentialMedianUs": 14,
+      "firstMismatch": "-"
+    }
+  ]
+}

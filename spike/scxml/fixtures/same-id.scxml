@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns:rb="urn:reebeat:ir:1" xmlns="http://www.w3.org/2005/07/scxml" rb:speed="1.1" rb:title="Same name, new place" rb:ir="1" version="1.0" rb:author="reebeat" initial="sc1">
+  <rb:chapter id="ch1" line="7" title="Two screens" synopsis="A box on one screen and a box on the next: is it the same box?">
+    <rb:scene ref="sc1"/>
+    <rb:scene ref="sc2"/>
+  </rb:chapter>
+  <rb:chapter id="ch2" line="40" title="A name that stays" synopsis="Give every box a name, and each screen can follow it.">
+    <rb:scene ref="sc3"/>
+    <rb:scene ref="sc4"/>
+    <rb:scene ref="sc5"/>
+    <rb:scene ref="sc6"/>
+    <rb:scene ref="sc7"/>
+  </rb:chapter>
+  <state rb:chapter="ch1" rb:heading="INT. TITLE CARD - DAY" rb:line="11" rb:transition="default" id="sc1">
+    <rb:element cell="mc" class="title" id="title" line="13" text="Same name, new place" visible="true"/>
+    <rb:element cell="bc" class="muted" id="sub" line="14" text="A small idea about moving boxes" visible="true"/>
+    <rb:line id="sc1.l1" line="18" pause-before="0" speed="0.99" text="Here is a small idea about moving things.">
+      <rb:w v="Here"/>
+      <rb:w v="is"/>
+      <rb:w v="a"/>
+      <rb:w v="small"/>
+      <rb:w v="idea"/>
+      <rb:w v="about"/>
+      <rb:w v="moving"/>
+      <rb:w v="things."/>
+    </rb:line>
+    <rb:line id="sc1.l2" line="21" pause-before="0" speed="1.1" text="A box can glide across a screen only if we know it is the same box.">
+      <rb:w v="A"/>
+      <rb:w v="box"/>
+      <rb:w v="can"/>
+      <rb:w v="glide"/>
+      <rb:w v="across"/>
+      <rb:w v="a"/>
+      <rb:w v="screen"/>
+      <rb:w v="only"/>
+      <rb:w v="if"/>
+      <rb:w v="we"/>
+      <rb:w v="know"/>
+      <rb:w v="it"/>
+      <rb:w v="is"/>
+      <rb:w v="the"/>
+      <rb:w v="same"/>
+      <rb:w v="box."/>
+    </rb:line>
+    <transition event="rb.next" target="sc2"/>
+  </state>
+  <state rb:chapter="ch1" rb:heading="INT. FIRST SCREEN - DAY" rb:line="23" rb:transition="default" id="sc2">
+    <rb:element cell="tl" class="label" id="tag" line="25" text="First screen" visible="true"/>
+    <rb:element cell="ml" class="box" id="box" line="26" text="A box" visible="true"/>
+    <rb:element cell="mr" class="box" id="twin" line="27" text="Another box" visible="false"/>
+    <rb:line id="sc2.l1" line="35" pause-before="0" speed="1.1" text="Picture a box on a screen.">
+      <rb:w v="Picture"/>
+      <rb:w v="a"/>
+      <rb:w v="box"/>
+      <rb:w v="on"/>
+      <rb:w v="a"/>
+      <rb:w v="screen."/>
+    </rb:line>
+    <rb:line id="sc2.l2" line="38" pause-before="0" speed="1.1" text="On the next screen there is a box too. Is it the same box, or a new one?">
+      <rb:w v="On"/>
+      <rb:w v="the"/>
+      <rb:w v="next"/>
+      <rb:w v="screen"/>
+      <rb:w v="there"/>
+      <rb:w v="is"/>
+      <rb:w v="a"/>
+      <rb:w v="box"/>
+      <rb:w v="too."/>
+      <rb:w v="Is"/>
+      <rb:w v="it"/>
+      <rb:w v="the"/>
+      <rb:w v="same"/>
+      <rb:w v="box,"/>
+      <rb:w v="or"/>
+      <rb:w v="a"/>
+      <rb:w v="new"/>
+      <rb:w v="one?"/>
+    </rb:line>
+    <rb:effect id="f1" line="30" verb="focus" written="word(&quot;screen&quot;, 1).end" target="box">
+      <rb:when>
+        <rb:anchor edge="end" explicit="true" kind="word" occurrence="1" phrase="screen"/>
+      </rb:when>
+    </rb:effect>
+    <rb:effect id="r1" line="31" verb="show" written="word(&quot;too&quot;).end" target="twin">
+      <rb:when>
+        <rb:anchor edge="end" explicit="false" kind="word" occurrence="1" phrase="too"/>
+      </rb:when>
+    </rb:effect>
+    <transition event="rb.next" target="sc3"/>
+  </state>
+  <state rb:chapter="ch2" rb:heading="INT. THE NAMES - DAY" rb:line="46" rb:transition="cut" id="sc3">
+    <rb:element cell="ml" class="box" id="one" line="48" text="Box one" visible="true"/>
+    <rb:element cell="mr" class="box" id="two" line="49" text="Box two" visible="true"/>
+    <rb:element cell="tc" class="label" id="tag" line="50" text="Every box has a name" visible="true"/>
+    <rb:line id="sc3.l1" line="57" pause-before="0" speed="1.1" text="Give every box a name. Here the names are one and two.">
+      <rb:w v="Give"/>
+      <rb:w v="every"/>
+      <rb:w v="box"/>
+      <rb:w v="a"/>
+      <rb:w v="name."/>
+      <rb:w v="Here"/>
+      <rb:w v="the"/>
+      <rb:w v="names"/>
+      <rb:w v="are"/>
+      <rb:w v="one"/>
+      <rb:w v="and"/>
+      <rb:w v="two."/>
+    </rb:line>
+    <rb:effect id="f1" line="53" verb="focus" written="word(&quot;name&quot;).end" target="tag">
+      <rb:when>
+        <rb:anchor edge="end" explicit="false" kind="word" occurrence="1" phrase="name"/>
+      </rb:when>
+    </rb:effect>
+    <transition event="rb.next" target="sc4"/>
+  </state>
+  <state rb:chapter="ch2" rb:heading="INT. THE NEXT SCREEN - DAY" rb:line="61" rb:transition="auto-animate" id="sc4">
+    <rb:element cell="mc" class="box" id="one" line="63" text="Box one" visible="true"/>
+    <rb:element cell="tc" class="accent" id="tag" line="64" text="Every box has a name" visible="true"/>
+    <rb:element cell="bc" class="muted" id="hint" line="65" text="Same name, so it moves" visible="true"/>
+    <rb:element cell="br" class="label" id="note" line="66" text="Matched by id" visible="false"/>
+    <rb:line id="sc4.l1" line="76" pause-before="0" speed="1.1" text="On the next screen, box one sits somewhere else. Its name matches, so it slides there.">
+      <rb:w v="On"/>
+      <rb:w v="the"/>
+      <rb:w v="next"/>
+      <rb:w v="screen,"/>
+      <rb:w v="box"/>
+      <rb:w v="one"/>
+      <rb:w v="sits"/>
+      <rb:w v="somewhere"/>
+      <rb:w v="else."/>
+      <rb:w v="Its"/>
+      <rb:w v="name"/>
+      <rb:w v="matches,"/>
+      <rb:w v="so"/>
+      <rb:w v="it"/>
+      <rb:w v="slides"/>
+      <rb:w v="there."/>
+    </rb:line>
+    <rb:line id="sc4.l2" line="81" pause-before="0" speed="1.05" text="Box two has no match, so it leaves.">
+      <rb:w v="Box"/>
+      <rb:w v="two"/>
+      <rb:w v="has"/>
+      <rb:w v="no"/>
+      <rb:w v="match,"/>
+      <rb:w v="so"/>
+      <rb:w v="it"/>
+      <rb:w v="leaves."/>
+    </rb:line>
+    <rb:effect id="s1" line="69" verb="sound" written="transition.start" name="whoosh">
+      <rb:when>
+        <rb:anchor kind="edge" transition="transition">
+          <rb:subject kind="scene"/>
+          <rb:at edge="start"/>
+        </rb:anchor>
+      </rb:when>
+    </rb:effect>
+    <rb:effect id="s2" line="70" verb="sound" written="one.move.50%" name="ding">
+      <rb:when>
+        <rb:anchor kind="edge" transition="move">
+          <rb:subject id="one" kind="element"/>
+          <rb:at percent="50"/>
+        </rb:anchor>
+      </rb:when>
+    </rb:effect>
+    <rb:effect id="f1" line="71" verb="focus" written="word(&quot;slides&quot;).start -0.2s" target="hint">
+      <rb:when>
+        <rb:shift>
+          <rb:anchor edge="start" explicit="false" kind="word" occurrence="1" phrase="slides"/>
+          <rb:offset unit="flicks" value="-141120000"/>
+        </rb:shift>
+      </rb:when>
+    </rb:effect>
+    <rb:effect id="r1" line="72" verb="show" written="word(&quot;matches&quot;).end +0.1s" target="note">
+      <rb:when>
+        <rb:shift>
+          <rb:anchor edge="end" explicit="false" kind="word" occurrence="1" phrase="matches"/>
+          <rb:offset unit="flicks" value="70560000"/>
+        </rb:shift>
+      </rb:when>
+    </rb:effect>
+    <transition event="rb.next" target="sc5"/>
+  </state>
+  <state rb:chapter="ch2" rb:heading="INT. A NEW NAME - DAY" rb:line="85" rb:transition="auto-animate" id="sc5">
+    <rb:element cell="mr" class="box" id="one" line="87" text="Box one" visible="true"/>
+    <rb:element cell="bc" class="accent" id="hint" line="88" text="Same name, so it moves" visible="true"/>
+    <rb:element cell="ml" class="box" id="three" line="89" text="Box three" visible="true"/>
+    <rb:line id="sc5.l1" line="96" pause-before="0" speed="1.1" text="A name we have not seen before is a new box, so it appears.">
+      <rb:w v="A"/>
+      <rb:w v="name"/>
+      <rb:w v="we"/>
+      <rb:w v="have"/>
+      <rb:w v="not"/>
+      <rb:w v="seen"/>
+      <rb:w v="before"/>
+      <rb:w v="is"/>
+      <rb:w v="a"/>
+      <rb:w v="new"/>
+      <rb:w v="box,"/>
+      <rb:w v="so"/>
+      <rb:w v="it"/>
+      <rb:w v="appears."/>
+    </rb:line>
+    <rb:effect id="s1" line="92" verb="sound" written="transition.start" name="ding">
+      <rb:when>
+        <rb:anchor kind="edge" transition="transition">
+          <rb:subject kind="scene"/>
+          <rb:at edge="start"/>
+        </rb:anchor>
+      </rb:when>
+    </rb:effect>
+    <transition event="rb.next" target="sc6"/>
+  </state>
+  <state rb:chapter="ch2" rb:heading="INT. THREE ANSWERS - DAY" rb:line="98" rb:transition="default" id="sc6">
+    <rb:element cell="tc" class="title" id="head" line="100" text="Three answers" visible="true"/>
+    <rb:element cell="ml" class="box" id="same" line="101" text="Same name: it moves" visible="true"/>
+    <rb:element cell="mc" class="box" id="new" line="102" text="New name: it appears" visible="false"/>
+    <rb:element cell="mr" class="box" id="gone" line="103" text="Missing name: it leaves" visible="false"/>
+    <rb:line id="sc6.l1" line="111" pause-before="0" speed="1.1" text="Comparing two screens by name gives three answers.">
+      <rb:w v="Comparing"/>
+      <rb:w v="two"/>
+      <rb:w v="screens"/>
+      <rb:w v="by"/>
+      <rb:w v="name"/>
+      <rb:w v="gives"/>
+      <rb:w v="three"/>
+      <rb:w v="answers."/>
+    </rb:line>
+    <rb:line id="sc6.l2" line="114" pause-before="0" speed="1.1" text="The same name means it moves.">
+      <rb:w v="The"/>
+      <rb:w v="same"/>
+      <rb:w v="name"/>
+      <rb:w v="means"/>
+      <rb:w v="it"/>
+      <rb:w v="moves."/>
+    </rb:line>
+    <rb:line id="sc6.l3" line="117" pause-before="0" speed="1.1" text="A new name means it appears. A missing name means it leaves.">
+      <rb:w v="A"/>
+      <rb:w v="new"/>
+      <rb:w v="name"/>
+      <rb:w v="means"/>
+      <rb:w v="it"/>
+      <rb:w v="appears."/>
+      <rb:w v="A"/>
+      <rb:w v="missing"/>
+      <rb:w v="name"/>
+      <rb:w v="means"/>
+      <rb:w v="it"/>
+      <rb:w v="leaves."/>
+    </rb:line>
+    <rb:effect id="r1" line="106" verb="show" written="word(&quot;appears&quot;).end" target="new">
+      <rb:when>
+        <rb:anchor edge="end" explicit="false" kind="word" occurrence="1" phrase="appears"/>
+      </rb:when>
+    </rb:effect>
+    <rb:effect id="r2" line="107" verb="show" written="word(&quot;leaves&quot;).end" target="gone">
+      <rb:when>
+        <rb:anchor edge="end" explicit="false" kind="word" occurrence="1" phrase="leaves"/>
+      </rb:when>
+    </rb:effect>
+    <transition event="rb.next" target="sc7"/>
+  </state>
+  <state rb:chapter="ch2" rb:heading="INT. THE POINT - DAY" rb:line="119" rb:transition="default" id="sc7">
+    <rb:element cell="mc" class="title" id="title" line="121" text="Same name, new place" visible="true"/>
+    <rb:element cell="bc" class="muted" id="sub" line="122" text="Keep the name and the motion comes free" visible="true"/>
+    <rb:line id="sc7.l1" line="130" pause-before="0.5" speed="1.1" text="So keep the name, and the motion comes for free.">
+      <rb:w v="So"/>
+      <rb:w v="keep"/>
+      <rb:w v="the"/>
+      <rb:w v="name,"/>
+      <rb:w v="and"/>
+      <rb:w v="the"/>
+      <rb:w v="motion"/>
+      <rb:w v="comes"/>
+      <rb:w v="for"/>
+      <rb:w v="free."/>
+    </rb:line>
+    <rb:effect id="p1" line="125" verb="sound" written="0.5s because &quot;a soft pop as the closing card settles, before the narration starts&quot;" name="pop">
+      <rb:when absolute-flicks="352800000" reason="a soft pop as the closing card settles, before the narration starts"/>
+    </rb:effect>
+  </state>
+</scxml>

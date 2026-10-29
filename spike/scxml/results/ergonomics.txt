@@ -1,0 +1,72 @@
+## sizes (stories/same-id)
+generic   57027 bytes 1688 lines  3239 gzip
+json      17675 bytes  785 lines  2445 gzip
+scxml     11726 bytes  281 lines  2328 gzip
+
+## diff: move element box (cell ml -> mc)
+--- generic: 2 changed lines
+@@ -327,3 +327,3 @@
+                   <rb:f k="cell">
+-                    <rb:s>ml</rb:s>
++                    <rb:s>mc</rb:s>
+                   </rb:f>
+
+--- json: 2 changed lines
+@@ -155,3 +155,3 @@
+         {
+-          "cell": "ml",
++          "cell": "mc",
+           "class": "box",
+
+--- scxml: 2 changed lines
+@@ -48,3 +48,3 @@
+     <rb:element cell="tl" class="label" id="tag" line="25" text="First screen" visible="true"/>
+-    <rb:element cell="ml" class="box" id="box" line="26" text="A box" visible="true"/>
++    <rb:element cell="mc" class="box" id="box" line="26" text="A box" visible="true"/>
+     <rb:element cell="mr" class="box" id="twin" line="27" text="Another box" visible="false"/>
+
+
+## diff: retime f1 (-0.2 s -> -0.3 s)
+--- generic: 4 changed lines
+@@ -798,3 +798,3 @@
+                               <rb:f k="value">
+-                                <rb:n v="-141120000"/>
++                                <rb:n v="-211680000"/>
+                               </rb:f>
+@@ -807,3 +807,3 @@
+                   <rb:f k="written">
+-                    <rb:s>word("slides").start -0.2s</rb:s>
++                    <rb:s>word("slides").start -0.3s</rb:s>
+                   </rb:f>
+
+--- json: 4 changed lines
+@@ -371,3 +371,3 @@
+                 "unit": "flicks",
+-                "value": -141120000
++                "value": -211680000
+               }
+@@ -375,3 +375,3 @@
+           },
+-          "written": "word(\"slides\").start -0.2s"
++          "written": "word(\"slides\").start -0.3s"
+         },
+
+--- scxml: 4 changed lines
+@@ -164,3 +164,3 @@
+     </rb:effect>
+-    <rb:effect id="f1" line="71" verb="focus" written="word(&quot;slides&quot;).start -0.2s" target="hint">
++    <rb:effect id="f1" line="71" verb="focus" written="word(&quot;slides&quot;).start -0.3s" target="hint">
+       <rb:when>
+@@ -168,3 +168,3 @@
+           <rb:anchor edge="start" explicit="false" kind="word" occurrence="1" phrase="slides"/>
+-          <rb:offset unit="flicks" value="-141120000"/>
++          <rb:offset unit="flicks" value="-211680000"/>
+         </rb:shift>
+
+
+## concurrent edits: 1000 random pairs of single-leaf edits on different leaves (137 editable leaves)
+conflicts (a conflict here is false: the two edits touch different facts): {
+  generic: 0,
+  json: 5,
+  scxml: 43,
+}

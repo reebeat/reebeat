@@ -1,0 +1,24 @@
+bun test v1.3.13 (bf2e2cec)
+
+src/roundtrip.test.ts:
+(pass) IR <-> SCXML > control: the JSON codec holds the law on the same generator [3135.97ms]
+(pass) IR <-> SCXML > without the escape layer the law is falsified (XML 1.0 cannot carry every String) [28.00ms]
+38 |     expect(Arbitrary.formatCheckFailure(result)).toContain("Property falsified");
+39 |   });
+40 | 
+41 |   test("decode(encode(ir)) = ir for generated Graphs", async () => {
+42 |     const result = await check(law({ dec: decodeScxml, enc: encodeScxml }), { runs, seed: 7 });
+43 |     expect(Arbitrary.formatCheckFailure(result)).toBeUndefined();
+                                                      ^
+error: expect(received).toBeUndefined()
+
+Received: "Property falsified after 65 run(s) and 9 shrink(s)\nShrunk input: {\n  \"chapters\": [],\n  \"scenes\": [{\n    \"chapterId\": \"\\u0000\",\n    \"effects\": [],\n    \"elements\": [],\n    \"events\": [{\n      \"event\": {\n        \"kind\": \"each\",\n        \"of\": [],\n        \"stagger\": {\n          \"unit\": \"f\",\n          \"value\": 5e-324\n        },\n        \"throttle\"
+
+      at <anonymous> (/srv/share/projects/reebeat/.worktrees/scxml-spike/spike/scxml/src/roundtrip.test.ts:43:50)
+(fail) IR <-> SCXML > decode(encode(ir)) = ir for generated Graphs [28.00ms]
+(pass) IR <-> generic structural XML (zero per-field mapping) > decode(encode(ir)) = ir for generated Graphs [5080.96ms]
+
+ 3 pass
+ 1 fail
+ 4 expect() calls
+Ran 4 tests across 1 file. [8.41s]

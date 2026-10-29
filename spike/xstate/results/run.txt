@@ -1,0 +1,211 @@
+
+== 1. interpreter at build time
+┌───┬──────────────────────────────────────────────┬─────────┬───────────────┬─────────────┬────────┬──────────┬───────┬───────┐
+│   │ name                                         │ entries │ deterministic │ equalToPure │ coldMs │ medianMs │ minMs │ maxMs │
+├───┼──────────────────────────────────────────────┼─────────┼───────────────┼─────────────┼────────┼──────────┼───────┼───────┤
+│ 0 │ createEffectActor + TestClock (one adjust)   │ 115     │ true          │ true        │ 60.26  │ 29.37    │ 23.64 │ 60.26 │
+│ 1 │ createEffectActor + TestClock (100 ms steps) │ 115     │ true          │ true        │ 46.73  │ 29.02    │ 25.54 │ 46.73 │
+│ 2 │ createActor + SimulatedClock                 │ 115     │ true          │ true        │ 21.76  │ 15.38    │ 11.72 │ 21.76 │
+│ 3 │ pure systemTransition/advanceSystemTime      │ 115     │ true          │ true        │ 23.57  │ 21.26    │ 15.12 │ 28.03 │
+└───┴──────────────────────────────────────────────┴─────────┴───────────────┴─────────────┴────────┴──────────┴───────┴───────┘
+generate IR -> MachineJSON: median 0.14 ms over 20; 55400 ms of story time in 7 Scenes
+┌───┬────────┬─────────┬─────────────┬────────┐
+│   │ stepMs │ adjusts │ equalToPure │ wallMs │
+├───┼────────┼─────────┼─────────────┼────────┤
+│ 0 │ 1      │ 55401   │ true        │ 450    │
+│ 1 │ 7      │ 7915    │ true        │ 85     │
+│ 2 │ 100    │ 555     │ true        │ 26     │
+│ 3 │ 1000   │ 56      │ true        │ 22     │
+│ 4 │ 55400  │ 2       │ true        │ 23     │
+└───┴────────┴─────────┴─────────────┴────────┘
+state/beat/scene marks compared: 52, missing: 0, max |observed - declared| = 0 ms
+sound cues: 4, observed at the declared ms: 4
+┌────┬────────┬───────────────┬───────────────┬─────────────────┬─────────────────┐
+│    │ state  │ declaredEnter │ observedEnter │ dwellDeclaredMs │ dwellObservedMs │
+├────┼────────┼───────────────┼───────────────┼─────────────────┼─────────────────┤
+│  0 │ sc1.s1 │ 0             │ 0             │ 9625            │ 9625            │
+│  1 │ sc2.s1 │ 9625          │ 9625          │ 2760            │ 2760            │
+│  2 │ sc2.s2 │ 12385         │ 12385         │ 3130            │ 3130            │
+│  3 │ sc2.s3 │ 15648         │ 15648         │ 2627            │ 2627            │
+│  4 │ sc3.s1 │ 18275         │ 18275         │ 2800            │ 2800            │
+│  5 │ sc3.s2 │ 21075         │ 21075         │ 2150            │ 2150            │
+│  6 │ sc4.s1 │ 23225         │ 23225         │ 5040            │ 5040            │
+│  7 │ sc4.s2 │ 28398         │ 28398         │ 4852            │ 4852            │
+│  8 │ sc5.s1 │ 33250         │ 33250         │ 5175            │ 5175            │
+│  9 │ sc6.s1 │ 38425         │ 38425         │ 9380            │ 9380            │
+│ 10 │ sc6.s2 │ 47938         │ 47938         │ 1537            │ 1537            │
+│ 11 │ sc6.s3 │ 49608         │ 49608         │ 617             │ 617             │
+│ 12 │ sc7.s1 │ 50225         │ 50225         │ 5175            │ 5175            │
+└────┴────────┴───────────────┴───────────────┴─────────────────┴─────────────────┘
+
+== 1c. what XState decides (tiny tests)
+┌───┬─────────────────────────────────────┬──────┐
+│   │ feature                             │ pass │
+├───┼─────────────────────────────────────┼──────┤
+│ 0 │ entry/exit order                    │ true │
+│ 1 │ parallel regions                    │ true │
+│ 2 │ history (shallow)                   │ true │
+│ 3 │ done.state                          │ true │
+│ 4 │ eventless (always)                  │ true │
+│ 5 │ delayed transition + cancel on exit │ true │
+│ 6 │ same-deadline timers (TestClock)    │ true │
+└───┴─────────────────────────────────────┴──────┘
+
+== 2. codec
+{
+  "jsonBytes": 41135,
+  "metaBytes": 9504,
+  "nonDataPaths": [],
+  "codeExpressionsInRevived": 0,
+  "textRoundTrip": true,
+  "machineRoundTrip": true,
+  "irRoundTrip": true,
+  "irRoundTripThroughText": true,
+  "irRoundTripThroughMachine": true,
+  "functionConfig": {
+    "codeExpressions": 2,
+    "nonDataPaths": 1,
+    "sample": "{\"id\":\"fn\",\"initial\":\"a\",\"states\":{\"a\":{\"invoke\":{\"src\":\"x\",\"onDone\":{\"@code\":\"({ event }) => ({ target: \\\"b\\\", context: { url: event.output } })\",\"@lang\":\"ts\"}}},\"b\":{\"entry\":{\"@code\":\"(_, enq) => enq(() => {\\n        return;\\n      })\",\"@"
+  }
+}
+{
+  decodeIgnoresStructure: true,
+  decodeFollowsMeta: true,
+}
+
+== 3. graph tooling
+┌───┬─────────────────┬───────────────────────────────────────┬─────────────────┬───────────────┬─────────────┬──────────────────┬────────────────────────┬──────┐
+│   │ machine         │ events                                │ adjacencyStates │ shortestPaths │ simplePaths │ simplePathsToEnd │ shortestPathToEndSteps │ ms   │
+├───┼─────────────────┼───────────────────────────────────────┼─────────────────┼───────────────┼─────────────┼──────────────────┼────────────────────────┼──────┤
+│ 0 │ scenes skeleton │ default (all own events)              │ 20              │ 20            │ 9215        │ 4608             │ 8                      │ 50   │
+│ 1 │ scenes skeleton │ without xstate.done.state             │ 20              │ 20            │ 20          │ 1                │ 20                     │ 5    │
+│ 2 │ full            │ default, limit 3000                   │ limit exceeded  │ -             │ -           │ -                │ -                      │ 8062 │
+│ 3 │ full            │ without xstate.done.state, limit 3000 │ limit exceeded  │ -             │ -           │ -                │ -                      │ 8011 │
+│ 4 │ full            │ only xstate.after                     │ 20              │ 20            │ 20          │ 1                │ 20                     │ 25   │
+└───┴─────────────────┴───────────────────────────────────────┴─────────────────┴───────────────┴─────────────┴──────────────────┴────────────────────────┴──────┘
+element presence regions at the end of the timer-only graph path: {"entering":14}
+toDirectedGraph: {"nodes":215,"edges":141,"jsonBytes":31096,"ms":0.7}
+inspection event types: {"@xstate.actor":1,"@xstate.transition":67}; @statelyai/inspect import: Export named 'toObserver' not found in module '/srv/share/projects/reebeat/.worktrees/scxml-spike/spike/xstate/node_modules/xstate/dist/xstate.cjs.mjs'.
+
+== 5. the Video as a pure function of the frame number
+┌───┬─────┬────────┬─────────────────────┬────────────┬──────────────────────┬───────────────────┬────────────────────┬───────────────┐
+│   │ fps │ frames │ randomAccessSamples │ mismatches │ randomAccessMedianUs │ randomAccessMaxUs │ sequentialMedianUs │ firstMismatch │
+├───┼─────┼────────┼─────────────────────┼────────────┼──────────────────────┼───────────────────┼────────────────────┼───────────────┤
+│ 0 │ 24  │ 1330   │ 167                 │ 0          │ 6783                 │ 20203             │ 19                 │ -             │
+│ 1 │ 30  │ 1662   │ 208                 │ 0          │ 6240                 │ 63502             │ 15                 │ -             │
+│ 2 │ 60  │ 3324   │ 416                 │ 0          │ 5407                 │ 21516             │ 14                 │ -             │
+└───┴─────┴────────┴─────────────────────┴────────────┴──────────────────────┴───────────────────┴────────────────────┴───────────────┘
+
+== 4. risk
+{
+ "xstate": {
+  "pkg": "xstate",
+  "distTags": {
+   "beta": "5.0.0-beta.54",
+   "latest": "5.33.3",
+   "alpha": "6.0.0-alpha.71"
+  },
+  "published": 349,
+  "inWindow": 46,
+  "inWindowByLine": {
+   "6.0.0-alpha": 41,
+   "5.32.x": 1,
+   "5.33.x": 4
+  },
+  "firstInWindow": "6.0.0-alpha.26",
+  "versions": 46,
+  "lastRelease": "6.0.0-alpha.71 2026-10-29T13:40:54.167Z",
+  "medianGapHours": 25.6,
+  "longestGapDays": 9.7
+ },
+ "effect": {
+  "pkg": "@xstate/effect",
+  "distTags": {
+   "alpha": "0.1.0-alpha.4",
+   "latest": "1.0.0-alpha.10"
+  },
+  "published": 8,
+  "inWindow": 8,
+  "inWindowByLine": {
+   "0.1.0-alpha": 5,
+   "1.0.0-alpha": 3
+  },
+  "firstInWindow": "0.1.0-alpha.2",
+  "versions": 8,
+  "lastRelease": "1.0.0-alpha.10 2026-10-29T13:41:16.345Z",
+  "medianGapHours": 157.2,
+  "longestGapDays": 9.7
+ }
+}
+alphas in window with a Major Change: 3 of 46
+  6.0.0-alpha.70: `ActorRefFrom<T>` accepts actor logic only, and `ActorRefFromLogic<T>` is removed. Replace `ActorRefFromLogic<T>` with `ActorRefFrom<T>`. Pass the logic type in
+  6.0.0-alpha.70: State keys cannot contain an unescaped `.`, which separates path segments. Creating a machine with such a key throws `State key "foo.bar" contains "." — nest th
+  6.0.0-alpha.70: `#` targets, `snapshot.matches('#…')` and `@xstate.stateIn` guards resolve by exact state id. The text after `#` is a state's whole id, either its explicit `id`
+  6.0.0-alpha.70: The root `xstate` entry no longer exports type-level helpers: `TODO`, `IsAny`, `IsNever`, `Equals`, `Cast`, `Compute`, `Prop`, `HomomorphicOmit`, `LowInfer`, `D
+  6.0.0-alpha.70: Implicit state and invoke ids no longer use the `(machine)` placeholder.
+  6.0.0-alpha.70: Children invoked with inline logic no longer get a synthetic source name (`xstate.invoke.<index>.<stateId>`). Their persisted entries omit `src`, and restoring 
+  6.0.0-alpha.70: Bare string transition values throw when the machine is created, in every build. This matches the types and `machineFromJSON`, which already rejected them. It c
+  6.0.0-alpha.70: `invoke` requires `input` when the invoked actor logic requires input, matching `createActor(logic, { input })` and `enq.spawn(logic, { input })`. This applies 
+  6.0.0-alpha.70: A machine that declares `version` must also declare `id`, because persisted snapshots record the machine as `{ id, version }`. `createMachine`, `setup(...).crea
+  6.0.0-alpha.68: Public names are consistent before the beta. The old names are not kept as aliases.
+  6.0.0-alpha.68: Built-in event and effect type strings follow one rule: events delivered to logic use the `xstate.` prefix, and effect types use the `@xstate.` prefix. Inspecti
+  6.0.0-alpha.68: Serialized actor identity uses one shape everywhere: `{ $actor: address }`, with an optional string `incarnation`.
+  6.0.0-alpha.68: Pending timers are a list, and no generated timer ids exist.
+  6.0.0-alpha.27: Require history states to declare a non-empty default target. Authored literal
+{
+ "licence": {
+  "xstate": "MIT",
+  "@xstate/effect": "MIT",
+  "effect": "MIT"
+ },
+ "duBytes": {
+  "xstate": 5287207,
+  "@xstate/effect": 114902,
+  "effect": 55918990
+ },
+ "unpackedSize": {
+  "xstate@6.0.0-alpha.70": 5287207,
+  "@xstate/effect@1.0.0-alpha.9": 114902,
+  "xstate@6.0.0-alpha.71": 5505548,
+  "@xstate/effect@1.0.0-alpha.10": 143805
+ },
+ "bundles": [
+  {
+   "name": "effect-only",
+   "bytes": 96125,
+   "gzipBytes": 33736
+  },
+  {
+   "name": "xstate-pure",
+   "bytes": 132988,
+   "gzipBytes": 42925
+  },
+  {
+   "name": "all",
+   "bytes": 249995,
+   "gzipBytes": 84596
+  }
+ ]
+}
+tsc Version 7.0.2+effect-tsgo.0.63.0
+--- repo flags (strict, nodenext, skipLibCheck false):
+(no errors)
+--- + exactOptionalPropertyTypes, noUncheckedIndexedAccess:
+node_modules/xstate/dist/declarations/src/createActor.d.ts(29,22): error TS2420: Class 'Actor<TLogic>' incorrectly implements interface 'ActorInstance<SnapshotFrom<TLogic>, EventFromLogic<TLogic>, EmittedFrom<TLogic>, SendableEventFromLogic<TLogic>>'.
+  Types of property 'registryKey' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+node_modules/xstate/dist/declarations/src/setup.d.ts(674,32): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.
+  Types of property 'type' are incompatible.
+    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.
+      Type 'TType & undefined' is not assignable to type 'SetupStateType'.
+node_modules/xstate/dist/declarations/src/setup.d.ts(674,75): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.
+  Types of property 'type' are incompatible.
+    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.
+      Type 'TType & undefined' is not assignable to type 'SetupStateType'.
+node_modules/xstate/dist/declarations/src/setup.d.ts(694,57): error TS2344: Type '{ type: TType; } & TStateSchema' does not satisfy the constraint 'SetupStateSchema'.
+  Types of property 'type' are incompatible.
+    Type 'TType & (SetupStateType | undefined)' is not assignable to type 'SetupStateType'.
+      Typ
+
+wrote results/results.json

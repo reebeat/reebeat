@@ -1,0 +1,25 @@
+{
+  graphs: 300,
+  scenes: 1503,
+  effects: 7417,
+  withUntil: 3690,
+  withAbsolute: 3758,
+  strings: 190295,
+}
+{
+  ref: 3366,
+  all: 3235,
+  within: 240,
+  anchor: 3445,
+  edge: 1126,
+  effect: 501,
+  occupancy: 1140,
+  beat: 444,
+  each: 3452,
+  first: 3371,
+  state: 451,
+  scene: 436,
+  word: 1179,
+  element: 434,
+  shift: 191,
+}

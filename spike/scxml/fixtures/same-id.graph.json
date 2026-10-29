@@ -1,0 +1,785 @@
+{
+  "author": "reebeat",
+  "chapters": [
+    {
+      "id": "ch1",
+      "line": 7,
+      "sceneIds": [
+        "sc1",
+        "sc2"
+      ],
+      "synopsis": "A box on one screen and a box on the next: is it the same box?",
+      "title": "Two screens"
+    },
+    {
+      "id": "ch2",
+      "line": 40,
+      "sceneIds": [
+        "sc3",
+        "sc4",
+        "sc5",
+        "sc6",
+        "sc7"
+      ],
+      "synopsis": "Give every box a name, and each screen can follow it.",
+      "title": "A name that stays"
+    }
+  ],
+  "scenes": [
+    {
+      "chapterId": "ch1",
+      "effects": [],
+      "elements": [
+        {
+          "cell": "mc",
+          "class": "title",
+          "id": "title",
+          "line": 13,
+          "text": "Same name, new place",
+          "visible": true
+        },
+        {
+          "cell": "bc",
+          "class": "muted",
+          "id": "sub",
+          "line": 14,
+          "text": "A small idea about moving boxes",
+          "visible": true
+        }
+      ],
+      "events": [],
+      "heading": "INT. TITLE CARD - DAY",
+      "id": "sc1",
+      "line": 11,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 0.99
+          },
+          "id": "sc1.l1",
+          "line": 18,
+          "text": "Here is a small idea about moving things.",
+          "words": [
+            "Here",
+            "is",
+            "a",
+            "small",
+            "idea",
+            "about",
+            "moving",
+            "things."
+          ]
+        },
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc1.l2",
+          "line": 21,
+          "text": "A box can glide across a screen only if we know it is the same box.",
+          "words": [
+            "A",
+            "box",
+            "can",
+            "glide",
+            "across",
+            "a",
+            "screen",
+            "only",
+            "if",
+            "we",
+            "know",
+            "it",
+            "is",
+            "the",
+            "same",
+            "box."
+          ]
+        }
+      ],
+      "transition": "default"
+    },
+    {
+      "chapterId": "ch1",
+      "effects": [
+        {
+          "id": "f1",
+          "line": 30,
+          "target": "box",
+          "verb": "focus",
+          "when": {
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": true,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "screen"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "word(\"screen\", 1).end"
+        },
+        {
+          "id": "r1",
+          "line": 31,
+          "target": "twin",
+          "verb": "show",
+          "when": {
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "too"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "word(\"too\").end"
+        }
+      ],
+      "elements": [
+        {
+          "cell": "tl",
+          "class": "label",
+          "id": "tag",
+          "line": 25,
+          "text": "First screen",
+          "visible": true
+        },
+        {
+          "cell": "ml",
+          "class": "box",
+          "id": "box",
+          "line": 26,
+          "text": "A box",
+          "visible": true
+        },
+        {
+          "cell": "mr",
+          "class": "box",
+          "id": "twin",
+          "line": 27,
+          "text": "Another box",
+          "visible": false
+        }
+      ],
+      "events": [],
+      "heading": "INT. FIRST SCREEN - DAY",
+      "id": "sc2",
+      "line": 23,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc2.l1",
+          "line": 35,
+          "text": "Picture a box on a screen.",
+          "words": [
+            "Picture",
+            "a",
+            "box",
+            "on",
+            "a",
+            "screen."
+          ]
+        },
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc2.l2",
+          "line": 38,
+          "text": "On the next screen there is a box too. Is it the same box, or a new one?",
+          "words": [
+            "On",
+            "the",
+            "next",
+            "screen",
+            "there",
+            "is",
+            "a",
+            "box",
+            "too.",
+            "Is",
+            "it",
+            "the",
+            "same",
+            "box,",
+            "or",
+            "a",
+            "new",
+            "one?"
+          ]
+        }
+      ],
+      "transition": "default"
+    },
+    {
+      "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "f1",
+          "line": 53,
+          "target": "tag",
+          "verb": "focus",
+          "when": {
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "name"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "word(\"name\").end"
+        }
+      ],
+      "elements": [
+        {
+          "cell": "ml",
+          "class": "box",
+          "id": "one",
+          "line": 48,
+          "text": "Box one",
+          "visible": true
+        },
+        {
+          "cell": "mr",
+          "class": "box",
+          "id": "two",
+          "line": 49,
+          "text": "Box two",
+          "visible": true
+        },
+        {
+          "cell": "tc",
+          "class": "label",
+          "id": "tag",
+          "line": 50,
+          "text": "Every box has a name",
+          "visible": true
+        }
+      ],
+      "events": [],
+      "heading": "INT. THE NAMES - DAY",
+      "id": "sc3",
+      "line": 46,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc3.l1",
+          "line": 57,
+          "text": "Give every box a name. Here the names are one and two.",
+          "words": [
+            "Give",
+            "every",
+            "box",
+            "a",
+            "name.",
+            "Here",
+            "the",
+            "names",
+            "are",
+            "one",
+            "and",
+            "two."
+          ]
+        }
+      ],
+      "transition": "cut"
+    },
+    {
+      "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "s1",
+          "line": 69,
+          "name": "whoosh",
+          "verb": "sound",
+          "when": {
+            "event": {
+              "anchor": {
+                "at": "start",
+                "kind": "edge",
+                "subject": {
+                  "kind": "scene"
+                },
+                "transition": "transition"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "transition.start"
+        },
+        {
+          "id": "s2",
+          "line": 70,
+          "name": "ding",
+          "verb": "sound",
+          "when": {
+            "event": {
+              "anchor": {
+                "at": {
+                  "percent": 50
+                },
+                "kind": "edge",
+                "subject": {
+                  "id": "one",
+                  "kind": "element"
+                },
+                "transition": "move"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "one.move.50%"
+        },
+        {
+          "id": "f1",
+          "line": 71,
+          "target": "hint",
+          "verb": "focus",
+          "when": {
+            "event": {
+              "kind": "shift",
+              "of": {
+                "anchor": {
+                  "edge": "start",
+                  "explicit": false,
+                  "kind": "word",
+                  "occurrence": 1,
+                  "phrase": "slides"
+                },
+                "kind": "anchor"
+              },
+              "offset": {
+                "unit": "flicks",
+                "value": -141120000
+              }
+            }
+          },
+          "written": "word(\"slides\").start -0.2s"
+        },
+        {
+          "id": "r1",
+          "line": 72,
+          "target": "note",
+          "verb": "show",
+          "when": {
+            "event": {
+              "kind": "shift",
+              "of": {
+                "anchor": {
+                  "edge": "end",
+                  "explicit": false,
+                  "kind": "word",
+                  "occurrence": 1,
+                  "phrase": "matches"
+                },
+                "kind": "anchor"
+              },
+              "offset": {
+                "unit": "flicks",
+                "value": 70560000
+              }
+            }
+          },
+          "written": "word(\"matches\").end +0.1s"
+        }
+      ],
+      "elements": [
+        {
+          "cell": "mc",
+          "class": "box",
+          "id": "one",
+          "line": 63,
+          "text": "Box one",
+          "visible": true
+        },
+        {
+          "cell": "tc",
+          "class": "accent",
+          "id": "tag",
+          "line": 64,
+          "text": "Every box has a name",
+          "visible": true
+        },
+        {
+          "cell": "bc",
+          "class": "muted",
+          "id": "hint",
+          "line": 65,
+          "text": "Same name, so it moves",
+          "visible": true
+        },
+        {
+          "cell": "br",
+          "class": "label",
+          "id": "note",
+          "line": 66,
+          "text": "Matched by id",
+          "visible": false
+        }
+      ],
+      "events": [],
+      "heading": "INT. THE NEXT SCREEN - DAY",
+      "id": "sc4",
+      "line": 61,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc4.l1",
+          "line": 76,
+          "text": "On the next screen, box one sits somewhere else. Its name matches, so it slides there.",
+          "words": [
+            "On",
+            "the",
+            "next",
+            "screen,",
+            "box",
+            "one",
+            "sits",
+            "somewhere",
+            "else.",
+            "Its",
+            "name",
+            "matches,",
+            "so",
+            "it",
+            "slides",
+            "there."
+          ]
+        },
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.05
+          },
+          "id": "sc4.l2",
+          "line": 81,
+          "text": "Box two has no match, so it leaves.",
+          "words": [
+            "Box",
+            "two",
+            "has",
+            "no",
+            "match,",
+            "so",
+            "it",
+            "leaves."
+          ]
+        }
+      ],
+      "transition": "auto-animate"
+    },
+    {
+      "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "s1",
+          "line": 92,
+          "name": "ding",
+          "verb": "sound",
+          "when": {
+            "event": {
+              "anchor": {
+                "at": "start",
+                "kind": "edge",
+                "subject": {
+                  "kind": "scene"
+                },
+                "transition": "transition"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "transition.start"
+        }
+      ],
+      "elements": [
+        {
+          "cell": "mr",
+          "class": "box",
+          "id": "one",
+          "line": 87,
+          "text": "Box one",
+          "visible": true
+        },
+        {
+          "cell": "bc",
+          "class": "accent",
+          "id": "hint",
+          "line": 88,
+          "text": "Same name, so it moves",
+          "visible": true
+        },
+        {
+          "cell": "ml",
+          "class": "box",
+          "id": "three",
+          "line": 89,
+          "text": "Box three",
+          "visible": true
+        }
+      ],
+      "events": [],
+      "heading": "INT. A NEW NAME - DAY",
+      "id": "sc5",
+      "line": 85,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc5.l1",
+          "line": 96,
+          "text": "A name we have not seen before is a new box, so it appears.",
+          "words": [
+            "A",
+            "name",
+            "we",
+            "have",
+            "not",
+            "seen",
+            "before",
+            "is",
+            "a",
+            "new",
+            "box,",
+            "so",
+            "it",
+            "appears."
+          ]
+        }
+      ],
+      "transition": "auto-animate"
+    },
+    {
+      "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "r1",
+          "line": 106,
+          "target": "new",
+          "verb": "show",
+          "when": {
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "appears"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "word(\"appears\").end"
+        },
+        {
+          "id": "r2",
+          "line": 107,
+          "target": "gone",
+          "verb": "show",
+          "when": {
+            "event": {
+              "anchor": {
+                "edge": "end",
+                "explicit": false,
+                "kind": "word",
+                "occurrence": 1,
+                "phrase": "leaves"
+              },
+              "kind": "anchor"
+            }
+          },
+          "written": "word(\"leaves\").end"
+        }
+      ],
+      "elements": [
+        {
+          "cell": "tc",
+          "class": "title",
+          "id": "head",
+          "line": 100,
+          "text": "Three answers",
+          "visible": true
+        },
+        {
+          "cell": "ml",
+          "class": "box",
+          "id": "same",
+          "line": 101,
+          "text": "Same name: it moves",
+          "visible": true
+        },
+        {
+          "cell": "mc",
+          "class": "box",
+          "id": "new",
+          "line": 102,
+          "text": "New name: it appears",
+          "visible": false
+        },
+        {
+          "cell": "mr",
+          "class": "box",
+          "id": "gone",
+          "line": 103,
+          "text": "Missing name: it leaves",
+          "visible": false
+        }
+      ],
+      "events": [],
+      "heading": "INT. THREE ANSWERS - DAY",
+      "id": "sc6",
+      "line": 98,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc6.l1",
+          "line": 111,
+          "text": "Comparing two screens by name gives three answers.",
+          "words": [
+            "Comparing",
+            "two",
+            "screens",
+            "by",
+            "name",
+            "gives",
+            "three",
+            "answers."
+          ]
+        },
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc6.l2",
+          "line": 114,
+          "text": "The same name means it moves.",
+          "words": [
+            "The",
+            "same",
+            "name",
+            "means",
+            "it",
+            "moves."
+          ]
+        },
+        {
+          "hints": {
+            "pauseBefore": 0,
+            "speed": 1.1
+          },
+          "id": "sc6.l3",
+          "line": 117,
+          "text": "A new name means it appears. A missing name means it leaves.",
+          "words": [
+            "A",
+            "new",
+            "name",
+            "means",
+            "it",
+            "appears.",
+            "A",
+            "missing",
+            "name",
+            "means",
+            "it",
+            "leaves."
+          ]
+        }
+      ],
+      "transition": "default"
+    },
+    {
+      "chapterId": "ch2",
+      "effects": [
+        {
+          "id": "p1",
+          "line": 125,
+          "name": "pop",
+          "verb": "sound",
+          "when": {
+            "absoluteFlicks": 352800000,
+            "reason": "a soft pop as the closing card settles, before the narration starts"
+          },
+          "written": "0.5s because \"a soft pop as the closing card settles, before the narration starts\""
+        }
+      ],
+      "elements": [
+        {
+          "cell": "mc",
+          "class": "title",
+          "id": "title",
+          "line": 121,
+          "text": "Same name, new place",
+          "visible": true
+        },
+        {
+          "cell": "bc",
+          "class": "muted",
+          "id": "sub",
+          "line": 122,
+          "text": "Keep the name and the motion comes free",
+          "visible": true
+        }
+      ],
+      "events": [],
+      "heading": "INT. THE POINT - DAY",
+      "id": "sc7",
+      "line": 119,
+      "lines": [
+        {
+          "hints": {
+            "pauseBefore": 0.5,
+            "speed": 1.1
+          },
+          "id": "sc7.l1",
+          "line": 130,
+          "text": "So keep the name, and the motion comes for free.",
+          "words": [
+            "So",
+            "keep",
+            "the",
+            "name,",
+            "and",
+            "the",
+            "motion",
+            "comes",
+            "for",
+            "free."
+          ]
+        }
+      ],
+      "transition": "default"
+    }
+  ],
+  "speed": 1.1,
+  "title": "Same name, new place",
+  "version": 1
+}

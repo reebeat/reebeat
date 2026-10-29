@@ -1,0 +1,10 @@
+{
+  "name": "scxml-spike",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "effect": "4.1.0",
+    "fast-xml-parser": "*",
+    "saxes": "^6.0.0"
+  }
+}

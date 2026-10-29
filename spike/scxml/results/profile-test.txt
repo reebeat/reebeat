@@ -1,0 +1,22 @@
+bun test v1.3.13 (bf2e2cec)
+
+src/profile.test.ts:
+(pass) profile > the generated document is accepted [15.00ms]
+(pass) profile > rejects <script> in <onentry> [2.00ms]
+(pass) profile > rejects <send> in <onentry> [2.00ms]
+(pass) profile > rejects <log> in <onentry> [1.00ms]
+(pass) profile > rejects <raise> in <onexit> [1.00ms]
+(pass) profile > rejects <invoke> in a state [2.00ms]
+(pass) profile > rejects <datamodel> at the root
+(pass) profile > rejects <script> at the root [1.00ms]
+(pass) profile > rejects cond on a transition [1.00ms]
+(pass) profile > rejects datamodel attribute [1.00ms]
+(pass) profile > rejects unknown rb: element [1.00ms]
+(pass) profile > rejects unknown attribute in the SCXML namespace [1.00ms]
+(pass) profile > rejects foreign namespace element [1.00ms]
+(pass) profile > rejects history [1.00ms]
+
+ 14 pass
+ 0 fail
+ 27 expect() calls
+Ran 14 tests across 1 file. [141.00ms]

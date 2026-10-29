@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Spike: a reebeat driver for the W3C modular XSD: the core module only (no data module: no datamodel/data/assign/
+     script/donedata/content/param; no external module: no send/cancel/invoke/finalize), executable content empty. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://www.w3.org/2005/07/scxml"
+    xmlns="http://www.w3.org/2005/07/scxml" elementFormDefault="qualified">
+  <xsd:import namespace="http://www.w3.org/XML/1998/namespace" schemaLocation="xml.xsd"/>
+  <xsd:include schemaLocation="scxml-module-core.xsd"/>
+  <xsd:include schemaLocation="scxml-module-data.xsd"/>
+  <xsd:include schemaLocation="scxml-module-external.xsd"/>
+  <xsd:group name="scxml.core.executablecontent">
+    <xsd:sequence><xsd:group ref="scxml.extra.content" minOccurs="0" maxOccurs="unbounded"/></xsd:sequence>
+  </xsd:group>
+</xsd:schema>

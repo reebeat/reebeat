@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowImportingTsExtensions": true,
+    "esModuleInterop": true,
+    "skipLibCheck": false,
+    "strict": true,
+    "types": ["bun"]
+  },
+  "include": ["src/**/*.ts", "run.ts"]
+}

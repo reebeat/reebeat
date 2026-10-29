@@ -8,7 +8,7 @@ import { Array as Arr, Effect, String as Str, pipe } from "effect";
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
 import { anchorFormsText } from "../src/grammar.ts";
-import { asText, fixtureSha256, lineOf } from "./support.ts";
+import { asText, fixtureSha256, lineOf, replacedOnce } from "./support.ts";
 
 const base = asText([
   "Title: Errors",
@@ -46,15 +46,8 @@ const base = asText([
 ]);
 
 /** The base story with its only occurrence of `from` replaced by `to`. */
-const change = (from: string, to: string): string => {
-  assert.strictEqual(
-    Str.split(base, from).length,
-    2,
-    `${from} occurs once in the base`
-  );
-
-  return Str.replace(from, to)(base);
-};
+const change = (from: string, to: string): string =>
+  replacedOnce(base, from, to);
 
 const firstError = (source: string) =>
   Effect.flip(buildPlan(source, fixtureSha256));
@@ -170,7 +163,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Scene id "one" is already used; expected a different id for each Scene',
+      'Scene id "one" is already used (line 5); expected a different id for each Scene; did you mean one2?',
     name: "two Scenes with one id",
     needle: "INT. TWO #one#",
     source: change("INT. TWO #two#", "INT. TWO #one#"),
@@ -240,7 +233,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'effect id "r1" is already used in this Scene; expected a different name for each effect and derived event of a Scene',
+      'effect id "r1" is already used in this Scene (line 11); expected a different name for each effect and derived event of a Scene; did you mean r2?',
     name: "two effects with one id",
     needle: "r1: focus",
     source: change("f1: focus", "r1: focus"),

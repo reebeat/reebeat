@@ -77,9 +77,6 @@ export const construct = (
  */
 export const IdSchema = Schema.String.check(Schema.isPattern(idPattern));
 
-/** The id of a Line: its Scene's id, a dot and its place in the Scene (`sc4.l2`); not an identifier, since it has a dot. */
-export const LineIdSchema = Schema.NonEmptyString;
-
 /** A 1-based line of the `.fountain` source. */
 const SourceLine = Schema.Int.check(Schema.isGreaterThanOrEqualTo(1));
 const Frame = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
@@ -612,7 +609,6 @@ export const LineSchema = Schema.Struct({
       "A speed is a multiple of the voice's natural rate between 0.5 and 2, not a percent."
     )
   ),
-  id: LineIdSchema,
   line: SourceLine,
   /** The narration text: the dialogue, whitespace collapsed (dialogue has no notes). Its words are `wordsOf(text)`. */
   text: Schema.String,
@@ -697,7 +693,6 @@ export const TimedEventSchema = Schema.Struct({
 export const TimedLineSchema = Schema.Struct({
   audio: Schema.Struct({ file: AudioFileSchema, sha256: Schema.String }),
   endFrame: Frame,
-  lineId: LineIdSchema,
   startFrame: Frame,
   words: Schema.Array(TimedWordSchema),
 });
@@ -791,10 +786,17 @@ export type Timeline = typeof TimelineSchema.Type;
 export type PlanJson = typeof PlanJsonSchema.Type;
 
 const planJson = Schema.fromJsonString(PlanJsonSchema, { space: 2 });
-const decodeJson = Schema.decodeUnknownEffect(planJson);
+
+const decodeJson = Schema.decodeUnknownEffect(planJson, {
+  onExcessProperty: "error",
+});
+
 const encodeJson = Schema.encodeEffect(planJson);
 
-/** Decodes the text of a `plan.json`. Every deck, video and check reads the Plan through this function. */
+/**
+ * Decodes the text of a `plan.json`. Every deck, video and check reads the Plan through this function. The schema is
+ * closed: a key the Plan does not have (a Line's `id`, which a Plan no longer stores) is an error.
+ */
 export const decodePlan = (json: string) => decodeJson(json);
 
 /**

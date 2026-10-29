@@ -30,10 +30,11 @@ Dialogue is plain prose: the narration, the subtitles and the notes are its text
 | `sc4` | `let settled = last(one.move.end, tag.update.end)` | a derived event (`let`, evaluated once): the later of two edges of two Elements, `last` = SMIL `endsync="last"` |
 | `sc4` | `s1: sound whoosh at transition.start` | the whoosh sounds with the slide change, not at the first word of the Line (the narration starts 1 s later) |
 | `sc4` | `s2: sound ding at when(one.move.progress >= 50%)` | the ding sounds when box `one` is half way across: the threshold event of the move's progress behaviour (position by the renderer's easing, not time: 8 frames in, where time is half way at 13). `one.move.50%` is the sugar for the same event |
-| `sc4` | `f2: focus tag at settled` | the ring goes on `tag` when both have settled |
+| `sc4` | `s3: sound pop at settled +0.1s` | a sound 0.1 s after both Elements have settled: the check finds the frame each settled in the picture, takes the later with the same `last`, and hears the pop at it |
 | `sc4` | `r1: show note at word("matches").end +0.1s` | a hidden Element appears 0.1 s after "matches" |
 | `sc4` | `f1: focus hint at word("slides").start -0.2s until first(word("there").end, scene.end)` | the ring goes on `hint` 0.2 s before "slides" and comes off when "there" ends (`first` = race; `until` = the SMIL end value): the Deck has an END step and the Video a command at the end of the ring |
 | `sc5` | `let landed = last(one.moving.leave, three.entering.leave)` | the same idea over STATE events of the Elements' machines (`moving` is left when the move ends, `entering` when the enter ends) |
+| `sc5` | `f1: focus three at landed +0.2s` | the ring goes on `three` 0.2 s after the move and the enter have both ended (a ring on an Element that is still fading in cannot be told from the fade in the picture, so it waits for the enter to be over) |
 | `sc5` | `s1: sound ding at transition.start` | the ding sounds as the new box starts to appear |
 | `sc6` | `s1: sound pop at each(scene.start +0.1s, scene.start +0.15s, stagger=0.4s)` | `stagger=0.4s` pushes the second pop to 0.4 s after the first |
 | `sc6` | `s2: sound pop at beat(2).end +0.1s` | a sound on the generated Beat between State 2 and State 3 (the Beat of `r2`) |

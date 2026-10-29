@@ -3,16 +3,15 @@
 // checking it, and the Plan is a function of the IR (`planOf`). Plain functions.
 import { Array as Arr, Effect, Order, Result } from "effect";
 
-import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import { graphVersion } from "./graph.ts";
 import type { Graph, GraphScene, ImportErrors, Importer } from "./graph.ts";
-import { identityDiff } from "./identity.ts";
+import { withIdentity } from "./identity.ts";
 import { parseFountain } from "./parse.ts";
-import type { Chapter, Line, PlanJson, Scene, Settings } from "./plan.ts";
+import type { Chapter, PlanJson, Settings } from "./plan.ts";
 import { adaptTokens } from "./story.ts";
-import type { LineDraft, SceneDraft, Story } from "./story.ts";
-import { validateScene } from "./validate.ts";
+import type { SceneDraft, Story } from "./story.ts";
+import { validateGraph } from "./structure.ts";
 
 /** The pacing and canvas defaults of release 1 (spec 0001, "Time"); the speech rate comes from the Story. */
 const defaultSettings: Omit<Settings, "fps" | "ntsc" | "speed"> = {
@@ -32,17 +31,6 @@ const defaultRate: RenderRate = { fps: 30, ntsc: false };
 
 const untitled = "Untitled";
 
-const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
-  const id = `${sceneId}.l${index + 1}`;
-
-  return {
-    hints: draft.hints,
-    id,
-    line: draft.line,
-    text: draft.text,
-  };
-};
-
 const graphScenes = (story: Story): readonly GraphScene[] =>
   Arr.map(story.scenes, (draft: SceneDraft): GraphScene => {
     const { id } = draft;
@@ -55,9 +43,7 @@ const graphScenes = (story: Story): readonly GraphScene[] =>
       heading: draft.heading,
       id,
       line: draft.line,
-      lines: Arr.map(draft.lines, (line, lineIndex) =>
-        buildLine(line, id, lineIndex)
-      ),
+      lines: draft.lines,
       transition: draft.transition,
     };
   });
@@ -90,20 +76,6 @@ const graphOf = (story: Story): Graph => {
     : { ...graph, author: story.author };
 };
 
-/** The Scenes of the Plan: the IR's Scenes with the identity diff against the previous Scene where Auto-Animate joins them. */
-const planScenes = (graph: Graph): readonly Scene[] =>
-  Arr.map(graph.scenes, (scene, index): Scene => {
-    const previous = graph.scenes[index - 1];
-
-    return {
-      ...scene,
-      identity:
-        scene.transition === "auto-animate" && previous !== undefined
-          ? identityDiff(previous.elements, scene.elements)
-          : null,
-    };
-  });
-
 /**
  * The Plan (without a `timeline`) of the IR: a function of it, of the hash of the source it came from and of the
  * render's frame rate (30 fps unless a preset is given). Time in the IR is exact; frames appear only in the Timeline.
@@ -115,7 +87,7 @@ export const planOf = (
 ): PlanJson => {
   const plan: PlanJson = {
     chapters: graph.chapters,
-    scenes: planScenes(graph),
+    scenes: withIdentity(graph.scenes),
     schema: 1,
     settings: { ...defaultSettings, ...rate, speed: graph.speed },
     sourceSha256,
@@ -132,26 +104,17 @@ const errorsOf = (story: Story): readonly PlanError[] =>
   Arr.sort(
     [
       ...story.errors,
-      ...Arr.flatMap(planScenes(graphOf(story)), (scene, index) => {
-        const draft = story.scenes[index];
-        const previous = story.scenes[index - 1];
+      // The one check of the IR (`structure.ts`), the same the JSON codec runs. A Scene with an error on one of its lines,
+      // or that no Section holds, is not cross-checked: its references would only echo it.
+      ...validateGraph(graphOf(story), {
+        invalid: (index) => {
+          const draft = story.scenes[index];
 
-        // A Scene with an error on an Element or effect line is not cross-checked: its references would only echo it.
-        return draft === undefined ||
-          draft.invalid ||
-          (scene.identity !== null && previous?.invalid === true)
-          ? []
-          : validateScene(scene);
+          return (
+            draft === undefined || draft.invalid || draft.chapterIndex === -1
+          );
+        },
       }),
-      ...(story.scenes.length === 0
-        ? [
-            planError(
-              "EmptyStory",
-              1,
-              "the source has no Scene: write a scene heading"
-            ),
-          ]
-        : []),
     ],
     byLine
   );

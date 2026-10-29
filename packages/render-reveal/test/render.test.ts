@@ -231,12 +231,12 @@ describe("renderDeck", () => {
         const slide = nth(readDeck(renderDeck(plan).html).slides, 3);
         const scene = nth(plan.scenes, 3);
 
-        // sc4 writes `f2` (the focus on the tag when the box and the tag settled) and `f1` (the focus, 0.2 s before
-        // "slides") before `r1` (the show, 0.1 s after "matches"): the box settles first, then "matches" is spoken, then
-        // "slides", so the steps are `f2`, `r1`, `f1` and, when the `f1` ring ends by its own `until`, the end of `f1`.
+        // sc4 writes `f1` (the focus, 0.2 s before "slides") before `r1` (the show, 0.1 s after "matches"): "matches"
+        // is spoken before "slides", so the steps are `r1`, `f1` and, when the `f1` ring ends by its own `until`, the
+        // end of `f1`. `s3` (a sound after the box and the tag settled) is no step.
         assert.deepStrictEqual(
           Arr.map(scene?.effects ?? [], (effect) => effect.id),
-          ["s1", "s2", "f2", "f1", "r1"]
+          ["s1", "s2", "s3", "f1", "r1"]
         );
         assert.deepStrictEqual(
           Arr.map(slide?.fragments ?? [], (fragment) => [
@@ -244,7 +244,6 @@ describe("renderDeck", () => {
             fragment.edge,
           ]),
           [
-            ["f2", "start"],
             ["r1", "start"],
             ["f1", "start"],
             ["f1", "end"],
@@ -268,8 +267,13 @@ describe("renderDeck", () => {
       Effect.gen(function* sounds() {
         const story = readDeck(renderDeck(yield* scheduledStory).html).slides;
 
-        // sc4: the whoosh is anchored to the slide change and the ding to the box's motion: both ride on the slide.
-        assert.deepStrictEqual(nth(story, 3)?.sounds, ["whoosh", "ding"]);
+        // sc4: the whoosh is anchored to the slide change, the ding to the box's motion and the pop to the moment the
+        // box and the tag settled: all three ride on the slide, no step comes before them.
+        assert.deepStrictEqual(nth(story, 3)?.sounds, [
+          "whoosh",
+          "ding",
+          "pop",
+        ]);
         assert.deepStrictEqual(
           Arr.flatMap(
             nth(story, 3)?.fragments ?? [],

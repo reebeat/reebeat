@@ -117,8 +117,9 @@ describe("the JSON codec of the IR", () => {
       Effect.gen(function* ids() {
         const { text } = yield* Effect.flatMap(sameId, encoded);
 
+        // Every spelling of the id: the Element and the anchors of the effects that name it (the IR is checked as a whole).
         const rename = (id: string) =>
-          Str.replace('"id": "one"', `"id": "${id}"`)(text);
+          Str.replaceAll('"id": "one"', `"id": "${id}"`)(text);
 
         assert.include(text, '"id": "one"');
         assert.isTrue(Result.isSuccess(jsonCodec.decode(rename("uno"))));

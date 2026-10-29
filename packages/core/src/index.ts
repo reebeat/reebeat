@@ -6,6 +6,10 @@ export type { Alignment, HeardWord, WordSpan } from "./align.ts";
 
 export { buildPlan, collectErrors, fountainImporter, planOf } from "./build.ts";
 
+export { validateGraph } from "./structure.ts";
+
+export type { Declared, Known } from "./structure.ts";
+
 export {
   GraphSchema,
   graphJsonSchema,
@@ -84,7 +88,11 @@ export { AlignedLineSchema, schedule } from "./schedule.ts";
 
 export type { AlignedLine } from "./schedule.ts";
 
-export { frameToMs, linesById, requireTimeline } from "./timed.ts";
+export { frameToMs, requireTimeline } from "./timed.ts";
+
+export { lineIdOf, placedLines, planLines, timedLines } from "./lines.ts";
+
+export type { PlacedLine, PlacedTimedLine } from "./lines.ts";
 
 export type { TimedPlan } from "./timed.ts";
 

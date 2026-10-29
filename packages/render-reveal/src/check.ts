@@ -4,6 +4,7 @@
 // resolved order, and the `data-sounds` of every sound), the Elements and the
 // slide marks. It reports the first difference, naming the slide and the position in it.
 import type { PlanJson, Scene } from "@reebeat/core";
+import { lineIdOf } from "@reebeat/core/steps";
 import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
 import type { Diagnostic, Fragment } from "@reebeat/lint";
 import { Array as Arr, Effect, Option } from "effect";
@@ -81,7 +82,7 @@ const notesMismatch = (
     : new DeckMismatch({
         check: "F3 notes",
         index: position,
-        message: `slide ${scene.id}, note ${position + 1}: the narration of ${scene.lines[position]?.id ?? "no Line"} is ${show(scene.lines[position]?.text)}, the notes hold ${show(slide.notes[position])}`,
+        message: `slide ${scene.id}, note ${position + 1}: the narration of ${scene.lines[position] === undefined ? "no Line" : lineIdOf(scene.id, position + 1)} is ${show(scene.lines[position]?.text)}, the notes hold ${show(slide.notes[position])}`,
         slide: scene.id,
       });
 };

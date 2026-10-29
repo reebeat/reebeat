@@ -70,7 +70,7 @@ Matched by id {id=note cell=br class=label visible=false}
   let settled = last(one.move.end, tag.update.end)
   s1: sound whoosh at transition.start
   s2: sound ding at when(one.move.progress >= 50%)
-  f2: focus tag at settled
+  s3: sound pop at settled +0.1s
   f1: focus hint at word("slides").start -0.2s until first(word("there").end, scene.end)
   r1: show note at word("matches").end +0.1s
 ]]
@@ -94,7 +94,7 @@ Box three {id=three cell=ml class=box}
 [[effects
   let landed = last(one.moving.leave, three.entering.leave)
   s1: sound ding at transition.start
-  f1: focus three at landed
+  f1: focus three at landed +0.2s
 ]]
 
 NARRATOR

@@ -24,7 +24,7 @@ import type {
 } from "@reebeat/core";
 import { decodeGrayFrames } from "@reebeat/encode-ffmpeg";
 import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
-import { Effect, Option } from "effect";
+import { Array as Arr, Effect, Option } from "effect";
 
 import { eventWindow, frameAtFraction } from "./frames.ts";
 import type { Following } from "./frames.ts";
@@ -160,9 +160,51 @@ const sceneLastFrame = (plan: TimedPlan, sceneIndex: number): number =>
   (plan.timeline.scenes[sceneIndex]?.endFrame ?? plan.timeline.totalFrames) - 1;
 
 /**
+ * The first frame after `after` at which the capture commands a change of Element `id`'s own cell in the Scene: a
+ * `show` or `focus` that targets it, or the end of a ring that does. From that frame the cell shows the effect, so an
+ * event of the same cell that is still being looked at would read the effect as part of its own settled picture (a ring
+ * that starts while the Element's fade is not over, or just after it, makes the fade "end" with the ring).
+ */
+const nextOwnCommand = (
+  plan: TimedPlan,
+  sceneIndex: number,
+  id: string,
+  after: number
+): number | undefined => {
+  const targeting = Arr.filter(
+    plan.scenes[sceneIndex]?.effects ?? [],
+    (effect) => effect.verb !== "sound" && effect.target === id
+  );
+
+  const commands = Arr.flatMap(
+    plan.timeline.scenes[sceneIndex]?.effects ?? [],
+    (timed) =>
+      Arr.some(targeting, (effect) => effect.id === timed.effectId)
+        ? [
+            timed.commandFrame,
+            ...(timed.endCommandFrame === null ? [] : [timed.endCommandFrame]),
+          ]
+        : []
+  );
+
+  const later = Arr.filter(commands, (frame) => frame > after);
+
+  return later.length === 0 ? undefined : Math.min(...later);
+};
+
+/** `to`, stopped before `command` (the frame the Scene's own effect changes the cell), but never before `from`. */
+const stoppedBefore = (
+  to: number,
+  from: number,
+  command: number | undefined
+): number =>
+  command === undefined ? to : Math.max(from, Math.min(to, command - 1));
+
+/**
  * The frames decoded for a subject: from just before the event to past the end the renderer declared for it (plus the
  * margin), so that a declaration that is too short is seen as a difference and not cut off. The end of a ring stops at
- * the Scene's last frame: the slide change is not the ring.
+ * the Scene's last frame: the slide change is not the ring. An event of an Element's cell stops before the Scene's own
+ * next effect on that Element (`nextOwnCommand`).
  */
 export const observationRange = (
   plan: TimedPlan,
@@ -173,9 +215,20 @@ export const observationRange = (
   const declared = lifecycleFrames(plan.settings, lifecycle);
 
   if (subject.kind === "step") {
+    const from = Math.max(0, subject.fireFrame - lead);
+
     return {
-      from: Math.max(0, subject.fireFrame - lead),
-      to: Math.min(last, subject.fireFrame + stepReach(declared)),
+      from,
+      to: stoppedBefore(
+        Math.min(last, subject.fireFrame + stepReach(declared)),
+        from,
+        nextOwnCommand(
+          plan,
+          subject.sceneIndex,
+          subject.id,
+          subject.fireFrame - 1
+        )
+      ),
     };
   }
 
@@ -191,20 +244,44 @@ export const observationRange = (
   }
 
   const slide = plan.timeline.scenes[subject.sceneIndex]?.slideFrame ?? 0;
+  const from = Math.max(0, slide - lead);
+
+  const reach = Math.min(
+    last,
+    slide + settleReach(plan, declared, subject.sceneIndex)
+  );
 
   return {
-    from: Math.max(0, slide - lead),
-    to: Math.min(last, slide + settleReach(plan, declared, subject.sceneIndex)),
+    from,
+    to:
+      subject.kind === "element"
+        ? stoppedBefore(
+            reach,
+            from,
+            nextOwnCommand(plan, subject.sceneIndex, subject.id, slide)
+          )
+        : reach,
   };
 };
+
+/**
+ * The share of the ring's whole change that must have happened for the ring to have started to go. Measured on the ring
+ * of `hint` in `sc4` of `stories/same-id` (8,199 pixels change in all): the frame before the ring leaves differs from
+ * the ringed picture in 224 pixels (2.7%, at the frame before the command, so the encoder's own smear and not the ring)
+ * and the first frame the CSS transition has drawn in 2,001 (24%). The floor of a step (200 pixels) sits between the two
+ * and reads the smear; a tenth of the change does not. The start of a ring is read at the pixel floor alone, as it
+ * always was: its first frame is 44 pixels (0.5%) and the next 2,781.
+ */
+const ringOffOnsetShare = 0.1;
 
 /** The event of a decoded clip, with the points of it the Plan can be anchored to. */
 const observedIn = (
   clip: GrayClip,
   region: Box | undefined,
-  following: Following | undefined
+  following: Following | undefined,
+  onsetShare: number
 ): Observed | undefined => {
-  const window = eventWindow(clip, region, following);
+  const window = eventWindow(clip, region, following, onsetShare);
 
   if (window === undefined) {
     return undefined;
@@ -236,7 +313,12 @@ const look = Effect.fn("observeEvent.look")(function* look(
   );
 
   return Option.fromNullishOr(
-    observedIn(clip, regionOf(build.plan, subject), followingOf(subject))
+    observedIn(
+      clip,
+      regionOf(build.plan, subject),
+      followingOf(subject),
+      subject.kind === "ring-end" ? ringOffOnsetShare : 0
+    )
   );
 });
 

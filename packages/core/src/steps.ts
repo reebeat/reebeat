@@ -15,6 +15,9 @@ import type {
   TimedEffect,
 } from "./plan.ts";
 
+/** The id of a Line, for the messages of a Deck that has no parser (the Deck reads the Plan through this subpath only). */
+export { lineIdOf } from "./lines.ts";
+
 /** One fragment step of a Scene: the start of a `show` or `focus`, or the end of a `focus` ring. */
 export interface Step {
   readonly edge: "end" | "start";

@@ -34,6 +34,12 @@ export class BadSceneId extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()("BadSceneId", located) {}
 
+/** A Chapter with no Scene, or Scenes of one Chapter that do not stand together in the order of the Chapters. */
+export class BadChapter extends Schema.TaggedError<
+  BadChapter,
+  { readonly brand: unique symbol }
+>()("BadChapter", located) {}
+
 /** A release-1 form (`[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, a note in dialogue, `{#id @cell .class hidden}`). */
 export class ReleaseOneForm extends Schema.TaggedError<
   ReleaseOneForm,
@@ -151,6 +157,7 @@ export class UnsupportedEdge extends Schema.TaggedError<
 const planErrors = {
   AbsoluteNeedsReason,
   AmbiguousWord,
+  BadChapter,
   BadEffect,
   BadEffectsBlock,
   BadParenthetical,

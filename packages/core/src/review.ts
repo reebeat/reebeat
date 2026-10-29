@@ -7,6 +7,8 @@ import { Array as Arr, Match, Option, String as Str } from "effect";
 
 import { formatTiming } from "./effects.ts";
 import { formatEvent } from "./expr.ts";
+import { placedLines } from "./lines.ts";
+import type { PlacedLine } from "./lines.ts";
 import type {
   Effect,
   Element,
@@ -175,10 +177,10 @@ const timedLineRows = (
 
 const lineRows = (
   plan: PlanJson,
-  line: Line,
+  { id, line }: PlacedLine,
   timed: TimedLine | undefined
 ): readonly string[] => [
-  `      ${line.id}${hintText(plan, line)}`,
+  `      ${id}${hintText(plan, line)}`,
   `        ${quote(line.text)}`,
   ...timedLineRows(plan, timed),
 ];
@@ -377,17 +379,8 @@ const sceneRows = (
       ? []
       : ["    Effects", ...effectRows(plan, scene, timed)]),
     "    Lines",
-    ...Arr.flatMap(scene.lines, (line) =>
-      lineRows(
-        plan,
-        line,
-        Option.getOrUndefined(
-          Arr.findFirst(
-            timed?.lines ?? [],
-            (candidate) => candidate.lineId === line.id
-          )
-        )
-      )
+    ...Arr.flatMap(placedLines(scene), (placed) =>
+      lineRows(plan, placed, timed?.lines[placed.position - 1])
     ),
   ];
 };

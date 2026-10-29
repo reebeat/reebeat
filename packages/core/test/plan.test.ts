@@ -12,6 +12,7 @@ import {
 } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import { planLines } from "../src/lines.ts";
 import { sceneIdsOfChapter } from "../src/lookup.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
@@ -89,9 +90,7 @@ describe("buildPlan of the fixture", () => {
           ]
         );
         assert.deepStrictEqual(
-          Arr.flatMap(plan.scenes, (scene) =>
-            Arr.map(scene.lines, (line) => line.id)
-          ),
+          Arr.map(planLines(plan), ({ id }) => id),
           ["opening.l1", "opening.l2", "second.l1", "third.l1", "fourth.l1"]
         );
       })
@@ -127,8 +126,8 @@ describe("buildPlan of the fixture", () => {
         assert.deepStrictEqual(
           Arr.map(plan.scenes[0]?.lines ?? [], Record.keys),
           [
-            ["hints", "id", "line", "text"],
-            ["hints", "id", "line", "text"],
+            ["hints", "line", "text"],
+            ["hints", "line", "text"],
           ]
         );
         // (slowly) is the story default 1.1 times 0.9.
@@ -304,7 +303,6 @@ const decodeWithAudioFile = (file: string) =>
               {
                 audio: { file: goodAudioFile, sha256: "x" },
                 endFrame: 1,
-                lineId: "opening.l1",
                 startFrame: 0,
                 words: [],
               },

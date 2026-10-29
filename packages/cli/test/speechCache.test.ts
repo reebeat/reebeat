@@ -3,7 +3,7 @@
 // an asset whose words are the Line's words 1:1, and the aligned Lines schedule. A copy with one asset removed is
 // the F12 cache-miss control. The cache is refilled by `reebeat build ... --refresh-speech` (see the pipeline README).
 import { assert, layer } from "@effect/vitest";
-import { schedule, wordsOf } from "@reebeat/core";
+import { planLines, schedule, wordsOf } from "@reebeat/core";
 import { speechStage } from "@reebeat/pipeline";
 import { revealLifecycle } from "@reebeat/render-reveal";
 import { AssetCache } from "@reebeat/services";
@@ -26,7 +26,7 @@ layer(platform)("the committed speech cache", (it) => {
     () =>
       Effect.gen(function* fresh() {
         const { cache, plan } = yield* story;
-        const lines = Arr.flatMap(plan.scenes, (scene) => scene.lines);
+        const lines = planLines(plan);
 
         const aligned = yield* Effect.provide(
           speechStage(plan, { refresh: false }),
@@ -35,11 +35,11 @@ layer(platform)("the committed speech cache", (it) => {
 
         assert.strictEqual(aligned.length, lines.length);
 
-        for (const [index, line] of lines.entries()) {
+        for (const [index, { id, line }] of lines.entries()) {
           assert.deepStrictEqual(
             Arr.map(aligned[index]?.words ?? [], (word) => word.w),
             wordsOf(line.text),
-            `${line.id} words`
+            `${id} words`
           );
         }
       })

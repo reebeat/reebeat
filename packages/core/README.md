@@ -23,6 +23,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | `occupancy.ts` | The intervals during which a machine is in each of its states in one Scene, from the transitions that happen and their windows (the slide change leaves every state); `enter` and `leave` are read from them |
 | `time.ts` | Exact time: the IR holds a whole number of flicks (1/705,600,000 s), never a float and never a frame; `framesOfFlicks` gives the nearest frame at the Plan's rate (`floor(t x rate + 1/2)`, a half to the later frame, in integers); `lifecycleFrames` gives the renderer's declared lags in frames at the Plan's rate (a lag measured at `measuredFps` is the same time at any rate) |
 | `graph.ts` | The IR: `GraphSchema`, an Effect Schema, closed and versioned; `jsonCodec` is its canonical encoding and `graphJsonSchema()` the JSON Schema generated from it. Three kinds of format are kept apart in the types: an `IrCodec` (encode and decode, lossless), an `Importer` (a foreign format into the IR, one way, reviewed; `fountainImporter` is one) and an `ArtifactRenderer` (the IR out to an artifact, never read back) |
+| `structure.ts` | `validateGraph`: the one checker of the IR (ids used once, Chapters and Scenes that agree, then the references of each Scene through `validate.ts`); the importer and the JSON codec both run it |
 | `build.ts` | `fountainImporter`, `planOf` (the Plan is a function of the IR, a hash and a frame rate) and `buildPlan` |
 | `resolve.ts`, `schedule.ts` | Every event becomes integer frames; `schedule` adds the Timeline |
 | `steps.ts` | The fragment steps and the carrier of every sound instance |
@@ -44,8 +45,25 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 ### One fact, one home
 
-The IR and the Plan store a fact once and derive the rest. A Line has its `text` and no list of words (`wordsOf(text)`: the speech cache keys and the aligner read the same split); a Scene has its `chapterId` and a Chapter lists no Scenes (`sceneIdsOfChapter`); an effect, an `until` and a `let` have their expression and no text of their own (`formatEvent`: the canonical form; a sugar such as `one.move.50%` is read, never kept); the Timeline stores frames and no text. An identifier is `IdSchema`, built from `idPattern` once (the generated JSON Schema carries its `pattern`); a Line id (`sc4.l2`) has a dot, so it is a `LineIdSchema` and not an identifier.
+The IR and the Plan store a fact once and derive the rest. A Line has its `text` and no list of words (`wordsOf(text)`: the speech cache keys and the aligner read the same split); a Scene has its `chapterId` and a Chapter lists no Scenes (`sceneIdsOfChapter`); an effect, an `until` and a `let` have their expression and no text of their own (`formatEvent`: the canonical form; a sugar such as `one.move.50%` is read, never kept); the Timeline stores frames and no text. An identifier is `IdSchema`, built from `idPattern` once (the generated JSON Schema carries its `pattern`). A Line has no id at all: `lineIdOf(sceneId, position)` derives it (`sc4.l3` is the 3rd Line of `sc4`, counted from 1) and every consumer takes it from there (`placedLines` and `planLines` for a Plan, `timedLines` for a Timeline, whose Lines are the Plan's in the same order). The aligned data the speech stage hands to `schedule` (`AlignedLine.lineId`) is the one place the id is an input, as the key that matches speech to its Line. The schemas are closed: a hand-written IR or Plan that still carries a Line `id` is a decode error.
 
+### What is checked, and where
+
+`validateGraph` (`src/structure.ts`) is the one checker of the IR, and both ways into it go through it: the Fountain importer (`fountainImporter`) and the JSON codec (`jsonCodec`, whose `decode` and `encode` run it as a check of the schema, so a hand-written IR is held to the rules of a screenplay and an invalid IR is never written). It reports, each as a Plan error with its line (the source line, or the `line` the IR carries), what was found, what was expected and, where a name is involved, the next free or the nearest valid one (`did you mean`):
+
+| Rule | Error |
+| --- | --- |
+| no Scene, Element, effect or derived event is named by a word the grammar starts a path or a call with (`reservedIds` of `grammar.ts`) | `BadSceneId`, `BadProperty` (an Element), `BadEffect` (an effect id, a `let` name) |
+| a Scene id is used once in the Story | `DuplicateId` |
+| an Element id is used once in its Scene | `DuplicateId` |
+| an effect id and a derived event (`let`) name share one namespace in their Scene, each used once | `DuplicateId` |
+| a Chapter id is used once | `DuplicateId` |
+| every Scene names a Chapter the Story has | `UnknownReference` |
+| the Scenes of a Chapter stand together, the Chapters in their order | `BadChapter` |
+| every Chapter has a Scene; the Story has a Scene | `BadChapter`, `EmptyStory` |
+| the references of a Scene (Elements, effects, derived events, words, States, Beats), moments of a machine, percents, cycles, `show` and `focus` fire once | `validate.ts` (`UnknownReference`, `NoSuchEvent`, `BadPercent`, `EffectCycle`, ...) |
+
+A Scene with a repeated id is not cross-checked for its references (nor is the Scene that Auto-Animate joins to it): they would only echo the mistake. `planOf` is total and does not check: a `Graph` that comes from the importer or from `jsonCodec.decode` has passed `validateGraph`; call it on a `Graph` built in any other way. The JSON Schema is generated from `GraphSchema`, the shape, and says nothing of these rules.
 ## Notes for story authors
 
 - **Scene ids are written**: `INT. THE NEXT SCREEN - DAY #sc4#` (a letter, then letters, digits, `_` or `-`; unique in the story; `beat`, `scene`, `state`, `transition`, `word`, `each`, `first`, `last`, `when`, `within` and `let` are reserved, since the grammar starts a path or a call with them). A heading without an id is an error that suggests one.
@@ -75,7 +93,7 @@ The IR and the Plan store a fact once and derive the rest. A Line has its `text`
 - `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
 - No title: the Plan title is `Untitled`.
 - The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).
-- A Scene with an error on an Element or effect line is not cross-checked, so the one mistake is the one error.
+- A Scene with an error on an Element or effect line, a repeated id, or no Section is not cross-checked, so the one mistake is the one error.
 
 ## Speech rate
 

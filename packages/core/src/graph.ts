@@ -11,11 +11,11 @@
 //
 // An artifact has no `decode` and an importer has no `encode`, so nothing can be read back that is not a codec. A change
 // of the IR is a new `version`, and a migration is a codec between two versions. Plain data and plain functions.
-import { JsonSchema, Result, Schema, Struct } from "effect";
-import type { Array as Arr } from "effect";
+import { Array as Arr, JsonSchema, Result, Schema, Struct } from "effect";
 
 import type { PlanError } from "./errors.ts";
 import { ChapterSchema, SceneSchema, SpeedSchema, construct } from "./plan.ts";
+import { validateGraph } from "./structure.ts";
 
 /** The version of the IR this build reads and writes. */
 export const graphVersion = 1;
@@ -75,9 +75,24 @@ export interface ArtifactRenderer<Output> {
   readonly render: (graph: Graph) => Output;
 }
 
-const graphJson = Schema.fromJsonString(GraphSchema, { space: 2 });
+/**
+ * The shape of the IR and the rules of a Story: a Graph is a valid Story, not only a well-shaped document. The one
+ * checker of the IR (`structure.ts`) runs on every decode and every encode of the codec, so a hand-written IR is held
+ * to the rules of a screenplay and no invalid Graph is written. Each error is reported with its line, its tag and its
+ * message. The JSON Schema is generated from `GraphSchema` alone: a rule of this kind has no JSON Schema form.
+ */
+const checkedGraph = GraphSchema.check(
+  Schema.makeFilter((graph) =>
+    Arr.map(
+      validateGraph(graph),
+      (found) => `line ${found.line}, ${found._tag}: ${found.message}`
+    )
+  )
+);
 
-/** The canonical codec: JSON text, two-space indent. An excess key or another version is a decode error. */
+const graphJson = Schema.fromJsonString(checkedGraph, { space: 2 });
+
+/** The canonical codec: JSON text, two-space indent. An excess key, another version or a broken rule is a decode error. */
 export const jsonCodec: IrCodec<string> = {
   decode: Schema.decodeUnknownResult(graphJson, { onExcessProperty: "error" }),
   encode: Schema.encodeResult(graphJson),

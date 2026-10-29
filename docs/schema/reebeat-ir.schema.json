@@ -870,10 +870,6 @@
         "hints": {
           "$ref": "#/$defs/LineHints"
         },
-        "id": {
-          "type": "string",
-          "minLength": 1
-        },
         "line": {
           "type": "integer",
           "minimum": 1,
@@ -885,7 +881,6 @@
       },
       "required": [
         "hints",
-        "id",
         "line",
         "text"
       ],

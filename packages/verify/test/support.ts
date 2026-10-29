@@ -6,7 +6,7 @@ import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
 import { fsAssetCache } from "@reebeat/cache-fs";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
-import { decodePlan, requireTimeline } from "@reebeat/core";
+import { decodePlan, requireTimeline, timedLines } from "@reebeat/core";
 import type {
   PlanJson,
   RendererLifecycle,
@@ -57,7 +57,6 @@ import type { PlatformError } from "effect";
 
 import { renderVerdicts, runChecks } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
-import { timedLines } from "../src/planParts.ts";
 
 /** The platform services and the SHA-256 digest the checks and the helpers run on. */
 const platform = Layer.merge(NodeServices.layer, NodeCrypto.layerDigest);
@@ -851,9 +850,9 @@ export const narrationFile = (fixture: FixtureData, lineId: string): string =>
     Option.getOrThrow(
       Arr.findFirst(
         timedLines(fixture.plan.timeline),
-        (line) => line.lineId === lineId
+        ({ id }) => id === lineId
       )
-    ).audio.file
+    ).timed.audio.file
   }`;
 
 /** The catalogue sound `name` as a WAV beside the intact build: the build keeps only the sounds its effects play. */

@@ -451,4 +451,50 @@ describe("observationRange", () => {
         })
     );
   }
+
+  it.effect(
+    "stops an Element's event before the Scene's own next effect on that Element, which would be read as part of the event's settled picture, and leaves the others alone",
+    () =>
+      Effect.gen(function* capped() {
+        const plan = yield* timedWith(referenceLifecycle, storyText);
+        const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
+
+        // `f1: focus a at word("six").end` of sc2 rings the box that moves: its command is the first frame the cell shows it.
+        const ring = Option.getOrThrow(
+          Arr.findFirst(
+            plan.timeline.scenes[1]?.effects ?? [],
+            (timed) => timed.effectId === "f1"
+          )
+        );
+
+        assert.isAbove(ring.commandFrame, slide);
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            event: "move",
+            id: "a",
+            kind: "element",
+            sceneIndex: 1,
+          }).to,
+          Math.min(ring.commandFrame - 1, slide + 24 + 10)
+        );
+        // The Element that enters has no effect of its own in the Scene: its window is the declared one plus the margin.
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            event: "enter",
+            id: "d",
+            kind: "element",
+            sceneIndex: 1,
+          }).to,
+          slide + 24 + 10
+        );
+        // A slide change is the whole frame: no Element's effect stops it.
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            kind: "transition",
+            sceneIndex: 1,
+          }).to,
+          slide + 24 + 10
+        );
+      })
+  );
 });

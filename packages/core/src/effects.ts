@@ -24,12 +24,12 @@ import {
   bodyPattern,
   didYouMean,
   effectLine,
-  keywords,
   lineForm,
   linePattern,
   oneOf,
   problem,
-  reservedIds,
+  idForm,
+  keywords,
   verbArguments,
 } from "./grammar.ts";
 import {
@@ -236,15 +236,9 @@ export const parseEffectLine = (
   const id = head.id ?? "";
   const verb = body.verb ?? "";
 
-  if (!idPattern.test(id) || Arr.contains(reservedIds, id)) {
+  if (!idPattern.test(id)) {
     return Result.fail(
-      bad(
-        line,
-        problem(
-          `effect id "${id}" is not usable`,
-          `an identifier that is not ${oneOf(reservedIds)}`
-        )
-      )
+      bad(line, problem(`effect id "${id}" is not usable`, idForm))
     );
   }
 
@@ -309,15 +303,9 @@ export const parseLetLine = (
     );
   }
 
-  if (!idPattern.test(name) || Arr.contains(reservedIds, name)) {
+  if (!idPattern.test(name)) {
     return Result.fail(
-      bad(
-        line,
-        problem(
-          `derived event name "${name}" is not usable`,
-          `an identifier that is not ${oneOf(reservedIds)}`
-        )
-      )
+      bad(line, problem(`derived event name "${name}" is not usable`, idForm))
     );
   }
 

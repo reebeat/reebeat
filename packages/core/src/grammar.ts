@@ -61,6 +61,9 @@ export const reservedIds = [
   "let",
 ];
 
+/** What an identifier looks like, for the message of an id the pattern refuses (`idPattern` is the rule). */
+export const idForm = "an identifier: a letter, then letters, digits, _ and -";
+
 /** The `key=value` properties of an Element line: one Schema per key, decoded from the text after `=`. */
 export const propertySchemas = {
   cell: CellSchema,
@@ -684,6 +687,30 @@ export const didYouMean = (
     bestDistance <= Math.max(2, Math.floor(longest / 3))
     ? best
     : undefined;
+};
+
+const trailingNumber = /^(?<stem>.*?)(?<digits>\d*)$/u;
+
+/**
+ * `name` when `taken` does not have it, else the nearest name after it that `taken` does not have, for the message of a
+ * repeated id: the number it ends in counted up (`sc4` is `sc5`, `r1` is `r2`), or a 2 put after it (`box` is `box2`).
+ * The result is an identifier when `name` is one.
+ */
+export const freeName = (taken: readonly string[], name: string): string => {
+  if (!Arr.contains(taken, name)) {
+    return name;
+  }
+
+  const found = trailingNumber.exec(name)?.groups;
+  const stem = found?.stem ?? name;
+  const digits = found?.digits ?? "";
+  let next = digits === "" ? 2 : Number(digits) + 1;
+
+  while (Arr.contains(taken, `${stem}${next}`)) {
+    next += 1;
+  }
+
+  return `${stem}${next}`;
 };
 
 /**

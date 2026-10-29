@@ -116,6 +116,36 @@ describe("eventWindow", () => {
     assert.strictEqual(changeFloor(clipOf(frames)), 288 + flickerMargin);
   });
 
+  it("starts a change at the pixels of a step, and with an onset share at the frame that has done that share of it: a faint frame before the change is not its start", () => {
+    // A ringed box (100 x 40 = 4,000 pixels) leaves: frame 3 loses 6 of its columns (240 pixels, over the floor of a
+    // step, 6% of the change: the smear a codec leaves before a change), frame 5 loses 60 columns, frame 7 all of them.
+    const frames = Arr.makeBy(12, (index) => {
+      const columns = [100, 100, 100, 94, 94, 40, 40][index] ?? 0;
+
+      return frameOf(columns === 0 ? [] : [[20, 20, columns, 40, 40]]);
+    });
+
+    assert.deepStrictEqual(eventWindow(clipOf(frames)), {
+      end: 107,
+      start: 103,
+    });
+    assert.deepStrictEqual(
+      eventWindow(clipOf(frames), undefined, undefined, 0.1),
+      {
+        end: 107,
+        start: 105,
+      }
+    );
+    // A share the first frame already has changes nothing.
+    assert.deepStrictEqual(
+      eventWindow(clipOf(frames), undefined, undefined, 0.05),
+      {
+        end: 107,
+        start: 103,
+      }
+    );
+  });
+
   it("calls an instant change a window with no length", () => {
     const frames = Arr.makeBy(10, (index) =>
       frameOf([[10, 10, 40, 20, index < 5 ? 40 : 90]])

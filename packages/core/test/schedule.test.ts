@@ -11,6 +11,7 @@ import { Array as Arr, Effect } from "effect";
 
 import { buildPlan } from "../src/build.ts";
 import { formatTiming } from "../src/effects.ts";
+import { timedLines } from "../src/lines.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
 import { schedule } from "../src/schedule.ts";
@@ -152,12 +153,9 @@ describe("schedule: the arithmetic, by hand", () => {
         ]
       );
       assert.deepStrictEqual(
-        Arr.flatMap(timeline?.scenes ?? [], (scene) =>
-          Arr.map(scene.lines, (line) => [
-            line.lineId,
-            line.startFrame,
-            line.endFrame,
-          ])
+        Arr.map(
+          timeline === undefined ? [] : timedLines(timeline),
+          ({ id, timed }) => [id, timed.startFrame, timed.endFrame]
         ),
         [
           ["one.l1", 45, 105],

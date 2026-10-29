@@ -1,7 +1,7 @@
 // What the mux needs of a scheduled Plan, as plain functions: where each narration clip and each sound starts, the
 // chapters in milliseconds and the length of the Video. No I/O: the build program fetches the clips and hands the
 // results to `Encoder.mux`.
-import { frameToMs } from "@reebeat/core";
+import { frameToMs, timedLines } from "@reebeat/core";
 import type { TimedPlan } from "@reebeat/core";
 import type { MuxRequest } from "@reebeat/services";
 import { Array as Arr, Option, String as Str } from "effect";
@@ -26,14 +26,11 @@ export interface SfxStart {
 
 /** The start of each Line's narration: the Line's start frame in milliseconds, in timeline order. */
 export const narrationStarts = (plan: TimedPlan): readonly NarrationStart[] =>
-  Arr.map(
-    Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines),
-    (line) => ({
-      key: Str.slice(0, -`.${audioName}`.length)(line.audio.file),
-      lineId: line.lineId,
-      startMs: frameToMs(line.startFrame, plan.settings.fps),
-    })
-  );
+  Arr.map(timedLines(plan.timeline), ({ id, timed }) => ({
+    key: Str.slice(0, -`.${audioName}`.length)(timed.audio.file),
+    lineId: id,
+    startMs: frameToMs(timed.startFrame, plan.settings.fps),
+  }));
 
 /**
  * The start of each sound INSTANCE: the instance's fire frame in milliseconds, in timeline order. A sound anchored to an

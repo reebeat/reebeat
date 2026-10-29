@@ -124,7 +124,6 @@
             "pauseBefore": 0,
             "speed": 0.99
           },
-          "id": "opening.l1",
           "line": 26,
           "text": "This box sits in the corner. The caption says what it is."
         },
@@ -133,7 +132,6 @@
             "pauseBefore": 0,
             "speed": 1.1
           },
-          "id": "opening.l2",
           "line": 29,
           "text": "Look at the box."
         }
@@ -300,7 +298,6 @@
             "pauseBefore": 0.5,
             "speed": 1.1
           },
-          "id": "second.l1",
           "line": 49,
           "text": "Same id, new place. A new element enters."
         }
@@ -331,7 +328,6 @@
             "pauseBefore": 0,
             "speed": 1.21
           },
-          "id": "third.l1",
           "line": 63,
           "text": "Nothing is matched across a cut."
         }
@@ -412,7 +408,6 @@
             "pauseBefore": 0,
             "speed": 1.1
           },
-          "id": "fourth.l1",
           "line": 77,
           "text": "The title moves up."
         }

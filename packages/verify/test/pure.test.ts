@@ -1,17 +1,23 @@
 // The pure parts: the table and exit code, the Plan comparison, the signal helpers.
 import { assert, describe, it } from "@effect/vitest";
-import { buildPlan } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
+import {
+  buildPlan,
+  referenceLifecycle,
+  requireTimeline,
+  schedule,
+} from "@reebeat/core";
+import type { PlanJson, RendererLifecycle } from "@reebeat/core";
 import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
 import { synthClip } from "@reebeat/sounds-synth";
 import { Array as Arr, Effect, Option } from "effect";
 
-import { judge } from "../src/effects.ts";
+import { heardAs, judge } from "../src/effects.ts";
+import { observationRange } from "../src/events.ts";
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
-import { locateSounds, onsetIndex } from "../src/wav.ts";
+import { locateSounds, onsetIndex, soundMatchFloor } from "../src/wav.ts";
 import { storyText } from "./support.ts";
 
 const holds: Verdict = {
@@ -153,6 +159,35 @@ const mixed = (
 };
 
 describe("the signal helpers", () => {
+  it("does not find a sound that was left out of the mix: its best match is under the floor, and F1 says not found", () => {
+    const rate = 48_000;
+    const pop = synthClip("pop").samples;
+    const ding = synthClip("ding").samples;
+
+    // The mix has the pop at 1 s and no ding at 2 s, where the plan has one.
+    const track = mixed(rate * 3, [{ at: rate, clip: pop }]);
+
+    const [present, missing] = locateSounds(
+      track,
+      [
+        { expectedMs: 1000, reference: pop },
+        { expectedMs: 2000, reference: ding },
+      ],
+      150
+    );
+
+    assert.isAtLeast(present?.score ?? 0, soundMatchFloor);
+    assert.isBelow(missing?.score ?? 1, soundMatchFloor);
+    assert.isDefined(
+      heardAs(present ?? { offsetMs: 0, score: 0 }, 30, 30).start
+    );
+
+    const heard = heardAs(missing ?? { offsetMs: 0, score: 1 }, 60, 30);
+
+    assert.isUndefined(heard.start);
+    assert.include(heard.reason, "the sound is not found within 150 ms");
+  });
+
   it("finds where a catalogue sound starts", () => {
     const { samples } = synthClip("pop");
 
@@ -302,6 +337,93 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
             `${soundFrames} against a change at ${change}`
           );
         }
+      })
+  );
+});
+
+/** The fixture story spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */
+const timedWith = (lifecycle: RendererLifecycle) =>
+  Effect.gen(function* timed() {
+    const plan = yield* buildPlan(storyText, "0".repeat(64));
+
+    const aligned = Arr.flatMap(plan.scenes, (scene) =>
+      Arr.map(scene.lines, (line) => ({
+        audio: { file: `${"a".repeat(64)}.flac`, sha256: "x" },
+        durationMs: line.words.length * 300,
+        lineId: line.id,
+        words: Arr.map(line.words, (w, at) => ({
+          endMs: (at + 1) * 300,
+          startMs: at * 300,
+          w,
+        })),
+      }))
+    );
+
+    return yield* Effect.flatMap(
+      schedule(plan, aligned, lifecycle),
+      (scheduled) => Effect.fromResult(requireTimeline(scheduled))
+    );
+  });
+
+const slow = (lifecycle: RendererLifecycle): RendererLifecycle => ({
+  ...lifecycle,
+  showMs: 1000,
+  transitionMs: { ...lifecycle.transitionMs, default: 2000 },
+});
+
+describe("observationRange", () => {
+  it.effect(
+    "ends a step's window at the declared show time plus the margin, and follows a renderer that declares a longer show",
+    () =>
+      Effect.gen(function* step() {
+        const plan = yield* timedWith(referenceLifecycle);
+
+        const subject = {
+          fireFrame: 40,
+          id: "r1",
+          kind: "step",
+          sceneIndex: 0,
+        } as const;
+
+        // fps 30: the reference show lasts 133 ms = 4 frames; the margin is 10 frames.
+        assert.deepStrictEqual(
+          observationRange(plan, referenceLifecycle, subject),
+          { from: 35, to: 54 }
+        );
+        // A renderer declaring a show of 1 s: 30 frames, so the window grows by 26 frames.
+        assert.deepStrictEqual(
+          observationRange(plan, slow(referenceLifecycle), subject),
+          { from: 35, to: 80 }
+        );
+      })
+  );
+
+  it.effect(
+    "ends a slide change's window at the longest of the Plan's transition and the declared one plus the margin",
+    () =>
+      Effect.gen(function* settle() {
+        const plan = yield* timedWith(referenceLifecycle);
+        const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
+        const own = { kind: "transition", sceneIndex: 1 } as const;
+        const last = plan.timeline.totalFrames - 1;
+
+        // Scene two is `> AUTO-ANIMATE`: the Plan's 0.8 s is 24 frames; reveal's unmatched Elements end at 22.
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, own).to,
+          Math.min(last, slide + 24 + 10)
+        );
+
+        // The declared Auto-Animate may be longer than the Plan's 0.8 s only by being wrong (`schedule` refuses it), so
+        // the window follows the declared lag of an unmatched Element instead.
+        const late: RendererLifecycle = {
+          ...referenceLifecycle,
+          unmatched: { enter: { endLagFrames: 40, startLagFrames: 8 } },
+        };
+
+        assert.strictEqual(
+          observationRange(plan, late, own).to,
+          Math.min(last, slide + 40 + 10)
+        );
       })
   );
 });

@@ -77,6 +77,14 @@ const rewritten = (words: readonly string[]): string =>
     " "
   );
 
+const hiddenIdOf = (words: readonly string[]): string | undefined =>
+  Arr.contains(words, "hidden")
+    ? Arr.findFirst(words, (word) => word.startsWith("#")).pipe(
+        Option.map((word) => word.slice(1)),
+        Option.getOrUndefined
+      )
+    : undefined;
+
 const releaseOne = (
   text: string,
   words: readonly string[],
@@ -98,14 +106,34 @@ const slug = (text: string): string =>
     .replaceAll(/^-+|-+$/gu, "")
     .replace(/^(?=[0-9])/u, "e");
 
-const missingId = (text: string, line: number): PlanError =>
+/**
+ * The line with its id added: what the author wrote stays as written, and only a required property that is missing
+ * gets an example value, so that the suggestion is a valid line.
+ */
+const withId = (text: string, words: readonly string[]): string => {
+  const written = new Set(Arr.map(words, (word) => word.split("=")[0] ?? ""));
+
+  const filled = Arr.flatMap(elementProperties, (property) =>
+    property.required && property.key !== "id" && !written.has(property.key)
+      ? [`${property.key}=${property.example}`]
+      : []
+  );
+
+  return `"${text} {id=${slug(text) || "<id>"} ${Arr.join([...words, ...filled], " ")}}"`;
+};
+
+const missingId = (
+  text: string,
+  words: readonly string[],
+  line: number
+): PlanError =>
   planError(
     "MissingId",
     line,
     problem(
       `Element "${text}" has no id`,
       `"${text} {id=<id> cell=<cell> class=<class>}"`,
-      `"${text} {id=${slug(text) || "<id>"} cell=mc class=box}"`
+      withId(text, words)
     )
   );
 
@@ -167,11 +195,14 @@ export interface ParsedElement {
   /** Absent when the line has no usable `id` or a property is wrong. */
   readonly element: Element | undefined;
   readonly errors: readonly PlanError[];
+  /** The id of a release-1 `hidden` Element: the one a `[[next]]` cue of its Scene was meant to reveal. */
+  readonly releaseOneHidden: string | undefined;
 }
 
 const failed = (errors: readonly PlanError[]): ParsedElement => ({
   element: undefined,
   errors,
+  releaseOneHidden: undefined,
 });
 
 /** The pairs of a `{...}` block, or every problem found in it. */
@@ -247,11 +278,14 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
   }
 
   if (match === null) {
-    return failed([missingId(text, line)]);
+    return failed([missingId(text, words, line)]);
   }
 
   if (Arr.some(words, isReleaseOne)) {
-    return failed([releaseOne(text, words, line)]);
+    return {
+      ...failed([releaseOne(text, words, line)]),
+      releaseOneHidden: hiddenIdOf(words),
+    };
   }
 
   const { errors, pairs } = readPairs(words, line);
@@ -263,7 +297,7 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
     errors.length > 0
       ? errors
       : [
-          ...(id === undefined ? [missingId(text, line)] : []),
+          ...(id === undefined ? [missingId(text, words, line)] : []),
           ...missingProperties(pairs, text, line),
         ];
 
@@ -291,7 +325,11 @@ export const parseElementLine = (raw: string, line: number): ParsedElement => {
             )
           ),
         ]),
-      onSuccess: (element) => ({ element, errors: [] }),
+      onSuccess: (element) => ({
+        element,
+        errors: [],
+        releaseOneHidden: undefined,
+      }),
     }
   );
 };

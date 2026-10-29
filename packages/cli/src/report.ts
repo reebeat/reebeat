@@ -36,6 +36,7 @@ const located: Record<PlanErrorTag, true> = {
   SceneBeforeSection: true,
   UnknownReference: true,
   UnknownSfx: true,
+  UnsupportedEdge: true,
   UnsupportedElement: true,
 };
 

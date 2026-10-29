@@ -114,10 +114,21 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=mc class=box}"?',
-    name: "an Element without an id",
-    needle: "Box {cell=tl class=box}",
-    source: change("Box {id=a cell=tl class=box}", "Box {cell=tl class=box}"),
+      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=tl class=label}"?',
+    name: "an Element without an id keeps its own cell and class",
+    needle: "Box {cell=tl class=label}",
+    source: change("Box {id=a cell=tl class=box}", "Box {cell=tl class=label}"),
+    tag: "MissingId",
+  },
+  {
+    message:
+      'Element "Box" has no id; expected "Box {id=<id> cell=<cell> class=<class>}"; did you mean "Box {id=box cell=tl visible=false class=box}"?',
+    name: "an Element without an id and without a class gets an example class only",
+    needle: "Box {cell=tl visible=false}",
+    source: change(
+      "Box {id=a cell=tl class=box}",
+      "Box {cell=tl visible=false}"
+    ),
     tag: "MissingId",
   },
   {
@@ -270,6 +281,17 @@ const cases: readonly Case[] = [
   },
   {
     message:
+      'word("there goodbye").end: "there goodbye" runs from the end of one Line into the start of the next (a phrase must stay within one Line); expected words that stand next to each other in one Line; did you mean word("there")?',
+    name: "a phrase that runs across two Lines states the rule",
+    needle: 'word("there goodbye")',
+    source: change('word("hello").end', 'word("there goodbye").end').replace(
+      "Hello there. Goodbye.",
+      "Hello there.\n\nNARRATOR\nGoodbye."
+    ),
+    tag: "UnknownReference",
+  },
+  {
+    message:
       'word("hello") occurs 2 times in Scene one; expected the occurrence you mean; did you mean word("hello", 1) to word("hello", 2)?',
     name: "a phrase that occurs twice, with no occurrence number",
     needle: 'r1: show h at word("hello")',
@@ -307,12 +329,29 @@ const cases: readonly Case[] = [
     message:
       "effects wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event",
     name: "two effects that wait for each other",
-    needle: "s1: sound pop at s2.end",
+    needle: "s1: sound pop at s2.start",
     source: change(
       "s1: sound pop at r1.end +100ms",
-      "s1: sound pop at s2.end\n  s2: sound pop at s1.start"
+      "s1: sound pop at s2.start\n  s2: sound pop at s1.start"
     ),
     tag: "EffectCycle",
+  },
+  {
+    message: "s1.end: a sound has no end; use s1.start",
+    name: "the end of a sound, which has no window",
+    needle: "s2: sound ding at s1.end",
+    source: change(
+      "s1: sound pop at r1.end +100ms",
+      "s1: sound pop at r1.end +100ms\n  s2: sound ding at s1.end"
+    ),
+    tag: "UnsupportedEdge",
+  },
+  {
+    message: "f1.end: a focus has no end; use f1.start",
+    name: "the end of a focus, which has no window",
+    needle: "s1: sound pop at f1.end",
+    source: change("s1: sound pop at r1.end +100ms", "s1: sound pop at f1.end"),
+    tag: "UnsupportedEdge",
   },
   {
     message:
@@ -434,15 +473,15 @@ const cases: readonly Case[] = [
 const oldForms: readonly Case[] = [
   {
     message:
-      'release-1 cue [[next]] in dialogue; expected no note in dialogue; write r1: show <element id> at word("there").end in the [[effects]] block of the Scene',
-    name: "[[next]] in dialogue",
+      'release-1 cue [[next]] in dialogue; expected no note in dialogue; write r2: show h at word("there").end in the [[effects]] block of the Scene',
+    name: "[[next]] in dialogue names the hidden Element and takes a free id",
     needle: "[[next]]",
     source: change("Hello there.", "Hello there. [[next]]"),
     tag: "ReleaseOneForm",
   },
   {
     message:
-      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f1: focus a at word("Hello").end in the [[effects]] block of the Scene',
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("Hello").end in the [[effects]] block of the Scene',
     name: "[[focus: id]] in dialogue",
     needle: "[[focus: a]]",
     source: change("Hello there.", "Hello [[focus: a]] there."),
@@ -450,10 +489,40 @@ const oldForms: readonly Case[] = [
   },
   {
     message:
-      "release-1 cue [[sfx: whoosh]] in dialogue; expected no note in dialogue; write s1: sound whoosh at transition.start in the [[effects]] block of the Scene",
+      "release-1 cue [[sfx: whoosh]] in dialogue; expected no note in dialogue; write s2: sound whoosh at transition.start in the [[effects]] block of the Scene",
     name: "[[sfx: name]] before the first word",
     needle: "[[sfx: whoosh]]",
     source: change("Hello there.", "[[sfx: whoosh]] Hello there."),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("there").end in the [[effects]] block of the Scene',
+    name: "a cue that opens a Line is timed against the last word of the Line before",
+    needle: "[[focus: a]] Goodbye",
+    source: change(
+      "Hello there. Goodbye.",
+      "Hello there.\n\nNARRATOR\n[[focus: a]] Goodbye."
+    ),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[sfx: pop]] in dialogue; expected no note in dialogue; write s2: sound pop at word("there", 2).end in the [[effects]] block of the Scene',
+    name: "a cue after a phrase that repeats in the Scene writes the occurrence",
+    needle: "[[sfx: pop]]",
+    source: change(
+      "Hello there. Goodbye.",
+      "Hello there. Goodbye there. [[sfx: pop]]"
+    ),
+    tag: "ReleaseOneForm",
+  },
+  {
+    message:
+      'release-1 cue [[focus: a]] in dialogue; expected no note in dialogue; write f2: focus a at word("Hello").start in the [[effects]] block of the Scene',
+    name: "a focus before the first word of the Scene is timed against that word",
+    needle: "[[focus: a]]",
+    source: change("Hello there.", "[[focus: a]] Hello there."),
     tag: "ReleaseOneForm",
   },
   {

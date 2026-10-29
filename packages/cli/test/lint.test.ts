@@ -1,11 +1,20 @@
 // `reebeat lint` (spec 0002, M2, F2 to F5): every problem of a story with its file, line and message; the exit is not
 // zero for an error and zero for a story that only lists absolute times that have their reason (F5).
 import { assert, layer } from "@effect/vitest";
-import { Array as Arr, Effect, FileSystem, Layer, Path, Result } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  Exit,
+  FileSystem,
+  Layer,
+  Path,
+  Result,
+} from "effect";
 import { TestConsole } from "effect/testing";
 
 import { lintStory } from "../src/lint.ts";
 import { platform } from "./platform.ts";
+import { fillCache, runCli, storyFile } from "./support.ts";
 
 const story = (effects: readonly string[], dialogue = "One two three.") =>
   Arr.join(
@@ -164,6 +173,137 @@ layer(platform)("reebeat lint", (it) => {
         assert.include(
           stdout,
           ":10: error ReleaseOneForm: release-1 cue [[next]] in dialogue"
+        );
+      })
+  );
+});
+
+/** Two Scenes, each with an `[[effects]]` block: the second Scene has two Lines. */
+const timedStory = (first: readonly string[], second: readonly string[]) =>
+  Arr.join(
+    [
+      "Title: Timing",
+      "",
+      "# Part",
+      "",
+      "INT. ONE #one#",
+      "",
+      "Box {id=a cell=mc class=box}",
+      "",
+      "[[effects",
+      ...first,
+      "]]",
+      "",
+      "NARRATOR",
+      "One box here.",
+      "",
+      "INT. TWO #two#",
+      "",
+      "Box {id=a cell=tl class=box}",
+      "Note {id=note cell=br class=label visible=false}",
+      "",
+      "[[effects",
+      ...second,
+      "]]",
+      "",
+      "NARRATOR",
+      "The second Line.",
+      "",
+      "NARRATOR",
+      "And the third Line.",
+      "",
+    ],
+    "\n"
+  );
+
+/** The flags that select the narrator the cache was filled with (the offline stand-ins). */
+const offline = ["--speech", "silent", "--aligner", "even"] as const;
+
+/** Lints `text` with a speech cache beside it, filled by the stand-ins when `cached`. */
+const lintWithCache = (text: string, cached: boolean) =>
+  Effect.gen(function* lintCached() {
+    const path = yield* Path.Path;
+    const file = yield* storyFile(text);
+    const cacheDir = path.join(path.dirname(file), "speech-cache");
+
+    if (cached) {
+      yield* fillCache(cacheDir, text);
+    }
+
+    return { file, ...(yield* runCli(["lint", file, ...offline])) };
+  });
+
+const okSecond = ['  r1: show note at word("third").start'];
+
+layer(platform)("reebeat lint with the speech cache of the story", (it) => {
+  it.effect(
+    "finds an effect that falls outside its Scene, with its line: a sound 30 s after the word",
+    () =>
+      Effect.gen(function* late() {
+        const { exit, file, stdout } = yield* lintWithCache(
+          timedStory(['  s1: sound ding at word("box").end +30s'], okSecond),
+          true
+        );
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.include(
+          stdout,
+          `${file}:10: error EffectOutsideScene: effect s1 (line 10) resolves to frame`
+        );
+        assert.include(stdout, "Timing: checked against the speech cache");
+        assert.notInclude(stdout, "Timing: not checked");
+      })
+  );
+
+  it.effect(
+    "finds a show whose command would come before its slide change: two seconds before a word",
+    () =>
+      Effect.gen(function* early() {
+        const { exit, file, stdout } = yield* lintWithCache(
+          timedStory(
+            ['  s1: sound ding at word("box").end'],
+            ['  r1: show note at word("second").start -2s']
+          ),
+          true
+        );
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.include(
+          stdout,
+          `${file}:22: error EffectOutsideScene: effect r1 (line 22) resolves to frame`
+        );
+      })
+  );
+
+  it.effect(
+    "a story that schedules passes, and says it checked the timing",
+    () =>
+      Effect.gen(function* fine() {
+        const { exit, stdout } = yield* lintWithCache(
+          timedStory(['  s1: sound ding at word("box").end'], okSecond),
+          true
+        );
+
+        assert.isTrue(Exit.isSuccess(exit));
+        assert.include(stdout, "0 errors, 0 absolute times listed");
+        assert.include(stdout, "Timing: checked against the speech cache");
+      })
+  );
+
+  it.effect(
+    "without the cache it checks no timing and says that `plan --timing` or `build` finds it, not lint",
+    () =>
+      Effect.gen(function* missing() {
+        const { exit, stdout } = yield* lintWithCache(
+          timedStory(['  s1: sound ding at word("box").end +30s'], okSecond),
+          false
+        );
+
+        assert.isTrue(Exit.isSuccess(exit));
+        assert.include(stdout, "Timing: not checked.");
+        assert.include(
+          stdout,
+          "`reebeat plan --timing` or `reebeat build` finds it, not `reebeat lint`"
         );
       })
   );

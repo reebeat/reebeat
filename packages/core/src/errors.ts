@@ -142,6 +142,12 @@ export class EmptyStory extends Schema.TaggedError<
   { readonly brand: unique symbol }
 >()("EmptyStory", located) {}
 
+/** `.end` of a `sound` or a `focus`, which have no window (only a `show` has one). */
+export class UnsupportedEdge extends Schema.TaggedError<
+  UnsupportedEdge,
+  { readonly brand: unique symbol }
+>()("UnsupportedEdge", located) {}
+
 const planErrors = {
   AbsoluteNeedsReason,
   AmbiguousWord,
@@ -165,6 +171,7 @@ const planErrors = {
   SceneBeforeSection,
   UnknownReference,
   UnknownSfx,
+  UnsupportedEdge,
   UnsupportedElement,
 } as const;
 

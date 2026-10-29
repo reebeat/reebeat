@@ -11,6 +11,7 @@ bun run reebeat plan    <story> [--json] [--timing] [--cache-dir <dir>] [selecti
 bun run reebeat build   <story> --out <dir> [--cache-dir <dir>] [--refresh-speech] [--name <n>] [--capture-timeout <s>] [selection flags]
 bun run reebeat check   <dir> --source <story> [--cache-dir <dir>] [selection flags]
 bun run reebeat journey <story> [--out-root <dir>] [--cache-dir <dir>] [--refresh-speech] [selection flags]
+bun run reebeat lint    <story> [--cache-dir <dir>] [selection flags]
 bun run journey         # reebeat journey stories/same-id/story.fountain: build, check, build again, compare the two builds (F6)
 ```
 
@@ -24,6 +25,7 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 | `build` | `buildProgram` on the selected adapters, then the summary: files, frames, sizes, and every adapter with its egress |
 | `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@reebeat/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
 | `journey` | build, `check`, build again, F6 compare; the first failure stops it |
+| `lint` | `collectErrors` (every problem of the screenplay, in document order, each `file:line: error Tag: message` with what was found, what was expected and the nearest valid form), then `lintPlan` (the absolute times, listed with their reasons as `info`). When the story's speech cache exists under the selected adapters (`--cache-dir` and the selection flags say which) it also schedules the Plan, so an effect outside its Scene is an error with its line; without the cache that is **not checked**: `plan --timing` or `build` finds it, not `lint`, and the last output line says which happened. Needs no browser; exits 1 when anything is an error |
 
 ## Selection
 

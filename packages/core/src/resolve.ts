@@ -18,7 +18,6 @@
 // Plain functions over `Result`; no Effect, no service.
 import { Array as Arr, Order, Result } from "effect";
 
-import { formatWhen } from "./effects.ts";
 import { EffectOutsideScene, EmptyWindow, UnresolvedAnchor } from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
 import { eventKind, showEffectOf } from "./events.ts";
@@ -485,7 +484,7 @@ export const resolveEffects = (
       commandFrame: commandOf(effect, fire.success),
       effectId: effect.id,
       fireFrame: fire.success,
-      intent: formatWhen(effect.when),
+      intent: effect.written,
     });
   }
 

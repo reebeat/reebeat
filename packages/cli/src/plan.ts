@@ -30,7 +30,30 @@ export const planText = Effect.fn("planText")(function* planText(options: {
   return yield* present(plan, options.json, false);
 });
 
-/** The same with the Timeline: the narration comes from the speech cache the selected adapters key into. */
+/**
+ * The Plan with its Timeline: the narration comes from the speech cache the selected adapters key into (read-only: a
+ * miss is `SpeechCacheMiss`), and the effects resolve against the selected renderer's own declaration of its slide
+ * change. `plan --timing`, and `lint` when the cache exists, both read it.
+ */
+export const scheduledPlan = Effect.fn("scheduledPlan")(function* scheduledPlan(
+  plan: PlanJson,
+  run: RunOptions,
+  selection: Selection
+) {
+  const compose = yield* Composition;
+  const parts = compose(selection, run);
+
+  const aligned = yield* Effect.provide(
+    speechStage(plan, { refresh: false }),
+    speechServicesOf(parts)
+  );
+
+  const { info } = yield* Effect.provide(Renderer, parts.renderer);
+
+  return yield* schedule(plan, aligned, info.lifecycle);
+});
+
+/** The same review (or `plan.json`) with the Timeline. */
 export const timedPlanText = Effect.fn("timedPlanText")(
   function* timedPlanText(options: {
     readonly json: boolean;
@@ -38,20 +61,10 @@ export const timedPlanText = Effect.fn("timedPlanText")(
     readonly selection: Selection;
     readonly story: string;
   }) {
-    const compose = yield* Composition;
     const { plan } = yield* readPlan(options.story);
-    const parts = compose(options.selection, options.run);
-
-    const aligned = yield* Effect.provide(
-      speechStage(plan, { refresh: false }),
-      speechServicesOf(parts)
-    );
-
-    // The effects resolve against the selected renderer's own declaration of its slide change.
-    const { info } = yield* Effect.provide(Renderer, parts.renderer);
 
     return yield* present(
-      yield* schedule(plan, aligned, info.lifecycle),
+      yield* scheduledPlan(plan, options.run, options.selection),
       options.json,
       true
     );

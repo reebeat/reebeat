@@ -8,6 +8,8 @@ import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
 import { oneOf, problem, reservedIds } from "./grammar.ts";
+import { cueErrors } from "./hints.ts";
+import type { SceneCue } from "./hints.ts";
 import { parseNarration } from "./narration.ts";
 import type { FountainToken } from "./parse.ts";
 import { idPattern } from "./plan.ts";
@@ -43,7 +45,11 @@ export interface SceneDraft {
   /** An Element or effect line of the Scene has an error: its references are not checked until it is fixed. */
   invalid: boolean;
   readonly elements: Element[];
+  /** The release-1 cues of the Scene's dialogue, in order, each with the Line it stood in. */
+  readonly cues: SceneCue[];
   readonly lines: LineDraft[];
+  /** The ids of the hidden Elements in document order (release 1's `hidden` included): what `[[next]]` cues revealed. */
+  readonly hidden: string[];
 }
 
 interface ChapterDraft {
@@ -297,11 +303,13 @@ const headingToken = (state: State, token: FountainToken): void => {
 
   state.scenes.push({
     chapterIndex: state.chapters.length - 1,
+    cues: [],
     effects: [],
     effectsLine: undefined,
     elements: [],
     explicitOccurrences: new Set(),
     heading: token.text.trim(),
+    hidden: [],
     id,
     invalid: false,
     line: token.line,
@@ -326,8 +334,12 @@ const elementLine = (
   raw: string,
   line: number
 ): void => {
-  const { element, errors } = parseElementLine(raw, line);
+  const { element, errors, releaseOneHidden } = parseElementLine(raw, line);
   state.errors.push(...errors);
+
+  if (releaseOneHidden !== undefined) {
+    scene.hidden.push(releaseOneHidden);
+  }
 
   if (element === undefined) {
     return;
@@ -353,6 +365,10 @@ const elementLine = (
     state.errors.push(reservedId(line, "Element", element.id));
   } else {
     scene.elements.push(element);
+
+    if (!element.visible) {
+      scene.hidden.push(element.id);
+    }
   }
 };
 
@@ -640,6 +656,13 @@ const dialogueToken = (state: State, token: FountainToken): void => {
   const narration = parseNarration(token.text, token.line);
   state.errors.push(...narration.errors);
 
+  scene.cues.push(
+    ...Arr.map(narration.cues, (cue): SceneCue => ({
+      ...cue,
+      lineIndex: scene.lines.length,
+    }))
+  );
+
   if (narration.text === "") {
     unsupported(
       state,
@@ -824,6 +847,15 @@ const finish = (state: State): void => {
         `Scene "${scene.heading}" has no NARRATOR dialogue: a Scene needs at least one Line`
       );
     }
+
+    state.errors.push(
+      ...cueErrors({
+        cues: scene.cues,
+        effects: scene.effects,
+        hidden: scene.hidden,
+        lines: scene.lines,
+      })
+    );
   }
 };
 

@@ -125,15 +125,28 @@ const wordErrors = (
     const first = phraseTokens(anchor.phrase)[0] ?? anchor.phrase;
     const close = nearest(first, narrationWords(scene.lines));
 
+    // The words are there, one after the other, but not inside one Line: say the rule, not only that it is missing.
+    const spans =
+      findPhrase(
+        [{ words: Arr.flatMap(scene.lines, (line) => line.words) }],
+        anchor.phrase
+      ).length > 0;
+
     return [
       planError(
         "UnknownReference",
         effect.line,
-        problem(
-          `${text}: the narration of Scene ${scene.id} has no "${anchor.phrase}"`,
-          "words that the Lines of this Scene say",
-          close === undefined ? undefined : `word("${close.toLowerCase()}")`
-        )
+        spans
+          ? problem(
+              `${text}: "${anchor.phrase}" runs from the end of one Line into the start of the next (a phrase must stay within one Line)`,
+              "words that stand next to each other in one Line",
+              close === undefined ? undefined : `word("${close.toLowerCase()}")`
+            )
+          : problem(
+              `${text}: the narration of Scene ${scene.id} has no "${anchor.phrase}"`,
+              "words that the Lines of this Scene say",
+              close === undefined ? undefined : `word("${close.toLowerCase()}")`
+            )
       ),
     ];
   }
@@ -236,18 +249,32 @@ const effectErrors = (
   scene: Scene,
   effect: Effect,
   anchor: Extract<Anchor, { kind: "effect" }>
-): readonly PlanError[] =>
-  effectOf(scene, anchor.id) === undefined
+): readonly PlanError[] => {
+  const target = effectOf(scene, anchor.id);
+
+  if (target === undefined) {
+    return [
+      unknown(
+        scene,
+        effect,
+        "effect",
+        anchor.id,
+        Arr.map(scene.effects, (other) => other.id)
+      ),
+    ];
+  }
+
+  // Only a `show` has a window; a sound and a focus happen at one frame, so their `.end` would silently equal `.start`.
+  return anchor.edge === "end" && target.verb !== "show"
     ? [
-        unknown(
-          scene,
-          effect,
-          "effect",
-          anchor.id,
-          Arr.map(scene.effects, (other) => other.id)
+        planError(
+          "UnsupportedEdge",
+          effect.line,
+          `${anchor.id}.end: a ${target.verb} has no end; use ${anchor.id}.start`
         ),
       ]
     : [];
+};
 
 /** Whether the anchored event has a window to take a percent of; `undefined` when the anchor fails elsewhere. */
 const windowOf = (scene: Scene, anchor: Anchor): boolean | undefined =>

@@ -1,9 +1,8 @@
 // The review text of `reebeat plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
 // (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its effects as `intent -> frame` (spec 0002),
 // its Lines, and one summary line. Deterministic: the same Plan gives the same text. A plain function.
-import { Array as Arr, Option } from "effect";
+import { Array as Arr, Match, Option } from "effect";
 
-import { formatWhen } from "./effects.ts";
 import type {
   Effect,
   Element,
@@ -14,6 +13,8 @@ import type {
   TimedLine,
   TimedScene,
 } from "./plan.ts";
+import { soundsOf } from "./steps.ts";
+import type { Carrier } from "./steps.ts";
 
 export interface ReviewOptions {
   /** Adds frames and seconds from the Timeline (`reebeat plan --timing`). */
@@ -177,8 +178,23 @@ const lineRows = (
 const doing = (effect: Effect): string =>
   `${effect.verb} ${effect.name ?? effect.target ?? ""}`;
 
-/** One row per effect: `s1  sound whoosh  one.move.start  ->  frame 732` (the frame once the Timeline exists). */
+/** Where the Deck plays a sound (`soundsOf`, the one rule the Deck and the check share), as the row says it. */
+const carrierText = (carrier: Carrier): string =>
+  Match.value(carrier).pipe(
+    Match.discriminatorsExhaustive("kind")({
+      alone: () => "plays alone",
+      slide: () => "rides the slide",
+      step: (found) => `rides step ${found.effectId}`,
+    })
+  );
+
+/**
+ * One row per effect: `s1  sound whoosh  one.move.start  ->  frame 732` (the frame once the Timeline exists), and
+ * for a sound, where the Deck plays it: `(rides the slide)`, `(rides step r1)` or `(plays alone)`. The carrier needs
+ * the resolved times (the nearest step before a word), so it is printed with the frames only.
+ */
 const effectRows = (
+  plan: PlanJson,
   scene: Scene,
   timed: TimedScene | undefined
 ): readonly string[] => {
@@ -190,6 +206,15 @@ const effectRows = (
     Math.max(width, doing(effect).length)
   );
 
+  const carriers = new Map(
+    timed === undefined
+      ? []
+      : Arr.map(soundsOf(plan, scene), ({ carrier, effect }) => [
+          effect.id,
+          carrierText(carrier),
+        ])
+  );
+
   return Arr.map(scene.effects, (effect) => {
     const fire = Option.getOrUndefined(
       Arr.findFirst(
@@ -198,9 +223,11 @@ const effectRows = (
       )
     )?.fireFrame;
 
-    const when = `${doing(effect).padEnd(doingWidth)}  ${formatWhen(effect.when)}`;
+    const carrier = carriers.get(effect.id);
+    const when = `${doing(effect).padEnd(doingWidth)}  ${effect.written}`;
+    const frame = fire === undefined ? "" : `  ->  frame ${fire}`;
 
-    return `      ${effect.id.padEnd(idWidth)}  ${when}${fire === undefined ? "" : `  ->  frame ${fire}`}`;
+    return `      ${effect.id.padEnd(idWidth)}  ${when}${frame}${carrier === undefined ? "" : `  (${carrier})`}`;
   });
 };
 
@@ -226,7 +253,7 @@ const sceneRows = (
     ...elementRows(scene, previous),
     ...(scene.effects.length === 0
       ? []
-      : ["    Effects", ...effectRows(scene, timed)]),
+      : ["    Effects", ...effectRows(plan, scene, timed)]),
     "    Lines",
     ...Arr.flatMap(scene.lines, (line) =>
       lineRows(
@@ -249,7 +276,7 @@ const absoluteRows = (plan: PlanJson): readonly string[] =>
     Arr.flatMap(scene.effects, (effect) =>
       "absoluteMs" in effect.when
         ? [
-            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${formatWhen(effect.when)}`,
+            `  ${scene.id} ${effect.id} (line ${effect.line}): at ${effect.written}`,
           ]
         : []
     )

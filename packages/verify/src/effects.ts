@@ -63,7 +63,11 @@ const subjectKey = (subject: Subject): string => {
 };
 
 /** The sound found at `offsetMs` from `fireFrame` with `score`; none when it matches under the floor. */
-const heardAs = (found: SoundFound, fireFrame: number, fps: number): Own => {
+export const heardAs = (
+  found: SoundFound,
+  fireFrame: number,
+  fps: number
+): Own => {
   if (found.score < soundMatchFloor) {
     return {
       end: undefined,

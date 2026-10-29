@@ -56,7 +56,7 @@ A title {id=title cell=mc class=title}
   w1: sound whoosh at transition.start
   w2: sound ding at word("again", 2).end
   w3: sound pop at 2.5s because "the music has a beat here"
-  w4: sound pop at w1.end +3f
+  w4: sound pop at w1.start +3f
 ]]
 
 NARRATOR
@@ -111,7 +111,7 @@ An anchor names a moment of the Plan. It resolves to a frame in the schedule sta
 
 | anchor | points at |
 | --- | --- |
-| `<effect>.start\|end` | another effect of this Scene: its own start (its fire frame) or end (a show: its fire frame plus the renderer's show time; a sound or focus: its fire frame) |
+| `<effect>.start\|end` | another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error |
 | `<element>.enter\|exit\|move\|update.start\|end\|<N>%` | a lifecycle event of an Element of this Scene (exit: of the previous Scene, seen at the transition): the first frame it differs, the frame it settles, or N percent of the way (move and update: by the renderer's declared easing) |
 | `scene.start\|end` | scene.start: the frame the slide change is shown; scene.end: the last frame of the Scene |
 | `transition.start\|end\|<N>%` | the Scene's incoming slide transition: its first frame, its last frame, or N percent of the way (linear in time) |
@@ -188,10 +188,10 @@ INT. THE ONLY SCREEN - DAY #only#
 A title {id=title cell=mc class=title}
 
 NARRATOR
-Hello [[next]] there.
+Hello [[focus: title]] there.
 ```
 
-> line 10, ReleaseOneForm: release-1 cue [[next]] in dialogue; expected no note in dialogue; write r1: show <element id> at word("Hello").end in the [[effects]] block of the Scene
+> line 10, ReleaseOneForm: release-1 cue [[focus: title]] in dialogue; expected no note in dialogue; write f1: focus title at word("Hello").end in the [[effects]] block of the Scene
 
 **An unknown event, with the nearest valid one**
 
@@ -267,3 +267,13 @@ Hello.
 | `[[sfx: name]]` in dialogue | a `sound` line in the `[[effects]]` block: `s1: sound <name> at word("<phrase>").end`, or `at transition.start` for the slide change |
 | `{#id @cell .class hidden}` | `{id=<id> cell=<cell> class=<class> visible=false}` |
 | a Scene heading without `#id#` | `INT. THE NEXT SCREEN - DAY #sc4#` |
+
+
+## What is not yet explicit
+
+Two kinds of line are still read by where they stand, because that is how Fountain itself writes them. Everything else in this document is written once, with its id.
+
+- **A transition line applies to the NEXT scene heading.** `> AUTO-ANIMATE` and `> CUT` stand alone, between blank lines, right before the heading they lead into (a `# Section` or `= synopsis` may stand between); they name no Scene and carry no id. A transition anywhere else is a `BadTransition` error that says so.
+- **A parenthetical applies to the dialogue right after it**: `(slowly)`, `(quickly)`, `(pause N)` and `(speed N)` set the delivery of the NARRATOR Line that follows.
+
+A later spec may give both an explicit form (for example a transition written on the heading it belongs to); until then the position is the rule.

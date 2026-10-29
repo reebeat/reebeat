@@ -140,7 +140,7 @@ const words = (...spoken: readonly string[]): AlignedLine["words"] =>
   }));
 
 /** The Plan of a one-Line story with the effects `rows`, and the same Plan with a Timeline for a Line of "One two." (1000 ms). */
-const oneLine = (rows: readonly string[]) =>
+const oneLine = (rows: readonly string[], elements: readonly string[] = []) =>
   Effect.gen(function* built() {
     const plan = yield* buildPlan(
       asText([
@@ -150,6 +150,8 @@ const oneLine = (rows: readonly string[]) =>
         "",
         "INT. A #a#",
         "",
+        ...elements,
+        ...(elements.length === 0 ? [] : [""]),
         "[[effects",
         ...rows,
         "]]",
@@ -209,6 +211,34 @@ describe("reviewText with timing", () => {
   );
 
   it.effect(
+    "says where the Deck plays each sound: on the slide, on a step, or alone; a step has no carrier",
+    () =>
+      Effect.gen(function* carriers() {
+        const { withTimeline } = yield* oneLine(
+          [
+            '  r1: show note at word("two").end',
+            "  s1: sound whoosh at transition.start",
+            "  s2: sound ding at r1.start",
+            '  s3: sound pop at word("one").start',
+          ],
+          ["Note {id=note cell=br class=label visible=false}"]
+        );
+
+        const rows = Arr.filter(
+          reviewText(withTimeline, { timing: true }).split("\n"),
+          (row) => /^ {6}[rs]\d {2}/u.test(row)
+        );
+
+        assert.deepStrictEqual(rows, [
+          '      r1  show note     word("two").end  ->  frame 42',
+          "      s1  sound whoosh  transition.start  ->  frame 0  (rides the slide)",
+          "      s2  sound ding    r1.start  ->  frame 42  (rides step r1)",
+          '      s3  sound pop     word("one").start  ->  frame 30  (plays alone)',
+        ]);
+      })
+  );
+
+  it.effect(
     "shows an effect anchored to the transition start as intent and, with a timeline, its frame",
     () =>
       Effect.gen(function* anchored() {
@@ -222,7 +252,7 @@ describe("reviewText with timing", () => {
         );
         assert.include(
           reviewText(withTimeline, { timing: true }),
-          "      s1  sound whoosh  transition.start  ->  frame 0\n"
+          "      s1  sound whoosh  transition.start  ->  frame 0  (rides the slide)\n"
         );
       })
   );

@@ -23,8 +23,15 @@ export const IdentifierSchema = Schema.String.check(
   Schema.isPattern(idPattern)
 );
 
-/** Words the anchor grammar uses as its first word; no Element or effect may carry one of these ids. */
-export const reservedIds = ["scene", "transition", "word"] as const;
+/** The words an anchor starts with (`word("x").end`, `scene.start`, `transition.50%`). */
+export const anchorWords = {
+  scene: "scene",
+  transition: "transition",
+  word: "word",
+} as const;
+
+/** The words the anchor grammar uses as its first word; no Element or effect may carry one of these ids. */
+export const reservedIds = Record.values(anchorWords);
 
 /** The `key=value` properties of an Element line: one Schema per key, decoded from the text after `=`. */
 export const propertySchemas = {
@@ -39,6 +46,8 @@ export type PropertyKey = keyof typeof propertySchemas;
 /** One row of the Element property table of the document. */
 export interface PropertySpec {
   readonly default: string | undefined;
+  /** A valid value, for the message that suggests a whole line (the Element's own id is taken from its text). */
+  readonly example: string;
   /** What an open set looks like (a property with no closed set of `values`). */
   readonly form: string;
   readonly key: PropertyKey;
@@ -52,6 +61,7 @@ export interface PropertySpec {
 export const elementProperties: readonly PropertySpec[] = [
   {
     default: undefined,
+    example: "one",
     form: "an identifier: a letter, then letters, digits, `_` and `-`",
     key: "id",
     required: true,
@@ -61,6 +71,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: undefined,
+    example: "mc",
     form: "",
     key: "cell",
     required: true,
@@ -69,6 +80,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: undefined,
+    example: "box",
     form: "",
     key: "class",
     required: true,
@@ -77,6 +89,7 @@ export const elementProperties: readonly PropertySpec[] = [
   },
   {
     default: "true",
+    example: "false",
     form: "",
     key: "visible",
     required: false,
@@ -86,34 +99,125 @@ export const elementProperties: readonly PropertySpec[] = [
   },
 ];
 
-/** What each verb takes after its name; the type makes a new verb a compile error here. */
+/**
+ * What each verb takes after its name, and the letter its generated ids start with (the messages that write an
+ * effect for the author number them `s1`, `r1`, `f1`); the type makes a new verb a compile error here.
+ */
 export const verbArguments: Readonly<
-  Record<Verb, { readonly argument: string; readonly summary: string }>
+  Record<
+    Verb,
+    {
+      readonly argument: string;
+      readonly idPrefix: string;
+      readonly summary: string;
+    }
+  >
 > = {
   focus: {
     argument: "element id",
+    idPrefix: "f",
     summary: "rings and scales an Element of this Scene",
   },
   show: {
     argument: "element id",
+    idPrefix: "r",
     summary: "reveals an Element that is `visible=false`",
   },
   sound: {
     argument: `sound name (${Arr.join(sfxNames, ", ")})`,
+    idPrefix: "s",
     summary: "plays a sound of the built-in catalogue",
   },
 };
 
-/** A unit as written, and what it is stored as. `s` is stored as milliseconds. */
-export const sourceUnits = [
-  { factor: 1, stored: "ms", token: "ms" },
-  { factor: 1000, stored: "ms", token: "s" },
-  { factor: 1, stored: "f", token: "f" },
-  { factor: 1, stored: "percent", token: "%" },
-] as const;
+/** A unit as written, what it is stored as, and an example number for the messages that show the form. */
+const milliseconds = {
+  example: "100",
+  factor: 1,
+  stored: "ms",
+  token: "ms",
+} as const;
+
+const seconds = {
+  example: "0.1",
+  factor: 1000,
+  stored: "ms",
+  token: "s",
+} as const;
+
+const frames = { example: "3", factor: 1, stored: "f", token: "f" } as const;
+
+const percent = {
+  example: "50",
+  factor: 1,
+  stored: "percent",
+  token: "%",
+} as const;
+
+/** The units of an offset, in the order the messages list them. `s` is stored as milliseconds. */
+export const sourceUnits = [milliseconds, seconds, frames, percent] as const;
+
+/** The unit of an absolute time (`at 12.5s because "..."`). */
+export const absoluteUnit = seconds;
+
+/** The unit of a point of a window (`transition.50%`) and of a share offset. */
+export const percentUnit = percent;
+
+/** The words of the effects line that belong to no closed set. */
+export const keywords = { at: "at", because: "because" } as const;
+
+/** One line of an `[[effects]]` block: the one place that says how its parts are put together. */
+export const effectLine = (
+  id: string,
+  verb: string,
+  argument: string,
+  when: string
+): string => `${id}: ${verb} ${argument} ${keywords.at} ${when}`;
 
 /** The form of a whole effects line, as every message of the line grammar quotes it. */
-export const lineForm = "<id>: <verb> <argument> at <when>";
+export const lineForm = effectLine("<id>", "<verb>", "<argument>", "<when>");
+
+const escaped = (text: string): string =>
+  text.replaceAll(/[.*+?^${}()|[\]\\]/gu, String.raw`\$&`);
+
+const number = String.raw`\d+(?:\.\d+)?`;
+
+// The patterns that read an effects line. They are tolerant on purpose: each takes a token of the shape (`\S+`, a
+// run of letters) and the closed sets (`verbs`, `edges`, `elementEvents`, `sourceUnits`) then judge it, so that a
+// misspelt word gets the message that names the nearest valid one instead of "not an effect line".
+
+/** `<id>: <rest>`; the id is whatever stands before the colon, and the id rule judges it afterwards. */
+export const linePattern = /^(?<id>[^\s:]+)\s*:\s*(?<rest>.*)$/u;
+
+/** `<verb> <argument> at <when>`. */
+export const bodyPattern = new RegExp(
+  String.raw`^(?<verb>\S+)\s+(?<argument>\S+)\s+${keywords.at}\s+(?<when>\S.*)$`,
+  "u"
+);
+
+/** `word("<phrase>"[, <n>]).<edge>` and what follows it. */
+export const wordPattern = new RegExp(
+  String.raw`^${anchorWords.word}\(\s*"(?<phrase>[^"]*)"\s*(?:,\s*(?<n>\d+)\s*)?\)\.(?<edge>[^\s.]+)(?<rest>.*)$`,
+  "u"
+);
+
+/** `<number><unit>[ because "<reason>"]`: an absolute time. */
+export const absolutePattern = new RegExp(
+  String.raw`^(?<value>${number})(?<unit>[A-Za-z]*)(?:\s+${keywords.because}\s+"(?<reason>[^"]*)")?\s*$`,
+  "u"
+);
+
+/** `<sign><number><unit>`: an offset. */
+export const offsetPattern = new RegExp(
+  String.raw`^(?<sign>[+-])(?<value>${number})(?<unit>[A-Za-z${escaped(percentUnit.token)}]*)$`,
+  "u"
+);
+
+/** `<number>%`: a share of a window, as the last part of an anchor. */
+export const percentPattern = new RegExp(
+  String.raw`^(?<value>${number})${escaped(percentUnit.token)}$`,
+  "u"
+);
 
 const edgeAlternatives = Arr.join(edges, "|");
 const eventAlternatives = Arr.join(elementEvents, "|");
@@ -125,25 +229,25 @@ export const anchorForms: Readonly<
   effect: {
     form: `<effect>.${edgeAlternatives}`,
     meaning:
-      "another effect of this Scene: its own start (its fire frame) or end (a show: its fire frame plus the renderer's show time; a sound or focus: its fire frame)",
+      "another effect of this Scene: its own start (its fire frame) or end; only a `show` has an end (its fire frame plus the renderer's show time), a `sound` and a `focus` have no window, so `.end` of one is an error",
   },
   element: {
-    form: `<element>.${eventAlternatives}.${edgeAlternatives}|<N>%`,
+    form: `<element>.${eventAlternatives}.${edgeAlternatives}|<N>${percentUnit.token}`,
     meaning:
       "a lifecycle event of an Element of this Scene (exit: of the previous Scene, seen at the transition): the first frame it differs, the frame it settles, or N percent of the way (move and update: by the renderer's declared easing)",
   },
   scene: {
-    form: `scene.${edgeAlternatives}`,
+    form: `${anchorWords.scene}.${edgeAlternatives}`,
     meaning:
       "scene.start: the frame the slide change is shown; scene.end: the last frame of the Scene",
   },
   transition: {
-    form: `transition.${edgeAlternatives}|<N>%`,
+    form: `${anchorWords.transition}.${edgeAlternatives}|<N>${percentUnit.token}`,
     meaning:
       "the Scene's incoming slide transition: its first frame, its last frame, or N percent of the way (linear in time)",
   },
   word: {
-    form: `word("<phrase>"[, <n>]).${edgeAlternatives}`,
+    form: `${anchorWords.word}("<phrase>"[, <n>]).${edgeAlternatives}`,
     meaning:
       "a word or phrase of this Scene's narration: the start of its first word or the end of its last; n picks the nth occurrence and is required when the phrase occurs more than once",
   },
@@ -155,8 +259,9 @@ export const anchorFormsText = Arr.join(
   ", "
 );
 
-/** One production of the grammar of the effects block. */
+/** One production of the grammar of the effects block, with sentences that belong to it (the tests parse each). */
 export interface Production {
+  readonly examples: readonly string[];
   readonly name: string;
   readonly rule: string;
 }
@@ -167,33 +272,86 @@ const quoted = (words: readonly string[]): string =>
     " | "
   );
 
+/** The offsets as an author writes them, one per unit: `+100ms`, `+0.1s`, `+3f`, `+50%`. */
+export const offsetExamples = Arr.map(
+  sourceUnits,
+  ({ example, token }) => `+${example}${token}`
+);
+
 /** The grammar of the effects block, written from the closed sets; the grammar document prints it. */
 export const productions: readonly Production[] = [
-  { name: "block", rule: '"[[effects" NEWLINE { line NEWLINE } "]]"' },
-  { name: "line", rule: 'id ":" verb argument "at" when' },
   {
+    examples: [
+      Arr.join(
+        [
+          "[[effects",
+          `  ${effectLine("s1", "sound", "pop", "transition.start")}`,
+          `  ${effectLine("r1", "show", "note", 'word("two").end')}`,
+          "]]",
+        ],
+        "\n"
+      ),
+    ],
+    name: "block",
+    rule: '"[[effects" NEWLINE { line NEWLINE } "]]"',
+  },
+  {
+    examples: [
+      effectLine("s1", "sound", "pop", "transition.start"),
+      effectLine("r1", "show", "note", 'word("two").end +0.1s'),
+    ],
+    name: "line",
+    rule: `id ":" verb argument "${keywords.at}" when`,
+  },
+  {
+    examples: ["sound pop", "show note", "focus note"],
     name: "verb",
     rule: Arr.join(
       Arr.map(verbs, (verb) => `"${verb}" ${verbArguments[verb].argument}`),
       " | "
     ),
   },
-  { name: "when", rule: "anchor [ offset ] | absolute" },
-  { name: "absolute", rule: 'number "s" "because" quoted' },
   {
+    examples: [
+      "transition.start",
+      'word("two").end +100ms',
+      `0.5${absoluteUnit.token} ${keywords.because} "a beat"`,
+    ],
+    name: "when",
+    rule: "anchor [ offset ] | absolute",
+  },
+  {
+    examples: [`0.5${absoluteUnit.token} ${keywords.because} "a beat"`],
+    name: "absolute",
+    rule: `number "${absoluteUnit.token}" "${keywords.because}" quoted`,
+  },
+  {
+    examples: [
+      'word("two").end',
+      'word("one", 2).start',
+      "scene.end",
+      "transition.50%",
+      "m.move.start",
+      "r1.end",
+    ],
     name: "anchor",
     rule: Arr.join(
       Arr.map(Record.values(anchorForms), ({ form }) => form),
       " | "
     ),
   },
-  { name: "edge", rule: quoted(edges) },
-  { name: "event", rule: quoted(elementEvents) },
+  { examples: edges, name: "edge", rule: quoted(edges) },
+  { examples: elementEvents, name: "event", rule: quoted(elementEvents) },
   {
+    examples: offsetExamples,
     name: "offset",
     rule: `( "+" | "-" ) number ( ${quoted(Arr.map(sourceUnits, ({ token }) => token))} )`,
   },
-  { name: "id", rule: 'letter { letter | digit | "_" | "-" }' },
+  {
+    examples: ["s1", "box-2"],
+    name: "id",
+    rule: 'letter { letter | digit | "_" | "-" }',
+  },
 ];
 
 /** A form of release 1 and what replaces it (F4); the parser rejects each and says the replacement. */
@@ -227,6 +385,16 @@ export const releaseOneForms: readonly LegacyForm[] = [
     replacement: "`INT. THE NEXT SCREEN - DAY #sc4#`",
   },
 ];
+
+/**
+ * The notes release 1 allowed in dialogue: `[[next]]` (the next hidden Element), `[[focus: <id>]]` and
+ * `[[sfx: <name>]]`. Only the messages that write the replacement read them (`hints.ts`).
+ */
+export const releaseOneCues = {
+  focus: /^focus:\s*(?<id>\S+)$/u,
+  next: "next",
+  sfx: /^sfx:\s*(?<name>\S+)$/u,
+} as const;
 
 /** The edit distance of two words. */
 const distance = (a: string, b: string): number => {

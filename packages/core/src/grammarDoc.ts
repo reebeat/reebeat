@@ -86,7 +86,7 @@ const valid: readonly Example[] = [
       "  w1: sound whoosh at transition.start",
       '  w2: sound ding at word("again", 2).end',
       '  w3: sound pop at 2.5s because "the music has a beat here"',
-      "  w4: sound pop at w1.end +3f",
+      "  w4: sound pop at w1.start +3f",
       "]]",
       ...narrate("Say it, and say it again. Then say it again."),
     ]),
@@ -119,7 +119,7 @@ const invalid: readonly Example[] = [
       "INT. THE ONLY SCREEN - DAY #only#",
       "",
       "A title {id=title cell=mc class=title}",
-      ...narrate("Hello [[next]] there."),
+      ...narrate("Hello [[focus: title]] there."),
     ]),
     title: "A note in dialogue (release 1)",
   },
@@ -317,6 +317,15 @@ export const grammarDocument = (): string =>
         ["release 1", "now"],
         Arr.map(releaseOneForms, ({ old, replacement }) => [old, replacement])
       ),
+      "",
+      "## What is not yet explicit",
+      "",
+      "Two kinds of line are still read by where they stand, because that is how Fountain itself writes them. Everything else in this document is written once, with its id.",
+      "",
+      "- **A transition line applies to the NEXT scene heading.** `> AUTO-ANIMATE` and `> CUT` stand alone, between blank lines, right before the heading they lead into (a `# Section` or `= synopsis` may stand between); they name no Scene and carry no id. A transition anywhere else is a `BadTransition` error that says so.",
+      "- **A parenthetical applies to the dialogue right after it**: `(slowly)`, `(quickly)`, `(pause N)` and `(speed N)` set the delivery of the NARRATOR Line that follows.",
+      "",
+      "A later spec may give both an explicit form (for example a transition written on the heading it belongs to); until then the position is the rule.",
     ],
     "\n"
   );

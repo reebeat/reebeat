@@ -1,3 +1,4 @@
+import type { RendererLifecycle } from "@reebeat/core";
 // Test-only adapters for the three services that have no stand-in (Renderer, FrameCapturer, Encoder). They are small
 // but real: they pass the contract suites, so the suites themselves are exercised here, and each takes a flaw that
 // breaks exactly one clause, so the suites are seen to fail (the negative controls).
@@ -27,21 +28,21 @@ const info = (name: string) => ({
 });
 
 /**
- * A renderer that writes every Element id into `index.html`; `dropIds` shows none of them, `noShowTime` declares that a
- * shown Element appears in no time.
+ * A renderer that writes every Element id into `index.html`; `dropIds` shows none of them, `lifecycle` declares another
+ * lifecycle than the contract's (one that breaks one clause of C6).
  */
 export const fakeRenderer = (
-  flaw: { readonly dropIds?: boolean; readonly noShowTime?: boolean } = {}
+  flaw: {
+    readonly dropIds?: boolean;
+    readonly lifecycle?: RendererLifecycle;
+  } = {}
 ) =>
   Layer.succeed(
     Renderer,
     Renderer.of({
       info: {
         ...info("fake-render"),
-        lifecycle:
-          flaw.noShowTime === true
-            ? { ...contractLifecycle, showMs: 0 }
-            : contractLifecycle,
+        lifecycle: flaw.lifecycle ?? contractLifecycle,
       },
       render: (plan) =>
         Effect.succeed({

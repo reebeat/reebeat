@@ -13,6 +13,7 @@ import {
   soundLibraryClauses,
   speechSynthesizerClauses,
   wordAlignerClauses,
+  contractLifecycle,
 } from "../contract/index.ts";
 import { memoryCacheWith } from "../standins/index.ts";
 import { fakeCapturer, fakeEncoder, fakeProbe, fakeRenderer } from "./fakes.ts";
@@ -121,19 +122,67 @@ describe("a broken adapter fails exactly the clause that names its flaw", () => 
     })
   );
 
-  it.effect(
-    "C6 of Renderer: a lifecycle in which a shown Element takes no time",
-    () =>
+  for (const [name, lifecycle] of [
+    ["a shown Element takes no time", { ...contractLifecycle, showMs: 0 }],
+    [
+      "Auto-Animate takes no time",
+      {
+        ...contractLifecycle,
+        transitionMs: { ...contractLifecycle.transitionMs, "auto-animate": 0 },
+      },
+    ],
+    [
+      "the default fade takes no time",
+      {
+        ...contractLifecycle,
+        transitionMs: { ...contractLifecycle.transitionMs, default: 0 },
+      },
+    ],
+    [
+      "a cut takes negative time",
+      {
+        ...contractLifecycle,
+        transitionMs: { ...contractLifecycle.transitionMs, cut: -1 },
+      },
+    ],
+    [
+      "a matched Element starts before the slide change (a negative lag)",
+      {
+        ...contractLifecycle,
+        matched: { ...contractLifecycle.matched, startLagFrames: -1 },
+      },
+    ],
+    [
+      "an easing whose first control point x is above 1",
+      {
+        ...contractLifecycle,
+        matched: { ...contractLifecycle.matched, easing: [1.5, 0, 1, 1] },
+      },
+    ],
+    [
+      "an easing whose second control point x is below 0",
+      {
+        ...contractLifecycle,
+        matched: { ...contractLifecycle.matched, easing: [0, 0, -0.1, 1] },
+      },
+    ],
+    [
+      "an unmatched Element that finishes entering before it starts",
+      {
+        ...contractLifecycle,
+        unmatched: { enter: { endLagFrames: 5, startLagFrames: 10 } },
+      },
+    ],
+  ] as const) {
+    it.effect(`C6 of Renderer: a lifecycle in which ${name}`, () =>
       Effect.gen(function* control() {
         assert.deepStrictEqual(
-          yield* failingClauses(
-            fakeRenderer({ noShowTime: true }),
-            rendererClauses()
-          ),
+          yield* failingClauses(fakeRenderer({ lifecycle }), rendererClauses()),
           ["C6"]
         );
       })
-  );
+    );
+  }
 
   it.effect(
     "C2 of FrameCapturer: one frame fewer than `frames(plan)` says",

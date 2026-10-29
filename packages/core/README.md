@@ -13,7 +13,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | --- | --- |
 | `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Crypto` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
-| `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, and each effect's `fireFrame`, `commandFrame` and `intent`. `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
+| `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, and each effect's `fireFrame`, `commandFrame` and `intent` (the effect's `written` text: its `when` exactly as the author wrote it, including an explicit occurrence and the offset unit). `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
 | `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (`show` and `focus`, in resolved-time order) and, for each `sound`, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@reebeat/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
 | `grammarDocument()` | The text of `docs/grammar/effects.md` |
 | `reviewText(plan, { timing })` | the review text, deterministic |
@@ -39,8 +39,10 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 - A line that Fountain reads as something else is not an Element: an ALL-CAPS first line is a character cue, a line
   starting `#`, `=`, `~`, `>` or `.` is an outline, lyric, transition or heading. Start the line with `!` to force
   Action (`!BOX {id=a cell=mc class=box}`).
-- A transition (`> AUTO-ANIMATE`, `> CUT`) stands alone, between blank lines, right before the scene heading it leads into
-  (a `# Section` or `= synopsis` may stand between). A Scene needs a Section before it and at least one `NARRATOR` Line.
+- A transition (`> AUTO-ANIMATE`, `> CUT`) applies to the **next** scene heading: it is still positional (Fountain-native, like a
+  parenthetical, which applies to the dialogue after it) and names no Scene. It stands alone, between blank lines, right before the
+  scene heading it leads into (a `# Section` or `= synopsis` may stand between); anywhere else is a `BadTransition`. A Scene needs
+  a Section before it and at least one `NARRATOR` Line. `docs/grammar/effects.md` ends with what is not yet explicit.
 - `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
 - No title: the Plan title is `Untitled`.
 - The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).
@@ -61,14 +63,16 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 ## When an effect fires
 
-`schedule` resolves every anchor to an integer frame from the aligned words, the Scene's `slideFrame` and the renderer's declared `RendererLifecycle` (windows, lags, easing; the table is the header of `src/resolve.ts` and the doc comment of `RendererLifecycleSchema` in `src/plan.ts`). A sound that belongs to the slide change is anchored to `transition.start`, so it follows the motion and not the voice-over. `reebeat plan --timing` prints `s1  sound whoosh  one.move.start  ->  frame 732` for each effect and lists the absolute times with their reasons.
+`schedule` resolves every anchor to an integer frame from the aligned words, the Scene's `slideFrame` and the renderer's declared `RendererLifecycle` (windows, lags, easing; the table is the header of `src/resolve.ts` and the doc comment of `RendererLifecycleSchema` in `src/plan.ts`). A sound that belongs to the slide change is anchored to `transition.start`, so it follows the motion and not the voice-over. `reebeat plan --timing` prints `s1  sound whoosh  one.move.start  ->  frame 732  (rides the slide)` for each effect (a sound's last column says where the Deck plays it: `rides the slide`, `rides step r1` or `plays alone`) and lists the absolute times with their reasons. `.end` of a `sound` or a `focus` is an `UnsupportedEdge` error (only a `show` has a window): write `<id>.start`.
 
 An effect that resolves outside its Scene, or whose command frame would come before the slide change, is an `EffectOutsideScene` error that names the effect; a percent on a window the renderer declares an instant is `EmptyWindow`.
 
 ## Schedule arithmetic
 
-Frames are integers; every duration is turned into frames with `Math.round` (halves up) before it is added. The
-formulas are in the header of `src/schedule.ts`; `test/schedule.test.ts` works the expected frames out by hand.
+Frames are integers; every duration is turned into frames with `Math.round` (halves up, toward +infinity: 1.5 frames is 2,
+-1.5 is -1) before it is added. An `f` offset must be a whole number (`+1.5f` is an error that suggests `+2f`); `s`, `ms` and
+`%` may be decimal. The formulas are in the header of `src/schedule.ts`; `test/schedule.test.ts` and `test/offsets.test.ts` work
+the expected frames out by hand.
 
 ## Tests
 

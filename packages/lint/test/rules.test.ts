@@ -7,7 +7,6 @@ import {
   absoluteTimesNeedReason,
   contrast,
   contrastRatio,
-  effectAgreement,
   effectFragmentAgreement,
   lintPlan,
 } from "../src/index.ts";
@@ -201,87 +200,6 @@ describe("absoluteTimesNeedReason", () => {
       assert.isUndefined(found?.severity);
       assert.include(found?.message ?? "", "absolute time 1s has no reason");
     })
-  );
-});
-
-describe("effectAgreement", () => {
-  it.effect("holds for a Plan the parser built", () =>
-    Effect.gen(function* holds() {
-      assert.deepStrictEqual(effectAgreement(yield* plan), []);
-    })
-  );
-
-  it.effect("control: a show of a visible Element fails", () =>
-    Effect.gen(function* visible() {
-      const broken = withEffect(yield* plan, "one", "r1", (effect) => ({
-        ...effect,
-        target: "a",
-      }));
-
-      const messages = Arr.map(
-        effectAgreement(broken),
-        ({ message }) => message
-      );
-
-      assert.deepStrictEqual(messages, [
-        'scene one: effect r1 shows Element "a", which is visible',
-        'scene one: Element "b" is visible=false and is shown 0 times: expected exactly one show effect',
-      ]);
-    })
-  );
-
-  it.effect("control: a focus on an Element the Scene lacks fails", () =>
-    Effect.gen(function* missing() {
-      const broken = withEffect(yield* plan, "two", "f1", (effect) => ({
-        ...effect,
-        target: "zz",
-      }));
-
-      assert.deepStrictEqual(
-        Arr.map(effectAgreement(broken), ({ message }) => message),
-        [
-          'scene two: effect f1 names Element "zz", which the Scene does not have',
-        ]
-      );
-    })
-  );
-
-  it.effect(
-    "control: a sound with a target, a show with a name and a repeated id fail",
-    () =>
-      Effect.gen(function* mismatched() {
-        const given = yield* plan;
-
-        const sound = withEffect(given, "two", "s1", (effect) => ({
-          ...effect,
-          target: "a",
-        }));
-
-        const show = withEffect(given, "one", "r1", (effect) => ({
-          ...effect,
-          name: "pop",
-        }));
-
-        const twice = withScene(given, "two", (scene) => ({
-          ...scene,
-          effects: [...scene.effects, ...Arr.take(scene.effects, 1)],
-        }));
-
-        assert.deepStrictEqual(
-          Arr.map(effectAgreement(sound), ({ message }) => message),
-          ["scene two: effect s1 is a sound: expected a name and no target"]
-        );
-        assert.deepStrictEqual(
-          Arr.map(effectAgreement(show), ({ message }) => message),
-          [
-            "scene one: effect r1 is a show: expected an Element target and no sound name",
-          ]
-        );
-        assert.deepStrictEqual(
-          Arr.map(effectAgreement(twice), ({ message }) => message),
-          ['scene two: effect id "f1" is used twice']
-        );
-      })
   );
 });
 

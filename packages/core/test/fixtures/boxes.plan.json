@@ -37,7 +37,8 @@
               "occurrence": 1,
               "phrase": "corner"
             }
-          }
+          },
+          "written": "word(\"corner\").end"
         },
         {
           "id": "f1",
@@ -51,7 +52,8 @@
               "occurrence": 2,
               "phrase": "box"
             }
-          }
+          },
+          "written": "word(\"box\", 2).start"
         },
         {
           "id": "s1",
@@ -69,7 +71,8 @@
               "unit": "ms",
               "value": 100
             }
-          }
+          },
+          "written": "word(\"box\", 2).end +100ms"
         }
       ],
       "elements": [
@@ -165,7 +168,8 @@
               "at": "start",
               "kind": "transition"
             }
-          }
+          },
+          "written": "transition.start"
         },
         {
           "id": "s2",
@@ -181,7 +185,8 @@
               "id": "box",
               "kind": "element"
             }
-          }
+          },
+          "written": "box.move.50%"
         },
         {
           "id": "r1",
@@ -195,7 +200,8 @@
               "occurrence": 1,
               "phrase": "enters"
             }
-          }
+          },
+          "written": "word(\"enters\").end"
         },
         {
           "id": "f1",
@@ -212,7 +218,8 @@
               "unit": "f",
               "value": 3
             }
-          }
+          },
+          "written": "r1.end +3f"
         }
       ],
       "elements": [
@@ -358,7 +365,8 @@
               "unit": "ms",
               "value": -50
             }
-          }
+          },
+          "written": "fresh.move.end -50ms"
         },
         {
           "id": "s2",
@@ -368,7 +376,8 @@
           "when": {
             "absoluteMs": 1500,
             "reason": "the title settles on a beat in the music"
-          }
+          },
+          "written": "1.5s because \"the title settles on a beat in the music\""
         }
       ],
       "elements": [

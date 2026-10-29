@@ -1,0 +1,77 @@
+# Publishes the @reebeat/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
+# "Version Packages" commit (`bun run release:version`) has merged. No npm token exists anywhere: npm's trusted
+# publishing (OIDC) exchanges this job's identity for a short-lived publish credential, which is why this file's name,
+# `release.yml`, and the environment name `npm-release` are configured on npmjs.com for every package. Renaming either
+# breaks publishing until npmjs.com is changed.
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    # Only the head of main is released; the check below ties the commit to a green `checks` run.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      checks: read
+      id-token: write # npm trusted publishing (OIDC) and the provenance attestation
+    env:
+      # A publish that cannot produce provenance fails instead of publishing without it.
+      NPM_CONFIG_PROVENANCE: "true"
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          fetch-depth: 0
+      - name: The commit passed the checks workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs" \
+            --jq '[.check_runs[] | select(.name == "checks") | .conclusion] | first // "none"')
+          echo "checks on $GITHUB_SHA: $conclusion"
+          test "$conclusion" = success
+      - uses: cachix/install-nix-action@3c6342b75005b9cc7c7d4069c3e9179247c89012 # v31
+      - uses: cachix/cachix-action@97e5ff84d02b3b4f9936339f767e17f03c9252ed # v16
+        with:
+          name: devenv
+      - name: Install pinned devenv CLI
+        shell: bash
+        run: nix profile add github:cachix/devenv/b904dcb51fe48c30db250038241507f60752f222
+      - name: Install workspace dependencies
+        shell: bash
+        run: devenv shell -- bun install --frozen-lockfile
+      - name: npm supports trusted publishing
+        shell: bash
+        # Trusted publishing needs npm 11.5.1 or later and Node 22.14 or later (docs.npmjs.com/trusted-publishers).
+        run: |
+          devenv shell -- bash -c '
+            version=$(npm --version)
+            printf "%s\n" "11.5.1" "$version" | sort -V -C || { echo "npm $version is older than 11.5.1"; exit 1; }
+            echo "npm $version"
+          '
+      - name: Build what is published
+        shell: bash
+        # Writes packages/*/dist: bundled ESM, declarations, a rewritten package.json, LICENSE, NOTICE. Fails when a
+        # package would ship a file that is not built output.
+        run: devenv shell -- bun run release:stage
+      - name: Publish
+        shell: bash
+        # `changeset publish` runs `npm publish packages/<name>/dist --tag alpha --access public` for each version the
+        # registry lacks (the tag comes from .changeset/pre.json). npm refuses to run anywhere in a repository whose
+        # root package.json has `devEngines.packageManager` for another tool (EBADDEVENGINES, bun here), so the field
+        # is removed from this runner's checkout, which is discarded when the job ends.
+        run: |
+          jq 'del(.devEngines)' package.json > package.json.release
+          mv package.json.release package.json
+          devenv shell -- bunx changeset publish --no-git-tag

@@ -40,6 +40,9 @@ jobs:
       - name: Package tiers
         shell: bash
         run: devenv shell -- bun run check:tiers
+      - name: Release staging (what would be published)
+        shell: bash
+        run: devenv shell -- bun run release:stage
       - name: Workspace tests
         shell: bash
         run: devenv shell -- bun run test

@@ -1,7 +1,7 @@
 # ADR-0000: Extension architecture: where contracts live and how third parties extend reebeat
 
 **Date:** 2026-10-29
-**Status:** Accepted in stages (operator, 2026-10-29: "the extension ADR-0000 is adopted in stages; open points are tagged unstable", operator decisions log line 86, recorded in Revisions). Each stage is a later spec. Points still open are tagged **unstable**: they may change in a minor release of their contract (Decision 5) and are listed as open questions below. Decisions marked **Decided** come from the operator, with the date; a **Proposed** mark means the point is not yet confirmed and is one of those unstable points.
+**Status:** Proposed, confirmed decision by decision (operator, 2026-10-29, `reebeat-D7`: "the extension ADR-0000 is adopted in stages; open points are tagged unstable"). Points stay **unstable** until a second real engine has run the protocol, and may change in a minor release of their contract (Decision 5). A decision's head says **Proposed**; only the parts inside it marked **Decided** come from the operator, with the date. The source for every **Decided** mark is the operator decisions log of October 2026, cited by decision id, date and line: its public copy is `sources/operator-decisions-2026-10.md` in the `reebeat/.github` repository (the line numbers are those of that copy).
 
 **Declarative multimedia: accessible, reproducible, rebuilt as you edit.** *We take care of building; you focus on creating.* **Semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect.** This record fixes where its extension contracts are declared, which extension points exist, how an engine written in another language talks to the compiler, how the compiler checks a story against what an engine can do, how contracts are versioned, how a plugin is packaged and trusted, and what every plugin owes the determinism guarantee. Throughout, *creating* is what authors do and *building* is what reebeat does.
 
@@ -28,11 +28,11 @@
 | **Interactions are elements.** An interaction declares the event it raises, with a Schema-typed payload, a label and a description; each artifact renderer realises it by its capabilities. Artifact renderers are **static** (video, VTT, Fountain, PDF: build-time realisation only) or **dynamic** (website, Deck runtime: realised at view time). *Authoring tools* act on creational formats (the story IR and its codecs); *interaction tools* act on produced artifacts. See [issue #19](https://github.com/reebeat/reebeat/issues/19). | Decided (operator, 2026-10-29) |
 | The interactive website artifact (issue #19) and viewer input events (issue #20) are later, not v1; #20 waits for an investigation. | Decided (operator, 2026-10-29) |
 | React's core (reconciler and scheduler) is **not** reebeat's engine core; React stays possible as one render engine under the SDK and JSX as an authoring importer. The layering is statechart, per-artifact plan, build DAG. | Decided (operator, 2026-10-29) |
-| **Adoption in stages.** This record is adopted in stages and its open points are tagged unstable (`reebeat-D7`; decisions log line 86). | Decided (operator, 2026-10-29) |
-| **Story IR and timeline IR.** The story IR is public and versioned; the timeline IR (the Plan after scheduling, with frames) is an **unstable build artifact**, never decoded back and not a contract plugins may rely on; flicks stay the unit of exact time (`reebeat-D6`; decisions log line 85). Artifact renderers that consume the timeline IR, and any contract that exposes it, are therefore tagged unstable (Decision 5). | Decided (operator, 2026-10-29) |
-| **Interaction realisation.** One interaction declaration; an artifact that cannot realise it fails at plan time for that output, and a flag may bypass this explicitly (`reebeat-D8`; decisions log line 87). See "Interactions" in Decision 2 and the `cap/interaction-unrealisable` rule in Decision 4. | Decided (operator, 2026-10-29) |
-| **Agent tool protocol.** Tools are declared once, protocol-neutrally, with MCP as the first adapter (`agent-protocol`; decisions log line 77). Resolves open question 10 of the first version of this record. | Decided (operator, 2026-10-29) |
-| **Reproducibility.** Bytes for data artifacts; identical decoded frames and audio for video (`reproducible`; decisions log line 81). | Decided (operator, 2026-10-29) |
+| **Adoption in stages.** This record is confirmed decision by decision, and its open points are unstable until a second real engine has run the protocol (`reebeat-D7`, log line 86). | Decided (operator, 2026-10-29) |
+| **Story IR and timeline IR.** The story IR is public and versioned; the timeline IR (the Plan after scheduling, with frames) is an **unstable build artifact**, never decoded back and not a contract plugins may rely on; flicks stay the unit of exact time (`reebeat-D6`, log line 85). | Decided (operator, 2026-10-29) |
+| **Interaction realisation.** One interaction declaration; an artifact that cannot realise it fails at plan time for that output; a flag bypasses it, so the drift is silent but explicit, a declared opt-out and never a default (`reebeat-D8`, log line 87). The form of the flag and the recording of the bypass are **Proposed** (question 12). See "Interactions" in Decision 2 and the `cap/interaction-unrealisable` rule in Decision 4. | Decided (operator, 2026-10-29), except the form and recording of the bypass |
+| **Agent tool protocol.** Tools are declared once, protocol-neutrally, with MCP as the first adapter (`agent-protocol`, log line 77). Resolves open question 10 of the first version of this record. | Decided (operator, 2026-10-29) |
+| **Reproducibility.** Bytes for data artifacts; identical decoded frames and audio for video (`reproducible`, log line 81). | Decided (operator, 2026-10-29) |
 
 ### The four aims every decision serves
 
@@ -87,7 +87,7 @@ flowchart TB
 
 ## Decision 1: where contracts are declared
 
-**Decision (Adopted in stages, see Status).** One new package, **`@reebeat/contracts`**, in the **library tier**, holds the *declaration* of every extension point as data. `@reebeat/services` keeps the *behaviour*: the Effect service tags, the `xContract` runner and the stand-ins. The package `contracts` imports `core` only. The package `services` imports `contracts` and `core`.
+**Decision (Proposed).** One new package, **`@reebeat/contracts`**, in the **library tier**, holds the *declaration* of every extension point as data. `@reebeat/services` keeps the *behaviour*: the Effect service tags, the `xContract` runner and the stand-ins. The package `contracts` imports `core` only. The package `services` imports `contracts` and `core`. Unstable: question 1 is open.
 
 A contract declaration is data of this shape (a sketch, not code of this change):
 
@@ -130,7 +130,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 
 ## Decision 2: the extension-point catalogue
 
-**Decision (Adopted in stages, see Status).** The catalogue below is the set of extension points, each with the tier of its implementations and when a third party may ship one. Tier means where the **implementation** lives. Every contract declaration is a library-tier datum (Decision 1). "Open **now**" means the contract is published and an implementation is loadable once plugin loading and a Sandbox adapter exist (the last steps of the order of work); until then a plugin the user wrote and trusts runs in process (Decision 6, T1). It does not mean "today".
+**Decision (Proposed).** The catalogue below is the set of extension points, each with the tier of its implementations and when a third party may ship one. Tier means where the **implementation** lives. Every contract declaration is a library-tier datum (Decision 1). "Open **now**" means the contract is published and an implementation is loadable once plugin loading and a Sandbox adapter exist (the last steps of the order of work); until then a plugin the user wrote and trusts runs in process (Decision 6, T1). It does not mean "today". Row 17's protocol-neutral declaration and MCP-first adapter are **Decided** (log line 77).
 
 | # | Extension point | A third party writes | Tier of implementations | Open | Why that timing |
 | --- | --- | --- | --- | --- | --- |
@@ -151,7 +151,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 | 14 | `TransitionType` | a named transition between Scenes | data plus compositor or engine implementation | **later** | Rides on row 9. |
 | 15 | `LintRule` (the teaching lint, [issue #8](https://github.com/reebeat/reebeat/issues/8)) | a rule: IR and context to diagnostics | library | **now** | Pure, no I/O, and the cheapest extension with real value. |
 | 16 | `StatechartInterpreter` | an alternative walk of the statechart (XState adapter) | library (reference interpreter in `core`), integration (adapters) | **later, conformance-gated** | The interpreter *defines* what a story means. An adapter must produce byte-equal logs on the reference corpus. The spike measured one XState interpreter equal to itself over 20 runs; the cross-interpreter suite is spec 0007's proposal and is not measured. Semantics stay closed. |
-| 17 | `AgentTool`, **authoring** (read a story, apply an edit, run `check`) | a tool an agent calls to change or check the story | integration (one adapter per tool protocol; **MCP is the first adapter**) | **later** | **Decided** (operator, 2026-10-29, decisions log line 77, question `agent-protocol`): tools are declared once, protocol-neutrally; MCP is the first adapter. A tool is a name, input and output Schemas, an annotation (read-only or edits the IR) and an Effect, and each adapter generates its protocol's schema from it (for MCP, JSON Schema). The first-party tool set is unbuilt. Interaction tools are a different kind (row 22). |
+| 17 | `AgentTool`, **authoring** (read a story, apply an edit, run `check`) | a tool an agent calls to change or check the story | integration (one adapter per tool protocol; **MCP is the first adapter**) | **later** | **Decided** (operator, 2026-10-29, `agent-protocol`, log line 77): tools are declared once, protocol-neutrally; MCP is the first adapter. The tool set stays open. A tool is a name, input and output Schemas, an annotation (read-only or edits the IR) and an Effect, and each adapter generates its protocol's schema from it (for MCP, JSON Schema) (**Proposed**). The first-party tool set is unbuilt. Interaction tools are a different kind (row 22). |
 | 18 | `Sandbox` (Decision 6) | a way to run an out-of-process plugin under limits | integration | **later** | Needed by every untrusted out-of-process plugin. First-party adapters first. |
 | 19 | `InteractiveArtifact` (an interactive website for learning material, [issue #19](https://github.com/reebeat/reebeat/issues/19)) | an artifact renderer whose output is a viewer-paced site: step or scrub, keyboard and screen-reader access, reduced motion, transcripts | integration | **later, not v1** | Roadmap item queued by the operator (2026-10-29, after the IR work and this record). It generalises the Deck. It is a **dynamic** artifact (Decision 4) whose files are assets that a build can reproduce. It needs `semantics`, `reducedMotion` and `web` from every engine (Decision 4). |
 | 20 | `InputSource` (viewer input events: answers, choices, branching; [issue #20](https://github.com/reebeat/reebeat/issues/20)) | an event source that feeds the statechart from outside the build | integration | **later, not v1; investigation first** | Deferred by the operator (2026-10-29). It changes what a story is (learner state, privacy, assessment) and needs SMIL `excl` and SCXML conditional transitions, both "later" in spec 0007. Declared here only so the catalogue has a place for it; no shape is decided. |
@@ -178,7 +178,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 | Agents | A generated tool endpoint (for example an MCP tool definition) that raises the same event with the same payload Schema. |
 
 - **The artifact's interface decides how an interaction is surfaced.** Each artifact renderer declares its **kind** (Decision 4). A **static** artifact (video, VTT, Fountain, PDF) can realise an interaction only at build time: as a scheduled or automated action (the visible cursor) or as a description, never as a live tool. A **dynamic** artifact (a website, the Deck runtime) realises it at view time through its own interface: pointer and keyboard controls, presenter steps, or agent tool endpoints.
-- **Capability.** An artifact renderer declares the **interaction surfaces it can realise** (`interactions`, Decision 4). **Decided** (operator, 2026-10-29, decisions log line 87, `reebeat-D8`): there is one interaction declaration, and an artifact that cannot realise it **fails at plan time for that output**. A **flag may bypass** the failure for a specific output, so the drift is silent in the artifact but explicit on the command line and recorded in `build.json`. A story may also declare an **explicit fallback** for an artifact, such as "automate in video"; a fallback is data in the story, never a default. A web realisation without a keyboard and screen-reader route fails with `cap/interaction-inaccessible`.
+- **Capability.** An artifact renderer declares the **interaction surfaces it can realise** (`interactions`, Decision 4). **Decided** (operator, 2026-10-29, `reebeat-D8`, log line 87): there is one interaction declaration, and an artifact that cannot realise it **fails at plan time for that output**; a flag bypasses it, so the drift is silent but explicit, a declared opt-out and never a default. **Proposed** (question 12): the flag is per output on the command line, and the bypass is recorded in `build.json`. A story may also declare an **explicit fallback** for an artifact, such as "automate in video"; a fallback is data in the story, never a default. A web realisation without a keyboard and screen-reader route fails with `cap/interaction-inaccessible`.
 - **Two kinds of agent tool, kept apart, by what they act on.** *Authoring tools* act on the **creational formats**, the story IR and its codecs (the studio, bring-your-own agents; row 17). *Interaction tools* act on **produced artifacts**: they raise events inside a running dynamic artifact (a viewer's or a tutor agent's actions), are generated from the interaction elements, and can fire only declared events whose payload validates. They cannot change the story, and a static artifact has none. They have different contracts and different trust.
 - **Determinism.** The video stays reproducible because its interactions are scheduled. A website's files are reproducible; a viewing session is not meant to be, and is not a build.
 - **What an interaction event may do.** It may fire only a transition the story already declares, at a declared time for a static artifact. Anything that depends on the payload, branches the story or consumes learner input is row 20 (`InputSource`), whose shape is not decided. Until row 20 exists, an interaction is a trigger of a declared Beat, not a new source of story state.
@@ -197,7 +197,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 
 ## Decision 3: the engine protocol for engines in other languages
 
-**Decision (Adopted in stages, see Status).** A versioned, language-neutral wire protocol: **JSON-RPC 2.0** messages framed with the **`Content-Length` header** of LSP and DAP, over the engine's **stdin and stdout**. Messages are defined by Effect Schemas in `contracts`; the JSON Schema is generated and published. Frames and other large payloads never travel in JSON: they are files in a directory that reebeat owns, named in the messages with their SHA-256. An HTTP transport (the same JSON-RPC bodies, artifacts by URL) is **later**.
+**Decision (Proposed).** A versioned, language-neutral wire protocol: **JSON-RPC 2.0** messages framed with the **`Content-Length` header** of LSP and DAP, over the engine's **stdin and stdout**. Messages are defined by Effect Schemas in `contracts`; the JSON Schema is generated and published. Frames and other large payloads never travel in JSON: they are files in a directory that reebeat owns, named in the messages with their SHA-256. An HTTP transport (the same JSON-RPC bodies, artifacts by URL) is **later**. Unstable until a second real engine has run it; question 9 (the `sdk` tier) is open.
 
 ```mermaid
 sequenceDiagram
@@ -347,7 +347,7 @@ Each clause reports `pass`, `fail` or `unchecked`. `unchecked` means the clause 
 
 ## Decision 4: capability negotiation
 
-**Decision (Adopted in stages, see Status).** An engine declares a **capability set**. The compiler derives the **requirements** of a story from the story, the per-Scene engine assignment and the requested artifacts, and compares them **at plan time**, before any process starts and before any pixel is made. Any unmet requirement is a lint error. The default of every capability is *unsupported*.
+**Decision (Proposed).** An engine declares a **capability set**. The compiler derives the **requirements** of a story from the story, the per-Scene engine assignment and the requested artifacts, and compares them **at plan time**, before any process starts and before any pixel is made. Any unmet requirement is a lint error. The default of every capability is *unsupported*. Unstable until a second real engine has run the protocol.
 
 The capability set (a sketch; the exact fields are fixed in the implementing spec):
 
@@ -393,7 +393,7 @@ The check is a pure function over the IR and a table of declared capabilities. I
 | Reduced motion required by config | `reducedMotion: variant` | `cap/no-reduced-motion`. |
 | A Scene at 30000/1001 fps | `fps` lists it | `cap/fps-unsupported`. |
 | An engine id the config does not map, or a manifest that does not decode | n/a | `cap/unknown-engine`, `cap/bad-manifest`. |
-| An interaction element on an artifact whose `interactions` lacks a realisation of it (a live surface asked of a `static` artifact is the same case: a video can show a scheduled cursor, never answer a live call) | a realisation, or an explicit fallback declared in the story for that artifact; or the explicit bypass flag for that output (**Decided**, `reebeat-D8`) | `cap/interaction-unrealisable` (later, not v1). |
+| An interaction element on an artifact whose `interactions` lacks a realisation of it (a live surface asked of a `static` artifact is the same case: a video can show a scheduled cursor, never answer a live call) | a realisation, or an explicit fallback declared in the story for that artifact; or the declared opt-out flag for that output (**Decided**, `reebeat-D8`; the flag's form is **Proposed**, question 12) | `cap/interaction-unrealisable` (later, not v1). |
 | A web realisation of an interaction without a keyboard and screen-reader route | that route | `cap/interaction-inaccessible` (later, not v1). |
 
 Two guards keep the declaration honest. First, the **manifest is the root** for planning: its capability set is read without starting the engine, and the capability set the engine returns from `initialize` must equal it or the plugin is refused. Second, **every capability field that describes behaviour is named by at least one conformance clause** (a registry test, Decision 3: clauses E3 and E5 to E25, with `egress`, `runtime` and `permissions` as the stated exceptions), so a declared capability is tested against behaviour and not trusted. The plan-time check is **necessary, not sufficient**: `run/describe` diagnostics of severity error fail the plan like a `cap/*` rule, and a build's `reebeat check` observes events in the written video (F1) as it does today.
@@ -418,7 +418,7 @@ flowchart LR
 
 ## Decision 5: versioning and stability
 
-**Decision (Adopted in stages, see Status).**
+**Decision (Proposed).** Unstable: question 11 (the peer-range rule) is open.
 
 1. **Each contract has its own semver** (`engine 0.1.0`), and the package `@reebeat/contracts` has a version too (lockstep with the other published packages, per [spec 0009](../specs/0009-npm-prereleases.md)). A generated table maps each package version to the contract versions it carries.
 2. **Every contract and every export of a contract carries an explicit stability tag**: `stable`, `unstable` or `experimental`. **No tag is a gate failure.** There is no implicit default.
@@ -457,7 +457,7 @@ flowchart LR
 
 ## Decision 6: packaging, discovery, trust
 
-**Decision (Adopted in stages, see Status).**
+**Decision (Proposed).** Unstable: question 3 (default trust) is open.
 
 ### Package and manifest
 
@@ -542,7 +542,7 @@ Rules:
 
 ## Decision 7: determinism and testing obligations
 
-**Decision (Adopted in stages, see Status).** F6 is the rule, and what "identical" means depends on the artifact (**Decided**, operator, 2026-10-29, decisions log line 81, `reproducible`): **bytes** for data artifacts; **identical decoded frames and identical decoded audio** for video. Two builds of the same source and cache on the same machine give them. Every plugin declares one of three levels, and the compiler **refuses** the third for a reproducible build.
+**Decision (Proposed).** F6 is the rule, and what "identical" means depends on the artifact (**Decided**, operator, 2026-10-29, `reproducible`, log line 81): **bytes** for data artifacts; **identical decoded frames and identical decoded audio** for video. Two builds of the same source and cache on the same machine give them. Every plugin declares one of three levels, and the compiler **refuses** the third for a reproducible build (**Proposed**).
 
 | Level | Meaning | Examples | Compiler |
 | --- | --- | --- | --- |
@@ -666,8 +666,9 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 7. **ADR numbering.** This directory starts at `0000`, as the donor repository's does; its numbers are independent of spec numbers.
 8. **WebMCP.** It is a candidate surface for agent endpoints on a dynamic website, and it is still a Draft Community Group Report. Proposed: define `tool-endpoint` without it and treat a WebMCP adapter as experimental. Confirm, or rule it out.
 9. **A new `sdk` tier.** `tools/quality/tiers.ts` gains a row between services and adapters so that first-party engine adapters can import the SDK (Decision 3). The alternative is to put the SDK's in-process half into `@reebeat/services`.
-10. **The agent tool protocol. Resolved.** The operator decided on 2026-10-29 (decisions log line 77) that tools are declared protocol-neutrally and MCP is the first adapter; row 17 records it. Kept here so the numbering of the other questions does not move.
+10. **The agent tool protocol. Resolved.** The operator decided on 2026-10-29 (`agent-protocol`, log line 77) that tools are declared protocol-neutrally and MCP is the first adapter; row 17 records it. Kept here so the numbering of the other questions does not move.
 11. **Plugin peer ranges.** The cap below the next minor for unstable contracts reached this record as an agreed rule without a recorded operator decision. Confirm it.
+12. **The interaction bypass.** The operator decided that a flag bypasses the plan-time failure for an output, as a declared opt-out and never a default. Proposed: a per-output command-line flag, recorded in `build.json` with the output it applies to. Confirm, or choose another form.
 
 ## Sources
 
@@ -747,10 +748,10 @@ Source: the operator's decisions log for October 2026 (a private working file; e
 | Log line | Decision | Effect on this record |
 | --- | --- | --- |
 | 60 | The technical one-liner is "Semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect." | It replaces "a declarative, incremental FRP language for multimedia artifact generation" in the opening. |
-| 86 (`reebeat-D7`) | ADR-0000 is adopted in stages; open points are tagged unstable. | Status is now "Accepted in stages". Decisions 1 to 7 read "Adopted in stages". The points that stay **Proposed** are exactly the open questions (1 to 9 and 11) and the peer-range row; they are the unstable ones. |
-| 87 (`reebeat-D8`) | One interaction declaration; an artifact that cannot realise it fails at plan time for that output; a flag may bypass it explicitly. | **Decided**: the Capability bullet of "Interactions", and the `cap/interaction-unrealisable` row. The bypass is recorded in `build.json`. |
+| 86 (`reebeat-D7`) | ADR-0000 is adopted in stages; open points are tagged unstable. | Status now reads "Proposed, confirmed decision by decision"; the label "Adopted in stages" that the first version of this follow-up gave Decisions 1 to 7 was undefined and is removed. Each Decision head is **Proposed**, with the open question that keeps it unstable named in place (questions 1, 3, 9, 11). Only the parts the log decides are marked **Decided**. |
+| 87 (`reebeat-D8`) | One interaction declaration; an artifact that cannot realise it fails at plan time for that output; a flag bypasses it, so the drift is silent but explicit, a declared opt-out and never a default. | **Decided**: that rule, in the Capability bullet of "Interactions", the `cap/interaction-unrealisable` row and the Context row. **Proposed** (question 12): the flag's per-output command-line form and the recording of the bypass in `build.json`; these were first written as decided and are corrected. |
 | 77 (`agent-protocol`) | Tools are declared once, protocol-neutrally; MCP is the first adapter. | **Decided**: row 17. Open question 10 is resolved. |
 | 85 (`reebeat-D6`) | The story IR is public and versioned; the timeline IR is an unstable build artifact; flicks stay. | **Decided**: new Context row. |
 | 81 (`reproducible`) | Bytes for data artifacts; identical decoded frames and audio for video. | **Decided**: the opening of Decision 7. |
 
-Nothing else changed: the other Proposed points keep their mark, and the peer-range rule still waits for question 11.
+Nothing else changed: the other Proposed points keep their mark, and the peer-range rule still waits for question 11. The Context row for the timeline IR no longer says that renderers consuming it are "therefore tagged unstable": that was this record's consequence, not the operator's, and it is Proposed work for the spec that defines the renderers' contract.

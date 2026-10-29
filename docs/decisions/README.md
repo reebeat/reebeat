@@ -26,7 +26,7 @@ The format follows the donor repository's (Context, Decision, Consequences, with
 
 | Status | Meaning |
 | --- | --- |
-| Proposed | Written by an agent or an author and merged as a record; the operator has not yet confirmed it. A decision inside an ADR may be marked Decided (operator, with the date), Proposed or Open. |
+| Proposed | Written by an agent or an author and merged as a record; the operator has not yet confirmed it. A decision inside an ADR may be marked Decided (operator, with the date), Proposed or Open. An ADR may be confirmed decision by decision: its status stays Proposed until every decision is confirmed, and the Decided marks inside it say which are. |
 | Accepted | Confirmed by the operator; the confirmation is a dated entry in the ADR's Revisions. |
 | Deprecated | No longer relevant, kept for history. |
 | Superseded by ADR-NNNN | Replaced by a newer decision. |
@@ -35,7 +35,7 @@ The format follows the donor repository's (Context, Decision, Consequences, with
 
 | ADR | Decision | Date | Status |
 | --- | --- | --- | --- |
-| [0000](0000-extension-architecture.md) | Extension architecture: where contracts live and how third parties extend reebeat | 2026-10-29 | Accepted in stages |
+| [0000](0000-extension-architecture.md) | Extension architecture: where contracts live and how third parties extend reebeat | 2026-10-29 | Proposed (confirmed decision by decision) |
 
 ## Template
 

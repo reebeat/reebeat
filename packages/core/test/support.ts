@@ -5,7 +5,7 @@ import { assert } from "@effect/vitest";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
 import type { HeardWord } from "../src/align.ts";
-import type { PlanJson, RendererLifecycle } from "../src/plan.ts";
+import type { PlanJson } from "../src/plan.ts";
 import type { AlignedLine } from "../src/schedule.ts";
 
 /** The hash the tests pass as `sourceSha256`: the core copies it into the Plan and never computes one. */
@@ -77,18 +77,6 @@ export const perfectlyHeard = (
     w,
   }));
 
-/**
- * A renderer's declared lifecycle, for the tests (numbers as measured on the reveal.js adapter): Auto-Animate 800 ms,
- * a default fade 400 ms, a cut instant, matched Elements start 2 frames in and ease like CSS `ease`, an unmatched
- * Element fades in over frames 8 to 22, and a `show` fades over 133 ms (4 frames at 30 fps).
- */
-export const lifecycle: RendererLifecycle = {
-  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
-  showMs: 133,
-  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
-  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
-};
-
 /** The audio file name of a Line `digit`: 64 hexadecimal digits and `.flac`. */
 export const audioOf = (digit: number) => ({
   file: `${String(digit).repeat(64)}.flac`,
@@ -109,3 +97,6 @@ export const evenlySpoken = (plan: PlanJson, wordMs: number): AlignedLine[] =>
       })),
     }))
   );
+
+/** The renderer lifecycle the tests schedule with. */
+export { referenceLifecycle as lifecycle } from "../src/plan.ts";

@@ -351,6 +351,18 @@ export type When = typeof WhenSchema.Type;
 
 export type RendererLifecycle = typeof RendererLifecycleSchema.Type;
 
+/**
+ * A sane declaration for tests and examples, not any adapter's measurement: Auto-Animate 800 ms (24 frames at 30 fps),
+ * a default fade 400 ms, a cut instant, matched Elements start 2 frames in and ease like CSS `ease`, an unmatched
+ * Element fades in over frames 8 to 22, and a `show` lasts 133 ms (4 frames).
+ */
+export const referenceLifecycle: RendererLifecycle = {
+  matched: { easing: [0.25, 0.1, 0.25, 1], startLagFrames: 2 },
+  showMs: 133,
+  transitionMs: { "auto-animate": 800, cut: 0, default: 400 },
+  unmatched: { enter: { endLagFrames: 22, startLagFrames: 8 } },
+};
+
 export type Line = typeof LineSchema.Type;
 
 export type Identity = typeof IdentitySchema.Type;

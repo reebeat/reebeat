@@ -2,7 +2,7 @@
 
 Status: **spike report**, a decision input and not a plan. Date: 2026-10-29. Nothing here merges into a package; the spike code is throwaway.
 Asked by: the operator, 2026-10-29: can **SCXML** (W3C) be the main _persistent_ IR format, with Effect Schema as the definition and the runtime and build-time form? Refocused by the operator the same day: **reebeat owns its schema**, a JSON format that supports a chosen subset of the useful constructs of SMIL, SCXML and FRP (Fran), and anything else that earns its place. The compiler and its formats will be Apache-2.0. Experimental dependencies are acceptable, pinned exactly, as build-time assets; alpha types must never appear in reebeat's public API.
-Process: [spec 0000](0000-development-lifecycle.md). Branches: this report is `spike/scxml-ir` (report only); the spike code is `spike/scxml-ir-code` at `<CODE_SHA>` (`spike/scxml/`, `spike/xstate/`), never merged.
+Process: [spec 0000](0000-development-lifecycle.md). Branches: this report is `spike/scxml-ir` (report only, PR #11); the spike code is `spike/scxml-ir-code` at `b0861af` (`spike/scxml/`, `spike/xstate/`), **pushed to `origin`**, never merged into a package. It vendors a copy of the unmerged 0004 schema; the repository is public and 0004 will be too (lead decision, 2026-10-29), so that is acceptable. Every number below has a script and a raw output under `spike/scxml/results/` or `spike/xstate/results/`; the few that have none are marked **unreproduced**.
 Input IR: the working tree of `.worktrees/0004` (branch `feat/0004-state-machines`, HEAD `28b3d13`, with uncommitted work), files copied to `spike/scxml/vendor/0004/` with these SHA-256 (first 16 hex): `graph.ts` 977115df020b7310, `plan.ts` 41284cb5e1874eae, `machines.ts` 79c030b980bc0306, `errors.ts` b9742ce7dcce6ebf, `speed.ts` 96df38eb8a0daa78. Spec 0005 does not exist yet: "planned 0005" means first-class transitions, attribute curves and a small closed expression language, as the lead described them. The 0004 IR is still moving, so every number below is for that snapshot.
 
 ## Summary
@@ -13,7 +13,7 @@ Input IR: the working tree of `.worktrees/0004` (branch `feat/0004-state-machine
 | How much of the IR is native SCXML? | **1.4 %** of the 495 IR leaves of `stories/same-id` (7 scene ids as `state@id`); **2.6 %** if the 6 scene-order edges count. In the generated document 14 of 232 elements (6.0 %) are SCXML. All the rest is the `rb:` namespace. | [Q1](#q1-coverage) |
 | Real SCXML tools | 4 of 4 loaded the profiled document and ran or compiled the 7-state chart. **1 of 4 kept the foreign content** (SCION, in memory, 218 of 218 elements and 32 of 32 attributes, no writer). **0 of 4 round-tripped it** (Commons SCXML wrote 727 bytes back from 11,726). XState v5 has no SCXML import; v6 has `@xstate/scxml` (import only, drops it). | [Q3](#q3-interop) |
 | Round trip | `decode(encode(ir)) = ir` holds on 1,000 generated Graphs (Effect's `Arbitrary`) and on `same-id`; it is **falsified** by the raw codec (XML 1.0 cannot carry U+0000 and similar), so the codec needs an escape layer. 3 of 3 mutants caught in at most 65 runs. | [Q5](#q5-round-trip) |
-| Single source | The XML form can be derived from the Schema, but only as a structure-blind encoding (57,027 bytes, 100 % foreign). The idiomatic profile is 505 hand-written lines that mirror the Schema, and a new optional field is dropped silently until the property test finds it (196 runs). No hand-written XSD is needed for the codec. | [Q4](#q4-single-source) |
+| Single source | The XML form can be derived from the Schema, but only as a structure-blind encoding (57,027 bytes, 100 % foreign). The idiomatic profile is 505 hand-written lines that mirror the Schema, and a new optional field is dropped silently until the property test finds it (651 runs of 1,000 at seed 7). No hand-written XSD is needed for the codec. | [Q4](#q4-single-source) |
 | Ergonomics | 11,726 B and 281 lines (SCXML) versus 17,675 B and 785 lines (JSON); 2,328 versus 2,445 bytes gzipped. False merge conflicts under `git merge-file`, 1,000 random pairs of edits to different facts: **43 (SCXML) versus 5 (JSON)**. | [Q6](#q6-ergonomics) |
 | Construct catalogue | about 120 rows: SMIL timing (48), SCXML (39), FRP (26 construct rows and a 12-row closed-language table). The adopt set for reebeat's JSON is in [Construct catalogue](#construct-catalogue). | below |
 | XState v6 alpha as the build-time interpreter | Deterministic (20 of 20 runs, byte-equal logs), 29 ms for the 55 s story. Recommend the **pure system API** behind a `StatechartInterpreter` service in an integration package, not `@xstate/effect`. | [XState](#xstate-v6-alpha-as-a-build-time-interpreter) |
@@ -26,12 +26,12 @@ Reasons, each with a number:
 
 1. **SCXML has no place for what reebeat stores.** 98.6 % of the IR leaves are foreign content (Q1). The standard's own foreign-content rule is "behavior is undefined" (A.2, in the SCXML catalogue below), and the four tools bear that out (Q3).
 2. **The persistent role needs a round trip through other tools, and none gives it.** 0 of 4 tools write the foreign content back. The only gain of persisting as SCXML is that other tools can open the file, and they open the skeleton either way.
-3. **The codec costs more than the artifact and buys nothing.** 505 lines mirror a schema that already exists (Q4), an escape layer is required for XML 1.0 (Q5), and git merges produce 8.6 times as many false conflicts (Q6).
+3. **The codec costs more than the artifact and buys nothing.** 505 lines mirror a schema that already exists (Q4), an escape layer is required for XML 1.0 (Q5), and in 1,000 random pairs of edits to different facts `git merge-file` reported a false conflict 43 times for the SCXML layout and 5 times for JSON (Q6).
 4. **SCXML's semantics do not carry reebeat's model.** Its time is `send@delay`, which forbidden code surrounds; its transitions are instants; its guards and data are code (SCXML catalogue, rows `cond`, `<datamodel>`, `<send>`). Windowed Beats, curves, exact time and SMIL timing are all `rb:` in any SCXML form.
 
 | Option | Cost | What it gives | Verdict |
 | --- | --- | --- | --- |
-| A. SCXML persistent | the 505-line mapping and escape layer; `rb:` content needs its own schema (the W3C XSD treats it as `lax` and validates nothing in it); 4.3 % false merge conflicts; every 0005 construct lands in `rb:` | files open in 4 tools as a skeleton; payload invisible to them; nothing preserved on save | no |
+| A. SCXML persistent | the 505-line mapping and escape layer; `rb:` content needs its own schema (the W3C XSD treats it as `lax` and validates nothing in it); 43 false merge conflicts in 1,000 random pairs of edits (JSON: 5); every 0005 construct lands in `rb:` | files open in 4 tools as a skeleton; payload invisible to them; nothing preserved on save | no |
 | B. JSON persistent plus SCXML `IrCodec` | the same 505 lines, kept in step with the Schema by a property test and a drift test (Q4) | lossless SCXML for reebeat's own use; no consumer that benefits | no, unless a consumer appears (below) |
 | **C. JSON persistent plus SCXML artifact** | one-way renderer, about 40 lines [INFERENCE: not built]; no round-trip obligation, so no escape layer and no drift gate | the skeleton in Qt, SCION, XState and Commons SCXML; the `rb:` payload optional (SCION keeps it) | **yes** |
 
@@ -129,12 +129,15 @@ Can a schema reject the forbidden ones? Three mechanisms, same documents (`bad-*
 | `<send>` inside `<onentry>` | rejects (`onentry` not declared) | valid | **rejects** |
 | `<log>` inside `<onentry>` | rejects | valid | **rejects** |
 | `<datamodel>` at the root | **rejects** | valid | **valid** (hole) |
-| `<script>` at the root, `<invoke>` in a state | rejects | valid | **valid** (hole) |
+| `<script>` at the root | rejects | valid | **valid** (hole) |
+| `<invoke>` in a state | rejects | valid | **valid** (hole) |
 | `cond="1==1"` on a transition | **rejects** | valid | **valid** (hole) |
 | unknown attribute in the SCXML namespace | rejects | rejects | rejects |
 | unknown `rb:` element | **rejects** | valid (`processContents="lax"`) | valid |
 
 Findings: (1) **Yes, by schema rather than code**, with an Effect Schema over the element tree: a closed union of element shapes makes every forbidden element or attribute a decode error. All 13 forbidden forms of `src/profile.test.ts` (`script`, `send`, `log` and `raise` in `onentry` or `onexit`, `invoke`, `datamodel` and `script` at the root, `cond`, `scxml@datamodel`, `history`, an unknown `rb:` element, an unknown SCXML attribute, a foreign-namespace element) are rejected with a `SchemaError` that names the path, and the generated document is accepted (`results/profile-test.txt`: 14 pass). (2) The **W3C modular XSD cannot be profiled by dropping modules**: `scxml-module-core.xsd` references `param` (data module) and `invoke` (external module), so a driver that includes only the core module does not compile (`xmllint`: "The QName value ... param does not resolve"). A driver must include all three modules and restrict only the executable-content group, which leaves the holes above, or the XSD must be forked. (3) The XSD never validates `rb:` content. Whatever the form, a profile needs one schema of its own, and the Effect Schema is the one that is already there.
+
+Raw output of every XSD row, and the compile failure of the core-module-only driver, is `results/interop-xsd.txt` (`sh interop/run-interop.sh`).
 
 ### Q3 Interop
 
@@ -149,7 +152,7 @@ The document `spike/scxml/fixtures/same-id.scxml` (7 states, 6 transitions, 218 
 
 The XState question: **v5 has no SCXML import** (`xstate@5.33.3` tarball: no file with `scxml` in its name; its text mentions SCXML only in comments); v4 had `xstate/lib/scxml.js` (checked in 4.38.3); v6 brings it back as the separate `@xstate/scxml` package (`docs/scxml.md` of `xstate@6.0.0-alpha.71`), (the package's npm `modified` time is 2026-10-29). Its docs warn that ECMAScript expressions and `<script>` execute JavaScript, and that it is experimental.
 
-A finding from the first run: **Commons SCXML reads attributes by local name**. The document first carried `rb:version`, and the reader rejected it as `unsupported version "1"`, because it took the foreign attribute for SCXML's `version`. A profile rule follows: **no `rb:` attribute may share a local name with an SCXML attribute** (`version`, `id`, `initial`, `event`, `target`, `type`, `src`, ...). The profile uses `rb:ir`. A second rule, from SCION: **foreign payload goes in attributes, never in text**, or the text is lost; the profile moved all text into attributes (`text=`, `v=`), which raised SCION's preserved share from the elements and attributes alone to everything.
+A finding from the first run: **Commons SCXML reads attributes by local name**. The document first carried `rb:version`, and the reader rejected it as `unsupported version "1"`, because it took the foreign attribute for SCXML's `version` (reproduced: `results/interop-commons-collision.txt`). A profile rule follows: **no `rb:` attribute may share a local name with an SCXML attribute** (`version`, `id`, `initial`, `event`, `target`, `type`, `src`, ...). The profile uses `rb:ir`. A second rule, from SCION: **foreign payload goes in attributes, never in text**, because SCION keeps the attributes of a foreign element and loses its text content (reproduced on a two-line document: `results/interop-scion-text.txt`). The profile therefore puts all text in attributes (`text=`, `v=`), and the SCION counts above are for that document. Raw output of the four tools: `results/interop-commons.txt`, `interop-scion.txt`, `interop-qt.txt`, `interop-xstate-scxml.txt`, `interop-xstate-versions.txt` (`sh interop/run-interop.sh`); the Commons commit is in `interop-commons-build.txt`.
 
 "Shows the statechart": the XState machine, the SCION model and the Qt compiled class each expose the 7 states and their order; Commons SCXML shows them in its object model. None of the four draws a diagram; a diagram needs a viewer (Qt Creator's SCXML editor, Stately Studio), which the spike did not run.
 
@@ -165,7 +168,7 @@ Question: can the XML form be derived from the Effect Schema, with a Schema tran
 | Mapping | `graphToTree`, `treeToGraph` (`codec.ts`: 303 lines of mapping, 71 of escape and entry points) | the mapping | a new IR field is silently dropped (below) |
 | Boundary | `parseXml` (saxes), `printXml` (30 lines) | the printer | none |
 
-Total about 505 lines of TypeScript mirror `graph.ts` and `plan.ts` (631 lines in full). **Drift test**: adding an optional field `note` to `ElementSchema` in a copy of `plan.ts` makes the idiomatic codec lose it silently, and the property test falsifies it after **196 runs**; a required field would be flagged the same way. The mapping uses a loose `any` for IR values on purpose (a spike); with typed values a required field would also fail the type check, an optional one would still need the test.
+Total about 505 lines of TypeScript mirror `graph.ts` and `plan.ts` (631 lines in full; `results/xml-libs.txt`). **Drift test** (`sh src/drift.sh`, `results/drift.txt`): adding an optional field `note` to `ElementSchema` in a copy of `plan.ts` makes the idiomatic codec lose it silently, and the property test falsifies it after **651 runs** (1,000 requested, seed 7; an earlier run at 300 requested runs stopped after 196, so the count depends on the run budget, not only on the seed). The control (JSON), the escape-less codec test and the generic structural codec still pass, 3 of 4. A required field would be flagged the same way. The mapping uses a loose `any` for IR values on purpose (a spike); with typed values a required field would also fail the type check, an optional one would still need the test.
 
 **The zero-mapping alternative exists**: `generic.ts` (78 lines) derives the XML from the _value_ (a Parker-style structural encoding), so nothing is written per field and nothing can drift. It holds the same round-trip law over 1,000 runs. Its document is 57,027 bytes and 1,688 lines for `same-id` (3.2 times JSON) and is 100 % `rb:`: a JSON file in an XML coat, with one `<state>`. This is the honest bound: **derivation is free exactly when the result does not use SCXML's vocabulary**.
 
@@ -239,19 +242,21 @@ Tally of verdicts by the first verdict word of each row (an `awk` count, so appr
 
 Reading the tally: SMIL is mostly **adapted**, because its timing is the right algebra over a model (one current interval, wall-clock, DOM events) that reebeat replaces with exact plan-time resolution. SCXML is mostly **dropped**, because its executable content, data model and I/O are the code that reebeat forbids, while its structure (state, parallel, final, transition, document order, the macrostep) is kept as plan-time semantics. FRP is almost entirely **adapted**: Behavior and Event survive as data, as a closed expression language and event lists.
 
-### The adopt set (proposal for reebeat's JSON)
+### The adopt set (ratified by the operator on 2026-10-29, with a smaller v1)
 
-This is a synthesis of the three sections for the operator to ratify; each line points at the rows that justify it.
+The report proposed a larger set; the operator ratified **only what 0004 and 0005 need now** as v1, and moved the rest to "later" (each becomes an issue when a story needs it). The ratified set, with the catalogue rows that justify each line:
 
-| Area | Adopt in v1 | Adopt later | Drop |
+| Area | v1 (0004 and 0005) | Later (an issue when needed) | Dropped |
 | --- | --- | --- | --- |
-| Time | exact offsets (flicks), clock values that are whole flicks, end-exclusive intervals, the negative-begin cut-off rule (SMIL) | `min`, `max`, `repeat(n)` events | `wallclock`, `accesskey`, DOM and hyperlink begin, `indefinite` as a begin, `syncBehavior`, `syncTolerance`, `syncMaster`, `fillDefault`, `restartDefault`, `fill="auto"`, `fill="transition"` |
-| Begin and end | syncbase anchors (existing), begin lists as `each`, event-base end as `until` on any effect with a window, `endsync` `first` and `last` | `endsync` as a container field | `endsync="all"` (alias of `last`), `endsync="media"` |
-| Instances | `restart` as an explicit field: `always`, `whenNotActive`, `never`, plus `overlap` for 0004's decision 5 | | the one-current-interval rule as an implicit default |
-| Fill | `remove` and `freeze`, explicit | `hold` (needs `seq`) | `auto` |
-| Containers | `par` as a parallel region, `seq` as the Scene and Beat chain, `excl` as an exclusive state with `priorityClass` `stop`, `defer`, `never` | `pause` and its queue (needs audio pause and resume) | |
-| Statechart | `state`, compound state (Scene), `parallel`, `final`, one required `initial`, transitions with an event expression, targetless edges, `internal` versus `external`, eventless edges, `done` events, document order as semantics, `In()` as the one guard, exit and entry order as the order of generated events | `history` (shallow and deep) as plan-time sugar | `datamodel`, `data`, `assign`, `script`, `send`, `cancel`, `invoke`, `finalize`, `raise`, `if`, `foreach`, `log`, `cond`, `donedata`, `binding`, the `<initial>` element, multi-id `initial`, system variables, error events |
-| FRP | Behavior as a closed expression AST over local time `t`; Event as a list; `until`-style static switching (phases); `step`; `count`; `snapshot` at a resolved occurrence; threshold events (existing); time warp on curves (`speed`, `accelerate`, `decelerate`, `autoReverse` as one `timeFilter`) | `integral` rewritten to closed form at build time | numeric `derivative`, general `accumB`, `lift_n` over arbitrary functions, recursion, mutually recursive behaviours and ODEs, live input events, partial times |
+| Time | exact time in flicks; the negative-begin cut-off rule (0005) | `min`, `max`, `repeat` (`repeatCount`, `repeatDur`, `repeat(n)` events) | `wallclock`, `accesskey`, DOM and hyperlink begin, `indefinite` as a begin, `syncBehavior`, `syncTolerance`, `syncMaster`, `fillDefault`, `restartDefault`, `fill="auto"`, `fill="transition"` |
+| Begin and end | syncbase anchors; `each`, `first`, `last`; `until`. **`all` is not a name**: SMIL's `endsync="all"` is an alias of `last` (0004's `all` is the maximum, which is `last`) | | `endsync="all"`, `endsync="media"` |
+| Instances | explicit `restart`: `always`, `whenNotActive`, `never`, `overlap` (0004 uses `overlap`) | | the one-current-interval rule as an implicit default |
+| Fill | explicit `fill`: `remove`, `freeze` | `hold` (needs `seq`) | `auto` |
+| Containers | none beyond the statechart | `par`, `seq` and `excl` beyond what the statechart already gives, including `excl` with `pause` | |
+| Statechart | compound state (Scene), `parallel`, `final` | internal versus external transitions, eventless transitions, `done` events, `In()`, `history` (shallow and deep, as plan-time sugar) | `datamodel`, `data`, `assign`, `script`, `send`, `cancel`, `invoke`, `finalize`, `raise`, `if`, `foreach`, `log`, `cond`, `donedata`, `binding`, the `<initial>` element, multi-id `initial`, system variables, error events |
+| FRP | curves, with `step` | `count`, `snapshot`, time warp (`speed`, `accelerate`, `decelerate`, `autoReverse` as one `timeFilter`), `integral` rewritten to closed form at build time | numeric `derivative`, general `accumB`, `lift_n` over arbitrary functions, recursion, mutually recursive behaviours and ODEs, live input events, partial times |
+
+Consequences for 0004 and 0005: 0004's `all` is renamed `last` (Findings, 1); `restart` becomes an explicit field with `overlap` as 0004's value (Findings, 2); curves and `step` are the whole of the FRP v1; none of the "later" constructs is needed to express `stories/same-id`.
 
 Facts the catalogue found about 0004 are in [Findings for 0004 and 0005](#findings-for-0004-and-0005).
 
@@ -407,7 +412,7 @@ Conventions. Frames are at 30 fps; an interval `[b,e)` is begin-inclusive, end-e
 
 **Sources read.** F97 = Elliott & Hudak, *Functional Reactive Animation*, ICFP 1997 (PDF text is font-garbled, so I OCR'd it and checked every quoted line and section/page number against the page images). PP09 = Elliott, *Push-pull functional reactive programming*, Haskell Symposium 2009 (text extracted). TUT = Elliott, *Composing Reactive Animations* (1998 tutorial, <https://conal.net/fran/tutorial.htm>; it has no heading anchors, so I cite heading names). LIB = `conal/Fran` at commit `a113693` (<https://github.com/conal/Fran/tree/a113693cfab23f9ac9704cfee9c610c5edc13d9d/src>), a 2019 import of the Hugs-era sources, read for names the paper lacks. F97 sections: 1 Introduction ("The Essence of Modeling", p.2), 2 Formal Semantics (2.1 Semantic Domains pp.2-3; 2.2 Semantics of Behaviors pp.3-4: *Time, Lifting, Time transformation, Integration, Reactivity*; 2.3 Semantics of Events pp.4-5: *Event handling, Constant events, External events, Predicates, Choice, Snapshot, Event sequencing*), 3 Some Larger Examples pp.5-6, 4 Implementation (4.1 Representing Behaviors p.7; 4.2 Implementing Events pp.7-8), 5 Related Work pp.8-9, 6 Conclusions p.9, Appendix A p.11.
 
-**Semantic model, as the sources state it.** F97 §2.1 p.3: `at : Behavior_α → Time → α`, so a behaviour is a function of time. In F97 an event is a **single** occurrence: `occ : Event_α → Time × α`, described as "non-strict Time x α pairs". The model `type Ba = T → a` and `type Ea = [(T̂, a)] -- for non-decreasing times` is **PP09 §2, p.2**. PP09 says why: "Originally, FRP had a notion of events as a single value with time, which led to a somewhat awkward programming style with explicit temporal loops (tail recursions)" (p.3). Time is `Time = R + R>` with partial "at least t" elements (F97 §2.1 p.3); the real line is "≤"-extended so that `t ≤ >y` when `t ≤ y`. The `untilB` semantics (F97 §2.2 p.4) is `if t ≤ t_e then at[b]t else at[b']t`; PP09 §2.3 (p.4) has `before os t = [a | t̂a < t]`. Both say: **at the instant of the occurrence the old behaviour still holds; the new one starts just after.**
+**Semantic model, as the sources state it.** F97 §2.1 p.3: `at : Behavior_α → Time → α`, so a behaviour is a function of time. In F97 an event is a **single** occurrence: `occ : Event_α → Time × α`, described as "non-strict Time x α pairs". The model `type Ba = T → a` and `type Ea = [(T̂, a)] -- for non-decreasing times` is **PP09 §2, p.2**. PP09 says why: "Orginally, FRP had a notion of events as a single value with time, which led to a somewhat awkward programming style with explicit temporal loops (tail recursions)" (p.2; the spelling "Orginally" is the paper's). Time is `Time = R + R>` with partial "at least t" elements (F97 §2.1 p.3); the real line is "≤"-extended so that `t ≤ >y` when `t ≤ y`. The `untilB` semantics (F97 §2.2 p.4) is `if t ≤ t_e then at[b]t else at[b']t`; PP09 §2.3 (p.4) has `before os t = [a | t̂a < t]`. Both say: **at the instant of the occurrence the old behaviour still holds; the new one starts just after.**
 
 **Not in either paper (grepped in both texts and in LIB).** `bmatch`, `colorBFor`, `slowdown`, `delay`, `=>>`, `withElem`, `when :: Behavior Bool -> Event ()`, `lift3` as a named operator. F97 has `lift_n` only as a family. Where LIB has a near relative I say so in the row; otherwise the row says `not in the source`.
 
@@ -573,8 +578,8 @@ Not verified: rendering in the Stately visualiser/Studio (needs a browser sessio
 | licence | MIT for `xstate`, `@xstate/effect`, `@xstate/scxml`, `effect` |
 | install size | `du -sb`: xstate 5,287,207 B, @xstate/effect 114,902 B (effect 55,918,990 B). `npm view` unpackedSize agrees; alpha.71 / effect alpha.10: 5,505,548 / 143,805 B |
 | `bun build --minify` | effect alone 96,125 B (33,736 gz); xstate pure interpreter 132,988 B (42,925 gz); effect + xstate + @xstate/effect 249,995 B (84,596 gz) |
-| type check (TS 7.0.2, `.worktrees/0004/.../typescript@7.0.2/bin/tsc`, repo flags: strict, nodenext, `skipLibCheck` false) | 0 errors with effect 4.1.0; peers `effect ^4.0.0` and `xstate ^6.0.0-alpha.70` satisfied |
-| same plus `exactOptionalPropertyTypes` | 9 errors in alpha.70 declarations, first: `createActor.d.ts(29,22): error TS2420: Class 'Actor<TLogic>' incorrectly implements interface 'ActorInstance<...>'. Types of property 'registryKey' are incompatible. Type 'string \| undefined' is not assignable to type 'string'.` and 8 x TS2344 in `setup.d.ts`. The repo root `tsconfig.json` does not set that flag. Alpha.71 declares this fixed; I reran the runner on alpha.71 + effect alpha.10 (then restored the pins): 0 errors, identical logs, same code |
+| type check, flags as `spike/xstate/tsconfig.json` (TS 7.0.2, `.worktrees/0004/.../typescript@7.0.2/bin/tsc`: `strict`, `nodenext`, `skipLibCheck` **false**) | 0 errors with effect 4.1.0; peers `effect ^4.0.0` and `xstate ^6.0.0-alpha.70` satisfied |
+| same plus the flags of the packages' `tsconfig.json` (`spike/xstate/tsconfig.exact.json`: `exactOptionalPropertyTypes`, `noUncheckedIndexedAccess`; the packages also set `skipLibCheck: true`, which hides these errors, so this row is the stricter reading) | 9 errors in alpha.70 declarations, first: `createActor.d.ts(29,22): error TS2420: Class 'Actor<TLogic>' incorrectly implements interface 'ActorInstance<...>'. Types of property 'registryKey' are incompatible. Type 'string \| undefined' is not assignable to type 'string'.` and 8 x TS2344 in `setup.d.ts`. The repository root `tsconfig.json` sets none of these flags; every `packages/*/tsconfig.json` sets `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`, so a new `statechart-xstate` package would. Alpha.71 declares this fixed; I reran the runner on alpha.71 + effect alpha.10 (then restored the pins): 0 errors, identical logs, same code |
 
 Breaking changes (changelog "Major Changes", https://github.com/statelyai/xstate/blob/next/packages/core/CHANGELOG.md, releases feed https://github.com/statelyai/xstate/releases): alpha.27 (history states need a default target), alpha.67 (executable action types renamed to effect types; no npm tarball for 67), **alpha.68** (4: public names renamed with no aliases, including `serializeMachine` -> `machineToJSON` and `createMachineFromConfig` -> `machineFromJSON`; event/effect type strings re-prefixed `xstate.` / `@xstate.`; serialized actor identity `{ $actor }`; timers a list), **alpha.70** (9: state keys cannot contain `.`; `#` targets resolve by exact id; bare string transitions throw; `invoke` needs `input`; `version` requires `id`; ...). 15 Major entries in 4 releases; the two functions the codec rests on were renamed 11 days ago. `@xstate/effect`: Major in alpha.8 (`create*Logic` rename) and alpha.9 (`taggedState` tag), and alpha.10 (a Minor) changes the error shape (`EffectFailure<E>`). Docs drift: the package docs call `@xstate/effect/test` (`sendAndAwait`), which alpha.9 does not export (`.` and `./atom` only); online docs use pre-68 names. Also inconsistent: `serialization.md` says an `internalEvents` array survives, `internal-events.md` says it was removed.
 
@@ -606,14 +611,21 @@ These came out of encoding the IR and reading the sources; each is a fact for th
 7. **The offline order of simultaneous external events is undefined in SCXML.** A plan-time resolver needs a rule: (frame, document order) (SCXML section, Gaps 4).
 8. **A Beat with a window is two instants and a state.** SCXML transitions are instants; 0004's `{from, during, to}` already reifies the window as a `during` state. The XState adapter must do the same (XState section, 1).
 
-## Open operator forks
+## Decisions and open forks
 
-1. **The adopt set** ([above](#the-adopt-set-proposal-for-reebeats-json)): ratify, or strike rows. Open choices inside it: `history` (deferred), `excl` with `pause` (deferred, needs audio pause and resume), `min` and `max`, `integral` as closed form.
-2. **Instance semantics**: add `restart: overlap` as the explicit name of 0004's decision 5.
-3. **Time model**: exact time as the IR's truth with the algebra evaluated on exact times, frames as a render setting (the 2026-10-29 decision, which the 0004 draft does not yet follow in its Event model).
-4. **SCXML export**: build the artifact renderer (about 40 lines [INFERENCE]), and whether it carries the payload as `rb:` attributes (SCION keeps them; the others drop them) or the skeleton alone. The spike's profile (`rb:` attribute-only payload, no local-name collisions) is a starting point.
-5. **XState**: adopt the adapter, with the pure system API rather than `@xstate/effect`, pin `xstate` exactly (alpha.70 or alpha.71: alpha.71 fixes the `exactOptionalPropertyTypes` declaration errors of alpha.70 and is the peer floor of `@xstate/scxml`; the `@xstate/effect` `alpha` dist-tag is stale), and a `StatechartInterpreter` contract suite that a hand-written interpreter must pass.
-6. **Spike code**: keep `spike/scxml-ir-code` on the remote as evidence, or delete it after the decision.
+Decisions taken after this report was drafted, all by the operator, 2026-10-29:
+
+1. **Persistent format**: JSON, defined by reebeat's own Effect Schema. SCXML is not persistent (this report's verdict).
+2. **Adopt set**: ratified with the smaller v1 above.
+3. **XState**: use the **pure system API** (not `@xstate/effect`), at `xstate@6.0.0-alpha.71` pinned exactly, in an integration package behind a `StatechartInterpreter` service; this belongs to spec 0005. Alpha types never appear in reebeat's public API. The contract suite of the Q-XState section 5 (byte-equal logs across interpreters plus the semantics demos) is what a hand-written interpreter must pass.
+4. **SCXML renderer**: not built now. The artifact stays an option (about 40 lines [INFERENCE]); the spike's profile is the starting point if it is wanted.
+5. **Spike code**: pushed to `origin` as `spike/scxml-ir-code` (`b0861af`); it vendors a copy of the unmerged 0004 schema, which is acceptable because this repository is public and 0004 will be too.
+
+Still open, none blocking:
+
+1. **Time model**: exact time as the IR's truth with the algebra evaluated on exact times, frames as a render setting (the 2026-10-29 decision, which the 0004 draft does not yet follow in its Event model; Findings, 3 and 4).
+2. **Event ties**: whether 0004's strictly increasing event lists keep their rule or take Elliott's simultaneous occurrences with a left-biased merge (Findings, 3), and the boundary rule at an event's own frame (FRP section, rows `untilB`, `stepper`).
+3. **Schema looseness** in 0004: `Id`, `chapters[].sceneIds` against `scenes[].chapterId`, derivable `words` and `written` (Findings, 5).
 
 ## Dependencies and licences
 
@@ -634,7 +646,7 @@ The compiler and its formats are to be Apache-2.0, with closed products built on
 
 ## Reproduction
 
-All commands run from `spike/scxml/` on branch `spike/scxml-ir-code` after `bun install` there (the deps are `effect@4.1.0` and `saxes`); the vendored IR is `vendor/0004/`.
+All commands run from `spike/scxml/` on branch `spike/scxml-ir-code` (`b0861af`, on the remote) after `bun install` there (the deps are `effect@4.1.0` and `saxes`); the vendored IR is `vendor/0004/`. `spike/scxml/README.md` lists each result file with its command.
 
 ```sh
 bun dump-graph.ts                      # IR of stories/same-id (reads .worktrees/0004 read-only) -> fixtures/same-id.graph.json
@@ -642,11 +654,17 @@ bun src/same-id.ts                     # encode, write fixtures/same-id.scxml, d
 bun src/coverage.ts                    # Q1
 RUNS=1000 bun test --timeout 300000 src/roundtrip.test.ts     # Q5
 MUTATE=visible-always-true RUNS=1000 bun test --timeout 300000 src/roundtrip.test.ts   # one mutant (see codec.ts for the others)
+bun src/raw-count.ts                   # Q5: the codec without the escape layer
+sh src/drift.sh                        # Q4: add an optional IR field, run the property tests, restore
+sh src/xml-libs.sh                     # Q4: XML library sizes and licences, line counts
 PAIRS=1000 bun src/ergonomics.ts       # Q6
 bun src/stats.ts                       # what the generator produces
+WORK=/tmp/scxml-interop sh interop/run-interop.sh   # Q2, Q3: Commons SCXML, SCION, Qt qscxmlc, @xstate/scxml, the W3C XSDs
 ```
 
-Interop probes are in `interop/`: `java/Probe.java` (Commons SCXML), `scion-probe.mjs` (SCION under `jsdom`), `xstate-scxml-probe.mjs`, `xsd/profile-driver.xsd` (needs the W3C modules next to it). The XState measurements are in `spike/xstate/` (`README.md`, `results/`).
+`interop/run-interop.sh` needs network and nix (it clones and builds Commons SCXML with Maven, installs SCION and XState from npm, builds `qscxmlc` from nixpkgs, fetches the W3C XSDs slowly because the site answers HTTP 429 to fast requests). The XState measurements are in `spike/xstate/` (`README.md`, `results/`).
+
+**Unreproduced**: none of the SCXML measurements (Q1 to Q6) after this round. Two XState details come from one run and are not in `spike/xstate/results/`: the "ad hoc" graph-tool runs at limit 20000 (45 s) and the `internalEvents` experiment in the XState section 3, both marked ad hoc there. The statements of the three catalogue sections come from the cited primary sources, not from a script.
 
 ## What was not verified
 

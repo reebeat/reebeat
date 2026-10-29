@@ -22,6 +22,7 @@ import type { ChildProcessSpawner } from "effect/process";
 import { Browser, chromiumFlags } from "./browser.ts";
 import { captureFrames, clockOrigin } from "./capture.ts";
 import { captureSchedule, sceneChangeLag } from "./captureSchedule.ts";
+import { maxShots, screenshotRetries } from "./stability.ts";
 
 /** The page a Renderer writes: every Deck of release 1 has this entry. */
 const deckEntry = "deck.html";
@@ -112,7 +113,9 @@ export const chromiumCapturerWith = (
               ),
               ","
             ),
+            screenshotRetries,
             settle: settleNewAnimations,
+            stability: maxShots,
             width: SettingsSchema.fields.width.literal,
           },
         },

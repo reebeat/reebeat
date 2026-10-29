@@ -1,0 +1,36 @@
+{
+  "durationMs": 2050,
+  "match": 1,
+  "words": [
+    {
+      "endMs": 530,
+      "startMs": 280,
+      "w": "Picture"
+    },
+    {
+      "endMs": 600,
+      "startMs": 530,
+      "w": "a"
+    },
+    {
+      "endMs": 820,
+      "startMs": 600,
+      "w": "box"
+    },
+    {
+      "endMs": 970,
+      "startMs": 820,
+      "w": "on"
+    },
+    {
+      "endMs": 1040,
+      "startMs": 970,
+      "w": "a"
+    },
+    {
+      "endMs": 1760,
+      "startMs": 1040,
+      "w": "screen."
+    }
+  ]
+}

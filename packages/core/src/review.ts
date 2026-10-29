@@ -157,9 +157,11 @@ const narrationWithCues = (line: Line): string => {
   );
 };
 
-const hintText = (line: Line): string => {
+const hintText = (plan: PlanJson, line: Line): string => {
   const parts = [
-    ...(line.hints.speed === 1 ? [] : [`speed ${line.hints.speed}`]),
+    ...(line.hints.speed === plan.settings.speed
+      ? []
+      : [`speed ${line.hints.speed}`]),
     ...(line.hints.pauseBefore === 0
       ? []
       : [`pause ${line.hints.pauseBefore} s`]),
@@ -174,18 +176,43 @@ const seconds = (plan: PlanJson, frames: number): string =>
 const span = (plan: PlanJson, from: number, to: number): string =>
   `frames ${from}-${to} (${seconds(plan, from)}-${seconds(plan, to)} s)`;
 
+const cueName = (cue: Cue): string =>
+  `${cue.kind}${cue.arg === null ? "" : ` ${cue.arg}`}`;
+
+/** A Cue row: where it fires and, for an anchored Cue, the anchor. */
+const cueRow = (cue: Cue, timed?: TimedLine["cues"][number]): string => {
+  const anchor = cue.anchor === "transition-start" ? "transition.start" : "";
+
+  if (timed === undefined) {
+    return `        cue ${cue.id} ${cueName(cue)}  anchored to ${anchor}`;
+  }
+
+  const where = `fires at frame ${timed.fireFrame}, command at ${timed.commandFrame}`;
+
+  return anchor === ""
+    ? `        cue ${cue.id} ${where}`
+    : `        cue ${cue.id} ${cueName(cue)}  ${anchor} -> frame ${timed.fireFrame}, command at ${timed.commandFrame}`;
+};
+
 const timedLineRows = (
   plan: PlanJson,
+  line: Line,
   timed: TimedLine | undefined
 ): readonly string[] =>
   timed === undefined
-    ? []
+    ? Arr.flatMap(line.cues, (cue) =>
+        cue.anchor === "transition-start" ? [cueRow(cue)] : []
+      )
     : [
         `        ${span(plan, timed.startFrame, timed.endFrame)}`,
-        ...Arr.map(
-          timed.cues,
-          (cue) =>
-            `        cue ${cue.cueId} fires at frame ${cue.fireFrame}, command at ${cue.commandFrame}`
+        ...Arr.flatMap(timed.cues, (cued) =>
+          Option.match(
+            Arr.findFirst(line.cues, (cue) => cue.id === cued.cueId),
+            {
+              onNone: () => [],
+              onSome: (cue) => [cueRow(cue, cued)],
+            }
+          )
         ),
       ];
 
@@ -194,9 +221,9 @@ const lineRows = (
   line: Line,
   timed: TimedLine | undefined
 ): readonly string[] => [
-  `      ${line.id}${hintText(line)}`,
+  `      ${line.id}${hintText(plan, line)}`,
   `        ${quote(narrationWithCues(line))}`,
-  ...timedLineRows(plan, timed),
+  ...timedLineRows(plan, line, timed),
 ];
 
 const sceneRows = (
@@ -312,6 +339,7 @@ export const reviewText = (
     [
       `Story: ${plan.title}${plan.author === undefined ? "" : ` (${plan.author})`}`,
       `Source: sha256 ${plan.sourceSha256}`,
+      `Speech rate: ${plan.settings.speed} (a Line that differs says so)`,
       ...Arr.flatMap(plan.chapters, (chapter) =>
         chapterRows(plan, chapter, timing)
       ),

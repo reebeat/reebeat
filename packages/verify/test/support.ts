@@ -7,7 +7,7 @@ import { assert } from "@effect/vitest";
 import { fsAssetCache } from "@reebeat/cache-fs";
 import { chromiumCapturer } from "@reebeat/capture-chromium";
 import { decodePlan, requireTimeline } from "@reebeat/core";
-import type { PlanJson, TimedPlan } from "@reebeat/core";
+import type { PlanJson, TimedCue, TimedPlan } from "@reebeat/core";
 import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
 import type {
   InvalidOutputName,
@@ -58,8 +58,9 @@ import { timedLines } from "../src/planParts.ts";
 const services = MediaTools.layer.pipe(Layer.provideMerge(NodeServices.layer));
 
 /**
- * Two Sections, two Scenes, 156 frames: a Line with a `next` and an `sfx`, then an Auto-Animate Scene in which one
- * Element moves and changes class, one enters and one exits, with a `focus`.
+ * Two Sections, two Scenes: a Line with a `next` and an `sfx`, then an Auto-Animate Scene whose first Line opens with
+ * a `whoosh` (anchored to the scene change) and in which one Element moves and changes class, one enters and one
+ * exits, with a `focus`.
  */
 export const storyText = `Title: Fixture story
 Author: reebeat tests
@@ -84,7 +85,7 @@ Box {#a @br .box .accent}
 Entering {#d @tl .label}
 
 NARRATOR
-Five [[focus: a]] six seven.
+[[sfx: whoosh]] Five [[focus: a]] six seven.
 `;
 
 export const buildName = "story";
@@ -485,11 +486,11 @@ type MutationServices =
   | MediaTools
   | Path.Path;
 
-/** The plan with the command frame of one Cue moved by `frames`. */
-export const shiftCommand = (
+/** The plan with `change` applied to the timed Cue `cueId`. */
+const changeCue = (
   plan: TimedPlan,
   cueId: string,
-  frames: number
+  change: (cue: TimedCue) => TimedCue
 ): TimedPlan => ({
   ...plan,
   timeline: {
@@ -499,14 +500,23 @@ export const shiftCommand = (
       lines: Arr.map(scene.lines, (line) => ({
         ...line,
         cues: Arr.map(line.cues, (cue) =>
-          cue.cueId === cueId
-            ? { ...cue, commandFrame: cue.commandFrame + frames }
-            : cue
+          cue.cueId === cueId ? change(cue) : cue
         ),
       })),
     })),
   },
 });
+
+/** The plan with the command frame of one Cue moved by `frames`. */
+export const shiftCommand = (
+  plan: TimedPlan,
+  cueId: string,
+  frames: number
+): TimedPlan =>
+  changeCue(plan, cueId, (cue) => ({
+    ...cue,
+    commandFrame: cue.commandFrame + frames,
+  }));
 
 /** The plan with the slide frame of one Scene moved by `frames`: its scene change is commanded that much later. */
 export const shiftSlide = (
@@ -524,6 +534,18 @@ export const shiftSlide = (
     ),
   },
 });
+
+/** The plan with the fire and command frames of one Cue set to `frame` (an `sfx` is mixed at its fire frame). */
+export const moveFire = (
+  plan: TimedPlan,
+  cueId: string,
+  frame: number
+): TimedPlan =>
+  changeCue(plan, cueId, (cue) => ({
+    ...cue,
+    commandFrame: frame,
+    fireFrame: frame,
+  }));
 
 /** The capturer the controls re-capture with: Chromium over the platform. */
 const capturing = chromiumCapturer.pipe(Layer.provide(NodeServices.layer));
@@ -555,18 +577,23 @@ const muxing = (cacheDir: string) =>
     Layer.provide(NodeServices.layer)
   );
 
-/** Muxes `frames` under the intact build's Plan into the mp4 and `.vtt` of `dir`, replacing the video. */
+/**
+ * Muxes `frames` under a Plan (the intact build's by default) into the mp4 and `.vtt` of `dir`, replacing the video;
+ * the narration and the sounds are placed by that Plan's Timeline.
+ */
 export const muxFrames = Effect.fn("muxFrames")(function* mux(
   dir: string,
-  frames: Stream.Stream<Uint8Array, CaptureFailure, Fixture>
+  frames: Stream.Stream<Uint8Array, CaptureFailure, Fixture>,
+  plan?: TimedPlan
 ) {
   const fixture = yield* Fixture;
 
   yield* Effect.provide(
-    muxStage(fixture.plan, Stream.provideService(frames, Fixture, fixture), {
-      name: buildName,
-      outDir: dir,
-    }),
+    muxStage(
+      plan ?? fixture.plan,
+      Stream.provideService(frames, Fixture, fixture),
+      { name: buildName, outDir: dir }
+    ),
     muxing(fixture.cacheDir)
   );
 });
@@ -607,6 +634,14 @@ export const control = Effect.fn("control")(function* control(
 
   return verdicts;
 });
+
+/** The number a verdict measured under `name` (`sc1.l1 match score`, an offset in frames); throws when it is absent. */
+export const reportedScore = (verdict: Verdict, name: string): number =>
+  Number(
+    Option.getOrThrow(
+      Arr.findFirst(verdict.measured, ([key]) => key === name)
+    )[1]
+  );
 
 /** `name: value` for every measured value of a verdict. */
 export const measuredOf = (verdict: Verdict): readonly string[] =>

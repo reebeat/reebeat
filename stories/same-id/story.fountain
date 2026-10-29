@@ -1,5 +1,6 @@
 Title: Same name, new place
 Author: reebeat
+Speed: 1.1
 
 /* Original text written for reebeat release 1. The narration is read by a synthetic voice. */
 
@@ -55,9 +56,11 @@ Every box has a name {#tag @tc .accent}
 Same name, so it moves {#hint @bc .muted}
 
 NARRATOR
-On the next screen, box one sits somewhere else. [[sfx: whoosh]] Its name matches, so it slides there.
+[[sfx: whoosh]] On the next screen, box one sits somewhere else. Its name matches, so it slides there.
 
+/* INTERIM WORKAROUND, not a creative choice: at the story rate (1.1) whisper.cpp hears "has" as "is" in the next Line and the exact-match ratio falls to 0.875, below 0.9. At 1.05 it is heard correctly. Remove this (speed 1.05) once word timings come from the synthesizer or the alignment is judged by its path (follow-up to spec 0001). */
 NARRATOR
+(speed 1.05)
 Box two has no match, so it leaves.
 
 > AUTO-ANIMATE
@@ -69,7 +72,7 @@ Same name, so it moves {#hint @bc .accent}
 Box three {#three @ml .box}
 
 NARRATOR
-A name we have not seen before is a new box, so it appears. [[sfx: ding]]
+[[sfx: ding]] A name we have not seen before is a new box, so it appears.
 
 INT. THREE ANSWERS - DAY
 

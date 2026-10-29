@@ -1,5 +1,6 @@
 Story: Boxes and ids (Reebeat tests)
 Source: sha256 5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e
+Speech rate: 1.1 (a Line that differs says so)
 
 Chapter ch1  The same box  (line 7)
   Synopsis: One box, two screens.
@@ -10,7 +11,7 @@ Chapter ch1  The same box  (line 7)
         old           show    @mr .label "Old news"
         foot          show    @bl .muted "Footer"
     Lines
-      sc1.l1  (speed 0.9)
+      sc1.l1  (speed 0.99)
         "This box sits in the corner. [[next]] The caption says what it is."
       sc1.l2
         "Look at the box. [[focus: box]] [[sfx: pop]]"
@@ -30,13 +31,14 @@ Chapter ch2  The cut  (line 38)
     Elements
         fresh         show    @mc .title "Fresh start"
     Lines
-      sc3.l1  (speed 1.1)
+      sc3.l1  (speed 1.21)
         "Nothing is matched across a cut."
   Scene sc4  INT. FOURTH SCREEN  (line 54, transition: auto-animate from sc3)
     Elements
       ~ fresh         update  cell mc→tc
     Lines
       sc4.l1
-        "The title moves up. [[sfx: ding]]"
+        "[[sfx: ding]] The title moves up."
+        cue sc4.l1.c1 sfx ding  anchored to transition.start
 
 Plan: 4 scenes, 5 lines, 6 cues; 1 to enter, 1 to exit, 3 to update

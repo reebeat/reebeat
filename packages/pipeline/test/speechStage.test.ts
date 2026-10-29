@@ -2,7 +2,7 @@
 // provenance, and determinism. No model, no binary: the synthesiser, the aligner and the cache are stand-ins and
 // the encoder is a fake that stores the samples as they are.
 import { assert, layer } from "@effect/vitest";
-import { schedule } from "@reebeat/core";
+import { buildPlan, schedule } from "@reebeat/core";
 import { AssetCache, SpeechSynthesizer, WordAligner } from "@reebeat/services";
 import {
   evenAligner,
@@ -35,6 +35,47 @@ const world = Layer.provideMerge(
   Layer.mergeAll(silentSynthesizer, evenAligner, fakeEncoder, memoryCache),
   platform
 );
+
+/** A story of three Lines of ten words, at the title-page `Speed:`, the middle Line with its own hint rows. */
+const rateStory = (speed: number, middleHint: string) =>
+  Arr.join(
+    [
+      "Title: Rate",
+      `Speed: ${speed}`,
+      "",
+      "# Part",
+      "",
+      "INT. ONE",
+      "",
+      "NARRATOR",
+      "One two three four five six seven eight nine ten.",
+      "",
+      "NARRATOR",
+      ...(middleHint === "" ? [] : [middleHint]),
+      "One two three four five six seven eight nine ten.",
+      "",
+      "NARRATOR",
+      "One two three four five six seven eight nine ten.",
+      "",
+    ],
+    "\n"
+  );
+
+/** The Plan of the rate story at `speed` with `middleHint` before its second Line. */
+const ratePlan = (speed: number, middleHint: string) =>
+  buildPlan(rateStory(speed, middleHint), "5ca1ab1e".repeat(8));
+
+/** The audio file names of every Line of the rate story at `speed`, narrated into a fresh cache. */
+const audioFilesAt = (speed: number) =>
+  Effect.map(
+    Effect.provide(
+      Effect.flatMap(ratePlan(speed, ""), (plan) =>
+        speechStage(plan, { refresh: true })
+      ),
+      world
+    ),
+    Arr.map((line) => line.audio.file)
+  );
 
 const linesOf = Effect.map(fixturePlan, (plan) =>
   Arr.flatMap(plan.scenes, (scene) => scene.lines)
@@ -340,6 +381,87 @@ layer(platform)("speech stage: the key and determinism", (it) => {
           yield* Effect.provide(speechStage(plan, { refresh: true }), retuned),
           (line) => line.audio.file
         )
+      );
+    })
+  );
+
+  it.effect(
+    "another speech rate is another key: no rate reuses the audio of another",
+    () =>
+      Effect.gen(function* rated() {
+        const atOne = yield* audioFilesAt(1);
+
+        assert.notDeepEqual(atOne, yield* audioFilesAt(1.1));
+        assert.deepStrictEqual(atOne, yield* audioFilesAt(1));
+
+        // A cache filled at one rate is a miss at another, and a hit at its own.
+        const shared = Layer.provideMerge(
+          Layer.mergeAll(
+            silentSynthesizer,
+            evenAligner,
+            fakeEncoder,
+            memoryCache
+          ),
+          platform
+        );
+
+        const missAtOtherRate = Effect.gen(function* sharedCache() {
+          const slow = yield* ratePlan(1, "");
+          const fast = yield* ratePlan(1.1, "");
+
+          yield* speechStage(slow, { refresh: true });
+          yield* speechStage(slow, { refresh: false });
+
+          return yield* Effect.flip(speechStage(fast, { refresh: false }));
+        });
+
+        const failure = yield* Effect.provide(missAtOtherRate, shared);
+
+        assert.isTrue(Predicate.isTagged(failure, "SpeechCacheMiss"));
+      })
+  );
+});
+
+/** The spoken length of every Line: the end of its last word (the stand-in adds a constant 400 ms of silence). */
+const spokenMs = (source: string) =>
+  Effect.map(
+    Effect.flatMap(buildPlan(source, "5ca1ab1e".repeat(8)), (plan) =>
+      Effect.provide(speechStage(plan, { refresh: true }), world)
+    ),
+    Arr.map((line) => line.words.at(-1)?.endMs ?? 0)
+  );
+
+layer(platform)("speech stage: the rate scales the narration", (it) => {
+  it.effect(
+    "a story built at Speed 1.1 narrates in 1/1.1 of the time of one built at 1.0",
+    () =>
+      Effect.gen(function* scaled() {
+        // Ten words at 330 ms: 3300 ms at 1.0; 3300 / 1.1 = 3000 ms at 1.1; 3300 / 2 = 1650 ms at 2.
+        assert.deepStrictEqual(
+          yield* spokenMs(rateStory(1, "")),
+          [3300, 3300, 3300]
+        );
+        assert.deepStrictEqual(
+          yield* spokenMs(rateStory(1.1, "")),
+          [3000, 3000, 3000]
+        );
+        assert.deepStrictEqual(
+          yield* spokenMs(rateStory(2, "")),
+          [1650, 1650, 1650]
+        );
+      })
+  );
+
+  it.effect("a (speed N) before one Line changes only that Line", () =>
+    Effect.gen(function* single() {
+      assert.deepStrictEqual(
+        yield* spokenMs(rateStory(1.1, "(speed 2)")),
+        [3000, 1650, 3000]
+      );
+      // (slowly) is 0.9 of the story default: 3300 / 0.99 = 3333 ms.
+      assert.deepStrictEqual(
+        yield* spokenMs(rateStory(1.1, "(slowly)")),
+        [3000, 3333, 3000]
       );
     })
   );

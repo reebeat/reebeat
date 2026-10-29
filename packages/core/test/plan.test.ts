@@ -116,7 +116,8 @@ describe("buildPlan of the fixture", () => {
           "This box sits in the corner. The caption says what it is."
         );
         assert.strictEqual(line?.words.length, 12);
-        assert.deepStrictEqual(line?.hints, { pauseBefore: 0, speed: 0.9 });
+        // (slowly) is the story default 1.1 times 0.9.
+        assert.deepStrictEqual(line?.hints, { pauseBefore: 0, speed: 0.99 });
         assert.deepStrictEqual(
           Arr.map(line?.cues ?? [], (cue) => [
             cue.kind,
@@ -139,12 +140,36 @@ describe("buildPlan of the fixture", () => {
         );
         assert.deepStrictEqual(plan.scenes[1]?.lines[0]?.hints, {
           pauseBefore: 0.5,
-          speed: 1,
-        });
-        assert.deepStrictEqual(plan.scenes[2]?.lines[0]?.hints, {
-          pauseBefore: 0,
           speed: 1.1,
         });
+        // (quickly) is the story default 1.1 times 1.1, rounded to four decimals.
+        assert.deepStrictEqual(plan.scenes[2]?.lines[0]?.hints, {
+          pauseBefore: 0,
+          speed: 1.21,
+        });
+      })
+  );
+
+  it.effect(
+    "anchors only an sfx before the first word of a Scene's first Line to the transition start",
+    () =>
+      Effect.gen(function* anchors() {
+        const plan = yield* fixturePlan;
+
+        const anchored = Arr.flatMap(plan.scenes, (scene) =>
+          Arr.flatMap(scene.lines, (line) =>
+            Arr.map(line.cues, (cue) => [cue.id, cue.anchor, cue.afterWord])
+          )
+        );
+
+        assert.deepStrictEqual(anchored, [
+          ["sc1.l1.c1", "word", 5],
+          ["sc1.l2.c1", "word", 3],
+          ["sc1.l2.c2", "word", 3],
+          ["sc2.l1.c1", "word", 3],
+          ["sc2.l1.c2", "word", 3],
+          ["sc4.l1.c1", "transition-start", -1],
+        ]);
       })
   );
 });

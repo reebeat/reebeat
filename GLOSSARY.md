@@ -33,11 +33,11 @@ The narration that carries a Beat: the dialogue of the `NARRATOR`, as manuscript
 _Avoid_: Caption, voice-over text, script line
 
 **Cue**:
-An inline note `[[...]]` inside a Line, anchored to the spoken word before it and firing at that word's end: `[[next]]` reveals the next hidden Element, `[[focus: id]]` emphasises an Element, `[[sfx: name]]` plays a sound. In the Deck a Cue is a fragment; in the Video it is the step or sound at that moment.
+An inline note `[[...]]` inside a Line, anchored to the spoken word before it and firing at that word's end (an `[[sfx: name]]` written before the first word of the first Line of a Scene is anchored to the Scene's slide change instead, so the sound goes with the motion): `[[next]]` reveals the next hidden Element, `[[focus: id]]` emphasises an Element, `[[sfx: name]]` plays a sound. In the Deck a Cue is a fragment; in the Video it is the step or sound at that moment.
 _Avoid_: Trigger, event, note (Fountain's word for the syntax)
 
 **Hint**:
-An optional instruction that the content alone does not carry: a Parenthetical before a Line (delivery: `(slowly)`, `(quickly)`, `(pause N)`) or a Transition between Scenes (`> AUTO-ANIMATE`, `> CUT`).
+An optional instruction that the content alone does not carry: a Parenthetical before a Line (delivery: `(speed N)`, `(slowly)`, `(quickly)`, `(pause N)`) or a Transition between Scenes (`> AUTO-ANIMATE`, `> CUT`).
 _Avoid_: Animation, tween (those are derived, not declared)
 
 **Behaviour**:
@@ -73,7 +73,7 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 
 | Fountain | reebeat | Deck | Video |
 |---|---|---|---|
-| `Title:`, `Author:` | Story metadata | title | title tag |
+| `Title:`, `Author:`, `Speed:` | Story metadata (`Speed:` is the default speech rate, 0.5 to 2.0, 1.1 when absent) | title | title tag |
 | `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
 | scene heading | Scene (identity boundary) | slide | stretch between two slide changes |
 | Action | Keyframe: the Elements on screen | slide content | the same page |

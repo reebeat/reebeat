@@ -10,8 +10,8 @@ import type { Chapter, Cue, Line, PlanJson, Scene, Settings } from "./plan.ts";
 import { adaptTokens } from "./story.ts";
 import type { LineDraft, SceneDraft, Story } from "./story.ts";
 
-/** The pacing and canvas defaults of release 1 (spec 0001, "Time"). */
-const defaultSettings: Settings = {
+/** The pacing and canvas defaults of release 1 (spec 0001, "Time"); the speech rate comes from the Story. */
+const defaultSettings: Omit<Settings, "speed"> = {
   fps: 30,
   height: 720,
   lineGap: 0.5,
@@ -30,6 +30,11 @@ const buildLine = (draft: LineDraft, sceneId: string, index: number): Line => {
   return {
     cues: Arr.map(draft.cues, (cue, cueIndex): Cue => ({
       afterWord: cue.afterWord,
+      // An sfx before the first word of a Scene's first Line sounds with the slide change into the Scene.
+      anchor:
+        cue.kind === "sfx" && cue.afterWord === -1 && index === 0
+          ? "transition-start"
+          : "word",
       arg: cue.arg,
       id: `${id}.c${cueIndex + 1}`,
       kind: cue.kind,
@@ -122,7 +127,7 @@ const assemblePlan = (story: Story, sourceSha256: string): PlanJson => {
     chapters: buildChapters(story),
     scenes: buildScenes(story),
     schema: 1,
-    settings: defaultSettings,
+    settings: { ...defaultSettings, speed: story.speed },
     sourceSha256,
     title: story.title ?? untitled,
   };

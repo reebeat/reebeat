@@ -15,6 +15,7 @@ interface Reportable {
 // Bun puts the line of the throw site on every Error.
 const located: Record<PlanErrorTag, true> = {
   BadParenthetical: true,
+  BadSpeed: true,
   BadTransition: true,
   CueTargetMissing: true,
   DuplicateId: true,

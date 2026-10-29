@@ -13,6 +13,8 @@ const windowFrames = 4;
 
 interface SceneChanges {
   readonly measured: Measured;
+  /** Per Scene after the first: the first changed frame minus its slide frame, or undefined when none is observed. */
+  readonly offsets: ReadonlyMap<string, number | undefined>;
   readonly problems: readonly string[];
 }
 
@@ -61,6 +63,15 @@ export const observeSceneChanges = Effect.fn("observeSceneChanges")(
       ]
     );
 
-    return { measured, problems } satisfies SceneChanges;
+    return {
+      measured,
+      offsets: new Map(
+        Arr.map(rows, ({ offset, scene }): [string, number | undefined] => [
+          scene.sceneId,
+          offset,
+        ])
+      ),
+      problems,
+    } satisfies SceneChanges;
   }
 );

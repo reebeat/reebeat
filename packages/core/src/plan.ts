@@ -3,6 +3,8 @@
 // The schemas are named `...Schema`; the types derived from them carry the contract's names.
 import { Schema } from "effect";
 
+import { maxSpeed, minSpeed } from "./speed.ts";
+
 /** The nine cells of the Element grid, in reading order. */
 export const cells = [
   "tl",
@@ -38,6 +40,11 @@ const Frame = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const Milliseconds = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0));
 const Seconds = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0));
 
+/** A speech rate: a multiple of the voice's natural speed (`packages/core/src/speed.ts`). */
+const Speed = Schema.Finite.check(
+  Schema.isBetween({ maximum: maxSpeed, minimum: minSpeed })
+);
+
 export const CellSchema = Schema.Literals(cells);
 export const ElementClassSchema = Schema.Literals(elementClasses);
 export const SfxNameSchema = Schema.Literals(sfxNames);
@@ -59,6 +66,8 @@ export const SettingsSchema = Schema.Struct({
   lineGap: Seconds,
   sceneLead: Seconds,
   sceneTail: Seconds,
+  /** The story's default speech rate (`Speed:` of the title page, 1.1 when absent). */
+  speed: Speed,
   transition: Seconds,
   voice: Schema.Literal("af_heart"),
   width: Schema.Literal(1280),
@@ -85,6 +94,12 @@ export const ElementSchema = Schema.Struct({
 export const CueSchema = Schema.Struct({
   /** Index into `Line.words` of the word the Cue follows; -1 fires at the start of the Line. */
   afterWord: Schema.Int.check(Schema.isGreaterThanOrEqualTo(-1)),
+  /**
+   * What the Cue is timed against. `word`: the end of the word before it (the start of its Line when it stands
+   * before the first word). `transition-start`: an `sfx` before the first word of the first Line of a Scene fires at
+   * the Scene's slide change, the start of the transition into it.
+   */
+  anchor: Schema.Literals(["word", "transition-start"]),
   arg: Schema.NullOr(Schema.String),
   id: Id,
   kind: Schema.Literals(["next", "focus", "sfx"]),
@@ -93,7 +108,7 @@ export const CueSchema = Schema.Struct({
 
 export const LineSchema = Schema.Struct({
   cues: Schema.Array(CueSchema),
-  hints: Schema.Struct({ pauseBefore: Seconds, speed: Seconds }),
+  hints: Schema.Struct({ pauseBefore: Seconds, speed: Speed }),
   id: Id,
   line: SourceLine,
   /** The narration text: the dialogue without its Cues, whitespace collapsed. */

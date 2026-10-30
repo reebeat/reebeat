@@ -1,0 +1,10 @@
+$ python3 smoke.py   # a real server (bun packages/mcp/bin/tsukuri-mcp.ts) over stdio, JSON-RPC by hand, on the fixture workspace
+initialize -> {'name': 'tsukuri', 'version': '0.1.0'} 2025-11-25
+tools/list -> ['artifact_observe', 'build_get', 'docs_get', 'plan_get', 'project_get', 'project_list', 'story_lint', 'story_read']
+project_list {} -> isError=False 5 projects, showing 5 | {"projects":[{"bytes":478,"hasBuild":false,"hasConfig":false,"project":"badbuild","revision":"d4be37587d7ca2b2
+build_get {'project': 'harbour'} -> isError=False harbour: build 4be468ae45f8, 4 files, of the head Screenplay | {"adapters":[],"artifacts":[{"bytes":38,"mimeType":"text/html","name":"deck","sha256":"3a95d238156345428a7fbdc | <resource_link> | <resource_link> | <resource_link> | 
+build_get {'project': 'badbuild'} -> isError=True {"_tag":"Unreadable","message":"badbuild: build.json is not a build manifest","project":"badbuild"}
+artifact_observe {'project': 'harbour', 'kind': 'streams'} -> isError=False harbour: 2 streams | {"build":"4be468ae45f8f978a86c7bf4e3d6c84176abd899aec29a0b118d6375c9ca93a3","kind":"streams","project":"harbou
+project_get {'project': '../etc'} -> isError=True Expected a string matching the RegExp ^[a-z0-9][a-z0-9-]{0,62}$
+  at ["project"]
+exit 130

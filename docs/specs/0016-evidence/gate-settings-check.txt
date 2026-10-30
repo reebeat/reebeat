@@ -1,32 +1,39 @@
-# F16 control: the settings check run against npm-release as it is today (read-only; session account = the operator login that this workstation holds; jq from nixpkgs)
-$ nix shell nixpkgs#jq -c gate-settings-check.sh tsukuri-labs/tsukuri npm-release
-session account: phibkro; repo admin: true; token scopes: 'gist', 'read:org', 'repo', 'workflow'
-environment npm-release: {"bypass":true,"reviewers":[{"self":false,"who":["phibkro"]}]}
+# F16 controls (stub gh) and the control against the real npm-release; jq from nixpkgs
+$ nix shell nixpkgs#jq -c ./gate-settings-check.test.sh
+ok    good: one reduced account, one user reviewer, self-review prevented, no bypass, no admin
+ok    an inactive second account is logged in
+ok    the reviewer is a team (no login)
+ok    the active account is the reviewer
+ok    prevent_self_review is false
+ok    admins can bypass
+ok    the active account is a repository admin
+ok    the token has the classic repo scope
+ok    no required_reviewers rule at all (the two checks that need a rule fail with it)
+exit=0
+
+$ nix shell nixpkgs#jq -c ./gate-settings-check.sh tsukuri-labs/tsukuri npm-release   (real, read-only; this OS user is the operator, with the operator login)
+OS user: nori; gh accounts logged in on github.com: 1; active: phibkro; token scopes: 'gist', 'read:org', 'repo', 'workflow'
+repository permissions of the active account: {"admin":true,"maintain":true,"push":true,"triage":true,"pull":true}
+environment npm-release: can_admins_bypass=true; required_reviewers rules: [{"prevent_self_review":false,"reviewers":[{"type":"User","who":"phibkro"}]}]
+PASS  exactly one gh account is logged in for this OS user (another account's credential is one 'gh auth switch' away)
 PASS  a required_reviewers rule exists
-FAIL  the session account is not a required reviewer
-FAIL  prevent_self_review is true
+PASS  every required reviewer is a user (a team's membership is not examined, so a team fails)
+FAIL  the active account is not a required reviewer
+FAIL  prevent_self_review is true on every required_reviewers rule
 FAIL  can_admins_bypass is false
-FAIL  the session token has no repository admin
-FAIL  the session token has no classic repo scope
+FAIL  the active account has no repository admin
+FAIL  the active token has no classic 'repo' scope
+NOTE  not checkable here: whether a fine-grained token has Deployments: write, and who else can read the credential files of this OS user (M3). Read them in the token's settings and on the machine.
 result: FAIL
 exit=1
 
-# the script (gate-settings-check.sh)
-#!/usr/bin/env bash
-# usage: gate-settings-check.sh <owner/repo> <environment>   (read-only; run with the token an agent session uses)
-set -u
-repo=$1; env=$2; fail=0
-me=$(gh api user --jq .login)
-rules=$(gh api "repos/$repo/environments/$env" --jq '{bypass: .can_admins_bypass, reviewers: [.protection_rules[]|select(.type=="required_reviewers")|{self: .prevent_self_review, who: [.reviewers[].reviewer.login]}]}')
-admin=$(gh api "repos/$repo" --jq .permissions.admin)
-scopes=$(gh auth status 2>&1 | sed -n "s/.*Token scopes: //p")
-echo "session account: $me; repo admin: $admin; token scopes: ${scopes:-none shown (fine-grained or app token)}"
-echo "environment $env: $rules"
-check() { if [ "$2" = true ]; then echo "PASS  $1"; else echo "FAIL  $1"; fail=1; fi; }
-check "a required_reviewers rule exists" "$(echo "$rules" | jq '.reviewers|length>0')"
-check "the session account is not a required reviewer" "$(echo "$rules" | jq --arg me "$me" '[.reviewers[].who[]]|index($me)==null')"
-check "prevent_self_review is true" "$(echo "$rules" | jq '[.reviewers[].self]|all(.==true) and (length>0)')"
-check "can_admins_bypass is false" "$(echo "$rules" | jq '.bypass==false')"
-check "the session token has no repository admin" "$([ "$admin" = false ] && echo true || echo false)"
-check "the session token has no classic repo scope" "$(echo "$scopes" | grep -qE "'repo'" && echo false || echo true)"
-echo "result: $([ $fail = 0 ] && echo pass || echo FAIL)"; exit $fail
+# mutation: the check "every required reviewer is a user" removed from the script, then the controls
+ok    good: one reduced account, one user reviewer, self-review prevented, no bypass, no admin
+ok    an inactive second account is logged in
+WRONG the reviewer is a team (no login) (exit 0, 0 FAIL lines)
+ok    the active account is the reviewer
+ok    prevent_self_review is false
+ok    admins can bypass
+ok    the active account is a repository admin
+ok    the token has the classic repo scope
+WRONG no required_reviewers rule at all (the two checks that need a rule fail with it) (exit 1, 2 FAIL lines)

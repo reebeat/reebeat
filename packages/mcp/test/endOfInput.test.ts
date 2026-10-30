@@ -10,7 +10,6 @@ import {
   FileSystem,
   Formatter,
   Layer,
-  Option,
   Path,
   Queue,
   Ref,
@@ -163,12 +162,12 @@ const alive = (pid: number) =>
 describe("the end of a stdio session", () => {
   {
     // `it.live`: the real clock, because the test waits for a real process; the fixture is built for each test.
-    it.live(
-      "closing stdin during a call exits 0 and leaves no ffmpeg behind",
-      () =>
+    it.live.each(["sleep", "ignore"] as const)(
+      "closing stdin during a call with a %s child exits 0 and reaps it",
+      (mode) =>
         Effect.scoped(
           Effect.gen(function* closed() {
-            const { handle, input, pid } = yield* inFlight();
+            const { handle, input, pid } = yield* inFlight(mode);
 
             assert.isTrue(yield* alive(pid), "the shim is running");
             yield* Queue.end(input);
@@ -183,19 +182,9 @@ describe("the end of a stdio session", () => {
               "a closed stdin is a clean end"
             );
 
-            const gone = yield* alive(pid).pipe(
-              Effect.filterOrFail(
-                (up) => !up,
-                () => "still running"
-              ),
-              Effect.retry(Schedule.spaced("200 millis")),
-              Effect.timeout("10 seconds"),
-              Effect.option
-            );
-
-            assert.isTrue(
-              Option.isSome(gone),
-              "the in-flight ffmpeg is killed"
+            assert.isFalse(
+              yield* alive(pid),
+              "the in-flight ffmpeg is reaped before exit"
             );
           })
         ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),
@@ -257,28 +246,6 @@ describe("the end of a stdio session", () => {
             assert.isFalse(
               yield* alive(pid),
               "the child is reaped before server exit"
-            );
-          })
-        ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),
-      { timeout: 90_000 }
-    );
-
-    it.live(
-      "EOF alone times out an observation even when its child ignores SIGTERM",
-      () =>
-        Effect.scoped(
-          Effect.gen(function* hostileEof() {
-            const { handle, input, pid } = yield* inFlight("ignore");
-            yield* Queue.end(input);
-
-            const code = yield* handle.exitCode.pipe(
-              Effect.timeout("30 seconds")
-            );
-
-            assert.strictEqual(Number(code), 0);
-            assert.isFalse(
-              yield* alive(pid),
-              "SIGKILL reaped the hostile child"
             );
           })
         ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),

@@ -1,0 +1,7 @@
+core ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/core"]
+subtitles ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/subtitles"]
+lint ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/lint"]
+services ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/services"]
+pipeline ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/pipeline"]
+sounds-synth ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/sounds-synth"]
+render-reveal ["https://tsukuri.dev","git+https://github.com/tsukuri-labs/tsukuri.git","packages/render-reveal"]

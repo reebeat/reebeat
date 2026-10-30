@@ -1,0 +1,5 @@
+[05:05:05.723] ERROR (#34): Error [AssertionError]: expected [ Array(1) ] to deeply equal [ 'https://tsukuri.dev' ]
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  tools/quality/test/release.test.ts > the real repository > every published package points at the product site and at the repository directory (spec 0015)
+AssertionError: expected [ Array(1) ] to deeply equal [ 'https://tsukuri.dev' ]
+restored:       Tests  21 passed (21)

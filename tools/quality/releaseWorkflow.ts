@@ -460,33 +460,30 @@ export const modeFindings = (file: WorkflowFile): readonly string[] => {
   ];
 };
 
-/** The file whose presence holds the release (operator decision of 2026-10-29). */
-const holdFile = ".github/release-hold";
-
-const holdsRelease = (step: typeof Step.Type): boolean =>
-  Predicate.isString(step.run) && Str.includes(holdFile)(step.run);
-
-/** The script of the hold step, or none when the workflow has no such step. */
-export const holdScript = (file: WorkflowFile): Option.Option<string> =>
+/** The script of the first step, in any job, that satisfies `matches`, or none. */
+const stepScript = (
+  file: WorkflowFile,
+  matches: (step: typeof Step.Type) => boolean
+): Option.Option<string> =>
   Option.flatMap(Result.getSuccess(parseWorkflow(file)), ({ jobs }) =>
     Option.flatMapNullishOr(
       Arr.findFirst(
         Arr.flatMap(Record.values(jobs), (job) => job.steps ?? []),
-        holdsRelease
+        matches
       ),
       (step) => step.run
     )
   );
 
-const label = (step: typeof Step.Type): string =>
-  step.name ?? step.uses ?? "(unnamed)";
-
-/**
- * Sentences about the release hold. Empty when every job that holds a publish command has a step that tests for
- * `.github/release-hold`, and nothing but the checkout runs before it. (That the script fails while the file exists is
- * run by the test, on the script `holdScript` returns.)
- */
-export const holdFindings = (file: WorkflowFile): readonly string[] => {
+/** The findings of `check` for each job of the workflow that holds a publish command (a parse failure is a finding). */
+const publishingJobFindings = (
+  file: WorkflowFile,
+  check: (
+    name: string,
+    job: typeof Job.Type,
+    steps: readonly (typeof Step.Type)[]
+  ) => readonly string[]
+): readonly string[] => {
   const parsed = parseWorkflow(file);
 
   if (Result.isFailure(parsed)) {
@@ -496,10 +493,32 @@ export const holdFindings = (file: WorkflowFile): readonly string[] => {
   return Arr.flatMap(Record.toEntries(parsed.success.jobs), ([name, job]) => {
     const steps = job.steps ?? [];
 
-    if (!Arr.some(steps, (step) => publishCommand.test(step.run ?? ""))) {
-      return [];
-    }
+    return Arr.some(steps, (step) => publishCommand.test(step.run ?? ""))
+      ? check(name, job, steps)
+      : [];
+  });
+};
 
+/** The file whose presence holds the release (operator decision of 2026-10-29). */
+const holdFile = ".github/release-hold";
+
+const holdsRelease = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes(holdFile)(step.run);
+
+/** The script of the hold step, or none when the workflow has no such step. */
+export const holdScript = (file: WorkflowFile): Option.Option<string> =>
+  stepScript(file, holdsRelease);
+
+const label = (step: typeof Step.Type): string =>
+  step.name ?? step.uses ?? "(unnamed)";
+
+/**
+ * Sentences about the release hold. Empty when every job that holds a publish command has a step that tests for
+ * `.github/release-hold`, and nothing but the checkout runs before it. (That the script fails while the file exists is
+ * run by the test, on the script `holdScript` returns.)
+ */
+export const holdFindings = (file: WorkflowFile): readonly string[] =>
+  publishingJobFindings(file, (name, job, steps) => {
     const held = Arr.findFirstIndex(steps, holdsRelease);
 
     if (Option.isNone(held)) {
@@ -542,4 +561,65 @@ export const holdFindings = (file: WorkflowFile): readonly string[] => {
 
     return [...early, ...bypasses];
   });
+
+const tagsPreRelease = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes("dist-tag add")(step.run);
+
+/** The script of the step that points the pre-release tag at what was published, or none. */
+export const tagScript = (file: WorkflowFile): Option.Option<string> =>
+  stepScript(file, tagsPreRelease);
+
+/** `npm dist-tag` through trusted publishing needs npm 11.21.0 or later (docs.npmjs.com/trusted-publishers). */
+const npmPin = /\bnpm@(?<major>\d+)\.(?<minor>\d+)\.\d+\b/u;
+
+const pinsNewEnoughNpm = (run: string): boolean => {
+  const groups = npmPin.exec(run)?.groups;
+  const major = Number(groups?.major);
+  const minor = Number(groups?.minor);
+
+  return major > 11 || (major === 11 && minor >= 21);
 };
+
+const removesDevEngines = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes("del(.devEngines)")(step.run);
+
+/**
+ * Sentences about the pre-release tag. `changeset publish` tags only the first pre-release of a package with the pre tag
+ * and sends later ones to `latest`, so every job that publishes must run a `dist-tag add` step after the publish step,
+ * with an npm of 11.21.0 or later (pinned: the runner's and devenv's npm are older and a trusted publisher could not
+ * move a tag with them), and both npm steps must come after the step that removes `devEngines` from the checkout (npm
+ * refuses to run under another package manager's `devEngines`). That the step tags the right versions is run by the
+ * test, on `tagScript`.
+ */
+export const tagFindings = (file: WorkflowFile): readonly string[] =>
+  publishingJobFindings(file, (name, _job, steps) => {
+    const published = Arr.findLastIndex(steps, (step) =>
+      publishCommand.test(step.run ?? "")
+    );
+
+    const tag = Option.flatMap(published, (index) =>
+      Arr.findFirst(Arr.drop(steps, index + 1), tagsPreRelease)
+    );
+
+    const removal = Arr.findFirstIndex(steps, removesDevEngines);
+
+    return [
+      ...(Option.isSome(tag)
+        ? []
+        : [
+            `${file.name}: job ${name} publishes and has no later step that runs dist-tag add, so a second pre-release would be tagged latest`,
+          ]),
+      ...(Option.exists(tag, (step) => pinsNewEnoughNpm(step.run ?? "")) ||
+      Option.isNone(tag)
+        ? []
+        : [
+            `${file.name}: job ${name} tags with an npm older than 11.21.0 or an unpinned one, which a trusted publisher cannot use for dist-tag`,
+          ]),
+      ...(Option.isSome(removal) &&
+      Option.exists(published, (index) => removal.value < index)
+        ? []
+        : [
+            `${file.name}: job ${name} has no step that removes devEngines before the publish step`,
+          ]),
+    ];
+  });

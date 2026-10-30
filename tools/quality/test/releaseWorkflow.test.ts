@@ -44,8 +44,6 @@ interface Changes {
   readonly needs?: string;
   readonly publishIf?: string;
   readonly publishRun?: string;
-  readonly secret?: string;
-  readonly variable?: string;
   readonly workflowEnv?: string;
 }
 
@@ -113,11 +111,21 @@ const mentioning = (text: string) => (lines: readonly string[]) =>
 describe("token-free trusted publishing", () => {
   it("rejects credential reads and npm auth configuration in any workflow", () => {
     assert.deepStrictEqual(tokenFindings([release({})]), []);
+    assert.deepStrictEqual(
+      tokenFindings(
+        fixture(`env: \${{ secrets.GITHUB_TOKEN }}\nrun: bun run secrets`)
+      ),
+      []
+    );
 
     for (const text of [
       "env: NODE_AUTH_TOKEN",
       "run: echo secrets.NPM_TOKEN",
       "run: echo secrets.ALTERNATE",
+      `env: \${{ secrets['X'] }}`,
+      `env: \${{ toJSON(secrets) }}`,
+      `env: \${{ secrets.GITHUB_TOKEN.other }}`,
+      "secrets: inherit",
       "run: echo _authToken=example",
       "run: cat .npmrc",
       `run: echo npm_${Str.repeat(36)("x")}`,
@@ -136,6 +144,21 @@ describe("token-free trusted publishing", () => {
         tokenFindings(fixture(`run: echo npm_${Str.repeat(20)("x")}`))
       )
     );
+  });
+
+  it("checks every publishing job, even one not named publish", () => {
+    const original = release({});
+    const second = `\n  extra:\n    if: ${publishCondition}\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm publish\n`;
+
+    const findings = modeFindings({
+      ...original,
+      text: original.text + second,
+    });
+
+    assert.isTrue(
+      mentioning("job extra lacks npm-release environment")(findings)
+    );
+    assert.isTrue(mentioning("job extra lacks id-token: write")(findings));
   });
 
   it("requires the publishing environment and OIDC permission", () => {

@@ -66,14 +66,24 @@ const parseWorkflow = (file: WorkflowFile): Result.Result<Parsed, string> =>
       Result.mapError(decoded, () => `${file.name} is not a workflow`)
   );
 
+/** Reject stored-secret contexts in expressions except GitHub's per-run token. */
+const forbiddenSecretContext = (text: string): boolean =>
+  Arr.some(
+    Arr.fromIterable(Str.matchAll(/\$\{\{(?<expression>[\s\S]*?)\}\}/gu)(text)),
+    (match) =>
+      /\bsecrets\b(?!\s*\.\s*GITHUB_TOKEN\b(?!\s*[.[]))/iu.test(
+        match.groups?.expression ?? ""
+      )
+  );
+
 /** Reject credential references throughout each workflow. */
 export const tokenFindings = (
   workflows: readonly WorkflowFile[]
 ): readonly string[] =>
   Arr.flatMap(workflows, ({ name, text }) =>
-    /NPM_TOKEN|NODE_AUTH_TOKEN|_authToken|npmrc|\bnpm_[A-Za-z0-9]{20,}|secrets\.(?!GITHUB_TOKEN\b)[A-Za-z_][A-Za-z0-9_]*/iu.test(
+    /NPM_TOKEN|NODE_AUTH_TOKEN|_authToken|npmrc|\bnpm_[A-Za-z0-9]{20,}|secrets\.(?!GITHUB_TOKEN\b)[A-Za-z_][A-Za-z0-9_]*|\bsecrets\s*:\s*inherit\b/iu.test(
       text
-    )
+    ) || forbiddenSecretContext(text)
       ? [`${name} contains an npm credential reference`]
       : []
   );
@@ -197,11 +207,6 @@ export const modeFindings = (file: WorkflowFile): readonly string[] => {
 
   const { mode } = dispatch.success.on.workflow_dispatch.inputs;
   const { jobs } = parsed.success;
-  const publisher = jobs.publish;
-
-  const environment = Predicate.isString(publisher?.environment)
-    ? publisher.environment
-    : publisher?.environment?.name;
 
   const publishing = Arr.filter(Record.keys(jobs), (name) =>
     Arr.some(jobs[name]?.steps ?? [], (step) =>
@@ -261,12 +266,22 @@ export const modeFindings = (file: WorkflowFile): readonly string[] => {
   );
 
   return [
-    ...(environment === "npm-release"
-      ? []
-      : [`${file.name} publish lacks npm-release environment`]),
-    ...(publisher?.permissions?.["id-token"] === "write"
-      ? []
-      : [`${file.name} publish lacks id-token: write`]),
+    ...Arr.flatMap(publishing, (name) => {
+      const job = jobs[name];
+
+      const environment = Predicate.isString(job?.environment)
+        ? job.environment
+        : job?.environment?.name;
+
+      return [
+        ...(environment === "npm-release"
+          ? []
+          : [`${file.name} job ${name} lacks npm-release environment`]),
+        ...(job?.permissions?.["id-token"] === "write"
+          ? []
+          : [`${file.name} job ${name} lacks id-token: write`]),
+      ];
+    }),
     ...inputFindings,
     ...reach,
     ...Arr.map(

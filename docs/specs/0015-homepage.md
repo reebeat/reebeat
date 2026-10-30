@@ -14,8 +14,6 @@ The root `homepage` is `https://tsukuri.dev`, so every staged manifest says so. 
 
 The source manifests of the seven packages get no `repository` field: `release.ts` writes it, with its directory, into each published manifest from the root, and a second copy would be a second home (spec 0009, the generated manifest). `release:stage` shows the result (`docs/specs/0015-evidence/staged.txt`).
 
-One dated entry of spec 0009 is corrected on the way: its release-hold report path read `tsukuri-intent-sources/...`, a directory that does not exist (the operator's reports live in `reebeat-intent-sources/`, which keeps its name).
-
 ## Journey
 
 ```text
@@ -37,9 +35,9 @@ No DNS, site or redirect is part of this spec: `https://tsukuri.dev` may not ans
 | # | Falsifier | Gate | Fails when |
 | --- | --- | --- | --- |
 | F1 | Every staged manifest has `homepage: https://tsukuri.dev`, `repository.url` of this repository and `repository.directory: packages/<name>` | `tools/quality/test/release.test.ts` ("points at the product site and at the repository directory"), in `bun run ready`; `docs/specs/0015-evidence/staged.txt` is the raw staged output | the root homepage is another URL (control: `control.txt`: with the old value the test fails with `expected [ Array(1) ] to deeply equal [ 'https://tsukuri.dev' ]`) |
-| F2 | Nothing else changes | `git diff --stat origin/main` lists `package.json`, the release test, spec 0009's one path, this spec and its evidence | another file appears |
+| F2 | Nothing else changes | `git diff --stat origin/main` lists `package.json`, the release test, this spec and its evidence | another file appears |
 | F3 | The gates pass | `bun run ready` | any gate fails |
 
 ## Revisions
 
-(none yet)
+- **2026-10-30, merge with main.** Spec 0009's report path (`tsukuri-intent-sources/...`, a directory that does not exist) was fixed on `main` by the hold-lifting change before this PR merged; this PR no longer touches spec 0009.

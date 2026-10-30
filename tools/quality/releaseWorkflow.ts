@@ -71,7 +71,7 @@ export const tokenFindings = (
   workflows: readonly WorkflowFile[]
 ): readonly string[] =>
   Arr.flatMap(workflows, ({ name, text }) =>
-    /NPM_TOKEN|NODE_AUTH_TOKEN|_authToken|\bnpm_[A-Za-z0-9]{20,}|secrets\.(?!GITHUB_TOKEN\b)[A-Za-z_][A-Za-z0-9_]*/iu.test(
+    /NPM_TOKEN|NODE_AUTH_TOKEN|_authToken|npmrc|\bnpm_[A-Za-z0-9]{20,}|secrets\.(?!GITHUB_TOKEN\b)[A-Za-z_][A-Za-z0-9_]*/iu.test(
       text
     )
       ? [`${name} contains an npm credential reference`]

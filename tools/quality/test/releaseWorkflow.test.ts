@@ -119,6 +119,7 @@ describe("token-free trusted publishing", () => {
       "run: echo secrets.NPM_TOKEN",
       "run: echo secrets.ALTERNATE",
       "run: echo _authToken=example",
+      "run: cat .npmrc",
       `run: echo npm_${Str.repeat(36)("x")}`,
     ]) {
       assert.isTrue(mentioning("npm credential")(tokenFindings(fixture(text))));
@@ -296,6 +297,13 @@ describe("the real files", () => {
           []
         );
       }).pipe(Effect.provide(NodeServices.layer))
+  );
+
+  it.effect("requires npm 11.5.1 or newer before publishing", () =>
+    Effect.gen(function* real() {
+      const text = yield* readRepositoryFile(".github/workflows/release.yml");
+      assert.isTrue(Str.includes('"11.5.1" "$version" | sort -V -C')(text));
+    }).pipe(Effect.provide(NodeServices.layer))
   );
 
   it.effect(

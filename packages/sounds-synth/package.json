@@ -1,6 +1,6 @@
 {
   "name": "@tsukuri/sounds-synth",
-  "version": "0.1.0-alpha.1",
+  "version": "0.1.0-alpha.2",
   "description": "tsukuri sounds-synth: the SoundLibrary adapter that synthesises its sound effects as waveforms.",
   "license": "Apache-2.0",
   "type": "module",

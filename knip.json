@@ -69,7 +69,6 @@
     "tools/quality": {
       "entry": [
         "checkEffectExceptions.ts",
-        "checkTiers.ts",
         "genGrammar.ts",
         "genJsonSchema.ts",
         "stagePackages.ts"

@@ -19,7 +19,7 @@ import type { PlatformError, Scope } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { parseSync } from "oxc-parser";
 
-import { sourceFiles } from "./tiers.ts";
+import { sourceFiles } from "./sourceFiles.ts";
 
 const Ranges = Schema.Record(Schema.String, Schema.String);
 

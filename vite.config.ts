@@ -9,6 +9,7 @@ import antiSlop from "ultracite/oxlint/anti-slop";
 import core from "ultracite/oxlint/core";
 import { defineConfig } from "vite-plus";
 
+import moduleGraph from "./oxDepLint.config.ts";
 import { diagnosticRules } from "./tools/quality/diagnosticRules.ts";
 
 export const tsgoRules = diagnosticRules.lint;
@@ -193,6 +194,9 @@ export default defineConfig({
         specifier: "./tools/oxlint/anti-slop/effect/index.ts",
       },
       { name: "complexity", specifier: "oxlint-plugin-complexity" },
+      // The tier gate's per-file findings where they are written (spec 0017); `bun run check:tiers` runs the same
+      // configuration over the whole workspace, adding the manifest edges, directories and symbolic links.
+      { name: "dep-lint", specifier: "ox-dep-lint/plugin" },
     ],
     options: { typeAware: true, typeCheck: true },
     overrides: [
@@ -200,7 +204,6 @@ export default defineConfig({
       {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         files: [
-          "tools/quality/checkTiers.ts",
           "tools/quality/effectExceptions.ts",
           "tools/quality/stagePackages.ts",
         ],
@@ -334,6 +337,7 @@ export default defineConfig({
       ...tsgoRules,
       ...localAntiSlopRules,
       "complexity/complexity": ["error", { cognitive: 15 }],
+      "dep-lint/imports": ["error", moduleGraph],
       "no-restricted-imports": [
         "error",
         { patterns: [...restrictedSourcePatterns] },

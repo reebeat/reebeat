@@ -4,8 +4,9 @@
 # Usage: agreement.sh <worktree> [old|noold]
 # Spec 0017 evidence. agreement-before.txt: origin/main at 56a2155 plus ox-dep-lint and its configuration (then named
 # ox-dep-lint.config.ts, found by default; the same kinds, classes, ignore, baseline and imports), with
-# tiers.ts and checkTiers.ts still in place. agreement-after.txt: the branch head, with origin/main's tiers.ts and
-# checkTiers.ts written back as untracked copies for the run and removed after it (`git show origin/main:<path>`).
+# tiers.ts and checkTiers.ts still in place. agreement-after.txt: the branch head, with tiers.ts and checkTiers.ts
+# from 56a2155 written back as untracked copies for the run and removed after it (`git show 56a2155:<path>`; origin/main
+# has neither since spec 0017 merged).
 # As root, mode 000 does not deny a read, so the unreadable row is 0 and 0 here; unreadable.sh (unreadable.txt) is the same plant
 # run as an unprivileged user (setpriv --reuid=65534).
 set -uo pipefail

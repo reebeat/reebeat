@@ -19,6 +19,8 @@ import {
   evaluateCondition,
   holdFindings,
   holdScript,
+  tagFindings,
+  tagScript,
   modeFindings,
   referencedSecrets,
   tokenFindings,
@@ -55,6 +57,7 @@ interface Changes {
   readonly jobEnv?: string;
   readonly mode?: string;
   readonly noHold?: boolean;
+  readonly noTag?: boolean;
   readonly needs?: string;
   readonly publishIf?: string;
   readonly publishRun?: string;
@@ -103,7 +106,7 @@ ${changes.beforeHold ?? ""}${holdBlock(changes)}      - name: Publish
 ${changes.publishExtra ?? ""}        env:
           NODE_AUTH_TOKEN: ${expression("NPM_TOKEN")}
         run: ${changes.publishRun ?? "bunx changeset publish"}
-`,
+${changes.noTag === true ? "" : "      - name: Tag the pre-release\n        run: npm dist-tag add x@1.0.0-alpha.1 alpha\n"}`,
 });
 
 /** A one-file workflow fixture. */
@@ -458,6 +461,96 @@ describe("the release hold (operator decision of 2026-10-29)", () => {
         assert.deepStrictEqual(holdFindings(workflow), []);
         assert.strictEqual(yield* exit(withoutFile), 0);
         assert.strictEqual(yield* exit(withFile), 1);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+  );
+});
+
+describe("the pre-release tag", () => {
+  it("holds for a publishing job with a dist-tag step after the publish", () => {
+    assert.deepStrictEqual(tagFindings(release({})), []);
+  });
+
+  it("fails a publishing job with no dist-tag step after the publish (control)", () => {
+    assert.isTrue(
+      mentioning("would be tagged latest")(
+        tagFindings(release({ noTag: true }))
+      )
+    );
+  });
+
+  it.effect(
+    "the real step tags every published version with the pre tag in pre mode, and nothing otherwise",
+    () =>
+      Effect.gen(function* running() {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+
+        const workflow: WorkflowFile = {
+          name: "release.yml",
+          text: yield* readRepositoryFile(".github/workflows/release.yml"),
+        };
+
+        const script = yield* Effect.fromOption(tagScript(workflow));
+
+        // A checkout in a temporary directory with two staged packages, and an `npm` that records its arguments.
+        const tree = Effect.fnUntraced(function* tree(preMode: string) {
+          const root = yield* fs.makeTempDirectoryScoped();
+          const bin = path.join(root, "bin");
+
+          yield* fs.makeDirectory(bin);
+          yield* fs.writeFileString(
+            path.join(bin, "npm"),
+            `#!/bin/sh\necho "$@" >> "${path.join(root, "npm.log")}"\n`,
+            { mode: 0o755 }
+          );
+          yield* fs.makeDirectory(path.join(root, ".changeset"));
+          yield* fs.writeFileString(
+            path.join(root, ".changeset", "pre.json"),
+            `{"mode":"${preMode}","tag":"alpha"}`
+          );
+
+          yield* Effect.forEach(["core", "lint"], (name) =>
+            Effect.gen(function* staged() {
+              const dist = path.join(root, "packages", name, "dist");
+
+              yield* fs.makeDirectory(dist, { recursive: true });
+              yield* fs.writeFileString(
+                path.join(dist, "package.json"),
+                `{"name":"@reebeat/${name}","version":"0.1.0-alpha.1"}`
+              );
+            })
+          );
+
+          return root;
+        });
+
+        const run = Effect.fnUntraced(function* run(preMode: string) {
+          const root = yield* tree(preMode);
+
+          const exit = yield* spawner.exitCode(
+            ChildProcess.make(
+              "bash",
+              ["-c", `PATH="${path.join(root, "bin")}:$PATH"\n${script}`],
+              { cwd: root, stdout: "ignore" }
+            )
+          );
+
+          const log = path.join(root, "npm.log");
+
+          return {
+            calls: (yield* fs.exists(log)) ? yield* fs.readFileString(log) : "",
+            exit,
+          };
+        });
+
+        assert.deepStrictEqual(yield* run("pre"), {
+          calls:
+            "dist-tag add @reebeat/core@0.1.0-alpha.1 alpha\ndist-tag add @reebeat/lint@0.1.0-alpha.1 alpha\n",
+          exit: 0,
+        });
+        assert.deepStrictEqual(yield* run("exit"), { calls: "", exit: 0 });
+        assert.deepStrictEqual(tagFindings(workflow), []);
       }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 });

@@ -543,3 +543,49 @@ export const holdFindings = (file: WorkflowFile): readonly string[] => {
     return [...early, ...bypasses];
   });
 };
+
+const tagsPreRelease = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes("npm dist-tag add")(step.run);
+
+/** The script of the step that points the pre-release tag at what was published, or none. */
+export const tagScript = (file: WorkflowFile): Option.Option<string> =>
+  Option.flatMap(Result.getSuccess(parseWorkflow(file)), ({ jobs }) =>
+    Option.flatMapNullishOr(
+      Arr.findFirst(
+        Arr.flatMap(Record.values(jobs), (job) => job.steps ?? []),
+        tagsPreRelease
+      ),
+      (step) => step.run
+    )
+  );
+
+/**
+ * Sentences about the pre-release tag. `changeset publish` tags only the first pre-release of a package with the pre tag
+ * and sends later ones to `latest`, so every job that publishes must run a `npm dist-tag add` step after the publish
+ * step. (That the step tags the right versions is run by the test, on `tagScript`.)
+ */
+export const tagFindings = (file: WorkflowFile): readonly string[] => {
+  const parsed = parseWorkflow(file);
+
+  if (Result.isFailure(parsed)) {
+    return [parsed.failure];
+  }
+
+  return Arr.flatMap(Record.toEntries(parsed.success.jobs), ([name, job]) => {
+    const steps = job.steps ?? [];
+
+    const published = Arr.findLastIndex(steps, (step) =>
+      publishCommand.test(step.run ?? "")
+    );
+
+    if (Option.isNone(published)) {
+      return [];
+    }
+
+    return Arr.some(Arr.drop(steps, published.value + 1), tagsPreRelease)
+      ? []
+      : [
+          `${file.name}: job ${name} publishes and has no later step that runs npm dist-tag add, so a second pre-release would be tagged latest`,
+        ];
+  });
+};

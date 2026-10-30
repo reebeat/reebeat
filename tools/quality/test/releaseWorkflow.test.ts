@@ -333,6 +333,27 @@ const readRepositoryFile = (name: string) =>
     );
   });
 
+/** The services a test that runs a step script needs. */
+const services = Effect.all({
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  spawner: ChildProcessSpawner.ChildProcessSpawner,
+});
+
+/** The real release workflow. */
+const releaseWorkflow = Effect.map(
+  readRepositoryFile(".github/workflows/release.yml"),
+  (text): WorkflowFile => ({ name: "release.yml", text })
+);
+
+/** The real release workflow and the script of its step that `find` locates. */
+const stepOfRelease = (find: (file: WorkflowFile) => Option.Option<string>) =>
+  Effect.gen(function* located() {
+    const workflow = yield* releaseWorkflow;
+
+    return { script: yield* Effect.fromOption(find(workflow)), workflow };
+  });
+
 describe("the real files", () => {
   it.effect("secretspec.toml and the workflows follow the token rule", () =>
     Effect.gen(function* real() {
@@ -433,16 +454,8 @@ describe("the release hold (operator decision of 2026-10-29)", () => {
     "the real hold step refuses where the file exists and passes where it does not, and the real job has one",
     () =>
       Effect.gen(function* running() {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-
-        const workflow: WorkflowFile = {
-          name: "release.yml",
-          text: yield* readRepositoryFile(".github/workflows/release.yml"),
-        };
-
-        const script = yield* Effect.fromOption(holdScript(workflow));
+        const { fs, path, spawner } = yield* services;
+        const { script, workflow } = yield* stepOfRelease(holdScript);
 
         const withoutFile = yield* fs.makeTempDirectoryScoped();
         const withFile = yield* fs.makeTempDirectoryScoped();
@@ -482,16 +495,8 @@ describe("the pre-release tag", () => {
     "the real step tags every published version with the pre tag in pre mode, and nothing otherwise",
     () =>
       Effect.gen(function* running() {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-
-        const workflow: WorkflowFile = {
-          name: "release.yml",
-          text: yield* readRepositoryFile(".github/workflows/release.yml"),
-        };
-
-        const script = yield* Effect.fromOption(tagScript(workflow));
+        const { fs, path, spawner } = yield* services;
+        const { script, workflow } = yield* stepOfRelease(tagScript);
 
         // A checkout in a temporary directory with two staged packages, and an `npm` that records its arguments.
         const tree = Effect.fnUntraced(function* tree(preMode: string) {

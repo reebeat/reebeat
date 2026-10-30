@@ -47,9 +47,14 @@ const framesOf = (
 /**
  * Where the event of `clip` starts and ends inside `region` (the whole frame when absent), by the pixels that differ:
  * as frame numbers; none when the old and the new picture do not differ enough (`changeFloor`). An instant change has
- * `start` equal to `end`.
+ * `start` equal to `end`. It starts at the first frame that differs from the old picture by at least the pixels of a
+ * step and by `onsetShare` of the whole change.
  */
-const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
+const pixelWindow = (
+  clip: GrayClip,
+  region?: Box,
+  onsetShare = 0
+): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
   if (pictures === undefined) {
@@ -63,10 +68,11 @@ const pixelWindow = (clip: GrayClip, region?: Box): EventWindow | undefined => {
 
   const total = differ(pictures.before, pictures.after);
   const limit = Math.max(minPixels, settledShare * total);
+  const onset = Math.max(minPixels, onsetShare * total);
 
   const start = Arr.findFirstIndex(
     clip.frames,
-    (frame, index) => index > 0 && differ(frame, pictures.before) >= minPixels
+    (frame, index) => index > 0 && differ(frame, pictures.before) >= onset
   );
 
   const end = Option.flatMap(start, (from) =>
@@ -251,12 +257,14 @@ const movementWindow = (
 /**
  * Where the event of `clip` starts and ends, as frame numbers; none when the old and the new picture do not differ enough
  * to see an event. An instant change has `start` equal to `end`. A box that moves (`following` is `ink`) is measured by
- * where it is; anything else by the pixels that differ.
+ * where it is; anything else by the pixels that differ, and then `onsetShare` (default 0) is the share of the whole
+ * change that must have happened for the event to have started, on top of the pixels of a step.
  */
 export const eventWindow = (
   clip: GrayClip,
   region?: Box,
-  following?: Following
+  following?: Following,
+  onsetShare = 0
 ): EventWindow | undefined => {
   const pictures = framesOf(clip);
 
@@ -265,7 +273,7 @@ export const eventWindow = (
       ? movementWindow(clip, regionOf(clip, region), pictures)
       : undefined;
 
-  return moved ?? pixelWindow(clip, region);
+  return moved ?? pixelWindow(clip, region, onsetShare);
 };
 
 const inkFractions = (

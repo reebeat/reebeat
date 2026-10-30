@@ -118,6 +118,63 @@ layer(platform)("tsukuri lint", (it) => {
   );
 
   it.effect(
+    "lists an anchor that names no edge of a declared machine, with the file and the line",
+    () =>
+      Effect.gen(function* glide() {
+        const { exit, file, stdout } = yield* lint(
+          story(["  s1: sound pop at a.glide.start"])
+        );
+
+        assert.isTrue(Result.isFailure(exit));
+        assert.include(stdout, `${file}:10: error `);
+        assert.include(stdout, "a.glide.start");
+      })
+  );
+
+  it.effect(
+    "lists a derived event nothing uses and an until that is its own fire as errors at their lines",
+    () =>
+      Effect.gen(function* rules() {
+        const { exit, file, stdout } = yield* lint(
+          story([
+            '  let spare = word("one").end',
+            '  f1: focus a at word("two").end until word("two").end',
+          ])
+        );
+
+        assert.isTrue(Result.isFailure(exit));
+        assert.include(
+          stdout,
+          `${file}:10: error derived-event-never-used: scene one: the derived event spare (word("one").end) is never used`
+        );
+        assert.include(
+          stdout,
+          `${file}:11: error until-is-its-own-fire: scene one, effect f1: until word("two").end is the event it fires at, and until takes`
+        );
+        assert.deepStrictEqual(
+          Result.isFailure(exit) ? exit.failure.message : "",
+          `${file}: 2 errors, 0 absolute times listed`
+        );
+      })
+  );
+
+  it.effect(
+    "does not list a derived event an effect uses, even only in its until",
+    () =>
+      Effect.gen(function* used() {
+        const { exit, stdout } = yield* lint(
+          story([
+            '  let done = word("three").end',
+            '  f1: focus a at word("one").end until done',
+          ])
+        );
+
+        assert.isTrue(Result.isSuccess(exit));
+        assert.notInclude(stdout, "derived-event-never-used");
+      })
+  );
+
+  it.effect(
     "F5: an absolute time without a reason is an error; with one it is listed and the exit is zero",
     () =>
       Effect.gen(function* absolute() {

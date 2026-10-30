@@ -4,7 +4,7 @@ Speech rate: 1.1 (a Line that differs says so)
 
 Chapter ch1  The same box  (line 7)
   Synopsis: One box, two screens.
-  Scene first  INT. FIRST SCREEN - DAY  (line 11, transition: default)
+  Scene opening  INT. FIRST SCREEN - DAY  (line 11, transition: default)
     Elements
         box           show    @tl .box "A box"
         cap           show    @bc .muted hidden "The caption"
@@ -15,11 +15,11 @@ Chapter ch1  The same box  (line 7)
       f1  focus box  word("box", 2).start
       s1  sound pop  word("box", 2).end +100ms
     Lines
-      first.l1  (speed 0.99)
+      opening.l1  (speed 0.99)
         "This box sits in the corner. The caption says what it is."
-      first.l2
+      opening.l2
         "Look at the box."
-  Scene second  INT. SECOND SCREEN - DAY  (line 33, transition: auto-animate from first)
+  Scene second  INT. SECOND SCREEN - DAY  (line 33, transition: auto-animate from opening)
     Elements
       - old           exit    @mr .label "Old news"
       ~ box           update  cell tl→mc, class box→accent
@@ -28,7 +28,7 @@ Chapter ch1  The same box  (line 7)
       + new           enter   @tr .title hidden "New arrival"
     Effects
       s1  sound whoosh  transition.start
-      s2  sound ding    box.move.50%
+      s2  sound ding    when(box.move.progress >= 50%)
       r1  show new      word("enters").end
       f1  focus new     r1.end +3f
     Lines

@@ -1,6 +1,6 @@
 {
   "name": "@tsukuri/subtitles",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "tsukuri subtitles: the narration of a scheduled Plan as WebVTT cues, and WebVTT back to cues. Pure, no runtime.",
   "license": "Apache-2.0",
   "type": "module",

@@ -1,14 +1,26 @@
-// How a Rendering carries the effects of a Scene (spec 0002, Revisions, "plan contract for effects"): `show` and
-// `focus` are fragment steps in resolved-time order; a `sound` is not a step: it rides along with the step or the
-// slide it is anchored to, and plays with it. This file is the one place that says which. A renderer and the
-// verifier both read it, so the Deck and the check cannot disagree. Plain functions.
+// How a Rendering carries the effects of a Scene (spec 0002, Revisions, "plan contract for effects"; spec 0004): `show`
+// and `focus` are fragment steps in resolved-time order, and a `focus` that ends by its own `until` before the Scene
+// does has a second step, its END, that takes the ring off; a `sound` is not a step: it rides along with the step or the
+// slide it is anchored to, and plays with it, once for each instance. This file is the one place that says which. A
+// renderer and the verifier both read it, so the Deck and the check cannot disagree. Plain functions.
 import { Array as Arr, Option, Order } from "effect";
 
-import { effectOf } from "./lookup.ts";
-import type { Effect, PlanJson, Scene, TimedEffect } from "./plan.ts";
+import { anchorsOf, refsOf } from "./evaluate.ts";
+import { isStep } from "./events.ts";
+import type {
+  Effect,
+  EventExpr,
+  PlanJson,
+  Scene,
+  TimedEffect,
+} from "./plan.ts";
 
-/** An effect that changes what is on screen and so is one fragment step of its Scene. */
+/** The id of a Line, for the messages of a Deck that has no parser (the Deck reads the Plan through this subpath only). */
+export { lineIdOf } from "./lines.ts";
+
+/** One fragment step of a Scene: the start of a `show` or `focus`, or the end of a `focus` ring. */
 export interface Step {
+  readonly edge: "end" | "start";
   readonly effect: Effect;
   /** Absent until the Plan has a Timeline; the steps are then in source order. */
   readonly timed: TimedEffect | undefined;
@@ -16,9 +28,8 @@ export interface Step {
 
 /**
  * Where a sound plays:
- * - `slide`: with the slide change (anchored to the transition, the Scene's start, or an Element event that the slide
- *   change runs);
- * - `step`: with the fragment step of this effect (anchored to its Element's enter, to it, or after it in time);
+ * - `slide`: with the slide change (its event names the slide change, the Scene or an Element, and no step has fired);
+ * - `step`: with the fragment step of this effect (the step that fired last at or before the sound);
  * - `alone`: a plain audio event of the Scene: it follows no step and no slide change.
  */
 export type Carrier =
@@ -26,135 +37,167 @@ export type Carrier =
   | { readonly effectId: string; readonly kind: "step" }
   | { readonly kind: "alone" };
 
-/** A sound and where it plays. */
+/** A sound instance and where it plays. */
 export interface CarriedSound {
   readonly carrier: Carrier;
   readonly effect: Effect;
   readonly timed: TimedEffect | undefined;
 }
 
+/** The Timeline entries of an effect, one for each instance. */
 const timedOf = (
   plan: PlanJson,
   scene: Scene,
   effect: Effect
-): TimedEffect | undefined =>
-  Option.getOrUndefined(
-    Arr.findFirst(
-      Option.getOrUndefined(
-        Arr.findFirst(
-          plan.timeline?.scenes ?? [],
-          (candidate) => candidate.sceneId === scene.id
-        )
-      )?.effects ?? [],
-      (candidate) => candidate.effectId === effect.id
-    )
+): readonly TimedEffect[] =>
+  Arr.filter(
+    Option.match(
+      Arr.findFirst(
+        plan.timeline?.scenes ?? [],
+        (candidate) => candidate.sceneId === scene.id
+      ),
+      { onNone: () => [], onSome: (found) => found.effects }
+    ),
+    (candidate) => candidate.effectId === effect.id
   );
 
-const isStep = (effect: Effect): boolean => effect.verb !== "sound";
+/** The frame a step happens at: a start at its fire frame, an end at the end of its ring. */
+const frameOfStep = (step: Step): number =>
+  step.edge === "start"
+    ? (step.timed?.fireFrame ?? 0)
+    : (step.timed?.endFrame ?? 0);
 
-/** The fragment steps of a Scene in resolved-time order (source order without a Timeline; ties keep source order). */
-export const stepsOf = (plan: PlanJson, scene: Scene): readonly Step[] =>
-  Arr.sort(
-    Arr.map(Arr.filter(scene.effects, isStep), (effect): Step => ({
-      effect,
-      timed: timedOf(plan, scene, effect),
-    })),
-    Order.mapInput(Order.Number, (step: Step) => step.timed?.fireFrame ?? 0)
+/**
+ * The fragment steps of a Scene in resolved-time order (source order without a Timeline; ties keep source order, a
+ * start before an end): a start for each `show` and `focus`, and an end for each `focus` that ends by its own `until`.
+ */
+export const stepsOf = (plan: PlanJson, scene: Scene): readonly Step[] => {
+  const starts = Arr.map(Arr.filter(scene.effects, isStep), (effect): Step => ({
+    edge: "start",
+    effect,
+    timed: Arr.head(timedOf(plan, scene, effect)).pipe(Option.getOrUndefined),
+  }));
+
+  const ends = Arr.filter(
+    Arr.map(starts, (step): Step => ({ ...step, edge: "end" })),
+    ({ timed }) => timed !== undefined && timed.endCommandFrame !== null
   );
 
-/** The step of the nearest `show` or `focus` at or before `frame`, if any. */
+  return Arr.sort(
+    [...starts, ...ends],
+    Order.mapInput(Order.Number, frameOfStep)
+  );
+};
+
+/** The step that fired last at or before `frame`, if any; ends carry nothing. */
 const stepBefore = (
   steps: readonly Step[],
-  frame: number | undefined
-): Carrier => {
-  const before = Arr.filter(
+  frame: number
+): Option.Option<Step> =>
+  Arr.findLast(
     steps,
     (step) =>
-      frame !== undefined &&
+      step.edge === "start" &&
       step.timed !== undefined &&
       step.timed.fireFrame <= frame
   );
 
-  const last = before.at(-1);
+/** Whether the event of a sound names the slide change, the Scene or an Element: it rides with the slide when no step precedes. */
+const namesSlide = (effect: Effect, anchors: readonly string[]): boolean =>
+  "absoluteFlicks" in effect.when
+    ? false
+    : Arr.some(anchors, (kind) => kind === "scene" || kind === "element");
 
-  return last === undefined
-    ? { kind: "alone" }
-    : { effectId: last.effect.id, kind: "step" };
-};
-
+/** The carrier of one instance of a sound, from its own frame. */
 const carrierOf = (
-  plan: PlanJson,
-  scene: Scene,
   steps: readonly Step[],
+  anchorKinds: readonly string[],
   sound: Effect,
+  timed?: TimedEffect
+): Carrier =>
+  Option.match(
+    stepBefore(steps, timed?.fireFrame ?? Number.POSITIVE_INFINITY),
+    {
+      onNone: (): Carrier =>
+        namesSlide(sound, anchorKinds) ? { kind: "slide" } : { kind: "alone" },
+      onSome: (step): Carrier => ({ effectId: step.effect.id, kind: "step" }),
+    }
+  );
+
+/**
+ * The kinds of subject the sources of an event name: `scene`, `element`, `state`, `beat` or `word`. A derived event is
+ * followed, and so is an effect the event anchors to (a sound anchored to a sound plays where that sound plays).
+ */
+const kindsOf = (
+  scene: Scene,
+  expr: EventExpr,
   depth: number
-): Carrier => {
-  const { when } = sound;
-  const frame = timedOf(plan, scene, sound)?.fireFrame;
+): readonly string[] => [
+  ...Arr.map(anchorsOf(expr), (anchor) =>
+    anchor.kind === "word" ? "word" : anchor.subject.kind
+  ),
+  ...(depth > 10
+    ? []
+    : [
+        ...Arr.flatMap(refsOf(expr), (name) =>
+          Option.match(
+            Arr.findFirst(scene.events, (derived) => derived.name === name),
+            {
+              onNone: () => [],
+              onSome: (derived) => kindsOf(scene, derived.event, depth + 1),
+            }
+          )
+        ),
+        ...Arr.flatMap(anchorsOf(expr), (anchor) => {
+          if (anchor.kind === "word" || anchor.subject.kind !== "effect") {
+            return [];
+          }
 
-  if ("absoluteMs" in when) {
-    return stepBefore(steps, frame);
-  }
+          const { id } = anchor.subject;
 
-  const { anchor } = when;
+          return Option.match(
+            Arr.findFirst(scene.effects, (effect) => effect.id === id),
+            {
+              onNone: () => [],
+              onSome: (effect) =>
+                "absoluteFlicks" in effect.when
+                  ? []
+                  : kindsOf(scene, effect.when.event, depth + 1),
+            }
+          );
+        }),
+      ]),
+];
 
-  switch (anchor.kind) {
-    case "transition": {
-      return { kind: "slide" };
-    }
+const sourceKinds = (scene: Scene, effect: Effect): readonly string[] =>
+  "absoluteFlicks" in effect.when ? [] : kindsOf(scene, effect.when.event, 0);
 
-    case "scene": {
-      return anchor.edge === "start"
-        ? { kind: "slide" }
-        : stepBefore(steps, frame);
-    }
-
-    case "element": {
-      const shown = Arr.findFirst(
-        scene.effects,
-        (effect) => effect.verb === "show" && effect.target === anchor.id
-      );
-
-      return anchor.event === "enter" && Option.isSome(shown)
-        ? { effectId: shown.value.id, kind: "step" }
-        : { kind: "slide" };
-    }
-
-    case "effect": {
-      const other = effectOf(scene, anchor.id);
-
-      if (other === undefined || depth > scene.effects.length) {
-        return stepBefore(steps, frame);
-      }
-
-      return isStep(other)
-        ? { effectId: other.id, kind: "step" }
-        : carrierOf(plan, scene, steps, other, depth + 1);
-    }
-
-    case "word": {
-      return stepBefore(steps, frame);
-    }
-
-    default: {
-      return { kind: "alone" };
-    }
-  }
-};
-
-/** Every sound of a Scene with the step or slide it plays with, in source order. */
+/** Every sound instance of a Scene with the step or slide it plays with, in source order (then instance order). */
 export const soundsOf = (
   plan: PlanJson,
   scene: Scene
 ): readonly CarriedSound[] => {
   const steps = stepsOf(plan, scene);
 
-  return Arr.map(
-    Arr.filter(scene.effects, (effect) => !isStep(effect)),
-    (effect): CarriedSound => ({
-      carrier: carrierOf(plan, scene, steps, effect, 0),
-      effect,
-      timed: timedOf(plan, scene, effect),
-    })
+  return Arr.flatMap(
+    Arr.filter(scene.effects, (effect: Effect) => !isStep(effect)),
+    (effect: Effect): readonly CarriedSound[] => {
+      const kinds = sourceKinds(scene, effect);
+      const instances = timedOf(plan, scene, effect);
+
+      return Arr.isReadonlyArrayNonEmpty(instances)
+        ? Arr.map(instances, (timed): CarriedSound => ({
+            carrier: carrierOf(steps, kinds, effect, timed),
+            effect,
+            timed,
+          }))
+        : [
+            {
+              carrier: carrierOf(steps, kinds, effect),
+              effect,
+              timed: undefined,
+            },
+          ];
+    }
   );
 };

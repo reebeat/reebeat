@@ -12,7 +12,12 @@ export {
 
 export type { CaptureOptions } from "./capture.ts";
 
-export { captureSchedule, sceneChangeLag } from "./captureSchedule.ts";
+export {
+  captureSchedule,
+  capturedFps,
+  sceneChangeLag,
+  unsupportedRate,
+} from "./captureSchedule.ts";
 
 export type {
   CaptureCommand,

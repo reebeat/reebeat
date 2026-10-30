@@ -1,6 +1,6 @@
 {
   "name": "@tsukuri/services",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.0",
   "description": "tsukuri services: the seven service interfaces, their errors, contract suites and offline stand-ins.",
   "license": "Apache-2.0",
   "type": "module",

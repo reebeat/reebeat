@@ -68,8 +68,9 @@ const gridHtml = (scene: Scene): string => {
 const soundsAttribute = (sounds: readonly string[]): string =>
   sounds.length === 0 ? "" : attribute("data-sounds", Arr.join(sounds, " "));
 
+/** `data-effect-edge="end"` marks a fragment that takes a `focus` ring off; a fragment that starts its effect has none. */
 const fragmentHtml = (fragment: ExpectedFragment): string =>
-  `<span class="fragment effect"${attribute("data-fragment-index", String(fragment.index))}${attribute("data-effect-id", fragment.effectId)}${attribute("data-effect-verb", fragment.verb)}${attribute("data-target", fragment.target)}${soundsAttribute(fragment.sounds)}></span>`;
+  `<span class="fragment effect"${attribute("data-fragment-index", String(fragment.index))}${attribute("data-effect-id", fragment.effectId)}${fragment.edge === "end" ? attribute("data-effect-edge", "end") : ""}${attribute("data-effect-verb", fragment.verb)}${attribute("data-target", fragment.target)}${soundsAttribute(fragment.sounds)}></span>`;
 
 const notesHtml = (scene: Scene): string =>
   `<aside class="notes">${Arr.join(

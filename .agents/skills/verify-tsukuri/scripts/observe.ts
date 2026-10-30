@@ -10,14 +10,14 @@ import { recordBrowser } from "./recordPid.ts";
 
 interface Effect {
   readonly effectId: string;
+  readonly endCommandFrame: number | null;
   readonly fireFrame: number;
-  readonly intent: string;
+  readonly instance: number;
 }
 
 interface TimedLine {
   readonly audio: { readonly file: string };
   readonly endFrame: number;
-  readonly lineId: string;
   readonly startFrame: number;
   readonly words: readonly { readonly startFrame: number }[];
 }
@@ -39,7 +39,7 @@ interface Plan {
       readonly target?: string;
     }[];
     readonly id: string;
-    readonly lines: readonly { readonly id: string; readonly text: string }[];
+    readonly lines: readonly { readonly text: string }[];
     readonly transition: string;
   }[];
   readonly settings: { readonly fps: number };
@@ -153,7 +153,13 @@ const frames = async (): Promise<void> => {
     }
 
     for (const effect of scene.effects) {
-      await montage(`${scene.sceneId}-${effect.effectId}`, [
+      // An effect with several instances (an `each` sound) has one montage per instance.
+      const name =
+        effect.instance === 1
+          ? `${scene.sceneId}-${effect.effectId}`
+          : `${scene.sceneId}-${effect.effectId}-${effect.instance}`;
+
+      await montage(name, [
         effect.fireFrame - 1,
         effect.fireFrame,
         effect.fireFrame + 1,
@@ -207,6 +213,10 @@ const onsets = async (): Promise<void> => {
   );
   const wanted: { frame: number; label: string; what: string }[] = [];
 
+  const spoken = plan.timeline.scenes.flatMap((s) =>
+    s.lines.map((l) => ({ end: l.endFrame, start: l.startFrame }))
+  );
+
   for (const scene of plan.timeline.scenes) {
     for (const line of scene.lines) {
       const own = await run([
@@ -231,7 +241,7 @@ const onsets = async (): Promise<void> => {
 
       wanted.push({
         frame: line.startFrame + first * fps,
-        label: line.lineId,
+        label: `${scene.sceneId}.l${scene.lines.indexOf(line) + 1}`,
         what: `narration (file onset ${first.toFixed(3)} s)`,
       });
     }
@@ -262,6 +272,17 @@ const onsets = async (): Promise<void> => {
     if (masked) {
       say(
         `skip ${want.what} ${want.label}: scheduled ${want.frame.toFixed(2)}, within 1.5 s after a sound (see \`check\` F1/F8)`
+      );
+      continue;
+    }
+
+    // Silence detection cannot see a sound over speech; `check` F1's matched filter does (sc6.s4 sounds inside a Line).
+    if (
+      want.what === "sound" &&
+      spoken.some((w) => want.frame >= w.start && want.frame <= w.end)
+    ) {
+      say(
+        `skip ${want.what} ${want.label}: scheduled ${want.frame.toFixed(2)}, inside a spoken Line (see \`check\` F1: matched filter)`
       );
       continue;
     }
@@ -302,7 +323,10 @@ const subtitles = async (): Promise<void> => {
       times: (times ?? "").split(" --> ").map(stamp),
     }));
 
-  const lines = plan.scenes.flatMap((s) => s.lines);
+  // The id of a Line is not stored (0004): it is its Scene's id, `.l` and its place in the Scene.
+  const lines = plan.scenes.flatMap((s) =>
+    s.lines.map((l, k) => ({ id: `${s.id}.l${k + 1}`, text: l.text }))
+  );
   const timed = plan.timeline.scenes.flatMap((s) => s.lines);
   say(`.vtt cues ${cues.length}, Lines in the Plan ${lines.length}`);
 
@@ -420,7 +444,14 @@ const deck = async (): Promise<void> => {
       return { fragments: s.querySelectorAll(".fragment.effect").length, notes: [...s.querySelectorAll("aside.notes p")].map((p) => p.textContent), sounds: s.getAttribute("data-sounds") ?? "" };
     })()`);
 
-    const visible = scene.effects.filter((e) => e.verb !== "sound").length;
+    // A step is the start of each show or focus, and the end of each focus ring that ends by its own `until` (0004).
+    const endSteps =
+      plan.timeline.scenes
+        .find((t) => t.sceneId === scene.id)
+        ?.effects.filter((e) => e.endCommandFrame !== null).length ?? 0;
+
+    const visible =
+      scene.effects.filter((e) => e.verb !== "sound").length + endSteps;
 
     const notesOk =
       JSON.stringify(seen.notes) ===

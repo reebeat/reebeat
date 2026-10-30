@@ -1,7 +1,7 @@
 // What the mux needs of a scheduled Plan, as plain functions: where each narration clip and each sound starts, the
 // chapters in milliseconds and the length of the Video. No I/O: the build program fetches the clips and hands the
 // results to `Encoder.mux`.
-import { frameToMs } from "@tsukuri/core";
+import { frameToMs, timedLines } from "@tsukuri/core";
 import type { TimedPlan } from "@tsukuri/core";
 import type { MuxRequest } from "@tsukuri/services";
 import { Array as Arr, Option, String as Str } from "effect";
@@ -17,6 +17,8 @@ export interface NarrationStart {
 
 export interface SfxStart {
   readonly effectId: string;
+  /** 1-based: the occurrence of the effect's event this start belongs to (`TimedEffect.instance`). */
+  readonly instance: number;
   /** The name the effect asked the `SoundLibrary` for. */
   readonly name: string;
   readonly startMs: number;
@@ -24,18 +26,17 @@ export interface SfxStart {
 
 /** The start of each Line's narration: the Line's start frame in milliseconds, in timeline order. */
 export const narrationStarts = (plan: TimedPlan): readonly NarrationStart[] =>
-  Arr.map(
-    Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines),
-    (line) => ({
-      key: Str.slice(0, -`.${audioName}`.length)(line.audio.file),
-      lineId: line.lineId,
-      startMs: frameToMs(line.startFrame, plan.settings.fps),
-    })
-  );
+  Arr.map(timedLines(plan.timeline), ({ id, timed }) => ({
+    key: Str.slice(0, -`.${audioName}`.length)(timed.audio.file),
+    lineId: id,
+    startMs: frameToMs(timed.startFrame, plan.settings.fps),
+  }));
 
 /**
- * The start of each `sound` effect's sound: the effect's fire frame in milliseconds, in timeline order. Effect ids are
- * unique per Scene, not in the story (two Scenes may each have an `s1`), so an effect is looked up in its own Scene.
+ * The start of each sound INSTANCE: the instance's fire frame in milliseconds, in timeline order. A sound anchored to an
+ * event with several occurrences (`each`) has one entry per occurrence, and the mix places the clip once for each, so
+ * overlapping instances add. Effect ids are unique per Scene, not in the story (two Scenes may each have an `s1`), so an
+ * effect is looked up in its own Scene.
  */
 export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] =>
   Arr.flatMap(plan.timeline.scenes, (timedScene) => {
@@ -65,6 +66,7 @@ export const sfxStarts = (plan: TimedPlan): readonly SfxStart[] =>
         : [
             {
               effectId: timed.effectId,
+              instance: timed.instance,
               name,
               startMs: frameToMs(timed.fireFrame, plan.settings.fps),
             },

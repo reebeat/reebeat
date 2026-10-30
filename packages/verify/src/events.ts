@@ -1,4 +1,3 @@
-import type { ElementEvent, RendererLifecycle, TimedPlan } from "@tsukuri/core";
 // F1, the events of the picture: where in the written video a slide change or an Element's enter, exit, move or update
 // really starts, ends and is N percent through (spec 0002, "plan contract for effects"). The Plan says WHEN each
 // happens (`Timeline`, resolved from the renderer's declared lifecycle); this module looks at the decoded frames and
@@ -11,9 +10,21 @@ import type { ElementEvent, RendererLifecycle, TimedPlan } from "@tsukuri/core";
 //   N%       a box that moves is N% through when the centre of its ink is N% of the way from its old to its new place,
 //            a colour that changes when the blend of its pixels is; anything else is N% of the way in time
 //            between `start` and `end`
+//
+// A focus ring that ends by its own `until` (spec 0004, F5) is the mirror of the ring's start: the clip begins on the
+// ringed picture, the "old picture" is the ring, the "new picture" is the cell without it, and the ring is going from
+// the first frame the cell differs from the ringed picture (the capture commands the ring off one frame before, as it
+// commands it on one frame before its fire frame).
+import { lifecycleFrames } from "@tsukuri/core";
+import type {
+  ElementEvent,
+  LifecycleFrames,
+  RendererLifecycle,
+  TimedPlan,
+} from "@tsukuri/core";
 import { decodeGrayFrames } from "@tsukuri/encode-ffmpeg";
 import type { Box, GrayClip } from "@tsukuri/encode-ffmpeg";
-import { Effect, Option } from "effect";
+import { Array as Arr, Effect, Option } from "effect";
 
 import { eventWindow, frameAtFraction } from "./frames.ts";
 import type { Following } from "./frames.ts";
@@ -39,26 +50,23 @@ const framesOf = (plan: TimedPlan, ms: number): number =>
  */
 const settleReach = (
   plan: TimedPlan,
-  lifecycle: RendererLifecycle,
+  declared: LifecycleFrames,
   sceneIndex: number
 ): number =>
   Math.max(
     framesOf(plan, plan.settings.transition * 1000),
-    framesOf(
-      plan,
-      lifecycle.transitionMs[plan.scenes[sceneIndex]?.transition ?? "default"]
-    ),
-    lifecycle.matched.startLagFrames,
-    lifecycle.unmatched.enter.endLagFrames
+    declared.transition[plan.scenes[sceneIndex]?.transition ?? "default"],
+    declared.matchedStart,
+    declared.enterEnd
   ) + margin;
 
 /** The frames after a `show` or `focus` effect's fire frame that are decoded: the declared show time plus the margin. */
-const stepReach = (plan: TimedPlan, lifecycle: RendererLifecycle): number =>
-  framesOf(plan, lifecycle.showMs) + margin;
+const stepReach = (declared: LifecycleFrames): number => declared.show + margin;
 
 /**
- * What to look at: the incoming slide change of a Scene, one event of one Element of a Scene, or the step of a `show`
- * or `focus` effect (the change in its target's cell from its fire frame on; for a `show` that is the target's enter).
+ * What to look at: the incoming slide change of a Scene, one event of one Element of a Scene, the step of a `show` or
+ * `focus` effect (the change in its target's cell from its fire frame on; for a `show` that is the target's enter), or
+ * the end of a focus ring that ends by its own `until` (the change in its target's cell from the ring's `endFrame` on).
  */
 export type Subject =
   | { readonly kind: "transition"; readonly sceneIndex: number }
@@ -73,7 +81,30 @@ export type Subject =
       readonly id: string;
       readonly kind: "step";
       readonly sceneIndex: number;
+    }
+  | {
+      readonly endFrame: number;
+      readonly id: string;
+      readonly kind: "ring-end";
+      readonly sceneIndex: number;
     };
+
+/** What a subject looks at, as a key to find its observation again and to look at it once. */
+export const subjectKey = (subject: Subject): string => {
+  if (subject.kind === "transition") {
+    return `transition ${subject.sceneIndex}`;
+  }
+
+  if (subject.kind === "element") {
+    return `element ${subject.sceneIndex} ${subject.id} ${subject.event}`;
+  }
+
+  if (subject.kind === "step") {
+    return `step ${subject.sceneIndex} ${subject.id} ${subject.fireFrame}`;
+  }
+
+  return `ring-end ${subject.sceneIndex} ${subject.id} ${subject.endFrame}`;
+};
 
 /** An event observed in the video, in frame numbers of the video. */
 export interface Observed {
@@ -89,7 +120,7 @@ const regionOf = (plan: TimedPlan, subject: Subject): Box | undefined => {
     return undefined;
   }
 
-  if (subject.kind === "step") {
+  if (subject.kind === "step" || subject.kind === "ring-end") {
     return Option.getOrUndefined(
       elementBox(plan, subject.sceneIndex, subject.id)
     );
@@ -124,9 +155,56 @@ const followingOf = (subject: Subject): Following | undefined => {
   return subject.event === "update" ? "blend" : undefined;
 };
 
+/** The Scene's last frame: the frame before its slide change out. */
+const sceneLastFrame = (plan: TimedPlan, sceneIndex: number): number =>
+  (plan.timeline.scenes[sceneIndex]?.endFrame ?? plan.timeline.totalFrames) - 1;
+
+/**
+ * The first frame after `after` at which the capture commands a change of Element `id`'s own cell in the Scene: a
+ * `show` or `focus` that targets it, or the end of a ring that does. From that frame the cell shows the effect, so an
+ * event of the same cell that is still being looked at would read the effect as part of its own settled picture (a ring
+ * that starts while the Element's fade is not over, or just after it, makes the fade "end" with the ring).
+ */
+const nextOwnCommand = (
+  plan: TimedPlan,
+  sceneIndex: number,
+  id: string,
+  after: number
+): number | undefined => {
+  const targeting = Arr.filter(
+    plan.scenes[sceneIndex]?.effects ?? [],
+    (effect) => effect.verb !== "sound" && effect.target === id
+  );
+
+  const commands = Arr.flatMap(
+    plan.timeline.scenes[sceneIndex]?.effects ?? [],
+    (timed) =>
+      Arr.some(targeting, (effect) => effect.id === timed.effectId)
+        ? [
+            timed.commandFrame,
+            ...(timed.endCommandFrame === null ? [] : [timed.endCommandFrame]),
+          ]
+        : []
+  );
+
+  const later = Arr.filter(commands, (frame) => frame > after);
+
+  return later.length === 0 ? undefined : Math.min(...later);
+};
+
+/** `to`, stopped before `command` (the frame the Scene's own effect changes the cell), but never before `from`. */
+const stoppedBefore = (
+  to: number,
+  from: number,
+  command: number | undefined
+): number =>
+  command === undefined ? to : Math.max(from, Math.min(to, command - 1));
+
 /**
  * The frames decoded for a subject: from just before the event to past the end the renderer declared for it (plus the
- * margin), so that a declaration that is too short is seen as a difference and not cut off.
+ * margin), so that a declaration that is too short is seen as a difference and not cut off. The end of a ring stops at
+ * the Scene's last frame: the slide change is not the ring. An event of an Element's cell stops before the Scene's own
+ * next effect on that Element (`nextOwnCommand`).
  */
 export const observationRange = (
   plan: TimedPlan,
@@ -134,32 +212,76 @@ export const observationRange = (
   subject: Subject
 ) => {
   const last = plan.timeline.totalFrames - 1;
+  const declared = lifecycleFrames(plan.settings, lifecycle);
 
   if (subject.kind === "step") {
+    const from = Math.max(0, subject.fireFrame - lead);
+
     return {
-      from: Math.max(0, subject.fireFrame - lead),
-      to: Math.min(last, subject.fireFrame + stepReach(plan, lifecycle)),
+      from,
+      to: stoppedBefore(
+        Math.min(last, subject.fireFrame + stepReach(declared)),
+        from,
+        nextOwnCommand(
+          plan,
+          subject.sceneIndex,
+          subject.id,
+          subject.fireFrame - 1
+        )
+      ),
+    };
+  }
+
+  if (subject.kind === "ring-end") {
+    return {
+      from: Math.max(0, subject.endFrame - lead),
+      to: Math.min(
+        last,
+        sceneLastFrame(plan, subject.sceneIndex),
+        subject.endFrame + stepReach(declared)
+      ),
     };
   }
 
   const slide = plan.timeline.scenes[subject.sceneIndex]?.slideFrame ?? 0;
+  const from = Math.max(0, slide - lead);
+
+  const reach = Math.min(
+    last,
+    slide + settleReach(plan, declared, subject.sceneIndex)
+  );
 
   return {
-    from: Math.max(0, slide - lead),
-    to: Math.min(
-      last,
-      slide + settleReach(plan, lifecycle, subject.sceneIndex)
-    ),
+    from,
+    to:
+      subject.kind === "element"
+        ? stoppedBefore(
+            reach,
+            from,
+            nextOwnCommand(plan, subject.sceneIndex, subject.id, slide)
+          )
+        : reach,
   };
 };
+
+/**
+ * The share of the ring's whole change that must have happened for the ring to have started to go. Measured on the ring
+ * of `hint` in `sc4` of `stories/same-id` (8,199 pixels change in all): the frame before the ring leaves differs from
+ * the ringed picture in 224 pixels (2.7%, at the frame before the command, so the encoder's own smear and not the ring)
+ * and the first frame the CSS transition has drawn in 2,001 (24%). The floor of a step (200 pixels) sits between the two
+ * and reads the smear; a tenth of the change does not. The start of a ring is read at the pixel floor alone, as it
+ * always was: its first frame is 44 pixels (0.5%) and the next 2,781.
+ */
+const ringOffOnsetShare = 0.1;
 
 /** The event of a decoded clip, with the points of it the Plan can be anchored to. */
 const observedIn = (
   clip: GrayClip,
   region: Box | undefined,
-  following: Following | undefined
+  following: Following | undefined,
+  onsetShare: number
 ): Observed | undefined => {
-  const window = eventWindow(clip, region, following);
+  const window = eventWindow(clip, region, following, onsetShare);
 
   if (window === undefined) {
     return undefined;
@@ -191,7 +313,12 @@ const look = Effect.fn("observeEvent.look")(function* look(
   );
 
   return Option.fromNullishOr(
-    observedIn(clip, regionOf(build.plan, subject), followingOf(subject))
+    observedIn(
+      clip,
+      regionOf(build.plan, subject),
+      followingOf(subject),
+      subject.kind === "ring-end" ? ringOffOnsetShare : 0
+    )
   );
 });
 
@@ -200,6 +327,8 @@ const look = Effect.fn("observeEvent.look")(function* look(
  * picture is the first frame of the video), and an event whose region shows no change has not happened.
  */
 export const observeEvent = (build: Build, subject: Subject) =>
-  subject.sceneIndex === 0 && subject.kind !== "step"
+  subject.sceneIndex === 0 &&
+  subject.kind !== "step" &&
+  subject.kind !== "ring-end"
     ? Effect.succeed(Option.none<Observed>())
     : look(build, subject);

@@ -1,7 +1,8 @@
 // What `build.json` (v2) must say beyond its file list (spec 0001, F5 and F16): every adapter of the seven services
 // is listed once with its egress declaration, every Line's audio has the provenance of its cache asset, and no
 // `settings` anywhere in the manifest has a secret-looking name. Pure: the manifest and the Plan in, problems out.
-import type { TimedLine, TimedPlan } from "@tsukuri/core";
+import { timedLines } from "@tsukuri/core";
+import type { TimedPlan } from "@tsukuri/core";
 import type { BuildManifest } from "@tsukuri/pipeline";
 import {
   SettingsSchema,
@@ -67,16 +68,11 @@ const assetProblems = (
 ): readonly string[] => {
   const keys = Arr.map(manifest.assets, (asset) => asset.keyParts.key);
 
-  const lines: readonly TimedLine[] = Arr.flatMap(
-    plan.timeline.scenes,
-    (scene) => scene.lines
-  );
-
-  return Arr.flatMap(lines, (line) =>
-    Arr.contains(keys, keyOfAudio(line.audio.file))
+  return Arr.flatMap(timedLines(plan.timeline), ({ id, timed }) =>
+    Arr.contains(keys, keyOfAudio(timed.audio.file))
       ? []
       : [
-          `Line ${line.lineId}: build.json has no provenance for its audio ${line.audio.file}`,
+          `Line ${id}: build.json has no provenance for its audio ${timed.audio.file}`,
         ]
   );
 };

@@ -1,0 +1,1006 @@
+{
+  "$id": "https://github.com/tsukuri-labs/tsukuri/schema/ir/1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/$defs/Graph",
+  "$defs": {
+    "Chapter": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "synopsis": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "line",
+        "title"
+      ],
+      "additionalProperties": false,
+      "description": "A group of Scenes under one heading: a chapter of the video.",
+      "deviation": "It organises the review and the video's chapters only; it has no machine and no events.",
+      "origin": "Fountain 1.1, Section (`# Title`); no statechart construct"
+    },
+    "WordAnchor": {
+      "type": "object",
+      "properties": {
+        "edge": {
+          "type": "string",
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        "explicit": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "word"
+          ]
+        },
+        "occurrence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "phrase": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "edge",
+        "explicit",
+        "kind",
+        "occurrence",
+        "phrase"
+      ],
+      "additionalProperties": false,
+      "description": "The start of a word, or of the first word of a phrase, or the end of its last word, in this Scene's narration.",
+      "deviation": "A word is a source, not a machine: its times come from the alignment of the speech, and a phrase must stay within one Line.",
+      "origin": "SMIL 3.0 timing, event-value on a media marker (a word of the narration is a sync point)"
+    },
+    "PercentPoint": {
+      "type": "object",
+      "properties": {
+        "percent": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      },
+      "required": [
+        "percent"
+      ],
+      "additionalProperties": false,
+      "description": "N percent of the way through a transition's window.",
+      "deviation": "N% is the threshold of a progress behaviour from 0 to 1 (eased for a move and an update, linear in time otherwise), not an offset in time; an instant has no percent.",
+      "origin": "Fran (Elliott and Hudak 1997), an event taken from a behaviour: when(progress >= N%)"
+    },
+    "Point": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "start",
+            "end"
+          ]
+        },
+        {
+          "$ref": "#/$defs/PercentPoint"
+        }
+      ],
+      "description": "A point of a transition: its start, its end, or N percent of the way.",
+      "deviation": "A transition is a declared machine edge with a window, so a point is a frame of that window.",
+      "origin": "SMIL 3.0 timing, syncbase-value (id.begin, id.end); Fran (Elliott and Hudak 1997), progress threshold"
+    },
+    "ElementSubject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "element"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "An Element of the Scene, by id.",
+      "origin": "SMIL 3.0 timing, the element id of a syncbase-value; SCXML state id"
+    },
+    "EffectSubject": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "effect"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "An effect of the Scene, by id.",
+      "deviation": "Effect ids are local to their Scene.",
+      "origin": "SMIL 3.0 timing, the element id of a timed child"
+    },
+    "SceneSubject": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "scene"
+          ]
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "The Scene itself: its slide change and its end.",
+      "origin": "SCXML, the enclosing compound <state>; SMIL 3.0 timing, the time container"
+    },
+    "StateSubject": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "state"
+          ]
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "n"
+      ],
+      "additionalProperties": false,
+      "description": "The n-th State of the Scene, counted from 1.",
+      "deviation": "States are not declared: the engine derives them from the step frames, one more State for each show or focus.",
+      "origin": "Harel 1987, State (a node that holds for a dwell interval)"
+    },
+    "BeatSubject": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "beat"
+          ]
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "n"
+      ],
+      "additionalProperties": false,
+      "description": "The n-th Beat of the Scene, counted from 1: the transition from State n to State n+1.",
+      "deviation": "A Beat is generated from each distinct fire frame of a show or focus after the Scene's first frame, and lasts as long as the slowest step that fires then.",
+      "origin": "Harel 1987, the transition between two States; Mealy machine outputs"
+    },
+    "Subject": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ElementSubject"
+        },
+        {
+          "$ref": "#/$defs/EffectSubject"
+        },
+        {
+          "$ref": "#/$defs/SceneSubject"
+        },
+        {
+          "$ref": "#/$defs/StateSubject"
+        },
+        {
+          "$ref": "#/$defs/BeatSubject"
+        }
+      ],
+      "description": "Who an anchor is about: an Element, an effect, the Scene, a State or a Beat.",
+      "origin": "SMIL 3.0 timing, the element id a syncbase-value refers to; SCXML state ids"
+    },
+    "EdgeAnchor": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Point"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "edge"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        },
+        "transition": {
+          "type": "string",
+          "enum": [
+            "enter",
+            "exit",
+            "move",
+            "update",
+            "run",
+            "transition",
+            "change"
+          ]
+        }
+      },
+      "required": [
+        "at",
+        "kind",
+        "subject",
+        "transition"
+      ],
+      "additionalProperties": false,
+      "description": "A point of a transition of a machine of the subject.",
+      "deviation": "The spellings are generated from the declared machines; start and end are the first and last frame of the transition's window, N% by the declared easing for a move and an update.",
+      "origin": "SMIL 3.0 timing, syncbase-value (id.begin, id.end); Harel 1987, the start and end of a transition; Fran (Elliott and Hudak 1997), progress"
+    },
+    "OccupancyAnchor": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "type": "string",
+          "enum": [
+            "enter",
+            "leave"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "occupancy"
+          ]
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "absent",
+            "entering",
+            "present",
+            "exiting",
+            "still",
+            "moving",
+            "steady",
+            "updating",
+            "idle",
+            "active",
+            "done",
+            "before",
+            "changing",
+            "shown",
+            "dwell",
+            "waiting"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/Subject"
+        }
+      },
+      "required": [
+        "event",
+        "kind",
+        "state",
+        "subject"
+      ],
+      "additionalProperties": false,
+      "description": "The first frame a machine of the subject enters or leaves a state.",
+      "deviation": "A state is left at the slide change at the latest, so a state still held leaves at the Scene's last frame; a state the Scene never reaches has no event.",
+      "origin": "Harel 1987, entry and exit of a state (Moore machine outputs); SCXML onentry and onexit"
+    },
+    "Anchor": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WordAnchor"
+        },
+        {
+          "$ref": "#/$defs/EdgeAnchor"
+        },
+        {
+          "$ref": "#/$defs/OccupancyAnchor"
+        }
+      ],
+      "description": "A moment of the story an effect can wait for: a word, a point of a transition, or a state entered or left.",
+      "origin": "SMIL 3.0 timing, syncbase-value and event-value; Harel 1987, events of a statechart"
+    },
+    "AnchorEvent": {
+      "type": "object",
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/Anchor"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "anchor"
+          ]
+        }
+      },
+      "required": [
+        "anchor",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "description": "The occurrences of an anchor.",
+      "origin": "SMIL 3.0 timing, syncbase-value and event-value"
+    },
+    "RefEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ref"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "The event of a `let` line, by name.",
+      "deviation": "Local to its Scene and evaluated once; a name that waits for itself is a lint error.",
+      "origin": "Fran (Elliott and Hudak 1997), a named event; RxJS share (explanatory only)"
+    },
+    "LastEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "last"
+          ]
+        },
+        "of": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EventExpr"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "of"
+      ],
+      "additionalProperties": false,
+      "description": "Happens when every operand has happened.",
+      "deviation": "At the last occurrence of every operand; it never happens while one operand never does.",
+      "origin": "SMIL 3.0 timing, endsync=\"last\"; RxJS forkJoin (explanatory only)"
+    },
+    "FirstEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "first"
+          ]
+        },
+        "of": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EventExpr"
+          }
+        }
+      },
+      "required": [
+        "kind",
+        "of"
+      ],
+      "additionalProperties": false,
+      "description": "Happens at the earliest of the operands.",
+      "deviation": "The earliest first occurrence among the operands that have one.",
+      "origin": "SMIL 3.0 timing, endsync=\"first\"; RxJS race (explanatory only)"
+    },
+    "Duration": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "flicks",
+            "f"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "unit",
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "A length of time that is never a share of a window: the gap of throttle and of stagger.",
+      "deviation": "Strictly positive, in flicks or output frames.",
+      "origin": "SMIL 3.0 timing, clock value (dur); RxJS throttleTime and delay (explanatory only)"
+    },
+    "EachEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "each"
+          ]
+        },
+        "of": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EventExpr"
+          }
+        },
+        "stagger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Duration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "throttle": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Duration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "of",
+        "stagger",
+        "throttle"
+      ],
+      "additionalProperties": false,
+      "description": "Happens at every occurrence of every operand, optionally thinned by throttle or spaced by stagger.",
+      "deviation": "Only an each can have several occurrences, and then a sound runs once for each; throttle keeps the leading occurrence and stagger pushes later ones apart, neither of which SMIL has.",
+      "origin": "SMIL 3.0 timing, begin-value list; RxJS merge, throttle (explanatory only)"
+    },
+    "WithinEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "within"
+          ]
+        },
+        "of": {
+          "$ref": "#/$defs/EventExpr"
+        },
+        "state": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "kind",
+        "of",
+        "state"
+      ],
+      "additionalProperties": false,
+      "description": "The occurrences of an event that fall inside the dwell of State n.",
+      "deviation": "Both ends of the dwell interval count as inside.",
+      "origin": "Harel 1987, a State as scope (an event counts only while the State holds)"
+    },
+    "TimeOffset": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "flicks",
+            "f"
+          ]
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "unit",
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "A signed time added to every occurrence of an event.",
+      "deviation": "In exact flicks (1/705,600,000 s), never milliseconds; f is output frames at the Plan's rate; a time becomes the nearest frame, a half going to the later one (floor(t x rate + 1/2)).",
+      "origin": "SMIL 3.0 timing, offset-value (a clock value)"
+    },
+    "PercentOffset": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "enum": [
+            "percent"
+          ]
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "unit",
+        "value"
+      ],
+      "additionalProperties": false,
+      "description": "A signed share of the window of the event it is added to.",
+      "deviation": "It needs a window: an event that is an instant has none, and the percent is an error.",
+      "origin": "SMIL 3.0 timing, offset-value"
+    },
+    "Offset": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TimeOffset"
+        },
+        {
+          "$ref": "#/$defs/PercentOffset"
+        }
+      ],
+      "description": "A signed offset from an event: a time or a share of its window.",
+      "origin": "SMIL 3.0 timing, offset-value"
+    },
+    "ShiftEvent": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "shift"
+          ]
+        },
+        "of": {
+          "$ref": "#/$defs/EventExpr"
+        },
+        "offset": {
+          "$ref": "#/$defs/Offset"
+        }
+      },
+      "required": [
+        "kind",
+        "of",
+        "offset"
+      ],
+      "additionalProperties": false,
+      "description": "Every occurrence of an event moved by an offset.",
+      "origin": "SMIL 3.0 timing, offset-value on a begin value"
+    },
+    "EventExpr": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/AnchorEvent"
+        },
+        {
+          "$ref": "#/$defs/RefEvent"
+        },
+        {
+          "$ref": "#/$defs/LastEvent"
+        },
+        {
+          "$ref": "#/$defs/FirstEvent"
+        },
+        {
+          "$ref": "#/$defs/EachEvent"
+        },
+        {
+          "$ref": "#/$defs/WithinEvent"
+        },
+        {
+          "$ref": "#/$defs/ShiftEvent"
+        }
+      ],
+      "description": "A finite list of moments, built from anchors and combinators; it resolves to frames at plan time.",
+      "deviation": "Every combinator is a total function from finite lists of frames to a list of frames; an empty result is an error only where an effect needs a moment.",
+      "origin": "Fran (Elliott and Hudak 1997), the event algebra; SMIL 3.0 timing, begin-value list"
+    },
+    "Until": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/EventExpr"
+        }
+      },
+      "required": [
+        "event"
+      ],
+      "additionalProperties": false,
+      "description": "The event that ends an effect with a duration.",
+      "deviation": "Only on a focus (a show stays shown and a sound plays out); the end is the first occurrence strictly after the fire frame; an event that comes later than the Scene, or never, leaves the effect to the slide change.",
+      "origin": "SMIL 3.0 timing, end value; RxJS takeUntil (explanatory only)"
+    },
+    "EventWhen": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/EventExpr"
+        }
+      },
+      "required": [
+        "event"
+      ],
+      "additionalProperties": false,
+      "description": "The effect fires at each occurrence of an event.",
+      "origin": "SMIL 3.0 timing, begin-value list (event-value)"
+    },
+    "AbsoluteWhen": {
+      "type": "object",
+      "properties": {
+        "absoluteFlicks": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "absoluteFlicks",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "description": "The effect fires a fixed time after the slide change of its Scene.",
+      "deviation": "Exact flicks, never milliseconds; it needs a reason, which lint lists.",
+      "origin": "SMIL 3.0 timing, offset-value (a clock value from the begin of the parent)"
+    },
+    "When": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/EventWhen"
+        },
+        {
+          "$ref": "#/$defs/AbsoluteWhen"
+        }
+      ],
+      "description": "What the author wrote for the timing of an effect: an event, or a fixed time with its reason.",
+      "origin": "SMIL 3.0 timing, begin value list"
+    },
+    "Effect": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "name": {
+          "type": "string",
+          "enum": [
+            "pop",
+            "whoosh",
+            "ding"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "until": {
+          "$ref": "#/$defs/Until"
+        },
+        "verb": {
+          "type": "string",
+          "enum": [
+            "sound",
+            "show",
+            "focus"
+          ]
+        },
+        "when": {
+          "$ref": "#/$defs/When"
+        }
+      },
+      "required": [
+        "id",
+        "line",
+        "verb",
+        "when"
+      ],
+      "additionalProperties": false,
+      "description": "A sound, a show or a focus, and when it happens. SMIL attributes of each verb (declared once per verb in grammar.ts, not stored per effect): restart overlap for every verb; fill freeze for a show, remove for a focus and a sound.",
+      "deviation": "restart: overlap, which is not a SMIL value: an effect with several occurrences of its begin event runs once for each (only a sound may), and instances do not restart each other, unlike SMIL restart=\"always\"; occurrences of one event at the same frame are one occurrence; the slide change ends every running effect.",
+      "origin": "Mealy and Moore machine outputs (an effect subscribes to a transition or to a state's enter or leave); SMIL 3.0 timing, a timed child with a begin and an end"
+    },
+    "Element": {
+      "type": "object",
+      "properties": {
+        "cell": {
+          "type": "string",
+          "enum": [
+            "tl",
+            "tc",
+            "tr",
+            "ml",
+            "mc",
+            "mr",
+            "bl",
+            "bc",
+            "br"
+          ]
+        },
+        "class": {
+          "type": "string",
+          "enum": [
+            "box",
+            "title",
+            "label",
+            "accent",
+            "muted"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "text": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "cell",
+        "class",
+        "id",
+        "line",
+        "text",
+        "visible"
+      ],
+      "additionalProperties": false,
+      "description": "A thing on the slide, with a cell, a class and a text; its id is its identity across Scenes.",
+      "deviation": "The regions are declared once as machines, and their transitions come from the identity diff between two Scenes (the same id is the same Element), not from authored events.",
+      "origin": "Harel 1987, orthogonality (presence, position and style are parallel regions of one Element); SCXML <parallel>"
+    },
+    "DerivedEvent": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "$ref": "#/$defs/EventExpr"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        }
+      },
+      "required": [
+        "event",
+        "line",
+        "name"
+      ],
+      "additionalProperties": false,
+      "description": "A `let` line: a name for an event of the Scene, evaluated once and used wherever the name is written.",
+      "deviation": "Local to its Scene; a name that waits for itself is a lint error.",
+      "origin": "Fran (Elliott and Hudak 1997), a named event; RxJS share (explanatory only)"
+    },
+    "LineHints": {
+      "type": "object",
+      "properties": {
+        "pauseBefore": {
+          "type": "number",
+          "minimum": 0
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        }
+      },
+      "required": [
+        "pauseBefore",
+        "speed"
+      ],
+      "additionalProperties": false,
+      "description": "How the narrator says a Line: the pause before it and the speed.",
+      "deviation": "A speed is a multiple of the voice's natural rate between 0.5 and 2, not a percent.",
+      "origin": "Fountain 1.1, Parenthetical ((slowly), (pause 0.5)); SSML, prosody rate"
+    },
+    "Line": {
+      "type": "object",
+      "properties": {
+        "hints": {
+          "$ref": "#/$defs/LineHints"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "hints",
+        "line",
+        "text"
+      ],
+      "additionalProperties": false,
+      "description": "One thing the narrator says in a Scene: its text, spoken word by word.",
+      "deviation": "The text is byte-identical across revisions of a Story so the speech cache keeps hitting; the times of its words come from alignment, never from the author.",
+      "origin": "Fountain 1.1, Dialogue of NARRATOR; SMIL 3.0 timing, a media element (its words are sync points)"
+    },
+    "GraphScene": {
+      "type": "object",
+      "properties": {
+        "chapterId": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          }
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Element"
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DerivedEvent"
+          }
+        },
+        "heading": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Line"
+          }
+        },
+        "transition": {
+          "type": "string",
+          "enum": [
+            "auto-animate",
+            "cut",
+            "default"
+          ]
+        }
+      },
+      "required": [
+        "chapterId",
+        "effects",
+        "elements",
+        "events",
+        "heading",
+        "id",
+        "line",
+        "lines",
+        "transition"
+      ],
+      "additionalProperties": false,
+      "description": "A Scene as declared: its Elements, Lines, effects and derived events.",
+      "deviation": "The States inside a Scene are not declared: the engine derives them from the step frames; the identity diff against the previous Scene is derived, not declared; a Scene is left at its last frame, which ends every effect running in it.",
+      "origin": "Harel 1987, depth (a Scene is a compound State, a superstate of its States); SCXML compound <state>; SMIL 3.0 timing, a time container whose end ends its children"
+    },
+    "Graph": {
+      "type": "object",
+      "properties": {
+        "author": {
+          "type": "string"
+        },
+        "chapters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Chapter"
+          }
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GraphScene"
+          }
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2
+        },
+        "title": {
+          "type": "string"
+        },
+        "version": {
+          "type": "number",
+          "enum": [
+            1
+          ]
+        }
+      },
+      "required": [
+        "chapters",
+        "scenes",
+        "speed",
+        "title",
+        "version"
+      ],
+      "additionalProperties": false,
+      "description": "The IR of a Story: the state and beat graph, as a closed, versioned document.",
+      "deviation": "Closed (an excess key is a decode error) and versioned (an other version is a decode error); the machines are declared once in the engine, a Story declares only its Scenes, Elements, Lines and effects.",
+      "origin": "SCXML 1.0, <scxml> root; Harel 1987, statecharts (a hierarchy of States with orthogonal regions)"
+    }
+  }
+}

@@ -170,6 +170,8 @@ export default defineConfig({
       ...(ultraciteFmt.ignorePatterns ?? []),
       "**/*.md",
       "packages/*/test/fixtures/**",
+      // The JSON Schema of the IR is generated from `GraphSchema` and compared byte for byte (spec 0004).
+      "docs/schema/**",
       // The speech cache is written by `@tsukuri/cache-fs` in its own JSON layout.
       "stories/*/speech-cache/**",
     ],

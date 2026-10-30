@@ -4,7 +4,12 @@
 // Retirement trigger: an Effect-native browser driver, or a motion engine that renders frames without a browser.
 import { SettingsSchema, requireTimeline } from "@tsukuri/core";
 import type { PlanJson } from "@tsukuri/core";
-import { CaptureError, FrameCapturer, localEgress } from "@tsukuri/services";
+import {
+  AdapterUnavailable,
+  CaptureError,
+  FrameCapturer,
+  localEgress,
+} from "@tsukuri/services";
 import type { CaptureFailure } from "@tsukuri/services";
 import type { FileSystem } from "effect";
 import {
@@ -21,7 +26,12 @@ import type { ChildProcessSpawner } from "effect/process";
 
 import { Browser, chromiumFlags } from "./browser.ts";
 import { captureFrames, clockOrigin } from "./capture.ts";
-import { captureSchedule, sceneChangeLag } from "./captureSchedule.ts";
+import {
+  captureSchedule,
+  capturedFps,
+  sceneChangeLag,
+  unsupportedRate,
+} from "./captureSchedule.ts";
 import { maxShots, screenshotRetries } from "./stability.ts";
 
 /** The page a Renderer writes: every Deck of release 1 has this entry. */
@@ -76,6 +86,17 @@ export const chromiumCapturerWith = (
               requireTimeline(request.plan)
             );
 
+            const refusal = unsupportedRate(plan.settings);
+
+            if (refusal !== undefined) {
+              return yield* new AdapterUnavailable({
+                adapter: id,
+                message: refusal,
+                requirement: `settings.fps ${capturedFps} with settings.ntsc false`,
+                service: "FrameCapturer",
+              });
+            }
+
             const url = yield* path.toFileUrl(
               path.join(request.deckDir, deckEntry)
             );
@@ -104,7 +125,7 @@ export const chromiumCapturerWith = (
           settings: {
             clockOrigin,
             flags: Arr.join(chromiumFlags, " "),
-            fps: SettingsSchema.fields.fps.literal,
+            fps: capturedFps,
             height: SettingsSchema.fields.height.literal,
             lags: Arr.join(
               Arr.map(
@@ -113,6 +134,7 @@ export const chromiumCapturerWith = (
               ),
               ","
             ),
+            ntsc: false,
             screenshotRetries,
             settle: settleNewAnimations,
             stability: maxShots,

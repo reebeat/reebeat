@@ -1,12 +1,12 @@
 // F8, narration is where the Timeline says: each Line's audio, decoded from its file in the speech cache, is found in
 // the decoded mixed track of the mp4 within one frame of the Line's start frame. The offset of each Line is reported,
 // positive when the narration is late.
+import { timedLines } from "@tsukuri/core";
 import { audioOffsetMs, decodeMonoPcm } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Effect, Option, Path } from "effect";
 
 import { guarded } from "./guard.ts";
 import type { Build } from "./load.ts";
-import { timedLines } from "./planParts.ts";
 import {
   frameStartMs,
   msToFrames,
@@ -49,7 +49,7 @@ export const narration = (build: Build) =>
 
       const track = yield* decodeMonoPcm(build.mp4);
 
-      const matches = yield* Effect.forEach(lines, (line) =>
+      const matches = yield* Effect.forEach(lines, ({ timed: line }) =>
         Effect.map(
           decodeMonoPcm(path.join(build.cacheDir, line.audio.file)),
           (reference) => {
@@ -70,25 +70,25 @@ export const narration = (build: Build) =>
 
       const rows = Arr.zip(lines, matches);
 
-      const problems = Arr.flatMap(rows, ([line, match]) => {
+      const problems = Arr.flatMap(rows, ([{ id, timed }, match]) => {
         if (match.score < narrationMatchFloor) {
           return [
-            `Line ${line.lineId}: its audio is not found within ${windowMs} ms of its scheduled frame ${line.startFrame} (best match ${match.score.toFixed(2)}, at least ${narrationMatchFloor} needed)`,
+            `Line ${id}: its audio is not found within ${windowMs} ms of its scheduled frame ${timed.startFrame} (best match ${match.score.toFixed(2)}, at least ${narrationMatchFloor} needed)`,
           ];
         }
 
         return withinOneFrame(match.frames)
           ? []
           : [
-              `Line ${line.lineId} starts ${signedFrames(match.frames)} frames from its scheduled frame ${line.startFrame}`,
+              `Line ${id} starts ${signedFrames(match.frames)} frames from its scheduled frame ${timed.startFrame}`,
             ];
       });
 
       const measured: Measured = [
         ["Lines checked", lines.length],
-        ...Arr.flatMap(rows, ([line, match]): Measured => [
-          [`${line.lineId} offset (frames)`, signedFrames(match.frames)],
-          [`${line.lineId} match score`, match.score.toFixed(3)],
+        ...Arr.flatMap(rows, ([{ id }, match]): Measured => [
+          [`${id} offset (frames)`, signedFrames(match.frames)],
+          [`${id} match score`, match.score.toFixed(3)],
         ]),
       ];
 

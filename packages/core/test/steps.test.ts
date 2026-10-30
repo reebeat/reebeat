@@ -149,3 +149,109 @@ describe("soundsOf", () => {
       })
   );
 });
+
+const durations = asText([
+  "Title: Durations",
+  "",
+  "# Part",
+  "",
+  "INT. ONE #one#",
+  "",
+  "Mover {id=m cell=ml class=box}",
+  "Late {id=late cell=br class=label visible=false}",
+  "",
+  "[[effects",
+  '  r1: show late at word("two").end',
+  '  f1: focus m at word("three").end until word("six").start',
+  '  s1: sound pop at each(word("four").end, word("eight").end)',
+  '  f2: focus m at word("ten").end',
+  "  let both = last(r1.end, f1.end)",
+  "  s2: sound ding at both",
+  "]]",
+  "",
+  "NARRATOR",
+  "One two three four five six seven eight nine ten eleven twelve.",
+  "",
+]);
+
+// 300 ms a word at 30 fps: the Line starts at frame 30 and word n ends at 30 + 9 n; `six` starts at 30 + 9 * 5 = 75.
+const timedDurations = Effect.gen(function* built() {
+  const plan = yield* buildPlan(durations, fixtureSha256);
+
+  return yield* schedule(plan, evenlySpoken(plan, 300), lifecycle);
+});
+
+describe("a focus that ends by its own until", () => {
+  it.effect(
+    "has an end step, in resolved-time order; a focus with no until has none (the slide change ends its ring)",
+    () =>
+      Effect.gen(function* ends() {
+        const plan = yield* timedDurations;
+
+        assert.deepStrictEqual(
+          Arr.map(stepsOf(plan, sceneOf(plan, 0)), (step) => [
+            step.effect.id,
+            step.edge,
+          ]),
+          [
+            ["r1", "start"],
+            ["f1", "start"],
+            ["f1", "end"],
+            ["f2", "start"],
+          ]
+        );
+      })
+  );
+
+  it.effect("is commanded off one frame before the ring's last frame", () =>
+    Effect.gen(function* commands() {
+      const plan = yield* timedDurations;
+
+      const found = Arr.map(
+        plan.timeline?.scenes[0]?.effects ?? [],
+        (entry) => [
+          entry.effectId,
+          entry.instance,
+          entry.fireFrame,
+          entry.endFrame,
+          entry.endedBy,
+          entry.endCommandFrame,
+        ]
+      );
+
+      assert.deepStrictEqual(found, [
+        ["r1", 1, 48, 52, "window", null],
+        ["f1", 1, 57, 75, "until", 74],
+        ["s1", 1, 66, null, null, null],
+        ["s2", 1, 75, null, null, null],
+        ["s1", 2, 102, null, null, null],
+        // f2 has no until: its ring lasts to the Scene's last frame, where the slide change interrupts it.
+        ["f2", 1, 120, 152, "slide-change", null],
+      ]);
+    })
+  );
+
+  it.effect(
+    "gives one carried sound for each instance of a sound, and a sound at the end of a focus rides the step before it",
+    () =>
+      Effect.gen(function* instances() {
+        const plan = yield* timedDurations;
+
+        assert.deepStrictEqual(
+          Arr.map(
+            soundsOf(plan, sceneOf(plan, 0)),
+            ({ carrier, effect, timed: entry }) => [
+              effect.id,
+              entry?.instance,
+              carrier,
+            ]
+          ),
+          [
+            ["s1", 1, { effectId: "f1", kind: "step" }],
+            ["s1", 2, { effectId: "f1", kind: "step" }],
+            ["s2", 1, { effectId: "f1", kind: "step" }],
+          ]
+        );
+      })
+  );
+});

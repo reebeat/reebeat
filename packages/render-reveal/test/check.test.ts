@@ -9,6 +9,7 @@ import { checkDeck, DeckMismatch, renderDeck } from "../src/index.ts";
 import {
   carrySource,
   readIn,
+  ringSource,
   scheduledOf,
   storyPlan,
   writtenDeck,
@@ -193,15 +194,15 @@ describe("checkDeck", () => {
         const dropped = yield* failureOf(
           plan,
           html,
-          Str.replace(' data-sounds="whoosh ding"', "")(html)
+          Str.replace(' data-sounds="whoosh ding pop"', "")(html)
         );
 
         const reordered = yield* failureOf(
           plan,
           html,
           Str.replace(
-            'data-sounds="whoosh ding"',
-            'data-sounds="ding whoosh"'
+            'data-sounds="whoosh ding pop"',
+            'data-sounds="ding whoosh pop"'
           )(html)
         );
 
@@ -224,7 +225,7 @@ describe("checkDeck", () => {
         );
         assert.include(
           dropped.message,
-          "the Plan plays whoosh ding when the slide is shown, the page's data-sounds is no sound"
+          "the Plan plays whoosh ding pop when the slide is shown, the page's data-sounds is no sound"
         );
       })
   );
@@ -420,6 +421,59 @@ describe("checkDeck", () => {
       assert.deepStrictEqual([error.check, error.index], ["slides", 0]);
     })
   );
+
+  describe("the end step of a ring", () => {
+    const ringDeck = Effect.gen(function* ring() {
+      const plan = yield* scheduledOf(ringSource);
+
+      return { html: renderDeck(plan).html, plan };
+    });
+
+    const endSpan =
+      '    <span class="fragment effect" data-fragment-index="1" data-effect-id="f1" data-effect-edge="end" data-effect-verb="focus" data-target="a"></span>\n';
+
+    it.effect("is accepted when the page has it", () =>
+      Effect.gen(function* accepted() {
+        const { html, plan } = yield* ringDeck;
+
+        assert.include(html, endSpan);
+        yield* checkDeck(plan, html);
+      })
+    );
+
+    it.effect(
+      "F5 control: a deleted end step fails, naming the slide and the index",
+      () =>
+        Effect.gen(function* deleted() {
+          const { html, plan } = yield* ringDeck;
+
+          const error = yield* failureOf(
+            plan,
+            html,
+            Str.replace(endSpan, "")(html)
+          );
+
+          assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc1", 1]);
+          assert.include(error.message, "f1 end (focus a)");
+        })
+    );
+
+    it.effect(
+      "F5 control: an end step written as a start fails, though its effect, verb and target agree",
+      () =>
+        Effect.gen(function* restarted() {
+          const { html, plan } = yield* ringDeck;
+
+          const error = yield* failureOf(
+            plan,
+            html,
+            Str.replace(' data-effect-edge="end"', "")(html)
+          );
+
+          assert.deepStrictEqual(placeOf(error), ["F4 fragments", "sc1", 1]);
+        })
+    );
+  });
 });
 
 describe("assembleDeck re-reads its own output", () => {

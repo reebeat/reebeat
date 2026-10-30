@@ -1,6 +1,7 @@
 // F9, chapters and streams: `ffprobe` shows one chapter per Section of the source, titled with the Section text and
 // starting within one frame of the slide frame of the Section's first Scene; the mp4 holds an h264 video, an aac audio,
 // a mov_text subtitle and one data stream (the chapter track), and as many video frames as the Timeline.
+import { sceneIdsOfChapter } from "@tsukuri/core";
 import type { Chapter } from "@tsukuri/core";
 import { probeMedia } from "@tsukuri/encode-ffmpeg";
 import type { MediaInfo } from "@tsukuri/encode-ffmpeg";
@@ -111,7 +112,9 @@ export const chapters = (build: Build) =>
         (chapter, index): Pairing => ({
           chapter,
           found: media.chapters[index],
-          slideFrame: slideFrames.get(chapter.sceneIds[0] ?? ""),
+          slideFrame: slideFrames.get(
+            sceneIdsOfChapter(plan.success, chapter.id)[0] ?? ""
+          ),
         })
       );
 

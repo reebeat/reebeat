@@ -5,6 +5,12 @@ The explainer pipeline turns a screenplay into narrated, animated explainers. On
 > Provenance: moved here on 2026-10-28 from a private study repository (`work/explainers/GLOSSARY.md`, last changed by
 > commit `85a672a14c2927ffaac07d011b6c697e03564144`). Two course-specific example phrases were generalised. This copy is
 > the single source.
+>
+> Change 2026-10-29 (spec 0004, explicit state machines): **State**, **Machine**, **Event**, **Mealy and Moore outputs**,
+> **IR**, **IR codec**, **Importer**, **Artifact renderer**, **Flick** and **Frame rate** are new; **Beat** is redefined (it
+> was "the smallest unit of story that holds a Keyframe, a Line, Effects and Hints"; it is now the transition the engine
+> generates between two States); **Scene** is a compound State; **Keyframe**, **Line**, **Effect**, **Anchor**,
+> **Lifecycle event**, **Transition anchor**, **Behaviour** and **Library** change. The change is a Revision of the spec.
 
 ## Units of description
 
@@ -16,36 +22,40 @@ _Avoid_: Video (a Video is a rendering), project, presentation
 The one source file of a Story, written in [Fountain](https://fountain.io/syntax) with the fixed vocabulary of the table "Screenplay mapping" below. Every Rendering is generated from it; nothing generated is kept by hand. Which pieces generate it (the Selection) is not in the Screenplay.
 _Avoid_: Script (ambiguous with the narration and with code), storyboard
 
+**State**:
+A declared set of Elements with their properties. It holds for a dwell interval: it is entered when the Beat before it ends and left when the Beat after it starts (or at the Scene's last frame). Its **Keyframe** is its visual part. An author declares States (the Elements of a Scene, and the changes an Effect causes); the engine generates the Beats between them. `state(2).enter` and `state(2).leave` are its events.
+_Avoid_: Snapshot, frame, slide
+
 **Scene**:
-One visual context inside a Story, introduced by a scene heading that carries its id between `#` (`INT. THE NEXT SCREEN - DAY #sc4#`), shown as one slide. It is the boundary of identity: Element ids are matched between two consecutive Scenes only when the Transition between them says so (`> AUTO-ANIMATE`); otherwise nothing is matched. A Scene may hold one `[[effects]]` block.
+One visual context inside a Story, introduced by a scene heading that carries its id between `#` (`INT. THE NEXT SCREEN - DAY #sc4#`), shown as one slide. It is a **compound State** (a Harel superstate): it groups the States that share one identity scope, and it holds the Lines. It is the boundary of identity: Element ids are matched between two consecutive Scenes only when the Transition between them says so (`> AUTO-ANIMATE`); otherwise nothing is matched. The Beat between two Scenes is an edge between compound States (its events are `scene.start`, `scene.end` and `transition.<point>`). A Scene may hold one `[[effects]]` block.
 _Avoid_: Slide (the Deck's word for it), section, shot
 
 **Beat**:
-The smallest unit of story: one change the viewer should notice. It holds a Keyframe, a Line, Effects and Hints. In a Screenplay a Beat is derived, not written: the opening of a Scene, or the step one `show` or `focus` Effect causes.
-_Avoid_: Step, frame, slide, keyframe (the Keyframe is only its visual part)
+The transition the engine generates from one State to the next: `beat(n).start` is the frame the previous State is left, `beat(n).end` the frame the next State is entered, and `beat(n).<N>%` is N percent of the way. A Beat is derived, never written: within a Scene the engine generates one from each distinct fire frame of a `show` or `focus` Effect after the Scene's first frame, and it lasts as long as the slowest step that fires then. **Between two Scenes** the Beat is the slide change (the `slide` machine, `transition.*`): the edge between two compound States, styled by `> AUTO-ANIMATE` or `> CUT`. (The old meaning, the smallest unit of story that holds a Keyframe, a Line, Effects and Hints, is gone: a Scene holds the Lines.)
+_Avoid_: Step (a Deck's fragment step is how a Beat is shown), frame, slide, keyframe
 
 **Keyframe**:
-The visual state a Beat ends in: every visible Element with its properties.
-_Avoid_: Snapshot, state (alone), slide
+The visual part of a State: every visible Element with its properties.
+_Avoid_: Snapshot, state (alone: a State is more than its picture), slide
 
 **Line**:
-The narration that carries a Beat: the dialogue of the `NARRATOR`, as manuscript text aligned to words. Its **narration text** is the dialogue itself, which holds no `[[...]]` at all; subtitles and speaker notes carry exactly that string.
+The narration of a Scene: the dialogue of the `NARRATOR`, as manuscript text aligned to words. Its **narration text** is the dialogue itself, which holds no `[[...]]` at all; subtitles and speaker notes carry exactly that string. Words are a source of Events (`word("matches").end`), not a Machine.
 _Avoid_: Caption, voice-over text, script line
 
 **Effect**:
-One line of a Scene's `[[effects]]` block: `<id>: <verb> <argument> at <when>`. The verb is `sound` (plays a sound of the catalogue), `show` (reveals an Element that is `visible=false`) or `focus` (rings and scales an Element). `<when>` is an **Anchor** and an optional offset, or an absolute time with its reason. In the Deck a `show` or `focus` is a fragment step in resolved-time order and a `sound` rides along with the step or the slide it is anchored to; in the Video it is the visible change or the sound at the resolved frame. The Plan keeps what was written (intent) and the Timeline the frame it resolves to.
-_Avoid_: Cue (release 1's inline `[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, now errors), trigger, event, note (Fountain's word for the syntax)
+One line of a Scene's `[[effects]]` block: `<id>: <verb> <argument> at <event> [until <event>]`. The verb is `sound` (plays a sound of the catalogue, once for each occurrence of its Event), `show` (reveals an Element that is `visible=false`) or `focus` (rings and scales an Element; the ring lasts to its `until` Event, or to the end of the Scene). `<event>` is an **Event** built from **Anchors** and combinators, or an absolute time with its reason. An Effect subscribes to an Event: it is an output of the Machine its Event comes from (see **Mealy and Moore outputs**), and it has a Machine of its own (`idle`, `active`, `done`), so `r1.start` and `r1.end` are Anchors. The slide change interrupts every running Effect. In the Deck a `show` or `focus` is a fragment step in resolved-time order (a `focus` that ends by its own `until` before the Scene does has a second step that takes the ring off) and a `sound` rides along with the step or the slide it is anchored to; in the Video it is the visible change or the sound at the resolved frame. The Plan keeps what was written (intent) and the Timeline the frame or frames it resolves to, one instance per occurrence.
+_Avoid_: Cue (release 1's inline `[[next]]`, `[[focus: id]]`, `[[sfx: name]]`, now errors), trigger, note (Fountain's word for the syntax)
 
 **Anchor**:
-The named moment an Effect is timed against, never a guess: a word or phrase of the Scene's narration (`word("matches").end`; `, 2` picks the second occurrence), the Scene's start or end (`scene.start`, `scene.end`), the incoming **Transition anchor**, a **Lifecycle event** of an Element (`one.move.50%`), or another Effect's start or end (`r1.end`). An **offset** moves it by a signed time (`+0.1s`, `-3f`) or a share of the anchored window (`+50%`). Every reference is explicit and resolved in the schedule stage from the aligned words and the renderer's declared lifecycle; an absolute time (`at 2.5s because "..."`) is the escape hatch and needs its reason.
+The named moment an Effect is timed against, never a guess: a source of Events. It is a word or phrase of the Scene's narration (`word("matches").end`; `, 2` picks the second occurrence), or a point or state event of a declared **Machine**: the Scene's start or end (`scene.start`, `scene.end`), the **Transition anchor** (`transition.start`), a **Lifecycle event** of an Element (`one.move.end`), another Effect's start or end (`r1.end`: a `focus` has an end too), a State (`state(2).enter`) or a Beat (`beat(1).start`). Every spelling is generated from the machines: each Transition gives `<subject>.<transition>.start`, `.end` and `.<N>%`, each state `<subject>.<state>.enter` and `.leave`. `.<N>%` is sugar for the threshold Event of the Behaviour, `when(<subject>.<transition>.progress >= N%)`. An **offset** moves an Event by a signed time (`+0.1s`, `-3f`) or a share of the anchored window (`+50%`). Every reference is explicit and resolved in the schedule stage from the aligned words and the renderer's declared lifecycle; an absolute time (`at 2.5s because "..."`) is the escape hatch and needs its reason.
 _Avoid_: Timestamp, marker, position
 
 **Lifecycle event**:
-What happens to an Element in a Scene, from the identity diff and its `show` Effect: `enter` (only in this Scene), `exit` (only in the previous Scene, seen at the transition), `move` (the cell changes) and `update` (the class or text changes). Each has a start, an end and so a percent of the way; `move` and `update` follow the renderer's declared easing, the others are linear in time. An instant (an exit, a sound) has no window, and no percent.
+What happens to an Element in a Scene, from the identity diff and its `show` Effect: `enter` (only in this Scene), `exit` (only in the previous Scene, seen at the transition), `move` (the cell changes) and `update` (the class or text changes). They are the Transitions of the Element's three Machines (`presence`, `position`, `style`). Each has a start, an end and so a percent of the way; `move` and `update` follow the renderer's declared easing, the others are linear in time. An instant (an exit, a sound) has no window, and no percent.
 _Avoid_: Animation, tween, keyframe
 
 **Transition anchor**:
-The Scene's incoming slide transition as an Anchor: `transition.start` (the frame the slide change is shown), `transition.end` and `transition.<N>%`. A sound that belongs to the slide change (a whoosh) is anchored here, so it follows the motion and not the voice-over.
+The Scene's incoming slide transition as an Anchor, the Transition of the `slide` Machine (the Beat between two Scenes): `transition.start` (the frame the slide change is shown), `transition.end` and `transition.<N>%`. A sound that belongs to the slide change (a whoosh) is anchored here, so it follows the motion and not the voice-over.
 _Avoid_: Scene start (the same frame, but a Scene has no window; the transition has one)
 
 **Hint**:
@@ -53,8 +63,47 @@ An optional instruction that the content alone does not carry: a Parenthetical b
 _Avoid_: Animation, tween (those are derived, not declared)
 
 **Behaviour**:
-Continuous motion that belongs to the time between Keyframes, such as a token travelling along a process or a counter rising.
-_Avoid_: Loop, animation
+A function of time from 0 to 1 (Elliott and Hudak's functional reactive animation): the progress of a Transition, linear in time or following the renderer's declared easing. The only thing built from it is the threshold Event `when(one.move.progress >= 50%)`: the first frame at which the Behaviour reaches N percent. Continuous bindings (a volume that follows a speed) are future work.
+_Avoid_: Loop, animation, tween
+
+## Machines and time
+
+tsukuri declares the state machines that were implicit in the engine, once, as data (`packages/core/src/machines.ts`); every spelling an author can anchor to is generated from them.
+
+**Machine**:
+A declared finite-state machine of one subject: `{ id, subject, initial, states, transitions }`. The machines are `presence` (absent, entering, present, exiting), `position` (still, moving) and `style` (steady, updating) for an Element, `effect` (idle, active, done), `slide` (before, changing, shown) for the Scene's slide change, `dwell` for a State, and `beat` (waiting, changing, done). A **Transition** is a timed edge `{ name, from, during, to, progress }`: it starts when the machine leaves `from`, spends its window in `during` and ends in `to`; with no window it is an instant. Orthogonal Machines (an Element's three regions) run independently.
+_Avoid_: Lifecycle (alone), automaton
+
+**Event**:
+A finite list of frames, strictly increasing, each with the window of the thing it names. Time is an integer frame at the Plan's frame rate; an Event is built from sources (**Anchors**, words) and the combinators, each a total function from lists of frames to a list of frames, with the meaning SMIL 3.0 timing gives it: `last(a, b)` (when every operand has happened: `endsync="last"`), `first(a, b)` (the earliest: `endsync="first"`), `each(a, b)` (every occurrence: a begin-value list; `throttle=d` drops one closer than `d` to the last kept, `stagger=d` delays so that two are never closer than `d`), `within(e, beat(k))` (the occurrences inside a Beat), `let n = e` (a derived Event, evaluated once and shared), `until e` (the SMIL end value of a `focus`: its first occurrence strictly after the fire frame, else the end of the Scene) and an offset. `when(x.progress >= N%)` is the threshold Event of a **Behaviour**. Instances of one Effect do not restart each other.
+_Avoid_: Trigger, signal, timestamp
+
+**Mealy and Moore outputs**:
+An Effect anchored to an edge of a Machine (a Beat's `start` or `end`, an Element's `move.end`) is a Mealy output: it happens on a transition. An Effect anchored to a State's `enter` or `leave` is a Moore output: it happens on a state. A State's enter is the end of the Beat before it and its leave the start of the Beat after it.
+
+**Story IR** (also **IR**):
+The canonical state and beat graph of a Story: what the Screenplay declared, as a closed, versioned Effect Schema (`GraphSchema`; an excess key is a decode error, the `version` changes with the shape) with JSON as its canonical encoding. It is the source: authored, decoded, edited. The Plan is a function of it. Time in the story IR is exact (**Flicks**); a frame appears only in the Timeline.
+_Avoid_: AST (the Fountain reader's tree is not the IR), model
+
+**Timeline IR**:
+The compiled, seekable form of a Story: `plan.json` after `schedule` (the Plan, then the Timeline with narration placed and every effect resolved to frames), a list of operation values a renderer follows. It is derived from the story IR and the narration, so it is an artifact: never edited, never decoded back into the story IR. The three clocks meet here: logical order from the machines, media time in flicks, frame time at the Plan's rate.
+_Avoid_: the IR (alone: it means the story IR)
+
+**IR codec**:
+A reversible format of the IR: it has `encode` and `decode` and the law `decode(encode(ir)) = ir` holds. JSON is the canonical codec; SCXML, XState and the like are codecs too when they carry the whole IR. A migration between two versions of the IR is a codec.
+
+**Importer**:
+A one-way reader of a foreign format into the IR (the Fountain reader is `fountainImporter`). It may lose what the format cannot say, and what it reads is reviewed (`tsukuri plan`). It has no `encode`.
+_Avoid_: Parser (alone), converter
+
+**Artifact renderer**:
+The IR out to an artifact, never read back: the Video, the Deck, the WebVTT subtitles. It has no `decode`, so nothing that is an artifact can be mistaken for a codec.
+
+**Flick**:
+The unit of exact time in the IR: 1/705,600,000 of a second (Facebook's flicks), a whole number. It divides evenly into one frame of 24, 25, 30, 48, 50, 60 and 120 fps, so `+0.1s` is 70,560,000 flicks and is the same time at every frame rate. Never a millisecond or a frame.
+
+**Frame rate**:
+A render setting, not a property of the story: `settings.fps` (24, 30, 50 or 60; 30 by default; 25 is refused until spec 0005 rounds a time to a frame once, at the end) with `settings.ntsc` for the 1000/1001 fraction. A frame exists only in the Timeline: `frame = floor(t x rate + 1/2)`, the nearest frame, a half going to the later one.
 
 ## Identity and motion
 
@@ -76,7 +125,7 @@ _Avoid_: Export, build (alone)
 A Rendering as a narrated MP4 with subtitles and chapters.
 
 **Deck**:
-A Rendering as a presentation the speaker steps through Beat by Beat, with the Lines as speaker notes.
+A Rendering as a presentation the speaker steps through fragment by fragment (one for each Beat a `show` or `focus` causes), with the Lines as speaker notes.
 _Avoid_: Slides (as the unit), presentation
 
 ## Screenplay mapping
@@ -87,11 +136,11 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 |---|---|---|---|
 | `Title:`, `Author:`, `Speed:` | Story metadata (`Speed:` is the default speech rate, 0.5 to 2.0, 1.1 when absent) | title | title tag |
 | `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
-| scene heading `#id#` | Scene (identity boundary) | slide | stretch between two slide changes |
-| Action `text {id= cell= class= visible=}` | Keyframe: the Elements on screen | slide content | the same page |
+| scene heading `#id#` | Scene (compound State; identity boundary) | slide | stretch between two slide changes |
+| Action `text {id= cell= class= visible=}` | the Elements of a State; their Keyframe | slide content | the same page |
 | `NARRATOR` dialogue | Line | speaker notes | narration and subtitles |
 | Parenthetical | Hint: delivery | none | speech settings |
-| `[[effects ... ]]` block of a Scene | Effects | fragment step per `show` and `focus`; `data-sounds` for a sound | the visible change and the sound at the resolved frame |
+| `[[effects ... ]]` block of a Scene (`let` lines, effects with `at` and `until`) | derived Events and Effects | fragment step per `show` and `focus`, and one per `focus` that ends by its own `until`; `data-sounds` for a sound | the visible change and the sound at the resolved frame |
 | `> AUTO-ANIMATE`, `> CUT` | Hint: transition | `data-auto-animate` or none | transition frames |
 
 ## Pieces of the pipeline
@@ -99,7 +148,7 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 tsukuri is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
 
 **Library**:
-Pure functions and types with no runtime: the Fountain reader and the Plan (`core`), the subtitle writers (`subtitles`), the lint rules (`lint`). A library imports libraries only.
+Pure functions and types with no runtime: the Fountain importer, the IR and the Plan (`core`), the subtitle writers (`subtitles`), the lint rules (`lint`). A library imports libraries only.
 
 **Service**:
 An Effect interface with a contract that every implementation passes: `SpeechSynthesizer`, `WordAligner`, `SoundLibrary`, `Renderer`, `FrameCapturer`, `Encoder`, `AssetCache`. A service imports libraries only.
@@ -152,7 +201,7 @@ _Avoid_ for any grouping: Epic (overloaded by agile backlogs and by journey mapp
 
 ## Extension points
 
-How third parties add to tsukuri (a declarative, incremental FRP language for multimedia artifact generation: authors create, tsukuri builds). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words. In this section **Beat** has the meaning of the state-machine model of [PR #17](https://github.com/tsukuri-labs/tsukuri/pull/17) (spec 0004): the generated edge from one State to the next, and a Beat between two Scenes is the edge between two compound States. That meaning replaces the "smallest unit of story" entry above once #17 merges.
+How third parties add to tsukuri (semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
 
 **Contract**:
 The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@tsukuri/contracts`; the service tags and the runner that executes the clauses stay in `@tsukuri/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.

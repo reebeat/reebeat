@@ -16,6 +16,7 @@ interface Reportable {
 const located: Record<PlanErrorTag, true> = {
   AbsoluteNeedsReason: true,
   AmbiguousWord: true,
+  BadChapter: true,
   BadEffect: true,
   BadEffectsBlock: true,
   BadParenthetical: true,

@@ -12,8 +12,11 @@ import {
 } from "effect";
 
 import { buildPlan } from "../src/build.ts";
+import { planLines } from "../src/lines.ts";
+import { sceneIdsOfChapter } from "../src/lookup.ts";
 import { decodePlan, encodePlan } from "../src/plan.ts";
 import type { PlanJson } from "../src/plan.ts";
+import { wordsOf } from "../src/words.ts";
 import { fixtureSha256, readFixture } from "./support.ts";
 
 const fixturePlan = Effect.gen(function* plan() {
@@ -67,17 +70,28 @@ describe("buildPlan of the fixture", () => {
         const plan = yield* fixturePlan;
 
         assert.deepStrictEqual(
-          Arr.map(plan.chapters, (chapter) => [chapter.id, chapter.sceneIds]),
+          Arr.map(plan.chapters, (chapter) => [
+            chapter.id,
+            sceneIdsOfChapter(plan, chapter.id),
+          ]),
           [
-            ["ch1", ["first", "second"]],
+            ["ch1", ["opening", "second"]],
             ["ch2", ["third", "fourth"]],
           ]
         );
+        // The chapter of a Scene is stored once, on the Scene; the Chapter lists no Scenes.
         assert.deepStrictEqual(
-          Arr.flatMap(plan.scenes, (scene) =>
-            Arr.map(scene.lines, (line) => line.id)
+          Arr.map(plan.chapters, (chapter) =>
+            Record.keys<string, unknown>(chapter)
           ),
-          ["first.l1", "first.l2", "second.l1", "third.l1", "fourth.l1"]
+          [
+            ["id", "line", "title", "synopsis"],
+            ["id", "line", "title"],
+          ]
+        );
+        assert.deepStrictEqual(
+          Arr.map(planLines(plan), ({ id }) => id),
+          ["opening.l1", "opening.l2", "second.l1", "third.l1", "fourth.l1"]
         );
       })
   );
@@ -107,7 +121,15 @@ describe("buildPlan of the fixture", () => {
           line?.text,
           "This box sits in the corner. The caption says what it is."
         );
-        assert.strictEqual(line?.words.length, 12);
+        // The words are the text split on single spaces; the Line stores no list of them.
+        assert.strictEqual(wordsOf(line?.text ?? "").length, 12);
+        assert.deepStrictEqual(
+          Arr.map(plan.scenes[0]?.lines ?? [], Record.keys),
+          [
+            ["hints", "line", "text"],
+            ["hints", "line", "text"],
+          ]
+        );
         // (slowly) is the story default 1.1 times 0.9.
         assert.deepStrictEqual(line?.hints, { pauseBefore: 0, speed: 0.99 });
         assert.deepStrictEqual(plan.scenes[1]?.lines[0]?.hints, {
@@ -164,11 +186,15 @@ describe("buildPlan of the fixture", () => {
               "show",
               "cap",
               {
-                anchor: {
-                  edge: "end",
-                  kind: "word",
-                  occurrence: 1,
-                  phrase: "corner",
+                event: {
+                  anchor: {
+                    edge: "end",
+                    explicit: false,
+                    kind: "word",
+                    occurrence: 1,
+                    phrase: "corner",
+                  },
+                  kind: "anchor",
                 },
               },
             ],
@@ -177,11 +203,15 @@ describe("buildPlan of the fixture", () => {
               "focus",
               "box",
               {
-                anchor: {
-                  edge: "start",
-                  kind: "word",
-                  occurrence: 2,
-                  phrase: "box",
+                event: {
+                  anchor: {
+                    edge: "start",
+                    explicit: true,
+                    kind: "word",
+                    occurrence: 2,
+                    phrase: "box",
+                  },
+                  kind: "anchor",
                 },
               },
             ],
@@ -190,19 +220,26 @@ describe("buildPlan of the fixture", () => {
               "sound",
               "pop",
               {
-                anchor: {
-                  edge: "end",
-                  kind: "word",
-                  occurrence: 2,
-                  phrase: "box",
+                event: {
+                  kind: "shift",
+                  of: {
+                    anchor: {
+                      edge: "end",
+                      explicit: true,
+                      kind: "word",
+                      occurrence: 2,
+                      phrase: "box",
+                    },
+                    kind: "anchor",
+                  },
+                  offset: { unit: "flicks", value: 70_560_000 },
                 },
-                offset: { unit: "ms", value: 100 },
               },
             ],
           ]
         );
         assert.deepStrictEqual(plan.scenes[3]?.effects[1]?.when, {
-          absoluteMs: 1500,
+          absoluteFlicks: 1_058_400_000,
           reason: "the title settles on a beat in the music",
         });
       })
@@ -221,7 +258,7 @@ describe("the identity diff", () => {
           scene.identity !== null,
         ]),
         [
-          ["first", "default", false],
+          ["opening", "default", false],
           ["second", "auto-animate", true],
           ["third", "cut", false],
           ["fourth", "auto-animate", true],
@@ -261,16 +298,16 @@ const decodeWithAudioFile = (file: string) =>
           {
             effects: [],
             endFrame: 1,
+            events: [],
             lines: [
               {
                 audio: { file: goodAudioFile, sha256: "x" },
                 endFrame: 1,
-                lineId: "first.l1",
                 startFrame: 0,
                 words: [],
               },
             ],
-            sceneId: "first",
+            sceneId: "opening",
             slideFrame: 0,
           },
         ],

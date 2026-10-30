@@ -19,3 +19,7 @@ export const signedFrames = (frames: number): string => {
 
   return rounded > 0 ? `+${rounded}` : String(rounded);
 };
+
+/** A frame for display: at most two decimals (a fraction of a frame is a percent point of an observed move). */
+export const frameText = (frame: number): string =>
+  String(Math.round(frame * 100) / 100);

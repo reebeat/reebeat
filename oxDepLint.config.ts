@@ -39,7 +39,13 @@ export default defineConfig({
   ],
   // Vendored oxlint rules with their own licence and provenance (tools/oxlint/anti-slop/UPSTREAM.txt): sources, not a
   // workspace package. `vite.config.ts` and `knip.json` leave them out for the same reason.
-  ignore: ["tools/oxlint/**"],
+  // The release rules' scratch trees (`release.ts` `.unstable-scan-*` under a package, `release.test.ts` `.scan-*`
+  // under tools/quality) live and vanish while other gates and tests walk the tree: generated, never sources.
+  ignore: [
+    "tools/oxlint/**",
+    "packages/*/.unstable-scan-*/**",
+    "tools/quality/.scan-*/**",
+  ],
   // knip (`bun run knip`) owns declared and unlisted dependencies; this gate owns the direction between packages.
   imports: { requireDeclared: false },
   kinds: {

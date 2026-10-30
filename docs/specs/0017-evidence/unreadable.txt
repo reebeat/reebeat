@@ -1,0 +1,17 @@
+== clean tree
+$ setpriv --reuid=65534 --regid=65534 --clear-groups node --experimental-strip-types tools/quality/checkTiers.ts
+old exit 0
+$ setpriv --reuid=65534 --regid=65534 --clear-groups node node_modules/ox-dep-lint/dist/cli.mjs --config oxDepLint.config.ts
+ox-dep-lint: 335 files, 0 findings (0.36 s)
+new exit 0
+== packages/core/src/locked at mode 000
+$ setpriv --reuid=65534 --regid=65534 --clear-groups node --experimental-strip-types tools/quality/checkTiers.ts
+old exit 1
+$ setpriv --reuid=65534 --regid=65534 --clear-groups node node_modules/ox-dep-lint/dist/cli.mjs --config oxDepLint.config.ts
+packages/core/src/locked:1:1 unreadable-path: packages/core/src/locked cannot be read (EACCES), so the files in it cannot be checked: make it readable, or add packages/core/src/locked/** to ignore
+ox-dep-lint: 335 files, 1 findings (0.32 s)
+new exit 1
+== tools/quality/.scan-demo/packages/probe/src at mode 000 (a release.test.ts scratch tree)
+$ setpriv --reuid=65534 --regid=65534 --clear-groups node node_modules/ox-dep-lint/dist/cli.mjs --config oxDepLint.config.ts
+ox-dep-lint: 335 files, 0 findings (0.33 s)
+new exit 0

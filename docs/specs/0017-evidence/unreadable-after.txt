@@ -1,7 +1,0 @@
-$ setpriv --reuid=65534 --regid=65534 --clear-groups node node_modules/ox-dep-lint/dist/cli.mjs --config oxDepLint.config.ts   (clean tree)
-ox-dep-lint: 333 files, 0 findings (0.36 s)
-exit 0
-$ (same, with packages/core/src/locked at mode 000)
-packages/core/src/locked:1:1 unreadable-path: packages/core/src/locked cannot be read (EACCES), so the files in it cannot be checked: make it readable, or add packages/core/src/locked/** to ignore
-ox-dep-lint: 333 files, 1 findings (0.30 s)
-exit 1

@@ -1,5 +1,5 @@
-  help: Remove this empty export.
-
+$ printf 'export {};\nimport "@tsukuri/services";\n' > packages/core/src/plant.ts
+$ bunx --no-install vp check
   x dep-lint(imports): forbidden-edge: a library package may not import @tsukuri/services, a service
    ,-[packages/core/src/plant.ts:2:8]
  1 | export {};
@@ -7,3 +7,4 @@
    :        ^^^^^^^^^^^^^^^^^^^
    `----
 
+exit 1

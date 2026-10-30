@@ -77,16 +77,19 @@ What is real: the published ox-dep-lint 0.4.0 from npm, run on this repository a
 | --- | --- | --- | --- |
 | F1 | On the same tree, the old and the new gate give the same verdict for every plant of a documented guarantee | `docs/specs/0017-evidence/agreement.sh` (the clean tree and 47 plants), before (`agreement-before.txt`) and after (`agreement-after.txt`) | a plant of the table above passes the new gate |
 | F2 | The three "See it fail" examples of `AGENTS.md` fail `bun run check:tiers` | the first rows of the same runs | one of them exits 0 |
-| F3 | An unreadable directory fails the gate | `unreadable-before.txt`, `unreadable-after.txt` (run as an unprivileged user; root reads mode 000) | exit 0 |
-| F4 | Weakening the configuration fails `bun run test` | `tools/quality/test/tierGate.test.ts`; `mutations.txt`: library may use service (6 tests fail), no `.d.ts` class (1), `tools/oxlint` not ignored (1), `encode-ffmpeg` in no kind (3) | a mutation leaves every test passing |
-| F5 | The plugin reports in `vp check` | `plugin.txt`: `dep-lint(imports): forbidden-edge` at the plant | no `dep-lint` finding |
+| F3 | An unreadable directory fails the gate, old and new; a release scratch tree does not | `unreadable.sh` writes `unreadable.txt` (run as an unprivileged user; root reads mode 000): `packages/core/src/locked` at mode 000, old exit 1 and new exit 1; `tools/quality/.scan-demo/...` at mode 000, new exit 0 | the locked directory exits 0, or the scratch tree exits 1 |
+| F4 | Weakening the configuration fails `bun run test` | `tools/quality/test/tierGate.test.ts`; `mutations.sh` writes `mutations.txt` (each mutation's `sed` command, then the failing tests): unmutated 20 pass; library may use service (6 fail), no `.d.ts` class (1), `tools/oxlint` not ignored (1), `encode-ffmpeg` in no kind (3), release scratch trees not ignored (1) | a mutation leaves every test passing |
+| F5 | The plugin reports in `vp check` | `plugin.sh` writes `plugin.txt`: `dep-lint(imports): forbidden-edge` at the plant, exit 1 | no `dep-lint` finding |
 | F6 | The repository passes, and the other gates still do | `bun run check:tiers`, `bun run check`, `check:exceptions`, `release:stage`, `knip`, `cpd`, `bun run test` | any of them fails for a reason this change introduces |
 
 ## Differences the build found
 
-Stricter in the new gate (old passes, new fails), all accepted: a computed import in a tool; a violation in a nested `src/dist/` (only the package-root `dist/` is output now); a `.js` source; `require("@tsukuri/...")`; an escaped specifier (`import("@tsukuri/services")`, which the old reader took for an outside package: a bypass); a new package under `tools/` in no kind.
+Stricter in the new gate (old passes, new fails), all accepted: a computed import in a tool; a violation in a nested `src/dist/` (only the package-root `dist/` is output now); a `.js` source; `require("@tsukuri/...")`; an escaped specifier (`import("@tsukuri/services")`, which the old reader took for an outside package: a bypass); a new package under `tools/` in no kind. Review round 1 found five more, also accepted: a tool's relative import that leaves its package; `import x = require("@tsukuri/...")`; a type `import("@tsukuri/...").X`; a triple-slash reference to a package; and `declare module "@tsukuri/..."`, which ox-dep-lint reads as an edge (`forbidden-edge`) although it declares rather than loads (no package here has one).
 
-Weaker in one case: a FIFO (or socket) under a package's sources. The old gate reported "an entry of unknown type"; ox-dep-lint 0.4.0 does not report FIFOs and sockets (its README says so). Git cannot commit a FIFO, so CI never sees one; a local working tree can. Listed as an operator-owned fork.
+Weaker in two cases, each listed as an operator-owned fork:
+
+- A FIFO (or socket) under a package's sources. The old gate reported "an entry of unknown type"; ox-dep-lint 0.4.0 does not report FIFOs and sockets (its README says so). Git cannot commit a FIFO, so CI never sees one; a local working tree can.
+- A manifest whose dependency field is not an object (`"dependencies": "<string>"`): the old gate exited 1, ox-dep-lint 0.4.0 reads no edges from it and exits 0 (found by review round 1's probe).
 
 ## Scope and non-goals
 
@@ -100,6 +103,7 @@ Weaker in one case: a FIFO (or socket) under a package's sources. The old gate r
 1. `tools/oxlint`: `ignore` (chosen, reversible) or a workspace package (which needs a licence decision for MIT vendored code under the every-manifest-says-Apache-2.0 rule).
 2. FIFOs and sockets under package sources are no longer reported: accept (git cannot commit one), or ask ox-dep-lint upstream to report non-regular entries.
 3. `requireDeclared` off: keep knip as the only declared-dependency gate, or turn it on with a development class for package-root `vite.config.ts`.
+4. A dependency field that is not an object is no longer a finding: accept, or ask ox-dep-lint upstream to report it as an invalid manifest.
 
 ## Revisions
 
@@ -107,3 +111,4 @@ Weaker in one case: a FIFO (or socket) under a package's sources. The old gate r
 - **2026-10-30, build: `sourceFiles` stays.** `release.ts` imports it from `tiers.ts`; it moved to `tools/quality/sourceFiles.ts` with its tests instead of being deleted, and the temporary-tree helper became `test/tree.ts` so the two tests share it (the duplication gate's threshold is 0).
 - **2026-10-30, build: the FIFO difference.** The agreement run found the one case the old gate reported and the new one does not; it is recorded above and as fork 2, not hidden.
 - **2026-10-30, build: a test for the configuration.** The old gate's negative controls lived in `bun run test`; without them, a weakened configuration would pass every gate. `tierGate.test.ts` keeps one per guarantee (F4).
+- **2026-10-30, review round 1: release scratch trees are ignored, and the evidence carries its commands.** CI run 41080399764 failed `tierGate.test.ts > the repository` with `unreadable-path tools/quality/.scan-*`: `release.test.ts` creates and removes that tree in a parallel worker while the repository test walks `tools/quality`, which this spec made a checked package (a race; local runs passed). `oxDepLint.config.ts` now ignores `tools/quality/.scan-*/**` and `packages/*/.unstable-scan-*/**` (`release.ts`'s scratch under a package), generated trees and never sources; a test in `tierGate.test.ts` shows they are not read while another dot directory still is, and a fifth mutation removes the entries (F4). `mutations.txt`, `plugin.txt` and the new `unreadable.txt` are now written by `mutations.sh`, `plugin.sh` and `unreadable.sh`, which print each command; `unreadable-before.txt` and `unreadable-after.txt` are replaced by `unreadable.txt`, which runs the old gate (written back from origin/main) and the new one on the same tree. `agreement-after.txt` reproduces byte for byte under the new configuration. The differences above add the five stricter and one weaker case the review's probe found, and fork 4.

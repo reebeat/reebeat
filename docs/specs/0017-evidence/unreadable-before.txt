@@ -1,6 +1,0 @@
-$ setpriv --reuid=65534 ... node --experimental-strip-types tools/quality/checkTiers.ts  (packages/core/src/locked mode 000)
-old exit 1
-$ setpriv --reuid=65534 ... node node_modules/ox-dep-lint/dist/cli.mjs
-packages/core/src/locked:1:1 unreadable-path: packages/core/src/locked cannot be read (EACCES), so the files in it cannot be checked: make it readable, or add packages/core/src/locked/** to ignore
-ox-dep-lint: 332 files, 1 findings (0.38 s)
-new exit 1

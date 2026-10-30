@@ -1,21 +1,35 @@
 == unmutated
-      Tests  19 passed (19)
+$ bunx --no-install vp test run tools/quality/test/tierGate.test.ts
+      Tests  20 passed (20)
 == mutation: library may use service
-     × negative control: a library importing a service 21ms
-     × negative control: dependencies alone is enough, with no import 14ms
-     × negative control: devDependencies alone is enough, with no import 21ms
-     × negative control: optionalDependencies alone is enough, with no import 7ms
-     × negative control: peerDependencies alone is enough, with no import 17ms
-     × negative control: a re-export, a dynamic import and a type-only import of a service from a library 7ms
-      Tests  6 failed | 13 passed (19)
+$ sed -i -E '/^    library: \{/,/^    \},/ s/mayUse: \["library"\],/mayUse: ["library", "service"],/' oxDepLint.config.ts
+     × negative control: a library importing a service 16ms
+     × negative control: dependencies alone is enough, with no import 6ms
+     × negative control: devDependencies alone is enough, with no import 8ms
+     × negative control: optionalDependencies alone is enough, with no import 6ms
+     × negative control: peerDependencies alone is enough, with no import 20ms
+     × negative control: a re-export, a dynamic import and a type-only import of a service from a library 19ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  6 failed | 14 passed (20)
 == mutation: no .d.ts in the unchecked class
-     × tests, live suites, fixtures (at any depth), build output and declarations are not read 19ms
-      Tests  1 failed | 18 passed (19)
+$ sed -i -E '/"\*\*\/\*\.d\.ts",/d' oxDepLint.config.ts
+     × tests, live suites, fixtures (at any depth), build output and declarations are not read 15ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 19 passed (20)
 == mutation: tools/oxlint not ignored
-     × every package is in a kind, no package depends against the direction, and the baseline is needed 240ms
-      Tests  1 failed | 18 passed (19)
+$ sed -i -E '/"tools\/oxlint\/\*\*",/d' oxDepLint.config.ts
+     × every package is in a kind, no package depends against the direction, and the baseline is needed 264ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 19 passed (20)
 == mutation: encode-ffmpeg dropped from the adapter kind
-     × negative control: an adapter importing another adapter 16ms
-     × negative control: a program importing an adapter 6ms
-     × every package is in a kind, no package depends against the direction, and the baseline is needed 242ms
-      Tests  3 failed | 16 passed (19)
+$ sed -i -E '/"packages\/encode-ffmpeg",/d' oxDepLint.config.ts
+     × negative control: an adapter importing another adapter 18ms
+     × negative control: a program importing an adapter 18ms
+     × every package is in a kind, no package depends against the direction, and the baseline is needed 245ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  3 failed | 17 passed (20)
+== mutation: release scratch trees not ignored
+$ sed -i -E '/"packages\/\*\/\.unstable-scan-\*\/\*\*",|"tools\/quality\/\.scan-\*\/\*\*",/d' oxDepLint.config.ts
+     × the release rules' scratch trees are not read, and another dot directory still is 19ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 19 passed (20)

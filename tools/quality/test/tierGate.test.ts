@@ -255,6 +255,27 @@ describe("what the gate reads, and what it refuses to skip", () => {
   );
 
   it.effect(
+    "the release rules' scratch trees are not read, and another dot directory still is",
+    () =>
+      Effect.gen(function* scratch() {
+        // A computed import is a finding in every kind, so each file below would be reported if it were read.
+        const computed = "export const b = (name: string) => import(name);\n";
+
+        const findings = yield* check({
+          ...member("core"),
+          "packages/core/.scratch/probe.ts": computed,
+          "packages/core/.unstable-scan-x/probe.ts": computed,
+          "tools/quality/.scan-x/packages/probe/src/index.ts": computed,
+          "tools/quality/package.json": '{"name":"@tsukuri/quality"}\n',
+        });
+
+        assert.deepStrictEqual(findings, [
+          "computed-import packages/core/.scratch/probe.ts",
+        ]);
+      }).pipe(Effect.provide(platform))
+  );
+
+  it.effect(
     "negative control: a symbolic link under the sources is a finding, not followed and not skipped",
     () =>
       Effect.gen(function* linked() {

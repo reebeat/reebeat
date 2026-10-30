@@ -6,7 +6,7 @@
 # ox-dep-lint.config.ts, found by default; the same kinds, classes, ignore, baseline and imports), with
 # tiers.ts and checkTiers.ts still in place. agreement-after.txt: the branch head, with origin/main's tiers.ts and
 # checkTiers.ts written back as untracked copies for the run and removed after it (`git show origin/main:<path>`).
-# As root, mode 000 does not deny a read, so the unreadable row is 0 and 0 here; unreadable-*.txt is the same plant
+# As root, mode 000 does not deny a read, so the unreadable row is 0 and 0 here; unreadable.sh (unreadable.txt) is the same plant
 # run as an unprivileged user (setpriv --reuid=65534).
 set -uo pipefail
 root=$1

@@ -1,6 +1,6 @@
 # Provenance: adapted from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888 (.gitleaks.toml).
 # Deviation: default rules only; the donor's national-id, bank-account, IBAN and SQL-row rules and its allowlists are dropped.
-title = "reebeat secret checks"
+title = "tsukuri secret checks"
 
 [extend]
 useDefault = true

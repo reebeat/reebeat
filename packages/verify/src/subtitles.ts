@@ -1,10 +1,10 @@
 // F2, subtitles equal narration: the `.vtt` file and the `mov_text` stream of the mp4 each hold one cue per Line,
 // the cue text is the narration text of the source, and its start and end lie within one frame of the Line's frames
 // in the Timeline.
-import type { TimedLine } from "@reebeat/core";
-import { MediaTools } from "@reebeat/encode-ffmpeg";
-import { parseVtt } from "@reebeat/subtitles";
-import type { VttCue } from "@reebeat/subtitles";
+import type { TimedLine } from "@tsukuri/core";
+import { MediaTools } from "@tsukuri/encode-ffmpeg";
+import { parseVtt } from "@tsukuri/subtitles";
+import type { VttCue } from "@tsukuri/subtitles";
 import { Array as Arr, Effect, Option, Result } from "effect";
 
 import { guarded } from "./guard.ts";

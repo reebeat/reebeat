@@ -2,7 +2,7 @@
 // against builds of the store whose file system fails at each step of a put: the provenance is renamed into place,
 // the second file is written, the first file is written, the provenance is written. A reader must see nothing after
 // each of them: a put that writes the provenance before its files shows up as a failed read in the first three.
-import { assetCacheContract } from "@reebeat/services/contract";
+import { assetCacheContract } from "@tsukuri/services/contract";
 import { Effect, FileSystem, Layer } from "effect";
 
 import { fsAssetCache } from "../src/fsAssetCache.ts";
@@ -12,7 +12,7 @@ import type { FailingMethod } from "./support.ts";
 const fresh = Layer.unwrap(
   Effect.map(
     Effect.flatMap(FileSystem.FileSystem, (fs) =>
-      fs.makeTempDirectoryScoped({ prefix: "reebeat-contract-" })
+      fs.makeTempDirectoryScoped({ prefix: "tsukuri-contract-" })
     ),
     fsAssetCache
   )
@@ -24,7 +24,7 @@ const failingStore = (method: FailingMethod, nth: number) =>
     Layer.unwrap(
       Effect.map(
         Effect.flatMap(FileSystem.FileSystem, (fs) =>
-          fs.makeTempDirectoryScoped({ prefix: "reebeat-contract-" })
+          fs.makeTempDirectoryScoped({ prefix: "tsukuri-contract-" })
         ),
         (directory) =>
           fsAssetCache(directory).pipe(

@@ -1,6 +1,6 @@
-// The Renderer service (spec 0001, design R3): a Plan to a Deck. reveal.js in release 1; reebeat's own motion
+// The Renderer service (spec 0001, design R3): a Plan to a Deck. reveal.js in release 1; tsukuri's own motion
 // engine later.
-import type { PlanJson, RendererLifecycle } from "@reebeat/core";
+import type { PlanJson, RendererLifecycle } from "@tsukuri/core";
 import { Context } from "effect";
 import type { Effect } from "effect";
 
@@ -38,4 +38,4 @@ export class Renderer extends Context.Service<
       plan: PlanJson
     ) => Effect.Effect<RenderedDeck, RenderError>;
   }
->()("@reebeat/services/Renderer") {}
+>()("@tsukuri/services/Renderer") {}

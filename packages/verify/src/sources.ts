@@ -1,11 +1,11 @@
 // F5, one source: `plan.json`, `deck.html` (attribute and meta), the `.vtt` NOTE, the mp4 `comment` and
 // `build.json` carry the SHA-256 of the source file, plan.json equals the Plan the source builds (apart from its
 // Timeline), and every file `build.json` lists exists with the listed hash and size.
-import type { PlanJson } from "@reebeat/core";
-import { probeMedia } from "@reebeat/encode-ffmpeg";
-import { sha256Hex } from "@reebeat/pipeline";
-import { readDeck } from "@reebeat/render-reveal";
-import { vttSourceHash } from "@reebeat/subtitles";
+import type { PlanJson } from "@tsukuri/core";
+import { probeMedia } from "@tsukuri/encode-ffmpeg";
+import { sha256Hex } from "@tsukuri/pipeline";
+import { readDeck } from "@tsukuri/render-reveal";
+import { vttSourceHash } from "@tsukuri/subtitles";
 import {
   Array as Arr,
   Effect,
@@ -27,7 +27,7 @@ import { rebuiltPlan } from "./truth.ts";
 import { verdictOf } from "./verdict.ts";
 import type { Measured } from "./verdict.ts";
 
-const commentPrefix = "reebeat source-sha256 ";
+const commentPrefix = "tsukuri source-sha256 ";
 
 interface Carrier {
   readonly found: string | undefined;
@@ -52,7 +52,7 @@ const carriers = (
     },
     {
       found: deck.metaSourceSha256 ?? undefined,
-      name: "deck.html reebeat:source-sha256 meta",
+      name: "deck.html tsukuri:source-sha256 meta",
     },
     { found: vttSourceHash(build.vtt), name: ".vtt NOTE" },
     {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-// The `reebeat` executable, the composition root of the CLI: the platform services (file system, path, child
+// The `tsukuri` executable, the composition root of the CLI: the platform services (file system, path, child
 // processes), the SHA-256 digest and the arguments from the `Stdio` service. The adapters are chosen per command,
 // from the selection (`src/adapters.ts`); nothing here names one.
 import { NodeCrypto, NodeRuntime, NodeServices } from "@effect/platform-node";

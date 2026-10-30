@@ -1,6 +1,6 @@
 // The screenplay as the build program sees it: its text and the SHA-256 of its bytes. `buildPlan` copies the hash
 // and computes nothing. The file is read as bytes and decoded without removing a byte-order mark, so the hash of the
-// text the core receives is the hash of the file's bytes, which is what `reebeat check` compares (F5).
+// text the core receives is the hash of the file's bytes, which is what `tsukuri check` compares (F5).
 import { Effect, FileSystem } from "effect";
 
 import { SourceUnreadable } from "./errors.ts";

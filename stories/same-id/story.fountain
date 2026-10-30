@@ -1,8 +1,8 @@
 Title: Same name, new place
-Author: reebeat
+Author: tsukuri
 Speed: 1.1
 
-/* Original text written for reebeat release 1. The narration is read by a synthetic voice. Every effect (sound, show, focus) is written once per Scene in its effects block and says WHEN it happens: at a word, at the slide change, or at a moment of an Element's own motion. */
+/* Original text written for tsukuri release 1. The narration is read by a synthetic voice. Every effect (sound, show, focus) is written once per Scene in its effects block and says WHEN it happens: at a word, at the slide change, or at a moment of an Element's own motion. */
 
 # Two screens
 

@@ -1,8 +1,8 @@
 // The edges of the aligner that need no model: whisper's JSON, the command lines, the s16 samples, the Config
 // names, and the typed errors of a missing requirement (raised on the first align, not when the layer is built).
 import { assert, layer } from "@effect/vitest";
-import { WordAligner } from "@reebeat/services";
-import type { AlignError } from "@reebeat/services";
+import { WordAligner } from "@tsukuri/services";
+import type { AlignError } from "@tsukuri/services";
 import {
   ConfigProvider,
   Effect,
@@ -146,15 +146,15 @@ layer(platform)("configuration", (it) => {
     Effect.gen(function* read() {
       assert.deepStrictEqual(
         yield* whisperConfig.pipe(
-          withEnv({ REEBEAT_WHISPER_MODEL: "/models/base.bin" })
+          withEnv({ TSUKURI_WHISPER_MODEL: "/models/base.bin" })
         ),
         { bin: "whisper-cli", model: "/models/base.bin" }
       );
       assert.deepStrictEqual(
         yield* whisperConfig.pipe(
           withEnv({
-            REEBEAT_WHISPER_BIN: "/opt/whisper",
-            REEBEAT_WHISPER_MODEL: "/models/base.bin",
+            TSUKURI_WHISPER_BIN: "/opt/whisper",
+            TSUKURI_WHISPER_MODEL: "/models/base.bin",
           })
         ),
         { bin: "/opt/whisper", model: "/models/base.bin" }
@@ -170,7 +170,7 @@ layer(platform)("a missing requirement", (it) => {
       Effect.gen(function* noModel() {
         assert.strictEqual(
           requirementOf(yield* alignFailure({})),
-          "env REEBEAT_WHISPER_MODEL"
+          "env TSUKURI_WHISPER_MODEL"
         );
       })
   );
@@ -180,8 +180,8 @@ layer(platform)("a missing requirement", (it) => {
       assert.strictEqual(
         requirementOf(
           yield* alignFailure({
-            REEBEAT_WHISPER_BIN: "/nonexistent/whisper-cli",
-            REEBEAT_WHISPER_MODEL: "/nonexistent/model.bin",
+            TSUKURI_WHISPER_BIN: "/nonexistent/whisper-cli",
+            TSUKURI_WHISPER_MODEL: "/nonexistent/model.bin",
           })
         ),
         "binary whisper-cli"
@@ -195,7 +195,7 @@ layer(platform)("a missing requirement", (it) => {
       const path = yield* Path.Path;
 
       const directory = yield* fs.makeTempDirectoryScoped({
-        prefix: "reebeat-model-",
+        prefix: "tsukuri-model-",
       });
 
       const model = path.join(directory, "ggml-base.en.bin");
@@ -203,7 +203,7 @@ layer(platform)("a missing requirement", (it) => {
       yield* fs.writeFileString(model, "not a model");
 
       assert.match(
-        requirementOf(yield* alignFailure({ REEBEAT_WHISPER_MODEL: model })),
+        requirementOf(yield* alignFailure({ TSUKURI_WHISPER_MODEL: model })),
         /^model ggml-base\.en\.bin with SHA-256 [0-9a-f]{64}$/u
       );
     })

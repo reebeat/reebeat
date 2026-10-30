@@ -1,7 +1,7 @@
 // F8, narration is where the Timeline says: each Line's audio, decoded from its file in the speech cache, is found in
 // the decoded mixed track of the mp4 within one frame of the Line's start frame. The offset of each Line is reported,
 // positive when the narration is late.
-import { audioOffsetMs, decodeMonoPcm } from "@reebeat/encode-ffmpeg";
+import { audioOffsetMs, decodeMonoPcm } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Effect, Option, Path } from "effect";
 
 import { guarded } from "./guard.ts";

@@ -60,7 +60,7 @@ export class MediaTools extends Context.Service<
       args: readonly string[]
     ) => Effect.Effect<ToolProcess, MediaToolFailed, Scope.Scope>;
   }
->()("@reebeat/encode-ffmpeg/mediaTools/MediaTools") {
+>()("@tsukuri/encode-ffmpeg/mediaTools/MediaTools") {
   static readonly layer = Layer.effect(
     MediaTools,
     Effect.gen(function* build() {

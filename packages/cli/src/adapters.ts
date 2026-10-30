@@ -1,13 +1,13 @@
 // The composition root's registry: which Layer fills each of the seven services for each name of the selection
-// (`@reebeat/services` `choices`), and the verification. This is the one place that imports adapters. A `Selection`
+// (`@tsukuri/services` `choices`), and the verification. This is the one place that imports adapters. A `Selection`
 // picks one Layer per service; building a Layer loads no model and starts nothing, so a selected adapter whose model,
 // binary or credential is missing fails `AdapterUnavailable` on first use, never by falling back to another adapter.
 // Each table is typed over the choices of its key: adding a name to `choices` does not compile until it is wired here.
-import { whisperAligner } from "@reebeat/align-whisper";
-import { fsAssetCache } from "@reebeat/cache-fs";
-import { chromiumCapturerWith } from "@reebeat/capture-chromium";
-import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
-import { revealRenderer } from "@reebeat/render-reveal";
+import { whisperAligner } from "@tsukuri/align-whisper";
+import { fsAssetCache } from "@tsukuri/cache-fs";
+import { chromiumCapturerWith } from "@tsukuri/capture-chromium";
+import { MediaTools, ffmpegEncoder } from "@tsukuri/encode-ffmpeg";
+import { revealRenderer } from "@tsukuri/render-reveal";
 import type {
   AssetCache,
   Encoder,
@@ -17,10 +17,10 @@ import type {
   SoundLibrary,
   SpeechSynthesizer,
   WordAligner,
-} from "@reebeat/services";
-import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";
-import { synthSounds } from "@reebeat/sounds-synth";
-import { kokoroSynthesizer } from "@reebeat/speech-kokoro";
+} from "@tsukuri/services";
+import { evenAligner, silentSynthesizer } from "@tsukuri/services/standins";
+import { synthSounds } from "@tsukuri/sounds-synth";
+import { kokoroSynthesizer } from "@tsukuri/speech-kokoro";
 import { Context, Layer } from "effect";
 import type { FileSystem, Path } from "effect";
 import type { Digest } from "effect/crypto";
@@ -118,7 +118,7 @@ export const realParts = (
  */
 export const Composition = Context.Reference<
   (selection: Selection, options: RunOptions) => Parts
->("@reebeat/cli/adapters/Composition", { defaultValue: () => realParts });
+>("@tsukuri/cli/adapters/Composition", { defaultValue: () => realParts });
 
 /** The seven services of `parts` as one Layer; the verification is left out (only `check` needs it). */
 export const servicesOf = (parts: Parts) =>

@@ -1,8 +1,8 @@
 // The SoundLibrary adapter of release 1: the sounds are synthesised in TypeScript (`sfx.ts`), so nothing is read,
 // downloaded or sent anywhere. The id carries the version of the synthesis: a change to a waveform bumps it, and
 // the cache keys of everything mixed from these sounds change with it.
-import type { SfxName } from "@reebeat/core";
-import { SoundLibrary, UnknownSound, localEgress } from "@reebeat/services";
+import type { SfxName } from "@tsukuri/core";
+import { SoundLibrary, UnknownSound, localEgress } from "@tsukuri/services";
 import { Array as Arr, Effect, Layer } from "effect";
 
 import { sampleRate, sfxNames, synthClip } from "./sfx.ts";

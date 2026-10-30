@@ -1,8 +1,8 @@
 // The Deck as the Renderer hands it over: the page, the generated text files and the binary assets, all in memory.
 // `assembleDeck` reads the page back and runs `checkDeck` on it, so a Deck that disagrees with its Plan is never
 // returned (spec 0001, F4: "the generator re-reads its own output"). Writing the files is the pipeline's job.
-import type { PlanJson } from "@reebeat/core";
-import type { RenderedDeck } from "@reebeat/services";
+import type { PlanJson } from "@tsukuri/core";
+import type { RenderedDeck } from "@tsukuri/services";
 import { Array as Arr, Effect } from "effect";
 
 import type { DeckAssets } from "./assets.ts";

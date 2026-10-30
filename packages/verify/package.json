@@ -1,5 +1,5 @@
 {
-  "name": "@reebeat/verify",
+  "name": "@tsukuri/verify",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -12,21 +12,21 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@reebeat/core": "workspace:*",
-    "@reebeat/encode-ffmpeg": "workspace:*",
-    "@reebeat/lint": "workspace:*",
-    "@reebeat/pipeline": "workspace:*",
-    "@reebeat/render-reveal": "workspace:*",
-    "@reebeat/services": "workspace:*",
-    "@reebeat/sounds-synth": "workspace:*",
-    "@reebeat/subtitles": "workspace:*",
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/encode-ffmpeg": "workspace:*",
+    "@tsukuri/lint": "workspace:*",
+    "@tsukuri/pipeline": "workspace:*",
+    "@tsukuri/render-reveal": "workspace:*",
+    "@tsukuri/services": "workspace:*",
+    "@tsukuri/sounds-synth": "workspace:*",
+    "@tsukuri/subtitles": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@effect/vitest": "catalog:",
-    "@reebeat/cache-fs": "workspace:*",
-    "@reebeat/capture-chromium": "workspace:*",
+    "@tsukuri/cache-fs": "workspace:*",
+    "@tsukuri/capture-chromium": "workspace:*",
     "@types/node": "catalog:",
     "oxc-parser": "catalog:",
     "typescript": "catalog:",

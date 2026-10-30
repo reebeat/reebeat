@@ -1,11 +1,11 @@
 ---
 name: review-pr
-description: "The automated pull-request loop for reebeat: independent reviewers judge the plan, the implementation and their agreement, run the verify-reebeat skill on the head and keep it true, a fixer addresses findings, each round is recorded on the PR, and a passing PR is merged. Use when a PR is ready for review, when asked to review or merge a PR, or when a review round finishes."
+description: "The automated pull-request loop for tsukuri: independent reviewers judge the plan, the implementation and their agreement, run the verify-tsukuri skill on the head and keep it true, a fixer addresses findings, each round is recorded on the PR, and a passing PR is merged. Use when a PR is ready for review, when asked to review or merge a PR, or when a review round finishes."
 ---
 
 <!-- Provenance: adapted from phibkro/vektorprogrammet-reimagined @ a85bab0ec18553f4e681574bef5523152e904fdc
      (.agents/skills/review-pr/SKILL.md). Deviations: the donor's database verification skills and formal-verification job are
-     replaced by `verify-reebeat` and `bun run ready`; the falsifiers are observed in the rendered Video, audio and Deck; the
+     replaced by `verify-tsukuri` and `bun run ready`; the falsifiers are observed in the rendered Video, audio and Deck; the
      record header (Author, Reviewers, Checked) and its check, the number rule, the worktree and memory rules are new here
      (spec 0010, Revisions in specs 0000 and 0010). -->
 
@@ -26,7 +26,7 @@ stop:   after round 3, unless an open finding is critical or high (then keep goi
 
 - A PR carries its spec and its code together. The spec is frozen when the PR opens; later changes to it are dated entries in its Revisions.
 - One detached worktree per reviewer or fixer role, with the system git (the harness rewrites a bare `git worktree` into `omp worktree`, which once copied `.worktrees/` into itself, 189 to 215 GB): `/run/current-system/sw/bin/git worktree add --detach .worktrees/pr-$N-<role> origin/<head branch>`. Then `devenv shell -- bun install --frozen-lockfile`. Remove each one when its role ends.
-- Read the machine before any heavy job (`bun run ready`, a capture, `--journey`): `verify-reebeat/scripts/headroom.sh` checks `MemAvailable` after the job's demand (at least 20% of RAM), swap-in (under about 1,000 pages per second), memory PSI `full` avg60 (under 10%, never avg10) and the load average (under the CPU threads), and refuses otherwise. One capture at a time on this machine.
+- Read the machine before any heavy job (`bun run ready`, a capture, `--journey`): `verify-tsukuri/scripts/headroom.sh` checks `MemAvailable` after the job's demand (at least 20% of RAM), swap-in (under about 1,000 pages per second), memory PSI `full` avg60 (under 10%, never avg10) and the load average (under the CPU threads), and refuses otherwise. One capture at a time on this machine.
 - Read the PR body, its spec in `docs/specs/` (falsifiers, `Verify skill:` line, Revisions), and `git diff --stat origin/main...HEAD`.
 
 ## 2. Review round: two independent reviewers, in parallel
@@ -40,10 +40,10 @@ Give each reviewer the PR number, the worktree, the spec, and this section. Revi
 **Verification reviewer** (mainly (b), and the evidence side of (c)).
 
 1. In the detached worktree run `devenv shell -- bun run ready`: it must exit 0 on the head. Record the head sha and the summary.
-2. Run skill `verify-reebeat` on the head: `run.sh pr-$N` (with `--journey` when the change reaches schedule, render, capture, sounds, encoding or a story), and every row of its feature map that its "Changed path, then drive" table names for the diff. Read the montages and Deck screenshots yourself. Keep the run directory and cite files from it.
+2. Run skill `verify-tsukuri` on the head: `run.sh pr-$N` (with `--journey` when the change reaches schedule, render, capture, sounds, encoding or a story), and every row of its feature map that its "Changed path, then drive" table names for the diff. Read the montages and Deck screenshots yourself. Keep the run directory and cite files from it.
 3. **Every number needs its script, its raw output and its command.** For each number in the PR body, the spec's evidence or a report (a frame offset, a count, a duration, a hit rate), find the file and the command that produced it. A number with no script, no raw output or no command is a finding of medium: two PRs (a spike and the studio scaffold) failed review for exactly this on 2026-10-29.
 4. Check the PR body's falsifier table against the branch: for each falsifier, the gate that holds it and the negative control; re-run the control where it is cheap (a scratch change in the worktree, undone afterwards). A control that was not shown, or does not fail as the table says, is a finding.
-5. **Keep the verification skill true.** For each changed user-visible behaviour, `.agents/skills/verify-reebeat/features.md` must describe it (how to observe, what counts as broken), the spec's `Verify skill:` line must name the row, and the path table must map the changed paths. A gap is a finding (`maintenance`); a row that describes behaviour the code no longer has is a finding of the severity of the behaviour it hides.
+5. **Keep the verification skill true.** For each changed user-visible behaviour, `.agents/skills/verify-tsukuri/features.md` must describe it (how to observe, what counts as broken), the spec's `Verify skill:` line must name the row, and the path table must map the changed paths. A gap is a finding (`maintenance`); a row that describes behaviour the code no longer has is a finding of the severity of the behaviour it hides.
 6. Read CI on the head (`gh pr checks <n>`): `checks` must be green.
 
 **Conformance reviewer** (mainly (a) and (c)).
@@ -69,7 +69,7 @@ Each finding: severity, file:line or run path, what is wrong in one sentence, an
 
 ## 3. Decide
 
-**Pass** when all of these hold: no open finding of medium or above; CI green on the head; `bun run ready` exits 0 on the head; every falsifier has a shown control; the `verify-reebeat` evidence exists for every row the change maps to. Low and nit findings go into the merge comment, or are fixed if cheap.
+**Pass** when all of these hold: no open finding of medium or above; CI green on the head; `bun run ready` exits 0 on the head; every falsifier has a shown control; the `verify-tsukuri` evidence exists for every row the change maps to. Low and nit findings go into the merge comment, or are fixed if cheap.
 
 - **Merge a passing PR** with `.agents/skills/review-pr/merge.sh <n> "<type>: <summary>"` from the main checkout (squash, title `<type>: <summary> (#<n>)`). It refuses (exit 4) unless a round recorded by `record-round.sh` passed the PR's current head, waits for CI green on that head (exit 1 when not green), and merges only that head (`--match-head-commit`). If `main` moved since the head was reviewed, it computes the expected tree with `git merge-tree --write-tree origin/main <reviewed head>` and refuses on conflicts (exit 2) or on files that both changed (exit 3): then rebase, require CI green on the rebased head, and record a new round on it. After a rebase without overlap, `git rev-parse HEAD^{tree}` must equal the expected tree that `merge.sh` printed.
 

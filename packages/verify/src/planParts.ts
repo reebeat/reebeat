@@ -1,5 +1,5 @@
 // The Lines and timed Lines of a Plan as flat lists: one place for the nested `flatMap`s that the checks share.
-import type { Line, PlanJson, TimedLine, Timeline } from "@reebeat/core";
+import type { Line, PlanJson, TimedLine, Timeline } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 /** Every Line of the Plan in document order. */

@@ -9,13 +9,13 @@ import {
 } from "effect";
 
 // A `bun.lock` entry is `"<key>": ["<name>@<version>", ...]`; a workspace package is `<name>@workspace:<path>` and is
-// reebeat's own code, not a third-party package.
+// tsukuri's own code, not a third-party package.
 const entry = /^\s+"[^"]+": \["(?<id>[^"]+)", /gmu;
 
 const workspace = "@workspace:";
 
 /**
- * SPDX identifiers of licences that put no condition on reebeat's own code beyond keeping the notice
+ * SPDX identifiers of licences that put no condition on tsukuri's own code beyond keeping the notice
  * (docs/design/third-party.md). Anything else, GPL, AGPL, SSPL and an unknown or missing licence included, is a violation.
  */
 const allowed: readonly string[] = [
@@ -34,7 +34,7 @@ const allowed: readonly string[] = [
 
 /**
  * The one weak-copyleft exception: `@img/sharp-*` packages carry the prebuilt libvips as LGPL-3.0-or-later shared
- * libraries. `@huggingface/transformers` (Kokoro) pulls them in; npm installs them, reebeat does not distribute them.
+ * libraries. `@huggingface/transformers` (Kokoro) pulls them in; npm installs them, tsukuri does not distribute them.
  */
 const lgpl = "LGPL-3.0-or-later";
 const lgplHost = "@img/sharp-";

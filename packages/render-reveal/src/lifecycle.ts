@@ -1,12 +1,12 @@
 // What reveal.js declares about its slide change (spec 0002, "plan contract for effects"): when each Element event
 // happens in the transition window, as `RendererLifecycle` plain data. `schedule` resolves every effect anchored to an
-// event from it and `@reebeat/verify` observes the events in the written video (F1), so a wrong number fails there.
+// event from it and `@tsukuri/verify` observes the events in the written video (F1), so a wrong number fails there.
 //
 // The numbers are MEASURED, not read from reveal.js's CSS: they are what the viewer sees in the frames of the capture
-// (`@reebeat/capture-chromium`), found by the observers of `@reebeat/verify` on a fresh build of `stories/same-id`.
+// (`@tsukuri/capture-chromium`), found by the observers of `@tsukuri/verify` on a fresh build of `stories/same-id`.
 // `README.md` lists the measurements and how to repeat them. A frame counts as changed at 200 pixels that differ by
 // more than 8 gray levels, and an event as settled when under 1% of the change (at least 200 pixels) is left.
-import type { RendererLifecycle } from "@reebeat/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 
 export const revealLifecycle: RendererLifecycle = {
   matched: {

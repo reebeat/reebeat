@@ -1,6 +1,6 @@
 // What a failure looks like on the terminal: the tag, the message and the source line when the error has one. No
 // stack, no cause. A plain function over the structure every tagged error of the pipeline shares.
-import type { PlanError, PlanErrorTag } from "@reebeat/core";
+import type { PlanError, PlanErrorTag } from "@tsukuri/core";
 import { Console, Effect, Predicate } from "effect";
 import { CliError } from "effect/cli";
 

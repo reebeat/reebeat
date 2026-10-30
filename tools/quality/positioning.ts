@@ -33,7 +33,7 @@ export const comparisonColumns: readonly string[] = [
   "Iteration loop (rebuild cost)",
 ];
 
-/** The 13 tools that follow the reebeat row, in order (F-pos3). */
+/** The 13 tools that follow the tsukuri row, in order (F-pos3). */
 export const comparisonTools: readonly string[] = [
   "DaVinci Resolve",
   "Premiere Pro",
@@ -184,7 +184,7 @@ const rowFindings = (
 ): readonly string[] => {
   const firsts = Arr.map(rows, (row) => withoutBold(firstCell(row)));
 
-  const expected = ["reebeat", ...comparisonTools];
+  const expected = ["tsukuri", ...comparisonTools];
 
   const misplaced = Arr.flatMap(expected, (name, index) =>
     Str.includes(name)(firsts.at(index) ?? "")
@@ -213,7 +213,7 @@ const cellCountFindings = (
         ]
   );
 
-/** F-pos3: the comparison table has the agreed columns, the 13 tools after reebeat, and nine cells in every row. */
+/** F-pos3: the comparison table has the agreed columns, the 13 tools after tsukuri, and nine cells in every row. */
 export const comparisonFindings = (md: string): readonly string[] =>
   pipe(
     tableWithHeader(md, (header) => header.at(0) === "Tool"),
@@ -355,12 +355,12 @@ export const statusFindings = (
 };
 
 const wrongVerbs: readonly RegExp[] = [
-  /\breebeat\s+(?:creates|created|creating)\b/giu,
+  /\btsukuri\s+(?:creates|created|creating)\b/giu,
   /\byou\s+(?:build|built|building)\b/giu,
-  /\breebeat\s+(?:is\s+)?(?:the\s+)?(?:author|creator)\b/giu,
+  /\btsukuri\s+(?:is\s+)?(?:the\s+)?(?:author|creator)\b/giu,
 ];
 
-/** F-pos6: "build" is what reebeat does and "creating" is the author's work; the blocklist reports the swapped uses. */
+/** F-pos6: "build" is what tsukuri does and "creating" is the author's work; the blocklist reports the swapped uses. */
 export const vocabularyFindings = (text: string): readonly string[] =>
   Arr.map(
     matchesOf(wrongVerbs, text),
@@ -385,7 +385,7 @@ const externalLinks = (text: string): readonly string[] =>
     (hit) => hit.groups?.url ?? ""
   );
 
-const ownRepository = "https://github.com/reebeat/reebeat";
+const ownRepository = "https://github.com/tsukuri-labs/tsukuri";
 
 const linkFindings = (md: string): readonly string[] => {
   const { found, inside, outside } = sectionOf(md, "Sources");

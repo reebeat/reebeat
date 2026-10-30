@@ -1,5 +1,5 @@
 {
-  "name": "@reebeat/capture-chromium",
+  "name": "@tsukuri/capture-chromium",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -12,8 +12,8 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@reebeat/core": "workspace:*",
-    "@reebeat/services": "workspace:*",
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/services": "workspace:*",
     "effect": "catalog:",
     "playwright-core": "catalog:",
     "timeweb": "catalog:"

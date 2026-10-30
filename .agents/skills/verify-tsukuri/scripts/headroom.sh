@@ -6,16 +6,16 @@
 #   3. memory PSI `full` avg60 is under 10% (never gated on avg10);
 #   4. the load average (1 minute) is under the number of CPU threads.
 # A reading that is missing or not a number is SHORT, with the reason: a gate never passes on a sample it could not read.
-# Knobs: REEBEAT_VERIFY_DEMAND_MIB (default 4096: an assumption, set it from a measured run), REEBEAT_VERIFY_FORCE=1 (print the
-# shortage and continue), and for tests REEBEAT_VERIFY_PROC_ROOT (default /proc), REEBEAT_VERIFY_SAMPLE_SECONDS (10 to 30, default 10),
-# REEBEAT_VERIFY_NPROC, REEBEAT_VERIFY_TEST_SAMPLE_SECONDS. I/O pressure is printed, never gated.
+# Knobs: TSUKURI_VERIFY_DEMAND_MIB (default 4096: an assumption, set it from a measured run), TSUKURI_VERIFY_FORCE=1 (print the
+# shortage and continue), and for tests TSUKURI_VERIFY_PROC_ROOT (default /proc), TSUKURI_VERIFY_SAMPLE_SECONDS (10 to 30, default 10),
+# TSUKURI_VERIFY_NPROC, TSUKURI_VERIFY_TEST_SAMPLE_SECONDS. I/O pressure is printed, never gated.
 set -euo pipefail
 
-proc=${REEBEAT_VERIFY_PROC_ROOT:-/proc}
-sample=${REEBEAT_VERIFY_SAMPLE_SECONDS:-10}
-root=${REEBEAT_VERIFY_ROOT:-$HOME/.local/state/reebeat-verify}
+proc=${TSUKURI_VERIFY_PROC_ROOT:-/proc}
+sample=${TSUKURI_VERIFY_SAMPLE_SECONDS:-10}
+root=${TSUKURI_VERIFY_ROOT:-$HOME/.local/state/tsukuri-verify}
 mkdir -p "$root"
-demand_mib=${REEBEAT_VERIFY_DEMAND_MIB:-4096}
+demand_mib=${TSUKURI_VERIFY_DEMAND_MIB:-4096}
 
 short=()
 number='^[0-9]+([.][0-9]+)?$'
@@ -32,9 +32,9 @@ firstfield() { cut -d' ' -f1 "$proc/loadavg" 2>/dev/null || true; }
 freedisk() { df --output=avail -BM "$root" 2>/dev/null | tail -1 | tr -dc '0-9' || true; }
 
 # The swap-in sample is a 10 to 30 s window (a shorter one is noise, a longer one stalls the job). Anything else is SHORT, not
-# admitted. REEBEAT_VERIFY_TEST_SAMPLE_SECONDS is for the tests only: any positive number replaces the window.
-if [ -n "${REEBEAT_VERIFY_TEST_SAMPLE_SECONDS:-}" ]; then
-  if [[ "$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS" =~ $number ]] && awk -v s="$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS" 'BEGIN { exit !(s > 0) }'; then sample=$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS; else short+=("the test sample window \"$REEBEAT_VERIFY_TEST_SAMPLE_SECONDS\" is not a positive number"); sample=""; fi
+# admitted. TSUKURI_VERIFY_TEST_SAMPLE_SECONDS is for the tests only: any positive number replaces the window.
+if [ -n "${TSUKURI_VERIFY_TEST_SAMPLE_SECONDS:-}" ]; then
+  if [[ "$TSUKURI_VERIFY_TEST_SAMPLE_SECONDS" =~ $number ]] && awk -v s="$TSUKURI_VERIFY_TEST_SAMPLE_SECONDS" 'BEGIN { exit !(s > 0) }'; then sample=$TSUKURI_VERIFY_TEST_SAMPLE_SECONDS; else short+=("the test sample window \"$TSUKURI_VERIFY_TEST_SAMPLE_SECONDS\" is not a positive number"); sample=""; fi
 elif ! [[ "$sample" =~ ^[0-9]+$ ]] || [ "$sample" -lt 10 ] || [ "$sample" -gt 30 ]; then
   short+=("the swap-in sample window is \"$sample\" s, not a whole number from 10 to 30")
   sample=""
@@ -51,7 +51,7 @@ take total_kib "$(meminfo MemTotal)" "MemTotal"
 take avail_kib "$(meminfo MemAvailable)" "MemAvailable"
 take load1 "$(firstfield)" "load average"
 take disk_free_mib "$(freedisk)" "free disk at $root"
-take cpus "${REEBEAT_VERIFY_NPROC:-$(nproc)}" "CPU thread count"
+take cpus "${TSUKURI_VERIFY_NPROC:-$(nproc)}" "CPU thread count"
 some10=$(psi some avg10 memory); io10=$(psi some avg10 io)
 
 echo "headroom: memory PSI full avg60=${full60:-?}; load1=${load1:-?} on ${cpus:-?} CPU threads; (memory some avg10=${some10:-?}, io some avg10=${io10:-?}: printed, not gated)"
@@ -77,8 +77,8 @@ if [ -n "$disk_free_mib" ] && [ "${disk_free_mib%.*}" -lt 2048 ]; then short+=("
 
 if [ "${#short[@]}" -gt 0 ]; then
   printf 'headroom SHORT: %s\n' "${short[@]}"
-  if [ "${REEBEAT_VERIFY_FORCE:-0}" = 1 ]; then
-    echo "headroom: REEBEAT_VERIFY_FORCE=1, continuing"
+  if [ "${TSUKURI_VERIFY_FORCE:-0}" = 1 ]; then
+    echo "headroom: TSUKURI_VERIFY_FORCE=1, continuing"
     exit 0
   fi
   echo "headroom: wait for another job to finish, or run a smaller scope; back off a running job if full avg60 stays above 20% or swap-in stays over the limit for a minute"

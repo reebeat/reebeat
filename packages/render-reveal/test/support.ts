@@ -1,9 +1,9 @@
 // Shared by the tests. This file is the tests' one runtime adapter: it reads the committed story and the package's
 // own files, and writes Decks to temporary directories, through the Node file system; the tests stay platform-free.
 import { NodeServices } from "@effect/platform-node";
-import { buildPlan, schedule } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
-import { alignedLines } from "@reebeat/services/contract";
+import { buildPlan, schedule } from "@tsukuri/core";
+import type { PlanJson } from "@tsukuri/core";
+import { alignedLines } from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Effect,

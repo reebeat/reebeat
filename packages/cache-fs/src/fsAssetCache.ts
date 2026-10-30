@@ -5,8 +5,8 @@ import {
   assetKey,
   localEgress,
   rejectSecretSettings,
-} from "@reebeat/services";
-import type { Asset, CacheError, Provenance } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { Asset, CacheError, Provenance } from "@tsukuri/services";
 // AssetCache on a directory (spec 0001, design R3). An asset is `<dir>/<key>.<name>` for each of its files and
 // `<dir>/<key>.provenance.json` last, so a reader that finds the provenance finds every file: a put removes an old
 // provenance first, writes the files, and renames the new provenance into place only when all of them are down.

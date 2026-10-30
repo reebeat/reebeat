@@ -1,5 +1,5 @@
 {
-  "name": "@reebeat/speech-kokoro",
+  "name": "@tsukuri/speech-kokoro",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -10,11 +10,11 @@
   "scripts": {
     "test": "bunx vp test",
     "check": "vp check",
-    "test:live": "REEBEAT_LIVE=1 bunx vp test --config vite.live.config.ts"
+    "test:live": "TSUKURI_LIVE=1 bunx vp test --config vite.live.config.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "catalog:",
-    "@reebeat/services": "workspace:*",
+    "@tsukuri/services": "workspace:*",
     "effect": "catalog:",
     "kokoro-js": "catalog:"
   },

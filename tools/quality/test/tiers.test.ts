@@ -58,7 +58,7 @@ const check = Effect.fn("check")(function* check(
       Arr.flatMap(Record.toEntries(packages), ([name, fixture]) => [
         [
           `packages/${name}/package.json`,
-          `{"name":"@reebeat/${name}","dependencies":{${Arr.join(
+          `{"name":"@tsukuri/${name}","dependencies":{${Arr.join(
             Arr.map(
               fixture.dependencies ?? [],
               (dependency) => `"${dependency}":"workspace:*"`
@@ -89,21 +89,21 @@ describe("a clean layering passes", () => {
       Effect.gen(function* clean() {
         const findings = yield* check({
           "cache-fs": {
-            dependencies: ["@reebeat/services", "@reebeat/core"],
-            source: import_("@reebeat/services"),
+            dependencies: ["@tsukuri/services", "@tsukuri/core"],
+            source: import_("@tsukuri/services"),
           },
           core: {},
           pipeline: {
-            dependencies: ["@reebeat/services"],
-            source: import_("@reebeat/services/contract"),
+            dependencies: ["@tsukuri/services"],
+            source: import_("@tsukuri/services/contract"),
           },
           services: {
-            dependencies: ["@reebeat/core"],
-            source: import_("@reebeat/core"),
+            dependencies: ["@tsukuri/core"],
+            source: import_("@tsukuri/core"),
           },
           subtitles: {
-            dependencies: ["@reebeat/core"],
-            source: import_("@reebeat/core"),
+            dependencies: ["@tsukuri/core"],
+            source: import_("@tsukuri/core"),
           },
         });
 
@@ -116,12 +116,12 @@ describe("a package that uses a tier it must not is reported with package, tier,
   it.effect("negative control: a library importing a service", () =>
     Effect.gen(function* control() {
       const findings = yield* check({
-        core: { source: `export {};\n${import_("@reebeat/services")}` },
+        core: { source: `export {};\n${import_("@tsukuri/services")}` },
         services: {},
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/core (libraries): tier libraries must not depend on tier services: @reebeat/services at packages/core/src/index.ts:2",
+        "@tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/index.ts:2",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -130,11 +130,11 @@ describe("a package that uses a tier it must not is reported with package, tier,
     Effect.gen(function* control() {
       const findings = yield* check({
         "cache-fs": {},
-        services: { source: import_("@reebeat/cache-fs") },
+        services: { source: import_("@tsukuri/cache-fs") },
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/services (services): tier services must not depend on tier adapters: @reebeat/cache-fs at packages/services/src/index.ts:1",
+        "@tsukuri/services (services): tier services must not depend on tier adapters: @tsukuri/cache-fs at packages/services/src/index.ts:1",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -142,12 +142,12 @@ describe("a package that uses a tier it must not is reported with package, tier,
   it.effect("negative control: an adapter importing another adapter", () =>
     Effect.gen(function* control() {
       const findings = yield* check({
-        "cache-fs": { source: import_("@reebeat/encode-ffmpeg/something") },
+        "cache-fs": { source: import_("@tsukuri/encode-ffmpeg/something") },
         "encode-ffmpeg": {},
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/cache-fs (adapters): tier adapters must not depend on tier adapters: @reebeat/encode-ffmpeg/something at packages/cache-fs/src/index.ts:1",
+        "@tsukuri/cache-fs (adapters): tier adapters must not depend on tier adapters: @tsukuri/encode-ffmpeg/something at packages/cache-fs/src/index.ts:1",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -156,11 +156,11 @@ describe("a package that uses a tier it must not is reported with package, tier,
     Effect.gen(function* control() {
       const findings = yield* check({
         "encode-ffmpeg": {},
-        pipeline: { source: import_("@reebeat/encode-ffmpeg") },
+        pipeline: { source: import_("@tsukuri/encode-ffmpeg") },
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/pipeline (programs): tier programs must not depend on tier adapters: @reebeat/encode-ffmpeg at packages/pipeline/src/index.ts:1",
+        "@tsukuri/pipeline (programs): tier programs must not depend on tier adapters: @tsukuri/encode-ffmpeg at packages/pipeline/src/index.ts:1",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -170,12 +170,12 @@ describe("a package that uses a tier it must not is reported with package, tier,
     () =>
       Effect.gen(function* control() {
         const findings = yield* check({
-          core: { dependencies: ["@reebeat/services"] },
+          core: { dependencies: ["@tsukuri/services"] },
           services: {},
         });
 
         assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-          "@reebeat/core (libraries): tier libraries must not depend on tier services: @reebeat/services at packages/core/package.json",
+          "@tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/package.json",
         ]);
       }).pipe(Effect.provide(platform))
   );
@@ -190,7 +190,7 @@ describe("a package that uses a tier it must not is reported with package, tier,
         });
 
         assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-          "@reebeat/core (libraries): tier libraries must not depend on tier services: ../../services/src/index.ts at packages/core/src/index.ts:1",
+          "@tsukuri/core (libraries): tier libraries must not depend on tier services: ../../services/src/index.ts at packages/core/src/index.ts:1",
         ]);
       }).pipe(Effect.provide(platform))
   );
@@ -202,14 +202,14 @@ describe("a package that uses a tier it must not is reported with package, tier,
         const findings = yield* check({
           core: {
             source:
-              'export const a = import("@reebeat/services");\nexport const b = (name: string) => import(name);\n',
+              'export const a = import("@tsukuri/services");\nexport const b = (name: string) => import(name);\n',
           },
           services: {},
         });
 
         assert.deepStrictEqual(
           Arr.map(findings, ({ dependency, line }) => `${dependency}:${line}`),
-          ["@reebeat/services:1", "<computed>:2"]
+          ["@tsukuri/services:1", "<computed>:2"]
         );
       }).pipe(Effect.provide(platform))
   );
@@ -224,12 +224,12 @@ describe("tools may use anything", () => {
           "cache-fs": {},
           cli: {
             dependencies: [
-              "@reebeat/cache-fs",
-              "@reebeat/pipeline",
-              "@reebeat/services",
-              "@reebeat/core",
+              "@tsukuri/cache-fs",
+              "@tsukuri/pipeline",
+              "@tsukuri/services",
+              "@tsukuri/core",
             ],
-            source: `${import_("@reebeat/cache-fs")}${import_("@reebeat/pipeline")}${import_("@reebeat/services")}${import_("@reebeat/core")}`,
+            source: `${import_("@tsukuri/cache-fs")}${import_("@tsukuri/pipeline")}${import_("@tsukuri/services")}${import_("@tsukuri/core")}`,
           },
           core: {},
           pipeline: {},
@@ -244,11 +244,11 @@ describe("tools may use anything", () => {
     Effect.gen(function* control() {
       const findings = yield* check({
         cli: {},
-        core: { source: import_("@reebeat/cli") },
+        core: { source: import_("@tsukuri/cli") },
       });
 
       assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-        "@reebeat/core (libraries): tier libraries must not depend on tier tools: @reebeat/cli at packages/core/src/index.ts:1",
+        "@tsukuri/core (libraries): tier libraries must not depend on tier tools: @tsukuri/cli at packages/core/src/index.ts:1",
       ]);
     }).pipe(Effect.provide(platform))
   );
@@ -262,7 +262,7 @@ describe("a package must be in the table", () => {
         const findings = yield* check({ core: {}, mystery: {} });
 
         assert.deepStrictEqual(Arr.map(findings, describeFinding), [
-          "@reebeat/mystery (no tier): has no tier: add it to the table in tools/quality/tiers.ts: packages/mystery at packages/mystery",
+          "@tsukuri/mystery (no tier): has no tier: add it to the table in tools/quality/tiers.ts: packages/mystery at packages/mystery",
         ]);
       }).pipe(Effect.provide(platform))
   );
@@ -272,7 +272,7 @@ describe("a package must be in the table", () => {
     () =>
       Effect.gen(function* control() {
         const findings = yield* check({
-          cli: { dependencies: ["@reebeat/mystery"] },
+          cli: { dependencies: ["@tsukuri/mystery"] },
           mystery: {},
         });
 
@@ -282,8 +282,8 @@ describe("a package must be in the table", () => {
             ({ dependency, package: name }) => `${name} -> ${dependency}`
           ),
           [
-            "@reebeat/cli -> @reebeat/mystery",
-            "@reebeat/mystery -> packages/mystery",
+            "@tsukuri/cli -> @tsukuri/mystery",
+            "@tsukuri/mystery -> packages/mystery",
           ]
         );
       }).pipe(Effect.provide(platform))
@@ -382,8 +382,8 @@ describe("sourceFiles: what the gate reads, and what it refuses to skip", () => 
         const path = yield* Path.Path;
 
         const root = yield* tree({
-          "elsewhere/b.ts": import_("@reebeat/services"),
-          "packages/core/package.json": '{"name":"@reebeat/core"}',
+          "elsewhere/b.ts": import_("@tsukuri/services"),
+          "packages/core/package.json": '{"name":"@tsukuri/core"}',
           "packages/core/src/index.ts": "export {};\n",
         });
 
@@ -395,7 +395,7 @@ describe("sourceFiles: what the gate reads, and what it refuses to skip", () => 
         assert.deepStrictEqual(
           Arr.map(yield* checkTiers(root), describeFinding),
           [
-            "@reebeat/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/linked at packages/core/src/linked",
+            "@tsukuri/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/linked at packages/core/src/linked",
           ]
         );
       }).pipe(Effect.provide(platform))
@@ -454,11 +454,11 @@ describe("importsOf", () => {
   it("lists imports, type imports, re-exports and dynamic imports with their lines", () => {
     const text = Arr.join(
       [
-        'import { a } from "@reebeat/core";',
+        'import { a } from "@tsukuri/core";',
         'import type { B } from "./b.ts";',
-        'export * from "@reebeat/services";',
+        'export * from "@tsukuri/services";',
         'export { c } from "x";',
-        'export const d = import("@reebeat/lint");',
+        'export const d = import("@tsukuri/lint");',
         "",
       ],
       "\n"
@@ -467,11 +467,11 @@ describe("importsOf", () => {
     assert.deepStrictEqual(
       Arr.map(importsOf(text), ({ line, specifier }) => `${line} ${specifier}`),
       [
-        "1 @reebeat/core",
+        "1 @tsukuri/core",
         "2 ./b.ts",
-        "3 @reebeat/services",
+        "3 @tsukuri/services",
         "4 x",
-        "5 @reebeat/lint",
+        "5 @tsukuri/lint",
       ]
     );
   });

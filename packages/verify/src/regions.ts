@@ -3,8 +3,8 @@
 // frame is a poor place to look: the encoder leaves a faint flicker on the hard edge of an Element that appeared
 // earlier, larger than the step threshold. Elements of one cell stack inside it, and a focus ring and its slight scale
 // stay within a cell of a third of the frame.
-import type { Element, PlanJson, Scene } from "@reebeat/core";
-import type { Box } from "@reebeat/encode-ffmpeg";
+import type { Element, PlanJson, Scene } from "@tsukuri/core";
+import type { Box } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
 /** The row and the column (0 to 2) of each cell of the grid; the type makes the table total. */

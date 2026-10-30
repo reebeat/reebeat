@@ -1,7 +1,7 @@
 {
-  "name": "@reebeat/pipeline",
+  "name": "@tsukuri/pipeline",
   "version": "0.0.0",
-  "description": "reebeat pipeline: the build program over the services, and the build manifest schema.",
+  "description": "tsukuri pipeline: the build program over the services, and the build manifest schema.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -17,9 +17,9 @@
     "prepublishOnly": "echo 'publish the staged dist (bun run release:stage), never this directory' && exit 1"
   },
   "dependencies": {
-    "@reebeat/core": "workspace:*",
-    "@reebeat/services": "workspace:*",
-    "@reebeat/subtitles": "workspace:*"
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/services": "workspace:*",
+    "@tsukuri/subtitles": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",

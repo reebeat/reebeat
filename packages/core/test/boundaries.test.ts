@@ -128,7 +128,7 @@ describe("F11: packages/core is pure", () => {
   );
 
   it.effect(
-    "the `@reebeat/core/steps` subpath reaches no parser: steps.ts and what it imports read only effect and the Plan types",
+    "the `@tsukuri/core/steps` subpath reaches no parser: steps.ts and what it imports read only effect and the Plan types",
     () =>
       Effect.gen(function* subpath() {
         const files = yield* readSources;

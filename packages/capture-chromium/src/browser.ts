@@ -1,12 +1,12 @@
 /* oxlint-disable typescript/promise-function-async -- EX-0040: Playwright returns Promises; every call goes through `inPage` */
 // The browser boundary: the only module that imports Playwright. ABI: Playwright's Promise API driving the
-// Chromium named by `REEBEAT_CHROMIUM` (spec 0001, "The controlled clock"). Each `open` launches a fresh
+// Chromium named by `TSUKURI_CHROMIUM` (spec 0001, "The controlled clock"). Each `open` launches a fresh
 // browser in the caller's Scope and closes it when the Scope closes; interruption stops the waiting fiber, and
 // the close that follows kills the browser, so a Promise that is still pending changes nothing afterwards.
 // The layer checks what the capture needs when it is built (the variable, the binary, the clock script) and reads
 // the two versions that name the adapter; a missing one is `AdapterUnavailable`, never a fallback.
 // Retirement trigger: an Effect-native browser driver in the installed Effect packages.
-import { AdapterUnavailable } from "@reebeat/services";
+import { AdapterUnavailable } from "@tsukuri/services";
 import {
   Config,
   Context,
@@ -41,7 +41,7 @@ export interface DeckPage {
   readonly command: (
     command: CaptureCommand
   ) => Effect.Effect<void, BrowserFailed>;
-  /** Resolves when the deck's `reebeatDeck.ready` and the page's fonts are ready. */
+  /** Resolves when the deck's `tsukuriDeck.ready` and the page's fonts are ready. */
   readonly ready: Effect.Effect<void, BrowserFailed>;
   /** One PNG of the viewport; a `Page.captureScreenshot` that Chromium could not serve is called again twice at most. */
   readonly screenshot: Effect.Effect<Uint8Array, BrowserFailed>;
@@ -85,8 +85,8 @@ const inPage = <A>(operation: string, run: () => Promise<A>) =>
 
 const evaluateCommand = (command: CaptureCommand): string =>
   command.kind === "goToScene"
-    ? `window.reebeatDeck.goToScene(${JSON.stringify(command.sceneId)})`
-    : "window.reebeatDeck.stepFragment()";
+    ? `window.tsukuriDeck.goToScene(${JSON.stringify(command.sceneId)})`
+    : "window.tsukuriDeck.stepFragment()";
 
 const decodeLiveCount = Schema.decodeUnknownEffect(Schema.Int);
 
@@ -94,17 +94,17 @@ const decodeLiveCount = Schema.decodeUnknownEffect(Schema.Int);
 const seekAnimations = (page: Page): DeckPage["seek"] =>
   Effect.fnUntraced(function* seek(frame, fps, settle, skewMs) {
     const fresh = yield* inPage("look for new animations", () =>
-      page.evaluate("window.__reebeatHasNewAnimations()")
+      page.evaluate("window.__tsukuriHasNewAnimations()")
     );
 
     if (settle && fresh === true) {
       yield* inPage("settle", () =>
-        page.evaluate("window.__reebeatTwoRealFrames()")
+        page.evaluate("window.__tsukuriTwoRealFrames()")
       );
     }
 
     const live = yield* inPage("seek", () =>
-      page.evaluate(`window.__reebeatSeek(${frame}, ${fps}, ${skewMs})`)
+      page.evaluate(`window.__tsukuriSeek(${frame}, ${fps}, ${skewMs})`)
     );
 
     return yield* Effect.mapError(
@@ -122,7 +122,7 @@ const deckPage = (page: Page): DeckPage => ({
     inPage(command.kind, () => page.evaluate(evaluateCommand(command))),
   ready: inPage("deck ready", () =>
     page.evaluate(
-      "Promise.all([window.reebeatDeck.ready, document.fonts.ready]).then(() => 0)"
+      "Promise.all([window.tsukuriDeck.ready, document.fonts.ready]).then(() => 0)"
     )
   ),
   screenshot: retryScreenshot(
@@ -168,14 +168,14 @@ const PackageVersion = Schema.fromJsonString(
 
 const decodePackageVersion = Schema.decodeUnknownEffect(PackageVersion);
 
-/** The binary named by `REEBEAT_CHROMIUM`, and the version it prints. */
+/** The binary named by `TSUKURI_CHROMIUM`, and the version it prints. */
 const findChromium = Effect.fnUntraced(function* findChromium() {
-  const executable = yield* readVariable("REEBEAT_CHROMIUM");
+  const executable = yield* readVariable("TSUKURI_CHROMIUM");
 
   if (executable === "") {
     return yield* unavailable(
-      "env REEBEAT_CHROMIUM",
-      "REEBEAT_CHROMIUM is not set: it names the Chromium binary the capture drives"
+      "env TSUKURI_CHROMIUM",
+      "TSUKURI_CHROMIUM is not set: it names the Chromium binary the capture drives"
     );
   }
 
@@ -186,8 +186,8 @@ const findChromium = Effect.fnUntraced(function* findChromium() {
     .pipe(
       Effect.mapError(() =>
         unavailable(
-          "binary named by REEBEAT_CHROMIUM",
-          "the binary named by REEBEAT_CHROMIUM did not run `--version`"
+          "binary named by TSUKURI_CHROMIUM",
+          "the binary named by TSUKURI_CHROMIUM did not run `--version`"
         )
       )
     );
@@ -196,8 +196,8 @@ const findChromium = Effect.fnUntraced(function* findChromium() {
 
   return version === undefined
     ? yield* unavailable(
-        "binary named by REEBEAT_CHROMIUM",
-        "the binary named by REEBEAT_CHROMIUM printed no version"
+        "binary named by TSUKURI_CHROMIUM",
+        "the binary named by TSUKURI_CHROMIUM printed no version"
       )
     : { executable, version };
 });
@@ -241,7 +241,7 @@ interface Install {
 const findInstall = Effect.fnUntraced(function* findInstall() {
   const chromiumBinary = yield* findChromium();
   const timeweb = yield* findTimeweb();
-  const noSandbox = yield* readVariable("REEBEAT_CHROMIUM_NO_SANDBOX");
+  const noSandbox = yield* readVariable("TSUKURI_CHROMIUM_NO_SANDBOX");
 
   return {
     args:
@@ -269,7 +269,7 @@ export class Browser extends Context.Service<
     /** The versions that name the adapter, or why the machine cannot run it. */
     readonly versions: Effect.Effect<BrowserVersions, AdapterUnavailable>;
   }
->()("@reebeat/capture-chromium/browser/Browser") {
+>()("@tsukuri/capture-chromium/browser/Browser") {
   /**
    * Looks for the variable, the binary and the clock script when the layer is built and settles the outcome; nothing
    * fails then. A machine that lacks one makes every `open` (and `versions`) fail with `AdapterUnavailable`.

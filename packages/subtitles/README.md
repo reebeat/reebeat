@@ -1,7 +1,7 @@
-# @reebeat/subtitles
+# @tsukuri/subtitles
 
 A library (design R3): the narration of a scheduled Plan as subtitles, and WebVTT back to cues. Pure functions; it
-depends on `@reebeat/core` and `effect` only.
+depends on `@tsukuri/core` and `effect` only.
 
 | Export | What it is |
 | --- | --- |

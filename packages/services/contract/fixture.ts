@@ -1,14 +1,14 @@
 // The Plan the Renderer and FrameCapturer contracts use unless an adapter supplies its own: one Scene, two Elements,
 // one Line, with a Timeline so that a capturer knows its frame count. Built by the core's own `buildPlan` and
 // `schedule`, so it is a valid Plan by construction.
-import { buildPlan, referenceLifecycle, schedule } from "@reebeat/core";
+import { buildPlan, referenceLifecycle, schedule } from "@tsukuri/core";
 import type {
   AlignedLine,
   PlanError,
   PlanJson,
   RendererLifecycle,
   ScheduleError,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
@@ -49,7 +49,7 @@ export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     }))
   );
 
-/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@reebeat/core`'s reference one. */
+/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@tsukuri/core`'s reference one. */
 export const contractLifecycle: RendererLifecycle = referenceLifecycle;
 
 /** The contract Plan, with its Timeline. */

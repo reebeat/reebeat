@@ -29,7 +29,7 @@ export const elementClasses = [
   "muted",
 ] as const;
 
-/** The built-in sound catalogue (synthesised in TypeScript by `@reebeat/sounds-synth`); the one list of sound names. */
+/** The built-in sound catalogue (synthesised in TypeScript by `@tsukuri/sounds-synth`); the one list of sound names. */
 export const sfxNames = ["pop", "whoosh", "ding"] as const;
 
 export type SfxName = (typeof sfxNames)[number];

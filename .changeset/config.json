@@ -6,13 +6,13 @@
   "commit": false,
   "fixed": [
     [
-      "@reebeat/core",
-      "@reebeat/lint",
-      "@reebeat/pipeline",
-      "@reebeat/render-reveal",
-      "@reebeat/services",
-      "@reebeat/sounds-synth",
-      "@reebeat/subtitles"
+      "@tsukuri/core",
+      "@tsukuri/lint",
+      "@tsukuri/pipeline",
+      "@tsukuri/render-reveal",
+      "@tsukuri/services",
+      "@tsukuri/sounds-synth",
+      "@tsukuri/subtitles"
     ]
   ],
   "privatePackages": {

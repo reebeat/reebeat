@@ -1,4 +1,4 @@
-import type { MuxRequest } from "@reebeat/services";
+import type { MuxRequest } from "@tsukuri/services";
 // Chapter marks in the ffmpeg metadata format (https://ffmpeg.org/ffmpeg-formats.html#Metadata-1): one chapter per
 // request chapter, in milliseconds. Plain function.
 import { Array as Arr, String as Str } from "effect";

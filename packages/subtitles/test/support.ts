@@ -5,8 +5,8 @@ import {
   referenceLifecycle,
   requireTimeline,
   schedule,
-} from "@reebeat/core";
-import type { AlignedLine, Line, PlanJson, TimedPlan } from "@reebeat/core";
+} from "@tsukuri/core";
+import type { AlignedLine, Line, PlanJson, TimedPlan } from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(

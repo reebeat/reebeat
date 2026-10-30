@@ -1,8 +1,8 @@
 // F6, determinism: two build directories of the same source and cache decode to the same video frames (the hash of
 // every frame) and the same audio samples. The bytes of the two containers are compared and the result is recorded,
 // not required. The first differing frame is named.
-import { decodeMonoPcm, frameHashes } from "@reebeat/encode-ffmpeg";
-import { sha256Hex } from "@reebeat/pipeline";
+import { decodeMonoPcm, frameHashes } from "@tsukuri/encode-ffmpeg";
+import { sha256Hex } from "@tsukuri/pipeline";
 import {
   Array as Arr,
   Effect,

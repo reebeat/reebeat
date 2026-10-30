@@ -1,7 +1,7 @@
 {
-  "name": "@reebeat/services",
+  "name": "@tsukuri/services",
   "version": "0.0.0",
-  "description": "reebeat services: the seven service interfaces, their errors, contract suites and offline stand-ins.",
+  "description": "tsukuri services: the seven service interfaces, their errors, contract suites and offline stand-ins.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -19,7 +19,7 @@
     "prepublishOnly": "echo 'publish the staged dist (bun run release:stage), never this directory' && exit 1"
   },
   "dependencies": {
-    "@reebeat/core": "workspace:*"
+    "@tsukuri/core": "workspace:*"
   },
   "devDependencies": {
     "@effect/platform-node": "catalog:",

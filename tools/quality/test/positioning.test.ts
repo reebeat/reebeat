@@ -57,7 +57,7 @@ describe("F-pos1: the README holds the words of the spec verbatim", () => {
 
   const readme = Arr.join(
     [
-      "# reebeat",
+      "# tsukuri",
       "**Declarative things: fast to read.**",
       "*We take care of building; you focus on creating.*",
       "Declare your scenes. Every result is reproducible.",
@@ -116,7 +116,7 @@ const nine = (name: string): readonly string[] =>
   );
 
 const rowNames = (tools: readonly string[]): readonly string[] => [
-  "**reebeat** (today)",
+  "**tsukuri** (today)",
   ...Arr.map(tools, (tool) => `**(a) ${tool}**`),
 ];
 
@@ -126,7 +126,7 @@ const rowsOf = (tools: readonly string[]): readonly (readonly string[])[] =>
 describe("F-pos3: the comparison table has the agreed columns and rows", () => {
   const good = `Intro.\n\n${table(comparisonColumns, rowsOf(comparisonTools))}\n\nAfter.`;
 
-  it("holds for the agreed columns, reebeat and the 13 tools, nine cells each", () => {
+  it("holds for the agreed columns, tsukuri and the 13 tools, nine cells each", () => {
     assert.deepStrictEqual(comparisonFindings(good), []);
   });
 
@@ -185,7 +185,7 @@ describe("F-pos3: the comparison table has the agreed columns and rows", () => {
 });
 
 const noteWith = (body: string): string =>
-  `# Note\n\n## Performance\n\n${body}\n\n## Experience\n\nreebeat is faster than Remotion, in another section.\n`;
+  `# Note\n\n## Performance\n\n${body}\n\n## Experience\n\ntsukuri is faster than Remotion, in another section.\n`;
 
 describe("F-pos4: the Performance section makes no unmeasured speed claim", () => {
   it("holds for qualitative text, a figure with a unit and a link target", () => {
@@ -201,7 +201,7 @@ describe("F-pos4: the Performance section makes no unmeasured speed claim", () =
 
   it("control: a comparison with another tool is reported", () => {
     const findings = speedFindings(
-      noteWith("reebeat is faster than Remotion.")
+      noteWith("tsukuri is faster than Remotion.")
     );
 
     assert.lengthOf(findings, 1);
@@ -257,7 +257,7 @@ describe("F-pos5: the status words agree between the README and the note", () =>
   const noteOf = (rows: readonly (readonly string[])[]): string =>
     table(["Claim", "Status", "Evidence"], rows);
 
-  const readme = `# reebeat\n\n${readmeTable}\n`;
+  const readme = `# tsukuri\n\n${readmeTable}\n`;
   const note = noteOf(noteRows);
 
   it("holds when every README row is in the note with the same words, and the note adds a row", () => {
@@ -317,31 +317,31 @@ describe("F-pos5: the status words agree between the README and the note", () =>
 
   it("control: a README without the status table is reported", () => {
     assert.isTrue(
-      mentions(statusFindings("# reebeat", note), "README has no table")
+      mentions(statusFindings("# tsukuri", note), "README has no table")
     );
   });
 });
 
-describe("F-pos6: the vocabulary keeps build for reebeat and creating for the author", () => {
-  it("control: reebeat creates the video is reported", () => {
-    assert.lengthOf(vocabularyFindings("Then reebeat creates the video."), 1);
+describe("F-pos6: the vocabulary keeps build for tsukuri and creating for the author", () => {
+  it("control: tsukuri creates the video is reported", () => {
+    assert.lengthOf(vocabularyFindings("Then tsukuri creates the video."), 1);
   });
 
   it("control: you build the video is reported", () => {
     assert.lengthOf(vocabularyFindings("You build the video by hand."), 1);
   });
 
-  it("control: reebeat as the author is reported", () => {
+  it("control: tsukuri as the author is reported", () => {
     assert.lengthOf(
-      vocabularyFindings("reebeat is the author of the story."),
+      vocabularyFindings("tsukuri is the author of the story."),
       1
     );
   });
 
-  it("holds for you focus on creating and reebeat builds", () => {
+  it("holds for you focus on creating and tsukuri builds", () => {
     assert.deepStrictEqual(
       vocabularyFindings(
-        "We take care of building; you focus on creating. reebeat builds the video and you declare the story."
+        "We take care of building; you focus on creating. tsukuri builds the video and you declare the story."
       ),
       []
     );
@@ -351,10 +351,10 @@ describe("F-pos6: the vocabulary keeps build for reebeat and creating for the au
 const howItWorksWith = (extra: string): string =>
   Arr.join(
     [
-      "# How reebeat works",
+      "# How tsukuri works",
       "",
       "The Build is an incremental DAG: the build graph has no cycles ([Salsa](https://example.org/salsa)).",
-      "Own repository: [issue](https://github.com/reebeat/reebeat/issues/9).",
+      "Own repository: [issue](https://github.com/tsukuri-labs/tsukuri/issues/9).",
       extra,
       "",
       "## Sources",

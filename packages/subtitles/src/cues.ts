@@ -1,7 +1,7 @@
 // One subtitle cue per Line of a scheduled Plan: the Line's id, its start and end in milliseconds, its narration
 // text. Both writers read the same list, so WebVTT and SubRip cannot disagree about timing or text.
-import { frameToMs, linesById } from "@reebeat/core";
-import type { TimedPlan } from "@reebeat/core";
+import { frameToMs, linesById } from "@tsukuri/core";
+import type { TimedPlan } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 export interface SubtitleCue {

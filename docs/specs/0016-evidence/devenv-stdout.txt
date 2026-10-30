@@ -1,0 +1,11 @@
+# devenv shell keeps stdout clean, so a stdio MCP server can be started through it
+$ devenv shell -- sh -c 'echo OUT; echo ERR >&2' > out.txt 2> err.txt   (warm cache; wall time below)
+--- out.txt (stdout):
+OUT
+--- err.txt (stderr):
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 14.9ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 13.0ms
+ERR
+--- wall time of the command: 0.623 s (real), from `time`

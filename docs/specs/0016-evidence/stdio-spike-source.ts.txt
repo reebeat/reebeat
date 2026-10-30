@@ -1,0 +1,36 @@
+// THROWAWAY spike for spec 0016 research (deleted before commit): does Effect 4.1.0's McpServer speak stdio to the
+// installed Claude Code and Codex, with annotations and structuredContent?
+import { NodeRuntime, NodeServices } from "@effect/platform-node";
+import { Effect, Layer, Schema } from "effect";
+import { McpProtocol, McpServer, Tool, Toolkit } from "effect/ai";
+
+const Lint = Tool.make("story_lint", {
+  description: "Lint a story. Use this when the user asks whether a story is valid.",
+  parameters: Schema.Struct({ story: Schema.String }),
+  success: Schema.Struct({ errors: Schema.Int, story: Schema.String }),
+})
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.OpenWorld, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.Strict, true);
+
+const toolkit = Toolkit.make(Lint);
+
+const handlers = toolkit.toLayer(
+  Effect.succeed(
+    toolkit.of({
+      story_lint: ({ story }) => Effect.succeed({ errors: 0, story }),
+    })
+  )
+);
+
+const server = McpServer.layerStdio({
+  instructions: "spike",
+  name: "tsukuri-spike",
+  protocols: [McpProtocol.v2026_07_28, McpProtocol.v2025_11_25, McpProtocol.v2025_06_18],
+  registrations: McpServer.toolkit(toolkit).pipe(Layer.provide(handlers)),
+  version: "0.0.0",
+});
+
+NodeRuntime.runMain(Layer.launch(server.pipe(Layer.provide(NodeServices.layer))));

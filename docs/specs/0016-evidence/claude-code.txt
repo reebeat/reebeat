@@ -1,0 +1,34 @@
+# Claude Code (installed version below), isolated config directory
+2.1.295 (Claude Code)
+$ claude mcp add --scope user --transport stdio tsukuri-spike -- bun <spike-mcp.ts>
+Added stdio MCP server tsukuri-spike with command: bun /srv/share/projects/reebeat/.worktrees/0016-mcp/packages/cli/spike-mcp.ts to user config
+File modified: <claude-config-dir>/.claude.json
+$ claude mcp list   # health check: starts the server and completes the MCP handshake
+Checking MCP server health…
+
+tsukuri-spike: bun /srv/share/projects/reebeat/.worktrees/0016-mcp/packages/cli/spike-mcp.ts - ✔ Connected
+$ claude mcp get tsukuri-spike
+tsukuri-spike:
+  Scope: User config (available in all your projects)
+  Status: ✔ Connected
+  Type: stdio
+  Command: bun
+  Args: /srv/share/projects/reebeat/.worktrees/0016-mcp/packages/cli/spike-mcp.ts
+  Environment:
+
+To remove this server, run: claude mcp remove tsukuri-spike -s user
+
+# Portable Agent Plugins layout (root plugin.json, mcp.json, skills/) against Claude Code
+$ claude plugin validate --strict <portable-dir>
+Validating components in: <portable-dir>
+
+✔ Validation passed
+$ claude plugin validate <portable-dir>   # after copying plugin.json to .claude-plugin/plugin.json
+Validating plugin manifest: <portable-dir>/.claude-plugin/plugin.json
+
+⚠ Found 1 warning:
+
+  ❯ author: No author information provided. Consider adding author details for plugin attribution
+
+✔ Validation passed with warnings
+

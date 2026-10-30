@@ -1,0 +1,177 @@
+# MCP conformance suite: what each revision requires of a server (raw)
+$ npx --yes @modelcontextprotocol/conformance@0.2.0-alpha.12 list --requirements 2026-07-28
+Required for 2026-07-28 (69 scenarios, frozen; run at the 2026-07-28 wire):
+
+Server scenarios (test against a server):
+  - server-stateless
+  - completion-complete
+  - tools-list
+  - tools-call-simple-text
+  - tools-call-image
+  - tools-call-audio
+  - tools-call-embedded-resource
+  - tools-call-mixed-content
+  - tools-call-error
+  - tools-call-with-progress
+  - server-sse-multiple-streams
+  - resources-list
+  - resources-read-text
+  - resources-read-binary
+  - resources-templates-read
+  - sep-2164-resource-not-found
+  - prompts-list
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-embedded-resource
+  - prompts-get-with-image
+  - dns-rebinding-protection
+  - caching
+  - input-required-result-basic-elicitation
+  - input-required-result-basic-sampling
+  - input-required-result-basic-list-roots
+  - input-required-result-request-state
+  - input-required-result-multiple-input-requests
+  - input-required-result-multi-round
+  - input-required-result-missing-input-response
+  - input-required-result-non-tool-request
+  - input-required-result-result-type
+  - input-required-result-unsupported-methods
+  - input-required-result-tampered-state
+  - input-required-result-capability-check
+  - input-required-result-ignore-extra-params
+  - input-required-result-validate-input
+
+Client scenarios (test against a client):
+  - tools_call
+  - request-metadata
+  - auth/metadata-default
+  - auth/metadata-var1
+  - auth/metadata-var2
+  - auth/metadata-var3
+  - auth/basic-cimd
+  - auth/scope-from-www-authenticate
+  - auth/scope-from-scopes-supported
+  - auth/scope-omitted-when-undefined
+  - auth/scope-step-up
+  - auth/scope-retry-limit
+  - auth/token-endpoint-auth-basic
+  - auth/token-endpoint-auth-post
+  - auth/token-endpoint-auth-none
+  - auth/pre-registration
+  - auth/resource-mismatch
+  - auth/offline-access-scope
+  - auth/offline-access-not-supported
+  - auth/authorization-server-migration
+  - auth/iss-supported
+  - auth/iss-not-advertised
+  - auth/iss-supported-missing
+  - auth/iss-wrong-issuer
+  - auth/iss-unexpected
+  - auth/iss-normalized
+  - auth/metadata-issuer-mismatch
+  - sep-2322-client-request-state
+  - http-standard-headers
+  - http-custom-headers
+  - http-invalid-tool-headers
+  - json-schema-ref-no-deref
+
+Run and reported, but never scored:
+  extension (16):
+    - auth/client-credentials-jwt [client]
+    - auth/client-credentials-basic [client]
+    - auth/enterprise-managed-authorization [client]
+    - auth/dpop [client]
+    - auth/dpop-nonce [client]
+    - auth/wif-jwt-bearer [client]
+    - tasks-lifecycle [server]
+    - tasks-capability-negotiation [server]
+    - tasks-wire-fields [server]
+    - tasks-request-state-removal [server]
+    - tasks-mrtr-input [server]
+    - tasks-request-headers [server]
+    - tasks-dispatch-and-envelope [server]
+    - tasks-status-notifications [server]
+    - tasks-required-task-error [server]
+    - tasks-mrtr-composition [server]
+  added-after-release (1):
+    - json-schema-2020-12-preservation [client]
+  pending (3):
+    - json-schema-2020-12 [server]
+    - http-header-validation [server]
+    - http-custom-header-server-validation [server]
+
+
+$ npx --yes @modelcontextprotocol/conformance@0.2.0-alpha.12 list --requirements 2025-11-25
+Required for 2025-11-25 (48 scenarios, frozen; run at the 2025-11-25 wire):
+
+Server scenarios (test against a server):
+  - server-initialize
+  - logging-set-level
+  - ping
+  - completion-complete
+  - tools-list
+  - tools-call-simple-text
+  - tools-call-image
+  - tools-call-audio
+  - tools-call-embedded-resource
+  - tools-call-mixed-content
+  - tools-call-with-logging
+  - tools-call-error
+  - tools-call-with-progress
+  - tools-call-sampling
+  - tools-call-elicitation
+  - elicitation-sep1034-defaults
+  - server-sse-multiple-streams
+  - elicitation-sep1330-enums
+  - resources-list
+  - resources-read-text
+  - resources-read-binary
+  - resources-templates-read
+  - resources-subscribe
+  - resources-unsubscribe
+  - prompts-list
+  - prompts-get-simple
+  - prompts-get-with-args
+  - prompts-get-embedded-resource
+  - prompts-get-with-image
+  - dns-rebinding-protection
+
+Client scenarios (test against a client):
+  - initialize
+  - tools_call
+  - elicitation-sep1034-client-defaults
+  - sse-retry
+  - auth/metadata-default
+  - auth/metadata-var1
+  - auth/metadata-var2
+  - auth/metadata-var3
+  - auth/basic-cimd
+  - auth/scope-from-www-authenticate
+  - auth/scope-from-scopes-supported
+  - auth/scope-omitted-when-undefined
+  - auth/scope-step-up
+  - auth/scope-retry-limit
+  - auth/token-endpoint-auth-basic
+  - auth/token-endpoint-auth-post
+  - auth/token-endpoint-auth-none
+  - auth/pre-registration
+
+Run and reported, but never scored:
+  extension (6):
+    - auth/client-credentials-jwt [client]
+    - auth/client-credentials-basic [client]
+    - auth/enterprise-managed-authorization [client]
+    - auth/dpop [client]
+    - auth/dpop-nonce [client]
+    - auth/wif-jwt-bearer [client]
+  added-after-release (2):
+    - server-session-lifecycle [server]
+    - json-schema-2020-12-preservation [client]
+  pending (2):
+    - json-schema-2020-12 [server]
+    - server-sse-polling [server]
+
+
+# package facts
+version = '0.2.0-alpha.12'
+license = 'MIT'

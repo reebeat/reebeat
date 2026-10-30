@@ -1,9 +1,15 @@
-# Publishes the @tsukuri/* packages to npm through trusted publishing (spec 0009).
-# The manual publish on main requires approval in npm-release. The workflow and environment names are registered on npm.
+# Publishes @tsukuri/* through trusted publishing (spec 0009); npm-release approval remains required.
+# Check mode performs no publish and does not validate OIDC; publish runs only on main.
 name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "check: print npm version, publish nothing. publish: publish."
+        type: choice
+        options: [check, publish]
+        default: check
 
 permissions:
   contents: read
@@ -13,9 +19,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  check:
+    # Reads only: no job step runs a publish command, and the publish job below does not run in this mode.
+    if: inputs.mode == 'check' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+    steps:
+      - name: Check npm version
+        run: npm --version
+
   publish:
     # Only the head of main is released; the check below ties the commit to a green `checks` run.
-    if: github.ref == 'refs/heads/main'
+    if: inputs.mode == 'publish' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: npm-release
     permissions:

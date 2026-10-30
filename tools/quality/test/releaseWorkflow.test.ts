@@ -1,11 +1,18 @@
 // Release workflow controls (spec 0009).
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import type { Option } from "effect";
-import { Array as Arr, Effect, FileSystem, Path, String as Str } from "effect";
+import {
+  Array as Arr,
+  Effect,
+  FileSystem,
+  Option,
+  Path,
+  String as Str,
+} from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 import {
+  evaluateCondition,
   holdFindings,
   holdScript,
   tagFindings,
@@ -14,6 +21,12 @@ import {
   tokenFindings,
 } from "../releaseWorkflow.ts";
 import type { WorkflowFile } from "../releaseWorkflow.ts";
+
+const checkCondition =
+  "inputs.mode == 'check' && github.ref == 'refs/heads/main'";
+
+const publishCondition =
+  "inputs.mode == 'publish' && github.ref == 'refs/heads/main'";
 
 interface Changes {
   readonly beforeHold?: string;
@@ -60,10 +73,23 @@ const release = (changes: Changes): WorkflowFile => ({
   text: `name: Release
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        type: choice
+        options: [check, publish]
+        default: ${changes.mode ?? "check"}
 ${changes.workflowEnv ?? ""}
 jobs:
+  check:
+    if: ${checkCondition}
+    runs-on: ubuntu-latest
+    environment: ${changes.environment ?? "npm-release"}
+${changes.needs ?? ""}
+    steps:
+      - name: Check
+        run: ${changes.checkRun ?? "npm --version"}
   publish:
-    if: ${changes.publishIf ?? "github.ref == 'refs/heads/main'"}
+    if: ${changes.publishIf ?? publishCondition}
     runs-on: ubuntu-latest
     environment: ${changes.environment ?? "npm-release"}
     permissions:
@@ -99,13 +125,7 @@ describe("token-free trusted publishing", () => {
     }
   });
 
-  it("requires main, environment approval and OIDC permission", () => {
-    assert.deepStrictEqual(modeFindings(release({})), []);
-    assert.isTrue(
-      mentioning("restricted to main")(
-        modeFindings(release({ publishIf: "always()" }))
-      )
-    );
+  it("requires the publishing environment and OIDC permission", () => {
     assert.isTrue(
       mentioning("npm-release environment")(
         modeFindings(release({ environment: "staging" }))
@@ -122,8 +142,86 @@ describe("token-free trusted publishing", () => {
         })
       )
     );
+  });
+});
+
+describe("the release mode", () => {
+  const onMain = "refs/heads/main";
+
+  it("reads the condition grammar of the workflow and refuses any other", () => {
+    assert.deepStrictEqual(
+      evaluateCondition(publishCondition, { mode: "check", ref: onMain }),
+      Option.some(false)
+    );
+    assert.deepStrictEqual(
+      evaluateCondition(publishCondition, { mode: "publish", ref: onMain }),
+      Option.some(true)
+    );
+    assert.deepStrictEqual(
+      evaluateCondition(`\${{ ${publishCondition} }}`, {
+        mode: "publish",
+        ref: onMain,
+      }),
+      Option.some(true)
+    );
     assert.isTrue(
-      mentioning("no publish command")(
+      Option.isNone(
+        evaluateCondition("inputs.mode != 'check'", {
+          mode: "check",
+          ref: onMain,
+        })
+      )
+    );
+    assert.isTrue(
+      Option.isNone(
+        evaluateCondition("always()", { mode: "check", ref: onMain })
+      )
+    );
+  });
+
+  it("holds for the workflow in its intended shape: check never reaches the publish (baseline)", () => {
+    assert.deepStrictEqual(modeFindings(release({})), []);
+  });
+
+  it("fails when the publish job has no mode condition, or one the gate cannot read (controls)", () => {
+    assert.isTrue(
+      mentioning('with mode "check"')(
+        modeFindings(release({ publishIf: "github.ref == 'refs/heads/main'" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("cannot evaluate")(
+        modeFindings(release({ publishIf: "inputs.mode != 'check'" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("refs/heads/feature")(
+        modeFindings(release({ publishIf: "inputs.mode == 'publish'" }))
+      )
+    );
+  });
+
+  it("fails when the check job holds a publish command, or needs the publisher (controls)", () => {
+    assert.isTrue(
+      mentioning('with mode "check"')(
+        modeFindings(release({ checkRun: "npm publish --dry-run" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("needs a job that publishes")(
+        modeFindings(release({ needs: "    needs: publish" }))
+      )
+    );
+  });
+
+  it("fails when the default is not check, or no job publishes in publish mode (controls)", () => {
+    assert.isTrue(
+      mentioning("must default to check")(
+        modeFindings(release({ mode: "publish" }))
+      )
+    );
+    assert.isTrue(
+      mentioning("no job publishes")(
         modeFindings(release({ publishRun: "echo nothing" }))
       )
     );
@@ -162,30 +260,41 @@ const stepOfRelease = (find: (file: WorkflowFile) => Option.Option<string>) =>
   });
 
 describe("the real files", () => {
+  it.effect("all workflows contain no npm credential path", () =>
+    Effect.gen(function* real() {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+
+      const root = yield* path.fromFileUrl(
+        new URL("../../../.github/workflows/", import.meta.url)
+      );
+
+      const names = yield* fs.readDirectory(root);
+
+      const workflows = yield* Effect.forEach(
+        Arr.filter(names, (name) => /\.ya?ml$/u.test(name)),
+        (name) =>
+          Effect.map(
+            fs.readFileString(path.join(root, name)),
+            (text): WorkflowFile => ({ name, text })
+          )
+      );
+
+      assert.deepStrictEqual(tokenFindings(workflows), []);
+    }).pipe(Effect.provide(NodeServices.layer))
+  );
+
   it.effect(
-    "all workflows contain no npm credential path and release uses OIDC",
+    "the release workflow's check mode cannot reach a publish, for any mode or ref",
     () =>
       Effect.gen(function* real() {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-
-        const root = yield* path.fromFileUrl(
-          new URL("../../../.github/workflows/", import.meta.url)
+        assert.deepStrictEqual(
+          modeFindings({
+            name: "release.yml",
+            text: yield* readRepositoryFile(".github/workflows/release.yml"),
+          }),
+          []
         );
-
-        const names = yield* fs.readDirectory(root);
-
-        const workflows = yield* Effect.forEach(
-          Arr.filter(names, (name) => /\.ya?ml$/u.test(name)),
-          (name) =>
-            Effect.map(
-              fs.readFileString(path.join(root, name)),
-              (text): WorkflowFile => ({ name, text })
-            )
-        );
-
-        assert.deepStrictEqual(tokenFindings(workflows), []);
-        assert.deepStrictEqual(modeFindings(yield* releaseWorkflow), []);
       }).pipe(Effect.provide(NodeServices.layer))
   );
 

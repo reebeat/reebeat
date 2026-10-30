@@ -1,7 +1,8 @@
-// Release workflow rules (spec 0009), checked against fixtures and the real workflow.
+// Release workflow rules (spec 0009), checked against fixtures and real workflows.
 import {
   Array as Arr,
   Option,
+  Order,
   Predicate,
   Record,
   Result,
@@ -65,7 +66,7 @@ const parseWorkflow = (file: WorkflowFile): Result.Result<Parsed, string> =>
       Result.mapError(decoded, () => `${file.name} is not a workflow`)
   );
 
-/** Reject npm credential paths anywhere in workflow text, including env, run and with. */
+/** Reject credential references throughout each workflow. */
 export const tokenFindings = (
   workflows: readonly WorkflowFile[]
 ): readonly string[] =>
@@ -77,42 +78,202 @@ export const tokenFindings = (
       : []
   );
 
+/** The contexts a job condition may test: the dispatch input and the ref. */
+export interface RunContext {
+  readonly mode: string;
+  readonly ref: string;
+}
+
+const term =
+  /^(?<context>inputs\.mode|github\.ref)\s*==\s*'(?<literal>[^']*)'$/u;
+
+/**
+ * Evaluates the one condition grammar the release workflow may use: `<context> == '<literal>'` terms joined by `&&`
+ * (the contexts `inputs.mode` and `github.ref`), optionally inside `${{ }}`. Anything else is not evaluated (none):
+ * the gate fails closed on a condition it cannot read.
+ */
+export const evaluateCondition = (
+  condition: string,
+  run: RunContext
+): Option.Option<boolean> => {
+  const terms = Arr.map(
+    Str.split(
+      Str.replaceAll(/^\$\{\{\s*|\s*\}\}$/gu, "")(Str.trim(condition)),
+      "&&"
+    ),
+    (text) => term.exec(Str.trim(text))?.groups
+  );
+
+  return Arr.every(terms, Predicate.isNotUndefined)
+    ? Option.some(
+        Arr.every(terms, (groups) =>
+          groups?.context === "inputs.mode"
+            ? groups.literal === run.mode
+            : groups?.literal === run.ref
+        )
+      )
+    : Option.none();
+};
+
 const publishCommand =
   /\bchangeset\s+publish\b|\bnpm\s+(?:stage\s+)?publish\b|\bbun\s+publish\b|\bpnpm\s+publish\b|\byarn\s+npm\s+publish\b/u;
 
-/** Publishing is manual, restricted to main, and uses the approved OIDC environment. */
+const Dispatch = Schema.Struct({
+  on: Schema.Struct({
+    workflow_dispatch: Schema.Struct({
+      inputs: Schema.Struct({
+        mode: Schema.Struct({
+          default: Schema.String,
+          options: Schema.Array(Schema.String),
+          type: Schema.String,
+        }),
+      }),
+    }),
+  }),
+});
+
+const decodeDispatch = Schema.decodeUnknownResult(Dispatch);
+
+const modes: readonly string[] = ["check", "publish"];
+
+/** `main`, the one ref a release runs from. */
+const releaseRef = "refs/heads/main";
+
+/** The names of the jobs of `workflow` that run for a dispatch with this mode and ref, or the jobs it cannot decide. */
+const jobsRunning = (
+  workflow: Parsed,
+  run: RunContext
+): Result.Result<readonly string[], string> => {
+  const decided = Arr.map(Record.toEntries(workflow.jobs), ([name, job]) => ({
+    name,
+    runs:
+      job.if === undefined ? Option.some(true) : evaluateCondition(job.if, run),
+  }));
+
+  const undecided = Arr.filter(decided, ({ runs }) => Option.isNone(runs));
+
+  return Arr.isReadonlyArrayNonEmpty(undecided)
+    ? Result.fail(
+        `${Arr.join(
+          Arr.map(undecided, ({ name }) => name),
+          ", "
+        )} has a condition the gate cannot evaluate`
+      )
+    : Result.succeed(
+        Arr.filterMap(decided, ({ name, runs }) =>
+          Option.contains(runs, true) ? Result.succeed(name) : Result.failVoid
+        )
+      );
+};
+
+/**
+ * Sentences about how the release workflow's `mode` input can reach a publish it should not. Empty when: the workflow
+ * dispatches by hand only, with an input `mode` of type `choice` whose options are exactly `check` and `publish` and
+ * whose default is `check`; every job has a condition the gate can evaluate or none; and for each mode (and for a mode
+ * outside the options, and for a ref that is not `main`) the jobs that run hold a publish command only when the mode is
+ * `publish` on `main`, and never a job a `check` run could `need`.
+ */
 export const modeFindings = (file: WorkflowFile): readonly string[] => {
   const parsed = parseWorkflow(file);
 
-  if (Result.isFailure(parsed)) {
-    return [parsed.failure];
-  }
-  const job = parsed.success.jobs.publish;
+  const dispatch = Result.flatMap(
+    Result.try({
+      catch: () => `${file.name} is not valid YAML`,
+      try: () => decodeDispatch(parseYaml(file.text)),
+    }),
+    (decoded) =>
+      Result.mapError(
+        decoded,
+        () => `${file.name} has no workflow_dispatch input mode`
+      )
+  );
 
-  if (job === undefined) {
-    return [`${file.name} has no publish job`];
+  if (Result.isFailure(parsed) || Result.isFailure(dispatch)) {
+    return [
+      ...(Result.isFailure(parsed) ? [parsed.failure] : []),
+      ...(Result.isFailure(dispatch) ? [dispatch.failure] : []),
+    ];
   }
 
-  const environment = Predicate.isString(job.environment)
-    ? job.environment
-    : job.environment?.name;
+  const { mode } = dispatch.success.on.workflow_dispatch.inputs;
+  const { jobs } = parsed.success;
+  const publisher = jobs.publish;
+
+  const environment = Predicate.isString(publisher?.environment)
+    ? publisher.environment
+    : publisher?.environment?.name;
+
+  const publishing = Arr.filter(Record.keys(jobs), (name) =>
+    Arr.some(jobs[name]?.steps ?? [], (step) =>
+      publishCommand.test(step.run ?? "")
+    )
+  );
+
+  const inputFindings = [
+    ...(mode.type === "choice"
+      ? []
+      : [`${file.name} input mode is not a choice`]),
+    ...(Arr.join(Arr.sort(mode.options, Order.String), ",") ===
+    Arr.join(Arr.sort(modes, Order.String), ",")
+      ? []
+      : [`${file.name} input mode must offer exactly check and publish`]),
+    ...(mode.default === "check"
+      ? []
+      : [`${file.name} input mode must default to check`]),
+  ];
+
+  const cases = Arr.flatMap(["check", "publish", "", "other"], (value) =>
+    Arr.map([releaseRef, "refs/heads/feature"], (ref) => ({ mode: value, ref }))
+  );
+
+  const reach = Arr.flatMap(cases, (run) => {
+    const running = jobsRunning(parsed.success, run);
+
+    if (Result.isFailure(running)) {
+      return [`${file.name}: ${running.failure}`];
+    }
+
+    const publishes = Arr.filter(running.success, (name) =>
+      Arr.contains(publishing, name)
+    );
+
+    const mayPublish = run.mode === "publish" && run.ref === releaseRef;
+
+    return [
+      ...(Arr.isArrayEmpty(publishes) || mayPublish
+        ? []
+        : [
+            `${file.name}: with mode "${run.mode}" on ${run.ref} the job ${Arr.join(publishes, ", ")} runs and holds a publish command`,
+          ]),
+      ...(mayPublish && Arr.isArrayEmpty(publishes)
+        ? [
+            `${file.name}: with mode "publish" on ${releaseRef} no job publishes`,
+          ]
+        : []),
+    ];
+  });
+
+  const needsPublisher = Arr.filter(Record.toEntries(jobs), ([, job]) =>
+    Arr.some(
+      Predicate.isString(job.needs) ? [job.needs] : (job.needs ?? []),
+      (needed) => Arr.contains(publishing, needed)
+    )
+  );
 
   return [
-    ...(/workflow_dispatch:/u.test(file.text)
-      ? []
-      : [`${file.name} is not manually dispatched`]),
-    ...(job.if === "github.ref == 'refs/heads/main'"
-      ? []
-      : [`${file.name} publish is not restricted to main`]),
     ...(environment === "npm-release"
       ? []
       : [`${file.name} publish lacks npm-release environment`]),
-    ...(job.permissions?.["id-token"] === "write"
+    ...(publisher?.permissions?.["id-token"] === "write"
       ? []
       : [`${file.name} publish lacks id-token: write`]),
-    ...(Arr.some(job.steps ?? [], (step) => publishCommand.test(step.run ?? ""))
-      ? []
-      : [`${file.name} has no publish command`]),
+    ...inputFindings,
+    ...reach,
+    ...Arr.map(
+      needsPublisher,
+      ([name]) =>
+        `${file.name}: job ${name} needs a job that publishes, so a run that skips the publisher still depends on it`
+    ),
   ];
 };
 

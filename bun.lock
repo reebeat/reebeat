@@ -102,7 +102,7 @@
     },
     "packages/core": {
       "name": "@tsukuri/core",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "fountain-js": "catalog:",
       },
@@ -136,7 +136,7 @@
     },
     "packages/lint": {
       "name": "@tsukuri/lint",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@tsukuri/core": "workspace:*",
       },
@@ -153,7 +153,7 @@
     },
     "packages/pipeline": {
       "name": "@tsukuri/pipeline",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@tsukuri/core": "workspace:*",
         "@tsukuri/services": "workspace:*",
@@ -173,7 +173,7 @@
     },
     "packages/render-reveal": {
       "name": "@tsukuri/render-reveal",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@fontsource/inter": "catalog:",
         "@tsukuri/core": "workspace:*",
@@ -197,7 +197,7 @@
     },
     "packages/services": {
       "name": "@tsukuri/services",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@tsukuri/core": "workspace:*",
       },
@@ -219,7 +219,7 @@
     },
     "packages/sounds-synth": {
       "name": "@tsukuri/sounds-synth",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@tsukuri/core": "workspace:*",
         "@tsukuri/services": "workspace:*",
@@ -253,7 +253,7 @@
     },
     "packages/subtitles": {
       "name": "@tsukuri/subtitles",
-      "version": "0.1.0-alpha.0",
+      "version": "0.1.0-alpha.1",
       "dependencies": {
         "@tsukuri/core": "workspace:*",
       },

@@ -1,6 +1,6 @@
 {
   "name": "@tsukuri/render-reveal",
-  "version": "0.1.0-alpha.0",
+  "version": "0.1.0-alpha.1",
   "description": "tsukuri render-reveal: the Renderer adapter that writes a Plan as a reveal.js Deck.",
   "license": "Apache-2.0",
   "type": "module",

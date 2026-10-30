@@ -1,0 +1,44 @@
+# Negative controls (a throwaway script applied each mutation, ran the test that gates the falsifier, and reverted with git checkout)
+# F5 has its own file: confinement-mutation.txt. The first F2 control (an aliased import) passed the scan: the scan then read only
+# the imported name; it reads the local name too, and the second F2 control below fails as it should.
+== F1: mutate packages/lifecycle/src/tools.ts (Use this first, to see=>Use this first to see)
+[18:38:38.024] ERROR (#22): Error [AssertionError]: expected '{\n  "contract": "0.1.0",\n  "digest"…' to equal '{\n  "contract": "0.1.0",\n  "digest"…'
+[18:38:38.182] ERROR (#94): Error [AssertionError]: expected '{\n  "contract": "0.1.0",\n  "digest"…' to equal '{\n  "contract": "0.1.0",\n  "digest"…'
+[18:38:38.316] ERROR (#170): Error [AssertionError]: expected '{\n  "contract": "0.1.0",\n  "digest"…' to equal '{\n  "contract": "0.1.0",\n  "digest"…'
+   reverted
+== F8: mutate packages/mcp/src/pages.ts (export const pageBudget = 20_000;=>export const pageBudget = 40_000;)
+[18:38:56.907] ERROR (#18): Error [AssertionError]: story_read page 0: expected 80686 to be at most 45000
+[18:39:03.202] ERROR (#45): Error [AssertionError]: artifact_observe page 0: expected 58468 to be at most 45000
+       × every page of every paged text tool is within bounds and the pages cover the whole 98ms
+   reverted
+== F9: mutate packages/lifecycle/src/tools.ts (    revision: RevisionIdSchema,
+    text: UntrustedTextSchema,
+    view: Schema.String,=>    revision: RevisionIdSchema,
+    text: Schema.String,
+    view: Schema.String,)
+[18:39:06.053] ERROR (#16): Error [AssertionError]: plan_get holds project text in fields not typed untrusted: expected [ 'text' ] to deeply equal []
+       × comes back only inside fields typed untrusted, and never in a summary or an error 68ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+   reverted
+== F14: mutate packages/mcp/clients/claude-code/.mcp.json ("command": "sh"=>"command": "bash")
+[18:39:07.804] ERROR (#2): Error [AssertionError]: claude-code/.mcp.json differs from its regeneration: run bun run --cwd packages/mcp generate: expected '{\n  "_generated": "Generated from pa…' to equal '{\n  "_generated": "Generated from pa…'
+     × equal their regeneration, file for file, and nothing else is in the directory 19ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+   reverted
+== F2: mutate packages/mcp/src/handlers.ts (a handler module imports a name Publisher)
+[18:39:29.845] ERROR (#258): Error [AssertionError]: handlers.ts imports Publisher: expected [ 'Publisher' ] to deeply equal []
+     × no module that answers a call imports a name or a module that could publish, approve or write 21ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+   reverted
+== F11: mutate packages/mcp/bin/tsukuri-mcp.ts (the executable logs GH_TOKEN)
+[18:39:31.872] ERROR (#22): Error [AssertionError]: the canary leaked: expected true to be false
+[18:39:32.440] ERROR (#51): Error [AssertionError]: the canary leaked: expected true to be false
+[18:39:33.002] ERROR (#80): Error [AssertionError]: the canary leaked: expected true to be false
+   reverted
+== F6: mutate packages/mcp/conformance/baseline-2025-11-25.yml (one entry is removed from the baseline)
+[18:39:42.977] ERROR (#16): Error [AssertionError]: 2025-11-25: ario: prompts-get-with-image ===
+✗ tools-call-sampling: 1 passed, 1 failed
+[31mUnexpected failures (not in baseline):[0m
+  ✗ tools-call-sampling
+[31mUnexpected failures detected: these are not in your expected-failures baseline.[0m
+   reverted

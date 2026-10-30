@@ -121,9 +121,11 @@ const importedNames = (text: string): readonly string[] => {
 
   return Arr.flatMap(module.staticImports, ({ entries, moduleRequest }) => [
     moduleRequest.value,
-    ...Arr.map(
-      entries,
-      (entry) => entry.importName.name ?? entry.localName.value
+    ...Arr.flatMap(entries, (entry) =>
+      Arr.filter(
+        [entry.importName.name, entry.localName.value],
+        Predicate.isString
+      )
     ),
   ]);
 };

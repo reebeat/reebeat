@@ -205,7 +205,7 @@ layer(platform)("tsukuri plan", (it) => {
   );
 
   it.effect(
-    "--timing without a cache entry fails with SpeechCacheMiss naming the Line and the key",
+    "--timing without a cache entry fails with SpeechCacheMiss naming the Line and the key, and the command and flag that fill the cache (both exist)",
     () =>
       Effect.gen(function* miss() {
         const story = yield* storyFile();
@@ -217,10 +217,22 @@ layer(platform)("tsukuri plan", (it) => {
           ...offline,
         ]);
 
+        const named =
+          /`tsukuri (?<command>[a-z]+) <story> (?<flag>--[a-z-]+)`/u.exec(
+            stderr
+          )?.groups;
+
         assert.isTrue(Exit.isFailure(exit));
         assert.include(stderr, "SpeechCacheMiss");
         assert.include(stderr, "sc1.l1");
         assert.match(stderr, /[0-9a-f]{64}/u);
+        assert.isDefined(named);
+
+        // The command the error names is one that writes the cache: it takes the flag the error names.
+        const help = yield* runCli([named?.command ?? "", "--help"]);
+
+        assert.isTrue(Exit.isSuccess(help.exit));
+        assert.include(help.stdout, named?.flag ?? "");
       })
   );
 

@@ -32,6 +32,13 @@ const cacheDir = Flag.String("cache-dir").pipe(
   Flag.optional
 );
 
+const refreshSpeech = Flag.Boolean("refresh-speech").pipe(
+  Flag.withDescription(
+    "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
+  ),
+  Flag.withDefault(false)
+);
+
 const Seconds = Schema.Finite.check(Schema.isGreaterThan(0));
 
 /** One optional flag per key of the selection, named after the key: `--speech kokoro`, `--aligner even`, ... */
@@ -175,12 +182,7 @@ const build = Command.make(
         "The build directory; an earlier build there is replaced"
       )
     ),
-    refreshSpeech: Flag.Boolean("refresh-speech").pipe(
-      Flag.withDescription(
-        "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
-      ),
-      Flag.withDefault(false)
-    ),
+    refreshSpeech,
     story,
   },
   Effect.fn("tsukuri.build")(function* handleBuild(input) {
@@ -281,12 +283,7 @@ const journeyCommand = Command.make(
       ),
       Flag.withDefault("build")
     ),
-    refreshSpeech: Flag.Boolean("refresh-speech").pipe(
-      Flag.withDescription(
-        "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
-      ),
-      Flag.withDefault(false)
-    ),
+    refreshSpeech,
     story,
   },
   Effect.fn("tsukuri.journey")(function* handleJourney(input) {

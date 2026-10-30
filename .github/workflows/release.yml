@@ -78,8 +78,8 @@ jobs:
           fetch-depth: 0
       - name: Release hold
         shell: bash
-        # While .github/release-hold exists nothing below runs (operator decision of 2026-10-29: the name is under
-        # trademark clearance, and a published npm name is permanent). A pull request that deletes the file lifts it.
+        # While .github/release-hold exists nothing below runs. The file was deleted on 2026-10-30 (spec 0009, Revisions);
+        # the step stays, so a hold is again one committed file.
         run: |
           if [ -e .github/release-hold ]; then
             echo "::error::the npm release is on hold: .github/release-hold exists"

@@ -577,7 +577,9 @@ const pinsNewEnoughNpm = (run: string): boolean => {
   const major = Number(groups?.major);
   const minor = Number(groups?.minor);
 
-  return major > 11 || (major === 11 && minor >= 21);
+  return (
+    (major === 11 && minor >= 21) || (major === 12 && minor >= 2) || major > 12
+  );
 };
 
 const removesDevEngines = (step: typeof Step.Type): boolean =>
@@ -613,7 +615,7 @@ export const tagFindings = (file: WorkflowFile): readonly string[] =>
       Option.isNone(tag)
         ? []
         : [
-            `${file.name}: job ${name} tags with an npm older than 11.21.0 or an unpinned one, which a trusted publisher cannot use for dist-tag`,
+            `${file.name}: job ${name} tags with an npm older than 11.21.0 (11 line) or 12.2.0 (12 line), or an unpinned one, which a trusted publisher cannot use for dist-tag`,
           ]),
       ...(Option.isSome(removal) &&
       Option.exists(published, (index) => removal.value < index)

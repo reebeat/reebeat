@@ -124,6 +124,40 @@ const effectConfig: EffectConfigInput = {
       strictness: "strict",
     },
     {
+      // The lifecycle declarations and their two read-only services: protocol-neutral, no runtime.
+      files: ["packages/lifecycle/src/**", "packages/lifecycle/standins/**"],
+      platform: "portable",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The lifecycle contract suites register vitest tests; the MCP package runs them on real files.
+      files: ["packages/lifecycle/contract/**"],
+      platform: "node",
+      role: "test",
+      strictness: "strict",
+    },
+    {
+      // The MCP inspector: the server over the declarations, the confined file-system Projects and the ffmpeg Observer.
+      files: ["packages/mcp/src/**"],
+      platform: "node",
+      role: "effect-library",
+      strictness: "strict",
+    },
+    {
+      // The composition root of the inspector: the executable, which provides the platform and runs the server.
+      // The two test programs that start a platform of their own are roots too: the workspace writer the journey
+      // script runs, and the HTTP server the conformance suite is pointed at.
+      files: [
+        "packages/mcp/bin/**",
+        "packages/mcp/test/makeWorkspace.ts",
+        "packages/mcp/test/conformanceFixture.ts",
+      ],
+      platform: "node",
+      role: "composition-root",
+      strictness: "strict",
+    },
+    {
       files: ["tools/quality/**"],
       platform: "node",
       role: "composition-root",
@@ -202,6 +236,12 @@ export default defineConfig({
     overrides: [
       ...effectConfigResult.overrides,
       {
+        // The executable is named for its command, `tsukuri-mcp` (the generated install files and the clients' cards
+        // say so); every other module of the workspace is camelCase.
+        files: ["packages/mcp/bin/tsukuri-mcp.ts"],
+        rules: { "unicorn/filename-case": "off" },
+      },
+      {
         // unicorn/throw-new-error treats Schema.TaggedError class definitions as throw sites; they contain no throw.
         files: [
           "tools/quality/effectExceptions.ts",
@@ -219,6 +259,7 @@ export default defineConfig({
           "packages/encode-ffmpeg/src/errors.ts",
           "packages/pipeline/src/errors.ts",
           "packages/render-reveal/src/errors.ts",
+          "packages/lifecycle/src/errors.ts",
           "packages/services/src/errors.ts",
           "packages/verify/src/errors.ts",
         ],
@@ -231,6 +272,8 @@ export default defineConfig({
         // The public entry of a package re-exports its modules; that is the file's only job.
         files: [
           "packages/*/src/index.ts",
+          "packages/lifecycle/contract/index.ts",
+          "packages/lifecycle/standins/index.ts",
           "packages/services/contract/index.ts",
           "packages/services/standins/index.ts",
         ],
@@ -275,6 +318,29 @@ export default defineConfig({
                     "packages/services imports libraries only (design R3): core, subtitles and lint.",
                   regex:
                     "^@tsukuri/(?!(?:core|subtitles|lint|services)(?:/|$))",
+                },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        // Tier rule (spec 0016, D11): the lifecycle package is a service-tier package that imports the core only.
+        files: [
+          "packages/lifecycle/src/**",
+          "packages/lifecycle/contract/**",
+          "packages/lifecycle/standins/**",
+        ],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                ...restrictedSourcePatterns,
+                {
+                  message:
+                    "packages/lifecycle imports the core only (spec 0016, D11): no protocol, no runtime, no other service.",
+                  regex: "^@tsukuri/(?!(?:core|lifecycle)(?:/|$))",
                 },
               ],
             },

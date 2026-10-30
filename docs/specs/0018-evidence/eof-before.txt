@@ -1,0 +1,6 @@
+$ bunx vp test run test/endOfInput.test.ts   # BEFORE: bin/tsukuri-mcp.ts of 63a2f5c (no teardown), the new test
+[20:44:43.523] ERROR (#2): Error [AssertionError]: a closed stdin is a clean end: expected 130 to equal +0
+     × closing stdin during a call exits 0 and leaves no ffmpeg behind 25601ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: a closed stdin is a clean end: expected 130 to equal +0
+      Tests  1 failed | 1 passed (2)

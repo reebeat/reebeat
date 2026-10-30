@@ -1,0 +1,8 @@
+$ bunx vp test run test/ffmpegAttack.test.ts   # BEFORE the fix, at aa8df49 plus the new test only
+[19:24:24.437] ERROR (#16): [Error: {"buckets":[{"fromMs":0,"peakDb":-17.3,"rmsDb":-21},{"fromMs":100,"peakDb":-18.1,"rmsDb":-21.1},{"fromMs":200,"peakDb":-18.1,"rmsDb":-21.1},{"fromMs":300,"peakDb":-18.1,"rmsDb":-21.1},{"fromMs":400,"peakDb":-18.1,"rmsDb":-21
+[19:24:24.553] ERROR (#28): Error [AssertionError]: streams is refused: expected false to be true
+       × the Observer alone refuses a concat script that reaches a linked directory 86ms
+       × through the tools: every kind fails, and nothing of the outside file is in a result 116ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: streams is refused: expected false to be true
+      Tests  2 failed (2)

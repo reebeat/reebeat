@@ -1,0 +1,7 @@
+$ (control: an unknown field in the generated Claude plugin.json) devenv shell -- bash packages/mcp/scripts/check-clients.sh
+-- the plugin: validate, then install from a local marketplace (needs the marketplace file)
+$ claude plugin validate --strict <tmp>/clients/claude-plugin
+  ❯ plugins[0] plugin.json → bogus: Unknown field 'bogus'. Claude Code ignores it at load time.
+✘ Validation failed (--strict treats warnings as errors)
+FAIL: exit 1
+exit status of the pipeline's first command: 1

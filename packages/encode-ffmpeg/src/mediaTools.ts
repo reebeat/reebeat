@@ -71,7 +71,9 @@ export class MediaTools extends Context.Service<
         args: readonly string[]
       ) {
         const handle = yield* spawner
-          .spawn(ChildProcess.make(tool, [...args]))
+          .spawn(
+            ChildProcess.make(tool, [...args], { forceKillAfter: "1 second" })
+          )
           .pipe(
             Effect.mapError((cause) =>
               failed(tool, `cannot start ${tool}: ${cause.message}`, "", cause)

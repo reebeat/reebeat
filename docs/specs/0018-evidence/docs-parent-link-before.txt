@@ -1,0 +1,6 @@
+$ bunx vp test run test/docs.test.ts   # BEFORE: src/docs.ts of 63a2f5c (lstat of the file only), the new test
+[20:26:52.001] ERROR (#16): Error [AssertionError]: the skill directory is a link to a directory outside: expected { _id: 'Option', _tag: 'None' } to deeply equal { _id: 'Option', _tag: 'Some', …(1)
+       × a link on the path of a document, at its end or in any parent, is refused and nothing outside is read 67ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: the skill directory is a link to a directory outside: expected { _id: 'Option', _tag: 'None' } to deeply equal { _id: 'Option', _tag: 'Some', …(1) }
+      Tests  1 failed | 1 passed (2)

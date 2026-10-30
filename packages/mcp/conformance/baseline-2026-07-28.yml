@@ -1,0 +1,4 @@
+# Scored scenarios of `--requirements 2026-07-28` that the fixture server fails as a whole, each with its reason (spec 0016, F6).
+# None: the one scenario that fails in part, `server-stateless`, is baselined by check in `baseline-checks.json`, so a new
+# failing check inside it is found. A scenario is listed here only when the cause is outside this package.
+server: []

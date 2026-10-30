@@ -1,0 +1,5 @@
+claude: calls project_list project_get story_read story_lint plan_get build_get artifact_observe; image blocks 1
+claude said: Stage: built. The build is of the head Screenplay (matchesHead.screenplay = true; there is no config). | Lint errors: 0. Timing was not checked. | Frame 78 (2.60 s): the image is a test pattern with colour bars, a circle, a rainbow strip and the counter "2". It does not show the boat or sign slide, so the video looks like placeholder media and not a real render. | JOURNEY-DONE
+codex: calls project_list project_get story_read story_lint plan_get build_get artifact_observe
+codex said: harbour: built; build matches the head Screenplay. | Lint errors: 0. | Frame 78: multicoloured test pattern with a large “2”. | JOURNEY-DONE
+ok: both sessions made the seven calls and Claude Code received the frame as an image block

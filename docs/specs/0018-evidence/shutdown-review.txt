@@ -1,0 +1,215 @@
+2026-10-30 — PR55 review round 3, executed by McpFinishOpenAI.
+Effect / @effect/platform-node / platform-node-shared / @effect/vitest 4.1.0; @effect/tsgo 0.63.0.
+No dependency or patch changes. No new suppression or exception.
+
+RED, before the source fix (real executable; selected raw failure lines):
+$ devenv shell -- bunx vp test packages/mcp/test/endOfInput.test.ts -t "SIGINT after EOF"
+SIGINT after EOF with a drain child exits 130 and reaps it
+AssertionError: expected +0 to equal 130
+SIGINT after EOF with a ignore child exits 130 and reaps it
+TimeoutError: Operation timed out after '5s'
+Test Files  1 failed (1)
+Tests  2 failed | 2 skipped (4)
+Duration  34.03s
+
+The test scope killed its recorded shim PID on failure. The drain shim records TERM receipt at the observation deadline and then delays its own exit. SIGINT is sent after that receipt, while request cleanup is in flight.
+
+Completed scoped command, raw summary from background job bg_5300 completion:
+$ devenv shell -- bunx vp test packages/mcp/test/endOfInput.test.ts packages/mcp/test/stdio.test.ts packages/mcp/test/docs.test.ts packages/encode-ffmpeg/test
+ RUN  v5.0.4 /srv/share/projects/reebeat/.worktrees/0018-mcp-inspector
+ Test Files  6 passed (6)
+      Tests  45 passed (45)
+   Start at  21:21:40
+   Duration  81.44s (tests 96%, import 3%, transform 1%)
+Wall time: 82.64 seconds
+
+Other command output (the first independent probe failed only because of its --preserve-symlinks flag; removing the flag fixed dependency resolution without changing the server):
+$ devenv shell -- bun /tmp/mcp55-docs-smoke.mjs "$PWD"
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 11.3ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 10.6ms
+40 |     child.stdout.on('data', b=>stdout+=b); child.stderr.on('data', b=>stderr+=b);
+41 |     const code = new Promise((resolve,reject)=>{ child.on('exit',resolve); child.on('error',reject); });
+42 |     child.stdin.end(request);
+43 |     const timer=setTimeout(()=>child.kill('SIGKILL'),10000);
+44 |     const exit=await code; clearTimeout(timer);
+45 |     assert.equal(exit,0,stderr);
+                ^
+AssertionError: error: Cannot find module '@effect/platform-node-shared/NodeSink' from '/tmp/mcp55-independent-qGUoEg/checkout/packages/mcp/node_modules/@effect/platform-node/dist/NodeSink.js'
+
+Bun v1.4.2 (Linux x64)
+
+
+1 !== 0
+
+ generatedMessage: false,
+     actual: 1,
+   expected: 0,
+   operator: "strictEqual",
+       diff: "simple",
+       code: "ERR_ASSERTION"
+
+      at call (/tmp/mcp55-docs-smoke.mjs:45:12)
+      at processTicksAndRejections (native:7:39)
+
+Bun v1.4.2 (Linux x64)
+
+
+Wall time: 1.22 seconds
+
+Command exited with code 1
+
+$ devenv shell -- bunx vp test packages/mcp/test/endOfInput.test.ts packages/mcp/test/stdio.test.ts packages/mcp/test/docs.test.ts packages/encode-ffmpeg/test
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 12.1ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 10.1ms
+
+ RUN  v5.0.4 /srv/share/projects/reebeat/.worktrees/0018-mcp-inspector
+
+Backgrounded as job bg_5300 (killed once it has run 180s in total; `timeout: 0` disables the deadline); its output is injected into the conversation as a follow-up the moment it finishes. Do NOT poll for it (no `sleep`, `ps`, `pgrep`, `top`, `pidwait`, log tailing): every poll is a wasted turn. Do other work, or end your reply and wait to be woken.
+
+$ devenv shell -- bun /tmp/mcp55-docs-smoke.mjs "$PWD"
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 12.2ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 9.54ms
+PASS raw stdio: symlinked skill parent refused as Unreadable; outside canary and scratch path absent
+PASS raw stdio: linked checkout reads its legitimate regular skill; EOF preserved reply and exited 0
+
+
+Wall time: 1.26 seconds
+
+$ gh run view 41119356046 --repo tsukuri-labs/tsukuri --json status,conclusion,headSha
+{"conclusion":"success","headSha":"e1f7415652debbdae7c9a3bca0d79a826f72b104","status":"completed"}
+
+
+Wall time: 1.01 seconds
+
+$ devenv shell -- bunx vp check --fix docs/specs/0018-mcp-inspector.md .agents/skills/verify-tsukuri/features.md packages/encode-ffmpeg/README.md
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 11.5ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 9.42ms
+pass: Formatting completed for checked files (1.7s)
+
+
+Wall time: 2.52 seconds
+
+$ command -v hub; free -m; uptime; df -h . /tmp; findmnt -T .; vmstat 1 2; iostat -dx 1 2
+               total        used        free      shared  buff/cache   available
+Mem:           64220       45514        4545        2041       17430       18706
+Swap:          64877       28113       36764
+ 21:23:57  up 16 days 23:04,  0 users,  load average: 1.62, 2.25, 3.11
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p2  931G  501G  303G  63% /srv/share
+-               931G  501G  303G  63% /tmp
+TARGET     SOURCE                      FSTYPE OPTIONS
+/srv/share /dev/nvme0n1p2[/@srv-share] btrfs  rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvolid=260,subvol=/@srv-share
+procs -----------memory---------- ---swap-- -----io---- -system-- -------cpu-------
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st gu
+ 1  0 28788164 4660420 4572 17851404 317 383 11337 6412 44524  30  7  4 80  9  0  0
+ 2  0 28788080 4631984 4572 17870220 84   0    84    16 21168 27772 2 3 95  0  0  0
+error: command not found: iostat
+
+
+Wall time: 2.60 seconds
+
+Command exited with code 127
+
+$ devenv shell -- .agents/skills/verify-tsukuri/scripts/headroom.sh
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 10.8ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 9.80ms
+headroom: memory PSI full avg60=0.10; load1=1.75 on 32 CPU threads; (memory some avg10=0.13, io some avg10=0.05: printed, not gated)
+headroom: swap-in 22 pages/s over 10 s
+headroom: MemAvailable=18389 MiB, demand 4096 MiB, left 14293 MiB, needed 12844 MiB (20% of 64220 MiB)
+headroom OK
+
+
+Wall time: 10.53 seconds
+
+device admission sample: {"samples":[{"at":429931.638541,"row":" 259       2 nvme0n1 97462732 2757270 6146661339 223090372 545574287 694961 15918413119 1490643175 0 30227537 1736795131 38785851 0 16300354584 11075790 35424404 11985793","ticks":30227537},{"at":432434.76033,"row":" 259       2 nvme0n1 97462732 2757270 6146661339 223090372 545576624 694961 15918559895 1490643622 0 30227694 1736795667 38785852 0 16300355408 11075790 35424570 11985881","ticks":30227694}],"utilizationPercent":6.272167846164684}
+
+Independent raw stdio probe source (disposable /tmp file removed after execution):
+import { mkdtemp, mkdir, symlink, copyFile, readdir, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawn } from 'node:child_process';
+import assert from 'node:assert/strict';
+const source = process.argv[2];
+const scratch = await mkdtemp(join(tmpdir(), 'mcp55-independent-'));
+const checkout = join(scratch, 'checkout');
+const sourceMcp = join(source, 'packages/mcp');
+const mcp = join(checkout, 'packages/mcp');
+try {
+  await mkdir(join(mcp, 'src'), {recursive:true});
+  await mkdir(join(mcp, 'bin'));
+  await symlink(join(sourceMcp, 'node_modules'), join(mcp, 'node_modules'));
+  await copyFile(join(sourceMcp, 'package.json'), join(mcp, 'package.json'));
+  await copyFile(join(sourceMcp, 'bin/tsukuri-mcp.ts'), join(mcp, 'bin/tsukuri-mcp.ts'));
+  for (const name of await readdir(join(sourceMcp, 'src'))) {
+    const dest = join(mcp, 'src', name);
+    if (name === 'runtime.ts') await copyFile(join(sourceMcp, 'src', name), dest);
+    else await symlink(join(sourceMcp, 'src', name), dest);
+  }
+  const skills = join(checkout, 'packages/lifecycle/skills');
+  await mkdir(skills, {recursive:true});
+  const outside = join(scratch, 'outside');
+  await mkdir(outside);
+  const canary = 'OUTSIDE-CANARY-INDEPENDENT-55';
+  await writeFile(join(outside, 'SKILL.md'), canary);
+  const skill = join(skills, 'tsukuri-lifecycle');
+  await symlink(outside, skill);
+  const linked = join(scratch, 'linked-checkout');
+  await symlink(checkout, linked);
+  const request = [
+    {jsonrpc:'2.0',id:1,method:'initialize',params:{protocolVersion:'2025-11-25',capabilities:{},clientInfo:{name:'independent-smoke',version:'1'}}},
+    {jsonrpc:'2.0',method:'notifications/initialized'},
+    {jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'docs_get',arguments:{topic:'lifecycle'}}}
+  ].map(x=>JSON.stringify(x)+'\n').join('');
+  async function call(root) {
+    const child = spawn('bun', [join(root,'packages/mcp/bin/tsukuri-mcp.ts')], {cwd:root, env:{...process.env,TSUKURI_ROOT:root,TSUKURI_BUILDS:join(root,'build')}, stdio:['pipe','pipe','pipe']});
+    let stdout='',stderr='';
+    child.stdout.on('data', b=>stdout+=b); child.stderr.on('data', b=>stderr+=b);
+    const code = new Promise((resolve,reject)=>{ child.on('exit',resolve); child.on('error',reject); });
+    child.stdin.end(request);
+    const timer=setTimeout(()=>child.kill('SIGKILL'),10000);
+    const exit=await code; clearTimeout(timer);
+    assert.equal(exit,0,stderr);
+    assert(!stdout.includes(canary));
+    const response=stdout.trim().split('\n').map(x=>JSON.parse(x)).find(x=>x.id===2);
+    assert(response,stderr);
+    return response.result;
+  }
+  const refused=await call(checkout);
+  assert.equal(refused.isError,true);
+  assert.equal(JSON.parse(refused.content[0].text)._tag,'Unreadable');
+  assert(!JSON.stringify(refused).includes(scratch));
+  console.log('PASS raw stdio: symlinked skill parent refused as Unreadable; outside canary and scratch path absent');
+  await rm(skill);
+  await mkdir(skill);
+  await writeFile(join(skill,'SKILL.md'),'legitimate linked-checkout skill');
+  const accepted=await call(linked);
+  assert.notEqual(accepted.isError,true);
+  assert.equal(accepted.structuredContent.text,'legitimate linked-checkout skill');
+  console.log('PASS raw stdio: linked checkout reads its legitimate regular skill; EOF preserved reply and exited 0');
+} finally { await rm(scratch,{recursive:true,force:true}); }
+
+$ devenv shell -- bun run check && bun run check:exceptions && bun run check:tiers
+• Running devenv:files:cleanup
+✓ Running devenv:files:cleanup in 10.8ms
+• Running devenv:enterShell
+✓ Running devenv:enterShell in 10.1ms
+$ vp check
+pass: All 495 files are correctly formatted (446ms, 32 threads)
+pass: Found no warnings, lint errors, or type errors in 398 files (5.6s, 32 threads)
+$ bun tools/quality/checkEffectExceptions.ts
+[21:25:07.221] INFO (#2): Effect registry clean (3 suppression exceptions).
+$ ox-dep-lint --config oxDepLint.config.ts
+ox-dep-lint: 395 files, 0 findings (0.22 s)
+
+
+Wall time: 8.59 seconds

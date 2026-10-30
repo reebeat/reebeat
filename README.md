@@ -30,6 +30,10 @@ devenv shell -- bun run tsukuri check build/offline --source stories/same-id/sto
 
 The silent narrator makes the narration check (F8) meaningless: it prints `N/A (silent stand-in)`, and only for a build whose manifest lists a stand-in narrator. The sounds of an offline build are real, so the effect check (F1) still observes them.
 
+## For agents
+
+An agent in Claude Code or Codex can read a project through the `tsukuri-mcp` server (spec 0018): list projects, read and lint a Screenplay, get the Plan, read the manifest of a build and look at one frame of its video. It cannot change a file or publish anything. [`packages/mcp/clients/README.md`](packages/mcp/clients/README.md) has the install commands (`claude mcp add`, `codex mcp add`, the plugins).
+
 ## Where to read
 
 - [`GLOSSARY.md`](GLOSSARY.md): the vocabulary and the screenplay mapping (Story, Scene, State, Beat, Keyframe, Line, effect, anchor, event, machine, IR, importer, artifact renderer, Hint, Element, Identity diff, Rendering).

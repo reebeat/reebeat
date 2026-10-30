@@ -1,0 +1,13 @@
+{
+  "_generated": "Generated from packages/lifecycle/src/distribution.ts by `bun run --cwd packages/mcp generate`; edit the source, never this file.",
+  "mcpServers": {
+    "tsukuri": {
+      "args": [
+        "-c",
+        "cd '__TSUKURI_CHECKOUT__' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts"
+      ],
+      "command": "sh",
+      "type": "stdio"
+    }
+  }
+}

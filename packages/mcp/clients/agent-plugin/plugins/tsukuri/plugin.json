@@ -1,0 +1,18 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "name": "tsukuri-labs",
+    "url": "https://github.com/tsukuri-labs"
+  },
+  "description": "Read a tsukuri project from an agent: its Screenplay, lint, Plan, build and a frame of the video. Read-only; release and publish are not tools.",
+  "extensions": {
+    "dev.tsukuri": {
+      "generatedBy": "Generated from packages/lifecycle/src/distribution.ts by `bun run --cwd packages/mcp generate`; edit the source, never this file."
+    }
+  },
+  "homepage": "https://tsukuri.dev",
+  "license": "Apache-2.0",
+  "name": "tsukuri",
+  "repository": "https://github.com/tsukuri-labs/tsukuri",
+  "version": "0.1.0"
+}

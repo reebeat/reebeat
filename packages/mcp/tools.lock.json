@@ -1,0 +1,38 @@
+{
+  "contract": "0.1.0",
+  "digest": "d7e90f48da2b7c1e0279882a52b8b690221e01a29b882bc9eac7ff9fd0aca42f",
+  "tools": [
+    {
+      "digest": "38375b2ac24e77eb799e31d4309949174d84f5ec052832da8b485b1f438b864b",
+      "name": "project_list"
+    },
+    {
+      "digest": "1772d9983b7f92f61d30ca10a89e2670f088228f17f0b4f6ffe29b037e4cefb5",
+      "name": "project_get"
+    },
+    {
+      "digest": "86ce5e2ae3e7f6193bad8501b2eafb044902166f12c04e50384588b6ac0377c4",
+      "name": "docs_get"
+    },
+    {
+      "digest": "9f8181d5450dd896496696e1353c20705bbb64d4c40dcb32242b61eab503d090",
+      "name": "story_read"
+    },
+    {
+      "digest": "cd8228a42df699df55f998ede6ff35635d809d0c32b2c3b753bf7d8807a758c0",
+      "name": "story_lint"
+    },
+    {
+      "digest": "f385857d0dc5617642eeabf8869007996e030991efaa1c9f3f78332a1b32f155",
+      "name": "plan_get"
+    },
+    {
+      "digest": "52b69a35ab737dc119162337c5b1532adb43894d1d23575156e5c11cc7455560",
+      "name": "build_get"
+    },
+    {
+      "digest": "0adc7982151947000a0598ae53cc577794a6d0952852aa583ecec4dac86e4fff",
+      "name": "artifact_observe"
+    }
+  ]
+}

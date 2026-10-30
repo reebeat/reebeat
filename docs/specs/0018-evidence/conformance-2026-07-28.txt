@@ -1,0 +1,60 @@
+$ npx --yes @modelcontextprotocol/conformance@0.2.0-alpha.12 server --url http://127.0.0.1:<port>/mcp --requirements 2026-07-28 --expected-failures packages/mcp/conformance/baseline-2026-07-28.yml
+=== SUMMARY ===
+✗ server-stateless: 25 passed, 3 failed
+✓ completion-complete: 2 passed, 0 failed
+✓ tools-list: 4 passed, 0 failed
+✓ tools-call-simple-text: 2 passed, 0 failed
+✓ tools-call-image: 2 passed, 0 failed
+✓ tools-call-audio: 2 passed, 0 failed
+✓ tools-call-embedded-resource: 2 passed, 0 failed
+✓ tools-call-mixed-content: 2 passed, 0 failed
+✓ tools-call-error: 2 passed, 0 failed
+✓ tools-call-with-progress: 2 passed, 0 failed
+✓ server-sse-multiple-streams: 1 passed, 0 failed
+✓ resources-list: 2 passed, 0 failed
+✓ resources-read-text: 2 passed, 0 failed
+✓ resources-read-binary: 2 passed, 0 failed
+✓ resources-templates-read: 2 passed, 0 failed
+✓ sep-2164-resource-not-found: 4 passed, 0 failed
+✓ prompts-list: 2 passed, 0 failed
+✓ prompts-get-simple: 2 passed, 0 failed
+✓ prompts-get-with-args: 2 passed, 0 failed
+✓ prompts-get-embedded-resource: 2 passed, 0 failed
+✓ prompts-get-with-image: 2 passed, 0 failed
+✓ dns-rebinding-protection: 2 passed, 0 failed
+✓ caching: 8 passed, 0 failed
+✓ input-required-result-basic-elicitation: 3 passed, 0 failed
+✓ input-required-result-basic-sampling: 3 passed, 0 failed
+✓ input-required-result-basic-list-roots: 3 passed, 0 failed
+✓ input-required-result-request-state: 3 passed, 0 failed
+✓ input-required-result-multiple-input-requests: 3 passed, 0 failed
+✓ input-required-result-multi-round: 4 passed, 0 failed
+✓ input-required-result-missing-input-response: 2 passed, 0 failed
+✓ input-required-result-non-tool-request: 3 passed, 0 failed
+✓ input-required-result-result-type: 2 passed, 0 failed
+✓ input-required-result-unsupported-methods: 2 passed, 0 failed
+✓ input-required-result-tampered-state: 2 passed, 0 failed
+✓ input-required-result-capability-check: 2 passed, 0 failed
+✓ input-required-result-ignore-extra-params: 2 passed, 0 failed
+✓ input-required-result-validate-input: 3 passed, 0 failed
+✗ tasks-lifecycle: 1 passed, 8 failed
+✗ tasks-capability-negotiation: 1 passed, 4 failed
+✗ tasks-wire-fields: 1 passed, 3 failed
+✗ tasks-request-state-removal: 1 passed, 1 failed
+✗ tasks-mrtr-input: 1 passed, 3 failed
+✗ tasks-request-headers: 2 passed, 3 failed
+✗ tasks-dispatch-and-envelope: 3 passed, 6 failed
+✓ tasks-status-notifications: 0 passed, 0 failed
+✗ tasks-required-task-error: 1 passed, 1 failed
+✗ tasks-mrtr-composition: 1 passed, 1 failed
+✗ json-schema-2020-12: 1 passed, 1 failed
+✓ http-header-validation: 14 passed, 0 failed
+✗ http-custom-header-server-validation: 1 passed, 5 failed
+
+Total: 143 passed, 39 failed
+
+[33mExpected failures (in baseline):[0m
+  ~ server-stateless
+
+[32mBaseline check passed: all failures are expected.[0m
+exit=0

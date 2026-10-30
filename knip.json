@@ -57,6 +57,24 @@
       "entry": ["test/**/*.test.ts"],
       "project": ["src/**/*.ts", "test/**/*.ts"]
     },
+    "packages/lifecycle": {
+      "entry": ["test/**/*.test.ts"],
+      "project": [
+        "src/**/*.ts",
+        "contract/**/*.ts",
+        "standins/**/*.ts",
+        "test/**/*.ts"
+      ]
+    },
+    "packages/mcp": {
+      "entry": [
+        "bin/*.ts",
+        "test/**/*.test.ts",
+        "test/conformanceFixture.ts",
+        "test/makeWorkspace.ts"
+      ],
+      "project": ["bin/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+    },
     "packages/capture-chromium": {
       "entry": ["test/**/*.test.ts"],
       "ignoreDependencies": ["reveal.js"],

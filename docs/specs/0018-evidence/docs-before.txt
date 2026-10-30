@@ -1,0 +1,4 @@
+$ bunx vp test run test/docs.test.ts   # BEFORE: src/docs.ts of aa8df49
+     × a link, a directory, a missing file and an oversized file are refused with a fixed message 12ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  1 failed | 1 passed (2)

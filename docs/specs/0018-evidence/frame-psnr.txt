@@ -1,0 +1,6 @@
+# artifact_observe frame 372 of the same-id build against ffmpeg decoding frame N of the verify-tsukuri build (640 px wide)
+# the MCP image: the image block of the artifact_observe call in journey-same-id/claude.jsonl (JPEG, 2994 bytes)
+$ ffmpeg -i mcp-frame.jpg -i ref-372.png -lavfi psnr -f null -
+PSNR y:46.292781 u:47.332022 v:56.798520 average:47.193487 min:47.193487 max:47.193487
+$ ffmpeg -i mcp-frame.jpg -i ref-100.png -lavfi psnr -f null -
+PSNR y:21.688709 u:41.432665 v:51.753371 average:23.437054 min:23.437054 max:23.437054

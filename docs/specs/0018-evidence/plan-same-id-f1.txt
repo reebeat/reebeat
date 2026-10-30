@@ -1,0 +1,23 @@
+$ bun run tsukuri plan stories/same-id/story.fountain --timing   # the lines of scene sc2
+  Scene sc2  INT. FIRST SCREEN - DAY  (line 23, transition: default)
+    slide change at frame 289, frames 289-549 (9.63-18.30 s)
+    Elements
+        tag           show    @tl .label "First screen"
+        box           show    @ml .box "A box"
+        twin          show    @mr .box hidden "Another box"
+    Effects
+      f1  focus box  word("screen", 1).end  ->  frame 372 (12.40 s)
+        ends frame 548 (18.27 s), interrupted by the slide change
+      r1  show twin  word("too").end  ->  frame 466 (15.53 s)
+        ends frame 470 (15.67 s), by its window
+    Lines
+      sc2.l1
+        "Picture a box on a screen."
+        frames 319-381 (10.63-12.70 s)
+      sc2.l2
+        "On the next screen there is a box too. Is it the same box, or a new one?"
+        frames 396-534 (13.20-17.80 s)
+
+Chapter ch2  A name that stays  (line 40)
+  Synopsis: Give every box a name, and each screen can follow it.
+  Scene sc3  INT. THE NAMES - DAY  (line 46, transition: cut)

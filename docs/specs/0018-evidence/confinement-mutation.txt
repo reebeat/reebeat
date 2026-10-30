@@ -1,0 +1,18 @@
+$ (mutation: requireDirectory no longer refuses a symbolic link and accepts one as a directory)
+$ bunx vp test run test/confinement.test.ts
+✓ Running devenv:files:cleanup in 13.7ms
+✓ Running devenv:enterShell in 13.9ms
+[18:22:17.748] ERROR (#211): Error [AssertionError]: expected [ 'alpha', 'badjson', 'evil', …(2) ] to deeply equal [ 'alpha', 'badjson', …(2) ]
+[18:22:17.788] ERROR (#265): Error [AssertionError]: project_get on evil: expected false to be true
+     × lists only real projects and never follows a link out of the root 72ms
+     × answers a link, a directory and an oversized file with a typed failure and the canary never appears 38ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  test/confinement.test.ts > confinement (F5) > lists only real projects and never follows a link out of the root
+AssertionError: expected [ 'alpha', 'badjson', 'evil', …(2) ] to deeply equal [ 'alpha', 'badjson', …(2) ]
+ FAIL  test/confinement.test.ts > confinement (F5) > answers a link, a directory and an oversized file with a typed failure and the canary never appears
+AssertionError: project_get on evil: expected false to be true
+ Test Files  1 failed (1)
+$ (mutation reverted)
+$ bunx vp test run test/confinement.test.ts
+ Test Files  1 passed (1)
+      Tests  4 passed (4)

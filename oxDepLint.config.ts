@@ -69,10 +69,18 @@ export default defineConfig({
       mayUse: ["service", "library"],
       packages: ["packages/pipeline"],
     },
-    service: { mayUse: ["library"], packages: ["packages/services"] },
+    service: {
+      mayUse: ["library"],
+      packages: ["packages/services", "packages/lifecycle"],
+    },
     tool: {
       mayUse: "any",
-      packages: ["packages/verify", "packages/cli", "tools/quality"],
+      packages: [
+        "packages/verify",
+        "packages/cli",
+        "packages/mcp",
+        "tools/quality",
+      ],
     },
   },
   workspaceScopes: ["@tsukuri/"],

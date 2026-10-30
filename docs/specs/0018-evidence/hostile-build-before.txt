@@ -1,0 +1,15 @@
+$ bunx vp test run test/hostileBuild.test.ts   # BEFORE: the sources of aa8df49, the new tests only
+[19:29:27.395] ERROR (#16): Error [AssertionError]: build_get fails: expected false to be true
+[19:29:27.435] ERROR (#80): Error [AssertionError]: the file name is in no result: expected true to be false
+[19:29:27.456] ERROR (#112): Error [AssertionError]: deck.html: expected undefined to equal 'Unreadable'
+[19:29:27.464] ERROR (#144): Error [AssertionError]: file://<tmp>/a#b?c%20d/build/harbour/deck.html: expected true to be false
+       × a manifest whose adapter id, service or digest is a sentence is not a manifest, and its text is not echoed 49ms
+       × a file name taken from the manifest or the directory is never quoted, whatever it names 23ms
+       × a link anywhere in the build, or in the place of the deck, the plan or the subtitles, is refused 21ms
+       × a link names a path whose # ? and spaces are percent-encoded 8ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: build_get fails: expected false to be true
+AssertionError: the file name is in no result: expected true to be false
+AssertionError: deck.html: expected undefined to equal 'Unreadable'
+AssertionError: file://<tmp>/a#b?c%20d/build/harbour/deck.html: expected true to be false
+      Tests  4 failed | 1 passed (5)

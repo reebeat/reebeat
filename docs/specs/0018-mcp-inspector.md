@@ -2,7 +2,8 @@
 
 Status: **plan and build** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-30. Decided by: [spec 0016](0016-mcp-interface.md), reviewed and merged first (PR #39, merge commit `655c25c`), and the lead's brief for its first implementation slice: one felt journey, runnable headless.
 Process: [spec 0000](0000-development-lifecycle.md). Number 0018: 0017 is held by the merged spec 0017 (the tier gate on ox-dep-lint, PR #48) and by the open PR #50; `git ls-tree -r origin/main docs/specs` and every remote branch show no 0018 on 2026-10-30. Branch `feat/0018-mcp-inspector`.
-Verify skill: `mcp-install`, `mcp-journey`, `mcp-frame`, `mcp-readonly`, `mcp-untrusted`, `mcp-confined` (the rows this spec adds to the feature map: what a viewer of the agent sees is the results of the tools and the install they start from).
+Verify skill: mcp-install, mcp-journey, mcp-frame, mcp-readonly, mcp-untrusted, mcp-confined
+Those rows are what a viewer of the agent sees: the results of the tools and the install they start from.
 Decision record: spec 0016 and its Revisions (D1 to D13 as answered there). This spec decides nothing that spec left open; where building taught something, a dated Revision at the end says so.
 
 ## Problem

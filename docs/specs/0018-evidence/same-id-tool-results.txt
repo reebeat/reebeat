@@ -1,0 +1,4 @@
+$ node (decode of claude.jsonl): the artifact_observe tool_result of the same-id journey
+tool_reference 0 chars | tool_reference 0 chars | tool_reference 0 chars | tool_reference 0 chars | tool_reference 0 chars | tool_reference 0 chars | tool_reference 0 chars
+text 113 chars | text 116 chars | text 120 chars | text 113 chars | text 3926 chars
+image image/jpeg 2994 bytes | text 160 chars | text 206 chars

@@ -1,0 +1,48 @@
+$ npx --yes @modelcontextprotocol/conformance@0.2.0-alpha.12 server --url http://127.0.0.1:<port>/mcp --requirements 2025-11-25 --expected-failures packages/mcp/conformance/baseline-2025-11-25.yml
+=== SUMMARY ===
+✓ server-initialize: 3 passed, 0 failed
+✓ logging-set-level: 2 passed, 0 failed
+✓ ping: 2 passed, 0 failed
+✓ completion-complete: 2 passed, 0 failed
+✓ tools-list: 3 passed, 0 failed
+✓ tools-call-simple-text: 2 passed, 0 failed
+✓ tools-call-image: 2 passed, 0 failed
+✓ tools-call-audio: 2 passed, 0 failed
+✓ tools-call-embedded-resource: 2 passed, 0 failed
+✓ tools-call-mixed-content: 2 passed, 0 failed
+✓ tools-call-with-logging: 2 passed, 0 failed
+✓ tools-call-error: 2 passed, 0 failed
+✓ tools-call-with-progress: 2 passed, 0 failed
+✗ tools-call-sampling: 1 passed, 1 failed
+✗ tools-call-elicitation: 1 passed, 1 failed
+✗ elicitation-sep1034-defaults: 1 passed, 1 failed
+✓ server-sse-multiple-streams: 1 passed, 0 failed
+✗ elicitation-sep1330-enums: 1 passed, 1 failed
+✓ resources-list: 2 passed, 0 failed
+✓ resources-read-text: 2 passed, 0 failed
+✓ resources-read-binary: 2 passed, 0 failed
+✓ resources-templates-read: 2 passed, 0 failed
+✗ resources-subscribe: 1 passed, 1 failed
+✗ resources-unsubscribe: 1 passed, 1 failed
+✓ prompts-list: 2 passed, 0 failed
+✓ prompts-get-simple: 2 passed, 0 failed
+✓ prompts-get-with-args: 2 passed, 0 failed
+✓ prompts-get-embedded-resource: 2 passed, 0 failed
+✓ prompts-get-with-image: 2 passed, 0 failed
+✓ dns-rebinding-protection: 2 passed, 0 failed
+✓ server-session-lifecycle: 1 passed, 0 failed
+✗ json-schema-2020-12: 1 passed, 1 failed
+✓ server-sse-polling: 0 passed, 0 failed
+
+Total: 57 passed, 7 failed
+
+[33mExpected failures (in baseline):[0m
+  ~ tools-call-sampling
+  ~ tools-call-elicitation
+  ~ elicitation-sep1034-defaults
+  ~ elicitation-sep1330-enums
+  ~ resources-subscribe
+  ~ resources-unsubscribe
+
+[32mBaseline check passed: all failures are expected.[0m
+exit=0

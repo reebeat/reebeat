@@ -1,0 +1,66 @@
+== Claude Code 2.1.295 (Claude Code)
+-- the server entry of the generated claude-code/.mcp.json goes in with add-json
+$ claude mcp add-json --scope user tsukuri {"args":["-c","cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts"],"command":"sh","type":"stdio"}
+Added stdio MCP server tsukuri to user config
+$ claude mcp list
+Checking MCP server health…
+
+tsukuri: sh -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts - ✔ Connected
+ok: claude mcp list shows tsukuri Connected (the health check started the server and completed the handshake)
+$ claude mcp get tsukuri
+tsukuri:
+  Scope: User config (available in all your projects)
+  Status: ✔ Connected
+  Type: stdio
+  Command: sh
+  Args: -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts
+
+To remove this server, run: claude mcp remove tsukuri -s user
+$ claude mcp remove --scope user tsukuri
+Removed MCP server tsukuri from user config
+File modified: <tmp>/claude/.claude.json
+-- the one-command install of the card
+$ claude mcp add --scope user --transport stdio tsukuri -- sh -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts
+Added stdio MCP server tsukuri with command: sh -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts to user config
+File modified: <tmp>/claude/.claude.json
+$ claude mcp list
+Checking MCP server health…
+
+tsukuri: sh -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts - ✔ Connected
+$ claude plugin validate --strict <tmp>/clients/claude-plugin
+Validating plugin manifest: <tmp>/clients/claude-plugin/.claude-plugin/plugin.json
+
+✔ Validation passed
+ok: claude plugin validate --strict accepts the generated plugin
+== Codex codex-cli 0.162.0
+$ codex mcp add tsukuri -- sh -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("<tmp>/codex"))
+Added global MCP server 'tsukuri'.
+$ codex mcp list
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("<tmp>/codex"))
+Name     Command  Args                                                                                                                           Env  Cwd  Status   Auth       
+tsukuri  sh       -c cd '<checkout>' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts  -    -    enabled  Unsupported
+ok: codex mcp list shows the server
+$ codex plugin marketplace add <tmp>/clients/agent-plugin
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("<tmp>/codex"))
+Added marketplace `tsukuri-local` from <tmp>/clients/agent-plugin.
+Installed marketplace root: <tmp>/clients/agent-plugin
+$ codex plugin add tsukuri@tsukuri-local
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("<tmp>/codex"))
+Added plugin `tsukuri` from marketplace `tsukuri-local`.
+Installed plugin root: <tmp>/codex/plugins/cache/tsukuri-local/tsukuri/0.1.0
+$ codex plugin list
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/tmp" (codex_home: AbsolutePathBuf("<tmp>/codex"))
+Marketplace `personal`
+~/.agents/plugins/marketplace.json
+
+PLUGIN              STATUS         VERSION  SOURCE
+herdr-mcp@personal  not installed           ~/plugins/herdr-mcp
+
+Marketplace `tsukuri-local`
+<tmp>/clients/agent-plugin/.agents/plugins/marketplace.json
+
+PLUGIN                 STATUS              VERSION  SOURCE
+tsukuri@tsukuri-local  installed, enabled  0.1.0    <tmp>/clients/agent-plugin/plugins/tsukuri
+ok: codex plugin list shows tsukuri installed, enabled
+== done: every expectation held; evidence in ~/.local/state/tsukuri-verify/2026-10-30-spec-0018/check-clients.txt

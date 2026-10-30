@@ -2,7 +2,9 @@
 # The fixture is the inspector's shared server core (`McpServer.layerHttp`, Effect 4.1.0) plus test-only diagnostic
 # tools; it is not the suite's reference server. A scenario is listed only when the cause is outside this package.
 server:
-  # Needs the diagnostic tool `test_missing_capability` to answer -32021 (MissingRequiredClientCapabilityError). Effect
-  # 4.1.0's McpServer has no such error: a handler can fail only with InvalidParams or InternalError.
+  # Three checks fail. Two need the diagnostic tool `test_missing_capability` to answer -32021
+  # (MissingRequiredClientCapabilityError): Effect 4.1.0's McpServer has no such error, a handler can fail only with
+  # InvalidParams or InternalError. One needs the streaming elicitation tool `test_streaming_elicitation`, which the
+  # fixture does not have because the inspector never asks a client for anything (spec 0016, D1).
   # Retire when: a later Effect release adds the error, or the fixture can emit it through the transport.
   - server-stateless

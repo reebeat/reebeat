@@ -124,16 +124,41 @@ jobs:
         # npm expands ${NODE_AUTH_TOKEN} when it reads this file; the single quotes keep the shell from doing it.
         run: |
           printf '%s\n' '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$RUNNER_TEMP/npmrc"
+      - name: Remove devEngines from this checkout
+        shell: bash
+        # npm refuses to run anywhere in a repository whose root package.json has `devEngines.packageManager` for another
+        # tool (EBADDEVENGINES, bun here), and both the Publish and the Tag step run npm, so the field is removed once,
+        # before them, from this runner's checkout, which is discarded when the job ends.
+        run: |
+          jq 'del(.devEngines)' package.json > package.json.release
+          mv package.json.release package.json
       - name: Publish
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
         # `changeset publish` runs `npm publish packages/<name>/dist --tag alpha --access public` for each version the
-        # registry lacks (the tag comes from .changeset/pre.json). npm refuses to run anywhere in a repository whose
-        # root package.json has `devEngines.packageManager` for another tool (EBADDEVENGINES, bun here), so the field
-        # is removed from this runner's checkout, which is discarded when the job ends.
+        # registry lacks (the tag comes from .changeset/pre.json, for the first pre-release only: see the next step).
+        run: devenv shell -- bunx changeset publish --no-git-tag
+      - name: Tag the pre-release
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_USERCONFIG: ${{ runner.temp }}/npmrc
+        # `changeset publish` gives the pre tag (alpha) to the first pre-release of a package only; every later one goes to
+        # `latest` (getReleaseTag in @changesets/cli 3.0.3: a registry entry with only pre-releases is "only-pre"), so
+        # `npm i @tsukuri/core@alpha` would stay on the first one. This step points the tag at each version just published.
+        # It needs `npm dist-tag` permission: a token with write access has it; a trusted publisher needs "Allow npm
+        # dist-tag" and npm 11.21.0 or later (docs.npmjs.com/trusted-publishers, "Managing dist-tags"). The runner's npm
+        # (10.9.9) and devenv's (11.19.0) are older, so this step runs a pinned npm through npx; the release rules test
+        # refuses a pin below 11.21.0. It does nothing outside pre mode.
         run: |
-          jq 'del(.devEngines)' package.json > package.json.release
-          mv package.json.release package.json
-          devenv shell -- bunx changeset publish --no-git-tag
+          if [ "$(node -p 'require("./.changeset/pre.json").mode' 2>/dev/null)" != pre ]; then
+            echo "not in pre mode: nothing to tag"
+            exit 0
+          fi
+          tag=$(node -p 'require("./.changeset/pre.json").tag')
+          for manifest in packages/*/dist/package.json; do
+            spec=$(node -p 'const p=require(process.argv[1]);p.name+"@"+p.version' "./$manifest")
+            npx --yes npm@11.21.1 dist-tag add "$spec" "$tag"
+          done

@@ -19,6 +19,8 @@ import {
   evaluateCondition,
   holdFindings,
   holdScript,
+  tagFindings,
+  tagScript,
   modeFindings,
   referencedSecrets,
   tokenFindings,
@@ -55,6 +57,9 @@ interface Changes {
   readonly jobEnv?: string;
   readonly mode?: string;
   readonly noHold?: boolean;
+  readonly noDevEngines?: boolean;
+  readonly noTag?: boolean;
+  readonly tagRun?: string;
   readonly needs?: string;
   readonly publishIf?: string;
   readonly publishRun?: string;
@@ -68,6 +73,18 @@ const holdBlock = (changes: Changes): string =>
   changes.noHold === true
     ? ""
     : `      - name: Release hold\n        run: if [ -e .github/release-hold ]; then exit 1; fi\n${changes.holdExtra ?? ""}`;
+
+/** The step of the fixture that removes `devEngines`, before the npm steps. */
+const devEnginesBlock = (changes: Changes): string =>
+  changes.noDevEngines === true
+    ? ""
+    : "      - name: Remove devEngines\n        run: jq 'del(.devEngines)' package.json > p && mv p package.json\n";
+
+/** The step of the fixture that points the pre tag at what was published. */
+const tagBlock = (changes: Changes): string =>
+  changes.noTag === true
+    ? ""
+    : `      - name: Tag the pre-release\n        run: ${changes.tagRun ?? "npx --yes npm@11.21.1 dist-tag add x@1.0.0-alpha.1 alpha"}\n`;
 
 /** A release workflow in the shape the real one has, with the lines a control changes made explicit. */
 const release = (changes: Changes): WorkflowFile => ({
@@ -99,11 +116,11 @@ ${changes.needs ?? ""}
 ${changes.jobEnv ?? ""}${changes.jobExtra ?? ""}
     steps:
       - uses: actions/checkout@abc
-${changes.beforeHold ?? ""}${holdBlock(changes)}      - name: Publish
+${changes.beforeHold ?? ""}${holdBlock(changes)}${devEnginesBlock(changes)}      - name: Publish
 ${changes.publishExtra ?? ""}        env:
           NODE_AUTH_TOKEN: ${expression("NPM_TOKEN")}
         run: ${changes.publishRun ?? "bunx changeset publish"}
-`,
+${tagBlock(changes)}`,
 });
 
 /** A one-file workflow fixture. */
@@ -330,6 +347,27 @@ const readRepositoryFile = (name: string) =>
     );
   });
 
+/** The services a test that runs a step script needs. */
+const services = Effect.all({
+  fs: FileSystem.FileSystem,
+  path: Path.Path,
+  spawner: ChildProcessSpawner.ChildProcessSpawner,
+});
+
+/** The real release workflow. */
+const releaseWorkflow = Effect.map(
+  readRepositoryFile(".github/workflows/release.yml"),
+  (text): WorkflowFile => ({ name: "release.yml", text })
+);
+
+/** The real release workflow and the script of its step that `find` locates. */
+const stepOfRelease = (find: (file: WorkflowFile) => Option.Option<string>) =>
+  Effect.gen(function* located() {
+    const workflow = yield* releaseWorkflow;
+
+    return { script: yield* Effect.fromOption(find(workflow)), workflow };
+  });
+
 describe("the real files", () => {
   it.effect("secretspec.toml and the workflows follow the token rule", () =>
     Effect.gen(function* real() {
@@ -430,16 +468,8 @@ describe("the release hold (operator decision of 2026-10-29)", () => {
     "the real hold step refuses where the file exists and passes where it does not, and the real job has one",
     () =>
       Effect.gen(function* running() {
-        const fs = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
-        const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-
-        const workflow: WorkflowFile = {
-          name: "release.yml",
-          text: yield* readRepositoryFile(".github/workflows/release.yml"),
-        };
-
-        const script = yield* Effect.fromOption(holdScript(workflow));
+        const { fs, path, spawner } = yield* services;
+        const { script, workflow } = yield* stepOfRelease(holdScript);
 
         const withoutFile = yield* fs.makeTempDirectoryScoped();
         const withFile = yield* fs.makeTempDirectoryScoped();
@@ -458,6 +488,115 @@ describe("the release hold (operator decision of 2026-10-29)", () => {
         assert.deepStrictEqual(holdFindings(workflow), []);
         assert.strictEqual(yield* exit(withoutFile), 0);
         assert.strictEqual(yield* exit(withFile), 1);
+      }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+  );
+});
+
+describe("the pre-release tag", () => {
+  it("holds for a publishing job with a dist-tag step after the publish", () => {
+    assert.deepStrictEqual(tagFindings(release({})), []);
+  });
+
+  it("fails a publishing job with no dist-tag step after the publish (control)", () => {
+    assert.isTrue(
+      mentioning("would be tagged latest")(
+        tagFindings(release({ noTag: true }))
+      )
+    );
+  });
+
+  it("fails a tag step with an old, unpinned or newer-looking npm, or no devEngines removal (controls)", () => {
+    for (const tagRun of [
+      "npm dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@11.19.0 dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@10.9.9 dist-tag add x@1.0.0-alpha.1 alpha",
+    ]) {
+      assert.isTrue(
+        mentioning("older than 11.21.0")(tagFindings(release({ tagRun })))
+      );
+    }
+
+    assert.deepStrictEqual(
+      tagFindings(
+        release({
+          tagRun: "npx --yes npm@12.2.0 dist-tag add x@1.0.0-alpha.1 alpha",
+        })
+      ),
+      []
+    );
+    assert.isTrue(
+      mentioning("removes devEngines")(
+        tagFindings(release({ noDevEngines: true }))
+      )
+    );
+  });
+
+  it.effect(
+    "the real step tags every published version with the pre tag in pre mode, and nothing otherwise",
+    () =>
+      Effect.gen(function* running() {
+        const { fs, path, spawner } = yield* services;
+        const { script, workflow } = yield* stepOfRelease(tagScript);
+
+        // A checkout in a temporary directory with two staged packages, and an `npx` that records its arguments.
+        const tree = Effect.fnUntraced(function* tree(preMode: string) {
+          const root = yield* fs.makeTempDirectoryScoped();
+          const bin = path.join(root, "bin");
+
+          yield* fs.makeDirectory(bin);
+          yield* fs.writeFileString(
+            path.join(bin, "npx"),
+            `#!/bin/sh\necho "$@" >> "${path.join(root, "npm.log")}"\n`,
+            { mode: 0o755 }
+          );
+          yield* fs.makeDirectory(path.join(root, ".changeset"));
+          yield* fs.writeFileString(
+            path.join(root, ".changeset", "pre.json"),
+            `{"mode":"${preMode}","tag":"alpha"}`
+          );
+
+          yield* Effect.forEach(["core", "lint"], (name) =>
+            Effect.gen(function* staged() {
+              const dist = path.join(root, "packages", name, "dist");
+
+              yield* fs.makeDirectory(dist, { recursive: true });
+              yield* fs.writeFileString(
+                path.join(dist, "package.json"),
+                `{"name":"@tsukuri/${name}","version":"0.1.0-alpha.1"}`
+              );
+            })
+          );
+
+          return root;
+        });
+
+        const run = Effect.fnUntraced(function* run(preMode: string) {
+          const root = yield* tree(preMode);
+
+          const exit = yield* spawner.exitCode(
+            ChildProcess.make(
+              "bash",
+              ["-c", `PATH="${path.join(root, "bin")}:$PATH"\n${script}`],
+              { cwd: root, stdout: "ignore" }
+            )
+          );
+
+          const log = path.join(root, "npm.log");
+
+          return {
+            calls: (yield* fs.exists(log)) ? yield* fs.readFileString(log) : "",
+            exit,
+          };
+        });
+
+        const pin = /npm@\d+\.\d+\.\d+/u.exec(script)?.[0];
+
+        assert.deepStrictEqual(yield* run("pre"), {
+          calls: `--yes ${pin}\u0020dist-tag add @tsukuri/core@0.1.0-alpha.1 alpha\n--yes ${pin}\u0020dist-tag add @tsukuri/lint@0.1.0-alpha.1 alpha\n`,
+          exit: 0,
+        });
+        assert.deepStrictEqual(yield* run("exit"), { calls: "", exit: 0 });
+        assert.deepStrictEqual(tagFindings(workflow), []);
       }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
   );
 });

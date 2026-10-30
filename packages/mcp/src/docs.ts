@@ -39,14 +39,25 @@ export const fileDocs = (
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
 
-      /** A document of the checkout: a regular file, not a link, under the size cap; the topic is a fixed word. */
-      const readDocument = (file: string, topic: DocTopic) =>
+      /**
+       * A document of the checkout: every component of its path below the checkout is a real directory or file, not a
+       * link (the canonical path of the document is the checkout's canonical path and the segments, nothing else), the
+       * file is regular and under the size cap; the topic is a fixed word.
+       */
+      const readDocument = (segments: readonly string[], topic: DocTopic) =>
         Effect.gen(function* documentRead() {
+          const root = yield* fs.realPath(checkout);
+          const file = path.join(root, ...segments);
           const info = yield* fs.lstat(file);
+          const canonical = yield* fs.realPath(file);
 
-          if (info.type !== "File" || Number(info.size) > maxDocumentBytes) {
+          if (
+            canonical !== file ||
+            info.type !== "File" ||
+            Number(info.size) > maxDocumentBytes
+          ) {
             return yield* new Unreadable({
-              message: `the ${topic} document is not a regular file under ${maxDocumentBytes} bytes`,
+              message: `the ${topic} document is not a regular file under ${maxDocumentBytes} bytes, or a link is on its path`,
               project: "docs",
             });
           }
@@ -74,7 +85,7 @@ export const fileDocs = (
         read: (topic) =>
           topic === "grammar"
             ? Effect.succeed(grammarDocument())
-            : readDocument(path.join(checkout, ...sources[topic]), topic),
+            : readDocument(sources[topic], topic),
       });
     })
   );

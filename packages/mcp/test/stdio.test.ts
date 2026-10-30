@@ -13,15 +13,20 @@ import {
   Fiber,
   Formatter,
   Option,
-  Path,
   Record as Rec,
   Schema,
   Stream,
   String as Str,
 } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { ChildProcessSpawner } from "effect/process";
 
-import { FixtureService, checkout, fixtureLayer, platform } from "./support.ts";
+import {
+  FixtureService,
+  checkout,
+  fixtureLayer,
+  platform,
+  serverCommand,
+} from "./support.ts";
 
 const canary = "CANARY-9f3a1c7e-do-not-leak";
 
@@ -141,7 +146,6 @@ const exchange = (requests: readonly Request[], count: number) =>
   Effect.scoped(
     Effect.gen(function* run() {
       const fixture = yield* FixtureService;
-      const path = yield* Path.Path;
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const root = yield* checkout;
       const encoder = new TextEncoder();
@@ -156,21 +160,13 @@ const exchange = (requests: readonly Request[], count: number) =>
       );
 
       const handle = yield* spawner.spawn(
-        ChildProcess.make(
-          "bun",
-          [path.join(root, "packages", "mcp", "bin", "tsukuri-mcp.ts")],
-          {
-            cwd: root,
-            env: {
-              ...Rec.fromEntries(
-                Arr.map(secretNames, (name) => [name, canary] as const)
-              ),
-              TSUKURI_BUILDS: fixture.workspace.builds,
-              TSUKURI_ROOT: fixture.workspace.root,
-            },
-            extendEnv: true,
-            stdin: { endOnDone: false, stream: input },
-          }
+        serverCommand(
+          root,
+          fixture.workspace,
+          Rec.fromEntries(
+            Arr.map(secretNames, (name) => [name, canary] as const)
+          ),
+          { endOnDone: false, stream: input }
         )
       );
 

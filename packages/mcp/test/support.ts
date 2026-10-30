@@ -27,9 +27,10 @@ import {
   Schema,
   String as Str,
 } from "effect";
-import type { PlatformError } from "effect";
+import type { PlatformError, Stream } from "effect";
 import type { McpSchema } from "effect/ai";
 import { McpTest } from "effect/ai";
+import { ChildProcess } from "effect/process";
 
 import type { Workspace } from "../src/projectsFs.ts";
 import { live } from "../src/runtime.ts";
@@ -282,15 +283,37 @@ export const eras = ["2026-07-28", "2025-11-25", "2025-06-18"] as const;
 /** An in-memory client of the live server over `workspace`, in one protocol era. */
 export const connectOver = (
   workspace: Workspace,
-  version: (typeof eras)[number]
+  version: (typeof eras)[number],
+  root?: string
 ) =>
-  Effect.flatMap(checkout, (root) =>
-    McpTest.makeClient(Layer.provide(registrations, live(workspace, root)), {
+  Effect.flatMap(root === undefined ? checkout : Effect.succeed(root), (here) =>
+    McpTest.makeClient(Layer.provide(registrations, live(workspace, here)), {
       ...serverInfo,
       protocolVersion: version,
       protocols,
     })
   ).pipe(Effect.provide(platform));
+
+/** The executable over `workspace`, with `env` added to the environment and `stdin` as its standard input. */
+export const serverCommand = (
+  root: string,
+  workspace: Workspace,
+  env: Readonly<Record<string, string>>,
+  stdin: {
+    readonly endOnDone?: boolean;
+    readonly stream: Stream.Stream<Uint8Array>;
+  }
+) =>
+  ChildProcess.make("bun", [`${root}/packages/mcp/bin/tsukuri-mcp.ts`], {
+    cwd: root,
+    env: {
+      ...env,
+      TSUKURI_BUILDS: workspace.builds,
+      TSUKURI_ROOT: workspace.root,
+    },
+    extendEnv: true,
+    stdin,
+  });
 
 /** An in-memory client of the live server over the fixture workspace. */
 export const connect = (version: (typeof eras)[number]) =>

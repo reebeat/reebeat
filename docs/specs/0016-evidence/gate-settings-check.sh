@@ -27,5 +27,9 @@ check "prevent_self_review is true on every required_reviewers rule" "$(printf '
 check "can_admins_bypass is false" "$([ "$bypass" = false ] && echo true || echo false)"
 check "the active account has no repository admin" "$(printf '%s' "$perms" | jq '.admin==false')"
 check "the active token has no classic 'repo' scope" "$(printf '%s' "$scopes" | grep -q "'repo'" && echo false || echo true)"
-echo "NOTE  not checkable here: whether a fine-grained token has Deployments: write, and who else can read the credential files of this OS user (M3). Read them in the token's settings and on the machine."
+bus=false; { [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || { [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -e "$XDG_RUNTIME_DIR/bus" ]; }; } && bus=true
+check "no session bus is reachable (a secret service on it can hold the operator's gh token)" "$([ "$bus" = false ] && echo true || echo false)"
+if command -v secret-tool >/dev/null 2>&1; then found=$(secret-tool search --all service gh:github.com 2>/dev/null | grep -c '^\[' || true); else found=0; fi
+check "the secret service holds no gh:github.com entry this process can read" "$([ "${found:-0}" = 0 ] && echo true || echo false)"
+echo "NOTE  not checkable here: whether a fine-grained token has Deployments: write, and who else can read the credential files of this OS user (M3: the unix-user boundary). Read them in the token's settings and on the machine."
 echo "result: $([ $fail = 0 ] && echo pass || echo FAIL)"; exit $fail

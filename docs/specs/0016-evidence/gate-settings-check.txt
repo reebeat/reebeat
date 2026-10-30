@@ -1,4 +1,4 @@
-# F16 controls (stub gh) and the control against the real npm-release; jq from nixpkgs
+# F16 controls (stub gh and stub secret-tool) and the control against the real npm-release; jq from nixpkgs
 $ nix shell nixpkgs#jq -c ./gate-settings-check.test.sh
 ok    good: one reduced account, one user reviewer, self-review prevented, no bypass, no admin
 ok    an inactive second account is logged in
@@ -8,10 +8,13 @@ ok    prevent_self_review is false
 ok    admins can bypass
 ok    the active account is a repository admin
 ok    the token has the classic repo scope
+ok    a session bus is reachable (XDG_RUNTIME_DIR/bus exists)
+ok    DBUS_SESSION_BUS_ADDRESS is set
+ok    the secret service holds a gh:github.com entry
 ok    no required_reviewers rule at all (the two checks that need a rule fail with it)
 exit=0
 
-$ nix shell nixpkgs#jq -c ./gate-settings-check.sh tsukuri-labs/tsukuri npm-release   (real, read-only; this OS user is the operator, with the operator login)
+$ nix shell nixpkgs#jq -c ./gate-settings-check.sh tsukuri-labs/tsukuri npm-release   (real, read-only; operator OS user with a session bus)
 OS user: nori; gh accounts logged in on github.com: 1; active: phibkro; token scopes: 'gist', 'read:org', 'repo', 'workflow'
 repository permissions of the active account: {"admin":true,"maintain":true,"push":true,"triage":true,"pull":true}
 environment npm-release: can_admins_bypass=true; required_reviewers rules: [{"prevent_self_review":false,"reviewers":[{"type":"User","who":"phibkro"}]}]
@@ -23,17 +26,15 @@ FAIL  prevent_self_review is true on every required_reviewers rule
 FAIL  can_admins_bypass is false
 FAIL  the active account has no repository admin
 FAIL  the active token has no classic 'repo' scope
-NOTE  not checkable here: whether a fine-grained token has Deployments: write, and who else can read the credential files of this OS user (M3). Read them in the token's settings and on the machine.
+FAIL  no session bus is reachable (a secret service on it can hold the operator's gh token)
+PASS  the secret service holds no gh:github.com entry this process can read
+NOTE  not checkable here: whether a fine-grained token has Deployments: write, and who else can read the credential files of this OS user (M3: the unix-user boundary). Read them in the token's settings and on the machine.
 result: FAIL
 exit=1
 
-# mutation: the check "every required reviewer is a user" removed from the script, then the controls
-ok    good: one reduced account, one user reviewer, self-review prevented, no bypass, no admin
-ok    an inactive second account is logged in
-WRONG the reviewer is a team (no login) (exit 0, 0 FAIL lines)
-ok    the active account is the reviewer
-ok    prevent_self_review is false
-ok    admins can bypass
-ok    the active account is a repository admin
-ok    the token has the classic repo scope
-WRONG no required_reviewers rule at all (the two checks that need a rule fail with it) (exit 1, 2 FAIL lines)
+# mutations: each added check removed in turn, then the controls (a WRONG line = the control caught it)
+-- without: no session bus is reachable
+WRONG a session bus is reachable (XDG_RUNTIME_DIR/bus exists) (exit 0, 0 FAIL lines)
+WRONG DBUS_SESSION_BUS_ADDRESS is set (exit 0, 0 FAIL lines)
+-- without: secret service holds no gh
+WRONG the secret service holds a gh:github.com entry (exit 0, 0 FAIL lines)

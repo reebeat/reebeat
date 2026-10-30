@@ -1,0 +1,9 @@
+# Generated from packages/lifecycle/src/distribution.ts by `bun run --cwd packages/mcp generate`; edit the source, never this file.
+# The release and publish gate holds for MCP-confined agents (ChatGPT, claude.ai, any session with no `gh` credential). Against an agent with a shell it holds only if M1, M2 and M3 are in place: the approving account is a second account never logged in on the agent's machine, with self-review prevented and administrator bypass off; the agent runs as a separate unix user whose `gh` holds only a reduced token. The server cannot check this; it is the operator's responsibility.
+[mcp_servers.tsukuri]
+command = "sh"
+args = [
+  "-c",
+  "cd '__TSUKURI_CHECKOUT__' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts",
+]
+startup_timeout_sec = 60

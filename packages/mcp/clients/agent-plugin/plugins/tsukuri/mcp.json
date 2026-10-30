@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "tsukuri": {
+      "args": [
+        "-c",
+        "cd '__TSUKURI_CHECKOUT__' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts"
+      ],
+      "command": "sh",
+      "type": "stdio"
+    }
+  }
+}

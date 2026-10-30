@@ -1,0 +1,16 @@
+# Scored scenarios of `--requirements 2025-11-25` that the fixture server fails, each with its reason (spec 0016, F6).
+# The inspector has no tool that asks the client for anything (spec 0016, D1: elicitation is never an approval), and
+# Effect 4.1.0 offers no server-initiated sampling request, so the legacy server-to-client features are not in the
+# fixture. A scenario is listed only when it needs one of them.
+server:
+  # `test_sampling`: a server-to-client sampling request. Effect 4.1.0's McpServer has `elicit` and no sampling call.
+  - tools-call-sampling
+  # `test_elicitation`, `test_elicitation_sep1034_defaults`, `test_elicitation_sep1330_enums`: legacy reverse requests.
+  # The fixture registers no tool that elicits; the inspector never elicits.
+  - tools-call-elicitation
+  - elicitation-sep1034-defaults
+  - elicitation-sep1330-enums
+  # `resources/subscribe` and `resources/unsubscribe`: the transport reports "Resource subscriptions are not
+  # supported" for a resource subscription over `layerHttp`; the inspector serves no subscribable resource.
+  - resources-subscribe
+  - resources-unsubscribe

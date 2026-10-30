@@ -1,0 +1,31 @@
+{
+  "name": "@tsukuri/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "bin": {
+    "tsukuri-mcp": "./bin/tsukuri-mcp.ts"
+  },
+  "type": "module",
+  "scripts": {
+    "test": "bunx vp test",
+    "check": "vp check",
+    "generate": "bun bin/generate.ts"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/encode-ffmpeg": "workspace:*",
+    "@tsukuri/lifecycle": "workspace:*",
+    "@tsukuri/lint": "workspace:*",
+    "@tsukuri/pipeline": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "oxc-parser": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -333,6 +333,31 @@ layer(platform)("tsukuri lint with the speech cache of the story", (it) => {
   );
 
   it.effect(
+    "finds two focus effects on one frame, naming both with the later one's line",
+    () =>
+      Effect.gen(function* together() {
+        const { exit, file, stdout } = yield* lintWithCache(
+          timedStory(
+            ['  s1: sound ding at word("box").end'],
+            [
+              '  f1: focus a at word("third").start',
+              '  f2: focus a at word("third").start',
+              '  r1: show note at word("third").start',
+            ]
+          ),
+          true
+        );
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.include(
+          stdout,
+          `${file}:23: error SimultaneousFocus: focus effects f1 (line 22, at`
+        );
+        assert.include(stdout, "f2 (line 23, at");
+      })
+  );
+
+  it.effect(
     "a story that schedules passes, and says it checked the timing",
     () =>
       Effect.gen(function* fine() {

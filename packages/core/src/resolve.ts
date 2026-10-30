@@ -27,7 +27,13 @@ import { Array as Arr, Match, Option, Order, Result } from "effect";
 
 import { endsAfter, once } from "./combinators.ts";
 import type { Event, Window } from "./combinators.ts";
-import { EffectOutsideScene, EmptyWindow, UnresolvedAnchor } from "./errors.ts";
+import { formatTiming } from "./effects.ts";
+import {
+  EffectOutsideScene,
+  EmptyWindow,
+  SimultaneousFocus,
+  UnresolvedAnchor,
+} from "./errors.ts";
 import type { ScheduleError } from "./errors.ts";
 import { evaluator } from "./evaluate.ts";
 import type { Evaluate, Sources } from "./evaluate.ts";
@@ -771,8 +777,8 @@ const outsideScene = (
 
 /**
  * The end of a run that starts at `fire`: a `show` fades, a `focus` is held to its `until`, to the start of the later
- * `focus` that takes the one ring over (`taken`), or to the slide change, whichever comes first (a tie goes to the
- * takeover: the later focus's start moves the ring, so no end step is needed).
+ * `focus` that takes the one ring over (`taken`), or to the slide change, whichever comes first. Two focus effects
+ * never fire on one frame (`simultaneousFocus` rejects the Scene), so a takeover is always strictly later.
  */
 const endOf = (
   context: Context,
@@ -866,9 +872,9 @@ const checked = (
 
 /**
  * The frame at which a LATER `focus` of the Scene takes over the one ring from the run of `effect` that fires at
- * `fire`: the earliest fire frame of another focus after it (at the same frame, one declared later). Only fire frames
- * are read, and a focus whose own event cannot be resolved here (it waits for this ring's end, or has an error that is
- * reported when it is resolved itself) takes nothing over.
+ * `fire`: the earliest fire frame of another focus strictly after it. Only fire frames are read, and a focus whose own
+ * event cannot be resolved here (it waits for this ring's end, or has an error that is reported when it is resolved
+ * itself) takes nothing over.
  */
 const takeover = (
   context: Context,
@@ -876,12 +882,6 @@ const takeover = (
   fire: number,
   tools: Tools
 ): number | undefined => {
-  const position = (id: string): number =>
-    Option.getOrElse(
-      Arr.findFirstIndex(context.scene.effects, (other) => other.id === id),
-      () => -1
-    );
-
   const later = Arr.flatMap(
     Arr.filter(
       context.scene.effects,
@@ -891,16 +891,55 @@ const takeover = (
       Result.match(firesOf(context, other, tools), {
         onFailure: () => [],
         onSuccess: (otherFires) =>
-          Arr.filter(
-            otherFires,
-            (otherFire) =>
-              otherFire > fire ||
-              (otherFire === fire && position(other.id) > position(effect.id))
-          ),
+          Arr.filter(otherFires, (otherFire) => otherFire > fire),
       })
   );
 
   return later.length === 0 ? undefined : Math.min(...later);
+};
+
+/** An effect as the error names it: its id, line and timing. */
+const named = (found: Effect): string =>
+  `${found.id} (line ${found.line}, at ${formatTiming(found)})`;
+
+/**
+ * Two `focus` effects on one frame are an error (spec 0018): there is one ring, so the earlier-declared effect would
+ * start and end on that frame and never be drawn. `timed` holds the runs of each effect of the Scene, in order.
+ */
+const simultaneousFocus = (
+  scene: Scene,
+  timed: readonly (readonly TimedEffect[])[]
+): Result.Result<void, ScheduleError> => {
+  const rings = Arr.flatMap(
+    Arr.zip(scene.effects, timed),
+    ([effect, runs]: readonly [Effect, readonly TimedEffect[]]) =>
+      effect.verb === "focus"
+        ? Arr.map(runs, (run) => ({ effect, frame: run.fireFrame }))
+        : []
+  );
+
+  const later = Arr.findFirst(rings, (ring, index) =>
+    Arr.some(Arr.take(rings, index), ({ frame }) => frame === ring.frame)
+  );
+
+  return Option.match(later, {
+    onNone: () => Result.void,
+    onSome: ({ effect, frame }) => {
+      const earlier = Option.getOrThrow(
+        Arr.findFirst(rings, (ring) => ring.frame === frame)
+      ).effect;
+
+      return Result.fail(
+        new SimultaneousFocus({
+          effectId: effect.id,
+          frame,
+          message: `focus effects ${named(earlier)} and ${named(effect)} both fire at frame ${frame} of Scene ${scene.id}: there is one focus ring, so ${earlier.id} would end where it starts and never be drawn; move one of them (an offset such as +0.3s) or drop one`,
+          otherEffectId: earlier.id,
+          sceneId: scene.id,
+        })
+      );
+    },
+  });
 };
 
 /** The runs of an effect, memoised; an effect that waits for itself is `UnresolvedAnchor`. */
@@ -1065,12 +1104,17 @@ export const resolveEffects = (
   );
 
   return Result.flatMap(effects, (timed) =>
-    Result.map(events, (derivedEvents) => ({
-      effects: Arr.sort(
-        Arr.flatten(timed),
-        Order.mapInput(Order.Number, (effect: TimedEffect) => effect.fireFrame)
-      ),
-      events: derivedEvents,
-    }))
+    Result.flatMap(simultaneousFocus(scene, timed), () =>
+      Result.map(events, (derivedEvents) => ({
+        effects: Arr.sort(
+          Arr.flatten(timed),
+          Order.mapInput(
+            Order.Number,
+            (effect: TimedEffect) => effect.fireFrame
+          )
+        ),
+        events: derivedEvents,
+      }))
+    )
   );
 };

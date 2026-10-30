@@ -92,6 +92,7 @@ const scheduleFindings = (plan: PlanJson, timing: LintTiming) => {
       EmptyWindow: found,
       LifecycleMismatch: found,
       SceneLeadTooShort: found,
+      SimultaneousFocus: found,
       SpeechCacheMiss: () => Effect.succeed(noCache),
       UnresolvedAnchor: found,
     })

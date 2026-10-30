@@ -1,31 +1,31 @@
 {
-  "name": "@reebeat/cli",
+  "name": "@tsukuri/cli",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
   "bin": {
-    "reebeat": "./bin/reebeat.ts"
+    "tsukuri": "./bin/tsukuri.ts"
   },
   "type": "module",
   "scripts": {
     "test": "bunx vp test",
     "check": "vp check",
-    "test:live": "REEBEAT_LIVE=1 bunx vp test --config vite.live.config.ts"
+    "test:live": "TSUKURI_LIVE=1 bunx vp test --config vite.live.config.ts"
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
-    "@reebeat/align-whisper": "workspace:*",
-    "@reebeat/cache-fs": "workspace:*",
-    "@reebeat/capture-chromium": "workspace:*",
-    "@reebeat/core": "workspace:*",
-    "@reebeat/encode-ffmpeg": "workspace:*",
-    "@reebeat/lint": "workspace:*",
-    "@reebeat/pipeline": "workspace:*",
-    "@reebeat/render-reveal": "workspace:*",
-    "@reebeat/services": "workspace:*",
-    "@reebeat/sounds-synth": "workspace:*",
-    "@reebeat/speech-kokoro": "workspace:*",
-    "@reebeat/verify": "workspace:*",
+    "@tsukuri/align-whisper": "workspace:*",
+    "@tsukuri/cache-fs": "workspace:*",
+    "@tsukuri/capture-chromium": "workspace:*",
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/encode-ffmpeg": "workspace:*",
+    "@tsukuri/lint": "workspace:*",
+    "@tsukuri/pipeline": "workspace:*",
+    "@tsukuri/render-reveal": "workspace:*",
+    "@tsukuri/services": "workspace:*",
+    "@tsukuri/sounds-synth": "workspace:*",
+    "@tsukuri/speech-kokoro": "workspace:*",
+    "@tsukuri/verify": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

@@ -52,13 +52,13 @@ const root: RootManifest = {
 const manifest = (overrides: Partial<SourceManifest>): SourceManifest => ({
   exports: { ".": "./src/index.ts" },
   license: "Apache-2.0",
-  name: "@reebeat/probe",
+  name: "@tsukuri/probe",
   publishConfig: { access: "public", directory: "dist" },
   version: "0.1.0-alpha.0",
   ...overrides,
 });
 
-const fixtureVersions = { "@reebeat/core": "0.1.0-alpha.0" };
+const fixtureVersions = { "@tsukuri/core": "0.1.0-alpha.0" };
 
 const stage = (overrides: Partial<SourceManifest>) =>
   publishManifest(
@@ -90,7 +90,7 @@ describe("the manifest a package publishes", () => {
   it("rewrites workspace:* to the exact version and catalog: to the catalog's", () => {
     const staged = stage({
       dependencies: {
-        "@reebeat/core": "workspace:*",
+        "@tsukuri/core": "workspace:*",
         "fountain-js": "catalog:",
         parse5: "^8.0.1",
       },
@@ -98,7 +98,7 @@ describe("the manifest a package publishes", () => {
 
     assert.deepStrictEqual(staged.problems, []);
     assert.deepStrictEqual(staged.manifest.dependencies, {
-      "@reebeat/core": "0.1.0-alpha.0",
+      "@tsukuri/core": "0.1.0-alpha.0",
       "fountain-js": "1.2.4",
       parse5: "^8.0.1",
     });
@@ -124,7 +124,7 @@ describe("the manifest a package publishes", () => {
 
   it("fails a workspace dependency that is not a public package (negative control)", () => {
     assert.deepStrictEqual(
-      stage({ dependencies: { "@reebeat/cli": "workspace:*" } }).problems
+      stage({ dependencies: { "@tsukuri/cli": "workspace:*" } }).problems
         .length,
       1
     );
@@ -136,7 +136,7 @@ describe("the manifest a package publishes", () => {
       1
     );
     assert.strictEqual(
-      stage({ dependencies: { "@reebeat/core": "workspace:^" } }).problems
+      stage({ dependencies: { "@tsukuri/core": "workspace:^" } }).problems
         .length,
       1
     );
@@ -148,7 +148,7 @@ describe("the manifest a package publishes", () => {
 
   it("fails a package with no licence, a source export that is not .ts, or the wrong publishConfig", () => {
     assert.deepStrictEqual(without("license").problems, [
-      "@reebeat/probe declares no license",
+      "@tsukuri/probe declares no license",
     ]);
     assert.strictEqual(
       stage({ exports: { ".": "./src/index.js" } }).problems.length,
@@ -475,7 +475,7 @@ describe("imports that the build could not resolve", () => {
         )
       ),
       [
-        "@reebeat/probe imports oxc-parser, which is in neither dependencies nor peerDependencies",
+        "@tsukuri/probe imports oxc-parser, which is in neither dependencies nor peerDependencies",
       ]
     );
   });

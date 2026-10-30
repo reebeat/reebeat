@@ -1,6 +1,6 @@
-# @reebeat/pipeline
+# @tsukuri/pipeline
 
-The build program over services only (design R3): `buildProgram` takes a story to a finished build directory and nothing else. It imports `@reebeat/core`, `@reebeat/subtitles` and `@reebeat/services`; it names no model, binary, directory or vendor, and the tier gate (`tools/quality/tiers.ts`) keeps it that way. The composition root (`@reebeat/cli`) picks the adapters.
+The build program over services only (design R3): `buildProgram` takes a story to a finished build directory and nothing else. It imports `@tsukuri/core`, `@tsukuri/subtitles` and `@tsukuri/services`; it names no model, binary, directory or vendor, and the tier gate (`tools/quality/tiers.ts`) keeps it that way. The composition root (`@tsukuri/cli`) picks the adapters.
 
 ```text
 story ─hash─▶ Plan ─speechStage─▶ aligned Lines ─schedule(…, Renderer.info.lifecycle)─▶ Timeline ─▶ plan.json
@@ -10,7 +10,7 @@ story ─hash─▶ Plan ─speechStage─▶ aligned Lines ─schedule(…, Ren
   ─▶ <name>.mp4, <name>.vtt ─▶ build.json (schema 2: files, adapters with egress, provenance of every asset used) written last
 ```
 
-Everything is written into `<out>.partial` and renamed to `<out>` once `build.json` is in; any failure or interrupt removes the partial directory and an earlier build at `<out>` is removed first, so nothing `check` would accept is left (F12). A non-empty `<out>` with no `build.json` is `OutputDirOccupied`. `BuildManifestSchema` (the one definition of `build.json`, read by `@reebeat/verify`) lives here because the program writes it; a tool may import a program, a program may not import a tool.
+Everything is written into `<out>.partial` and renamed to `<out>` once `build.json` is in; any failure or interrupt removes the partial directory and an earlier build at `<out>` is removed first, so nothing `check` would accept is left (F12). A non-empty `<out>` with no `build.json` is `OutputDirOccupied`. `BuildManifestSchema` (the one definition of `build.json`, read by `@tsukuri/verify`) lives here because the program writes it; a tool may import a program, a program may not import a tool.
 
 | Export | What it is |
 | --- | --- |
@@ -45,13 +45,13 @@ An asset is two files, `flac` (FLAC s16 mono, bit-exact) and `words.json` (`{ du
 
 ## Refill the cache
 
-The committed cache of the story is `stories/same-id/speech-cache/`, written by `@reebeat/cache-fs` (`<key>.flac`, `<key>.words.json`, `<key>.provenance.json`). Refill it with the build itself: remove the old assets (their keys name the adapters and settings, so a change of either leaves them stale) and build with `--refresh-speech`, for example `rm -r stories/same-id/speech-cache && bun run reebeat build stories/same-id/story.fountain --refresh-speech --out /tmp/refill`. Needs devenv (`ffmpeg`, `whisper-cli`, Chromium), network for the first Kokoro download, and these files outside the repository:
+The committed cache of the story is `stories/same-id/speech-cache/`, written by `@tsukuri/cache-fs` (`<key>.flac`, `<key>.words.json`, `<key>.provenance.json`). Refill it with the build itself: remove the old assets (their keys name the adapters and settings, so a change of either leaves them stale) and build with `--refresh-speech`, for example `rm -r stories/same-id/speech-cache && bun run tsukuri build stories/same-id/story.fountain --refresh-speech --out /tmp/refill`. Needs devenv (`ffmpeg`, `whisper-cli`, Chromium), network for the first Kokoro download, and these files outside the repository:
 
 | Config | Meaning | Default |
 | --- | --- | --- |
-| `REEBEAT_KOKORO_CACHE` | directory for the Hugging Face model files (311 MiB, downloaded on first use) | none, required |
-| `REEBEAT_WHISPER_MODEL` | `ggml-base.en.bin` | none, required |
-| `REEBEAT_WHISPER_BIN` | the whisper.cpp binary | `whisper-cli` |
+| `TSUKURI_KOKORO_CACHE` | directory for the Hugging Face model files (311 MiB, downloaded on first use) | none, required |
+| `TSUKURI_WHISPER_MODEL` | `ggml-base.en.bin` | none, required |
+| `TSUKURI_WHISPER_BIN` | the whisper.cpp binary | `whisper-cli` |
 
 | Model file | SHA-256 |
 | --- | --- |

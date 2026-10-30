@@ -2,8 +2,8 @@
 // frame BEFORE the event (the old picture, A) and ends on a frame after it has settled (the new picture, Z); the
 // observations are the first frame that no longer shows A, the first frame that shows Z again, and, for a thing that
 // moves or changes colour, how far along it is in every frame in between.
-import { changedPixels } from "@reebeat/encode-ffmpeg";
-import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
+import { changedPixels } from "@tsukuri/encode-ffmpeg";
+import type { Box, GrayClip } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Option } from "effect";
 
 import { changeFloor, stepTolerance } from "./steps.ts";

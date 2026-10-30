@@ -76,7 +76,7 @@ describe("muxArgs", () => {
   const request = {
     fps: 30,
     height: 720,
-    metadata: { comment: "reebeat source-sha256 abc", title: "A small story" },
+    metadata: { comment: "tsukuri source-sha256 abc", title: "A small story" },
     tracks: [
       { clip, startMs: 1000 },
       { clip, startMs: 2167 },
@@ -135,7 +135,7 @@ describe("muxArgs", () => {
     );
     assert.isTrue(has(["-map_metadata:g", "-1"]));
     assert.isTrue(has(["-metadata", "title=A small story"]));
-    assert.isTrue(has(["-metadata", "comment=reebeat source-sha256 abc"]));
+    assert.isTrue(has(["-metadata", "comment=tsukuri source-sha256 abc"]));
   });
 
   it("reads the frames from stdin first, then each track, the subtitles and the chapters", () => {

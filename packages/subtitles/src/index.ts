@@ -1,4 +1,4 @@
-// Public surface of @reebeat/subtitles: the narration of a scheduled Plan as WebVTT and SubRip, and WebVTT back to
+// Public surface of @tsukuri/subtitles: the narration of a scheduled Plan as WebVTT and SubRip, and WebVTT back to
 // cues. Pure: no I/O, no clock, no service.
 export { parseVtt, vttSourceHash } from "./parse.ts";
 

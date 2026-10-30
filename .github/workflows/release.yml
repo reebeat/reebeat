@@ -1,4 +1,4 @@
-# Publishes the @reebeat/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
+# Publishes the @tsukuri/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
 # "Version Packages" commit (`bun run release:version`) has merged, and chooses a mode:
 #   check    no publish: prints who the token is and what it can list, then stops (job `check`).
 #   publish  builds what is published and publishes it (job `publish`).
@@ -49,14 +49,14 @@ jobs:
           echo "::group::npm whoami"
           if user=$(npm whoami 2>&1); then echo "token user: $user"; else echo "FAIL npm whoami: $user"; status=fail; fi
           echo "::endgroup::"
-          echo "::group::npm access list packages @reebeat"
-          if out=$(npm access list packages @reebeat --json 2>&1); then echo "$out"; else echo "no listing (a token that cannot read the scope, or no package exists yet): $out"; fi
+          echo "::group::npm access list packages @tsukuri"
+          if out=$(npm access list packages @tsukuri --json 2>&1); then echo "$out"; else echo "no listing (a token that cannot read the scope, or no package exists yet): $out"; fi
           echo "::endgroup::"
-          echo "::group::npm org ls reebeat"
-          if out=$(npm org ls reebeat --json 2>&1); then echo "$out"; else echo "no org listing (needs a token with access to the organisation): $out"; fi
+          echo "::group::npm org ls tsukuri"
+          if out=$(npm org ls tsukuri --json 2>&1); then echo "$out"; else echo "no org listing (needs a token with access to the organisation): $out"; fi
           echo "::endgroup::"
           echo "token expiry: not shown. npm token management is an account action that a token cannot perform; read it on npmjs.com."
-          echo "write access to @reebeat: not shown. npm has no read-only write probe; only the publish proves it."
+          echo "write access to @tsukuri: not shown. npm has no read-only write probe; only the publish proves it."
           echo "result: $status"
           test "$status" = pass
 

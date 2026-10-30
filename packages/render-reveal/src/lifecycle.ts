@@ -1,12 +1,12 @@
 // What reveal.js declares about its slide change (spec 0002, "plan contract for effects"): when each Element event
 // happens in the transition window, as `RendererLifecycle` plain data. `schedule` resolves every effect anchored to an
-// event from it and `@reebeat/verify` observes the events in the written video (F1), so a wrong number fails there.
+// event from it and `@tsukuri/verify` observes the events in the written video (F1), so a wrong number fails there.
 //
 // The numbers are MEASURED, not read from reveal.js's CSS: they are what the viewer sees in the frames of the capture
-// (`@reebeat/capture-chromium`), found by the observers of `@reebeat/verify` on a fresh build of `stories/same-id`.
+// (`@tsukuri/capture-chromium`), found by the observers of `@tsukuri/verify` on a fresh build of `stories/same-id`.
 // `README.md` lists the measurements and how to repeat them. A frame counts as changed at 200 pixels that differ by
 // more than 8 gray levels, and an event as settled when under 1% of the change (at least 200 pixels) is left.
-import type { RendererLifecycle } from "@reebeat/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 
 export const revealLifecycle: RendererLifecycle = {
   matched: {
@@ -17,7 +17,7 @@ export const revealLifecycle: RendererLifecycle = {
     startLagFrames: 2,
   },
   // The frame rate the lags below, and those of the README table, were measured at: frames of the capture at 30 fps.
-  // A lag is a time, so `lifecycleFrames` of `@reebeat/core` resolves it to frames at the Plan's rate; the capture
+  // A lag is a time, so `lifecycleFrames` of `@tsukuri/core` resolves it to frames at the Plan's rate; the capture
   // adapter still renders only this rate, since no other was measured.
   measuredFps: 30,
   // `.el.shown` fades opacity in 0.2 s (`theme.ts`); under 1% of the change is left after 4 frames (133 ms).

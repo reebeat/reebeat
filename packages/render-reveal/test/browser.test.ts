@@ -2,8 +2,8 @@
 // notes, and reveal.js Auto-Animate keeping the identity of a matched Element. These tests use the real clock; the
 // controlled clock belongs to packages/capture-chromium. One browser per test, closed with the test's scope.
 import { assert, describe, it } from "@effect/vitest";
-import { stepsOf } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
+import { stepsOf } from "@tsukuri/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Array as Arr, Effect, Order, Schema, String as Str } from "effect";
 import type { Page } from "playwright-core";
 
@@ -86,10 +86,10 @@ const focusAfter = (page: Page, command: string, ids: readonly string[]) =>
     );
   });
 
-const goTo = (scene: string): string => `reebeatDeck.goToScene("${scene}")`;
+const goTo = (scene: string): string => `tsukuriDeck.goToScene("${scene}")`;
 
 /** Shows the next fragment through the page's own API; true when there was one. */
-const step = "reebeatDeck.stepFragment()";
+const step = "tsukuriDeck.stepFragment()";
 
 const hasClass = (classes: string, name: string): boolean =>
   Str.split(classes, " ").includes(name);
@@ -191,13 +191,13 @@ describe("the Deck page", () => {
         );
 
         assert.deepStrictEqual(
-          yield* evaluate(page, "reebeatDeck.sceneIds", Strings),
+          yield* evaluate(page, "tsukuriDeck.sceneIds", Strings),
           Arr.map(plan.scenes, (scene) => scene.id)
         );
         assert.deepStrictEqual(
           yield* evaluate(
             page,
-            "Object.keys(window.reebeatDeck).sort()",
+            "Object.keys(window.tsukuriDeck).sort()",
             Strings
           ),
           ["goToScene", "ready", "sceneIds", "stepFragment"]

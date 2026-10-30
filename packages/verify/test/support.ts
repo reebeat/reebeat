@@ -4,42 +4,42 @@
 // whose "speech" is seeded noise, so the narration is audible to the checks (the silent stand-in is not).
 import { NodeCrypto, NodeServices } from "@effect/platform-node";
 import { assert } from "@effect/vitest";
-import { fsAssetCache } from "@reebeat/cache-fs";
-import { chromiumCapturer } from "@reebeat/capture-chromium";
-import { decodePlan, requireTimeline, timedLines } from "@reebeat/core";
+import { fsAssetCache } from "@tsukuri/cache-fs";
+import { chromiumCapturer } from "@tsukuri/capture-chromium";
+import { decodePlan, requireTimeline, timedLines } from "@tsukuri/core";
 import type {
   PlanJson,
   RendererLifecycle,
   TimedEffect,
   TimedPlan,
-} from "@reebeat/core";
-import { MediaTools, ffmpegEncoder } from "@reebeat/encode-ffmpeg";
-import type { MediaToolFailed } from "@reebeat/encode-ffmpeg";
+} from "@tsukuri/core";
+import { MediaTools, ffmpegEncoder } from "@tsukuri/encode-ffmpeg";
+import type { MediaToolFailed } from "@tsukuri/encode-ffmpeg";
 import {
   buildProgram,
   decodeBuildManifest,
   encodeBuildManifest,
   muxStage,
   sha256Hex,
-} from "@reebeat/pipeline";
-import type { BuildOutputFailed, SpeechAssetInvalid } from "@reebeat/pipeline";
-import { revealRenderer } from "@reebeat/render-reveal";
+} from "@tsukuri/pipeline";
+import type { BuildOutputFailed, SpeechAssetInvalid } from "@tsukuri/pipeline";
+import { revealRenderer } from "@tsukuri/render-reveal";
 import {
   EmptyText,
   FrameCapturer,
   Renderer,
   SpeechSynthesizer,
   localEgress,
-} from "@reebeat/services";
+} from "@tsukuri/services";
 import type {
   CacheError,
   CaptureFailure,
   EncodeError,
   InvalidOutputName,
   UnknownSound,
-} from "@reebeat/services";
-import { evenAligner, silentSynthesizer } from "@reebeat/services/standins";
-import { sfxNames, sfxWav, synthSounds } from "@reebeat/sounds-synth";
+} from "@tsukuri/services";
+import { evenAligner, silentSynthesizer } from "@tsukuri/services/standins";
+import { sfxNames, sfxWav, synthSounds } from "@tsukuri/sounds-synth";
 import {
   Array as Arr,
   Context,
@@ -71,7 +71,7 @@ export const services = MediaTools.layer.pipe(Layer.provideMerge(platform));
  * the transition and an Element's motion; the words carry offsets.
  */
 export const storyText = `Title: Fixture story
-Author: reebeat tests
+Author: tsukuri tests
 
 # Part one
 
@@ -110,7 +110,7 @@ Five six seven.
 
 /** Two Scenes joined by a `> CUT`: the picture changes at once or F7's cut check fails. */
 export const cutStoryText = `Title: Cut story
-Author: reebeat tests
+Author: tsukuri tests
 
 # Part one
 
@@ -309,7 +309,7 @@ export const buildFixtureOf = (
     const path = yield* Path.Path;
 
     const root = yield* fs.makeTempDirectoryScoped({
-      prefix: "reebeat-verify-",
+      prefix: "tsukuri-verify-",
     });
 
     const sourcePath = path.join(root, "story", "story.fountain");
@@ -354,7 +354,7 @@ export const buildFixtureOf = (
 
 /** The small build, made once per test block. */
 export class Fixture extends Context.Service<Fixture, FixtureData>()(
-  "@reebeat/verify/test/Fixture"
+  "@tsukuri/verify/test/Fixture"
 ) {
   static readonly layer = Layer.effect(
     Fixture,

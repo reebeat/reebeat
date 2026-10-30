@@ -8,8 +8,8 @@ import {
   formatAnchor,
   lifecycleFrames,
   referenceLifecycle,
-} from "@reebeat/core";
-import type { Anchor, Event, EventExpr, TimedPlan } from "@reebeat/core";
+} from "@tsukuri/core";
+import type { Anchor, Event, EventExpr, TimedPlan } from "@tsukuri/core";
 import {
   Array as Arr,
   Effect,
@@ -44,7 +44,7 @@ import type { Own } from "../src/own.ts";
 import { timedWith } from "./timed.ts";
 
 const story = `Title: Machines
-Author: reebeat tests
+Author: tsukuri tests
 
 # Part one
 

@@ -22,7 +22,7 @@ const unbuilt = (
   Arr.filter(Record.keys(table), (verb) => table[verb]?.restart !== "overlap");
 
 describe("the SMIL restart and fill of a verb", () => {
-  it("has the closed sets of SMIL 3.0 (and the overlap of reebeat)", () => {
+  it("has the closed sets of SMIL 3.0 (and the overlap of tsukuri)", () => {
     assert.deepStrictEqual(
       [...restartModes],
       ["always", "whenNotActive", "never", "overlap"]

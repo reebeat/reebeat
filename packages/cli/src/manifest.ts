@@ -1,6 +1,6 @@
 // The manifest of a finished build, as `check` and `journey` read it. The schema and the writer are the build
-// program's (`@reebeat/pipeline`): `build.json` is written last, so its presence says the build finished.
-import { decodeBuildManifest, manifestFile } from "@reebeat/pipeline";
+// program's (`@tsukuri/pipeline`): `build.json` is written last, so its presence says the build finished.
+import { decodeBuildManifest, manifestFile } from "@tsukuri/pipeline";
 import { Effect, FileSystem, Path } from "effect";
 
 import { NotABuild } from "./errors.ts";

@@ -1,5 +1,5 @@
 {
-  "name": "@reebeat/encode-ffmpeg",
+  "name": "@tsukuri/encode-ffmpeg",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -12,7 +12,7 @@
     "check": "vp check"
   },
   "dependencies": {
-    "@reebeat/services": "workspace:*",
+    "@tsukuri/services": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

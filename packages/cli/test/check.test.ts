@@ -1,9 +1,9 @@
-// `reebeat check`: it refuses a directory that is not a finished build before any check runs (F12: a build that
+// `tsukuri check`: it refuses a directory that is not a finished build before any check runs (F12: a build that
 // failed or was interrupted leaves no `build.json`), prints one row per verdict, and exits non-zero when any
 // verdict fails; a not-applicable verdict is printed and does not fail. The verdicts themselves are
-// `@reebeat/verify`'s; here they are fakes.
+// `@tsukuri/verify`'s; here they are fakes.
 import { assert, layer } from "@effect/vitest";
-import { writeManifest } from "@reebeat/pipeline";
+import { writeManifest } from "@tsukuri/pipeline";
 import { Effect, Exit, FileSystem, Path, String as Str } from "effect";
 
 import type { Verdict } from "../src/verify.ts";
@@ -60,7 +60,7 @@ const assertRefused = (dir: string, message: RegExp) =>
     assert.deepStrictEqual(calls, []);
   });
 
-layer(platform)("reebeat check", (it) => {
+layer(platform)("tsukuri check", (it) => {
   it.effect(
     "refuses a directory with no build.json, names it, and runs no check",
     () =>

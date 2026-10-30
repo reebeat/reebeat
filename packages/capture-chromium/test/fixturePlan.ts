@@ -15,9 +15,9 @@ import {
   requireTimeline,
   schedule,
   wordsOf,
-} from "@reebeat/core";
-import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
-import { contractLifecycle } from "@reebeat/services/contract";
+} from "@tsukuri/core";
+import type { AlignedLine, PlanJson, TimedPlan } from "@tsukuri/core";
+import { contractLifecycle } from "@tsukuri/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(

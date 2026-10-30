@@ -5,10 +5,10 @@
 // silently produce other times. A missing binary, model or environment variable is `AdapterUnavailable`, raised
 // then, never when the layer is built and never as a fallback. Foreign ABI: the `whisper-cli` and `ffmpeg`
 // processes. Retirement: a whisper binding that returns word times in process.
-import { alignWords } from "@reebeat/core";
-import type { HeardWord } from "@reebeat/core";
-import { WordAligner, localEgress } from "@reebeat/services";
-import type { AlignRequest } from "@reebeat/services";
+import { alignWords } from "@tsukuri/core";
+import type { HeardWord } from "@tsukuri/core";
+import { WordAligner, localEgress } from "@tsukuri/services";
+import type { AlignRequest } from "@tsukuri/services";
 import {
   Array as Arr,
   Config,
@@ -36,12 +36,12 @@ const resampleArgs = ["-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le"] as const;
 
 const whisperArgs = ["-ml", "1", "-sow", "-oj", "-np", "-t", "4"] as const;
 
-/** The model file and the binary; `REEBEAT_WHISPER_BIN` defaults to `whisper-cli` on the `PATH`. */
+/** The model file and the binary; `TSUKURI_WHISPER_BIN` defaults to `whisper-cli` on the `PATH`. */
 export const whisperConfig = Config.all({
-  bin: Config.String("REEBEAT_WHISPER_BIN").pipe(
+  bin: Config.String("TSUKURI_WHISPER_BIN").pipe(
     Config.withDefault("whisper-cli")
   ),
-  model: Config.String("REEBEAT_WHISPER_MODEL"),
+  model: Config.String("TSUKURI_WHISPER_MODEL"),
 });
 
 const WhisperOutput = Schema.fromJsonString(
@@ -110,7 +110,7 @@ export const s16Bytes = (samples: Float32Array): Uint8Array => {
   return new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
 };
 
-/** `WordAligner` through `whisper-cli` and the `ffmpeg` on the `PATH` (or `REEBEAT_WHISPER_BIN`). */
+/** `WordAligner` through `whisper-cli` and the `ffmpeg` on the `PATH` (or `TSUKURI_WHISPER_BIN`). */
 export const whisperAligner = Layer.effect(
   WordAligner,
   Effect.gen(function* whisperAlignerLayer() {
@@ -127,8 +127,8 @@ export const whisperAligner = Layer.effect(
         Effect.fromResult(configured),
         () =>
           unavailable(
-            "env REEBEAT_WHISPER_MODEL",
-            "REEBEAT_WHISPER_MODEL names the whisper model file and is not set"
+            "env TSUKURI_WHISPER_MODEL",
+            "TSUKURI_WHISPER_MODEL names the whisper model file and is not set"
           )
       );
 
@@ -180,7 +180,7 @@ export const whisperAligner = Layer.effect(
       );
 
       const directory = yield* Effect.mapError(
-        fs.makeTempDirectoryScoped({ prefix: "reebeat-whisper-" }),
+        fs.makeTempDirectoryScoped({ prefix: "tsukuri-whisper-" }),
         fail
       );
 

@@ -10,5 +10,5 @@ coverage/
 *.mp4
 *.wav
 *.mov
-# The output of `reebeat build` and `bun run journey`.
+# The output of `tsukuri build` and `bun run journey`.
 build/

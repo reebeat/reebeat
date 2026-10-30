@@ -1,5 +1,5 @@
-// Public surface of @reebeat/encode-ffmpeg: the Encoder adapter on ffmpeg (lossless audio, mix, mux) and the media
-// probes `@reebeat/verify` uses to observe a written file.
+// Public surface of @tsukuri/encode-ffmpeg: the Encoder adapter on ffmpeg (lossless audio, mix, mux) and the media
+// probes `@tsukuri/verify` uses to observe a written file.
 export { ffmpegEncoder } from "./ffmpegEncoder.ts";
 
 export * from "./errors.ts";

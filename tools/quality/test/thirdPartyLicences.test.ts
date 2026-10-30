@@ -88,9 +88,9 @@ describe("third-party licences", () => {
     );
   });
 
-  it("ignores the workspace packages, which are reebeat's own code", () => {
+  it("ignores the workspace packages, which are tsukuri's own code", () => {
     assert.deepStrictEqual(
-      licenceViolations(entry("@reebeat/core@workspace:packages/core"), {}),
+      licenceViolations(entry("@tsukuri/core@workspace:packages/core"), {}),
       []
     );
   });

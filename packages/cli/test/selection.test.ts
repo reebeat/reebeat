@@ -1,4 +1,4 @@
-// F14, selection: which adapter fills each service is explicit configuration (a story's reebeat.config.json, then
+// F14, selection: which adapter fills each service is explicit configuration (a story's tsukuri.config.json, then
 // flags). An unknown key or value fails `UnknownSelection` naming the key, the value and the choices; a selected
 // adapter whose requirement is missing fails `AdapterUnavailable` naming it, and the build never falls back to
 // another adapter: no output, in particular none made by the stand-in.
@@ -67,7 +67,7 @@ layer(platform)("selection of adapters (F14)", (it) => {
     {
       config: "[1, 2]",
       expected:
-        /^ConfigInvalid: cannot decode as a JSON object .*reebeat\.config\.json/u,
+        /^ConfigInvalid: cannot decode as a JSON object .*tsukuri\.config\.json/u,
       why: "a JSON array",
     },
     {
@@ -76,12 +76,12 @@ layer(platform)("selection of adapters (F14)", (it) => {
       why: "text that is not JSON",
     },
   ])(
-    "reebeat.config.json with $why is refused before anything is built",
+    "tsukuri.config.json with $why is refused before anything is built",
     ({ config, expected }) =>
       Effect.gen(function* configured() {
         const where = yield* setup;
 
-        yield* writeText(where.dir, "reebeat.config.json", config);
+        yield* writeText(where.dir, "tsukuri.config.json", config);
 
         const { exit, stderr } = yield* runBuild(where);
 
@@ -121,7 +121,7 @@ layer(platform)("selection of adapters (F14)", (it) => {
   );
 
   it.effect(
-    "kokoro selected with no REEBEAT_KOKORO_CACHE and a refresh asked is AdapterUnavailable naming the requirement, and no stand-in output replaces it",
+    "kokoro selected with no TSUKURI_KOKORO_CACHE and a refresh asked is AdapterUnavailable naming the requirement, and no stand-in output replaces it",
     () =>
       Effect.gen(function* unavailable() {
         const where = yield* setup;
@@ -133,7 +133,7 @@ layer(platform)("selection of adapters (F14)", (it) => {
         );
 
         assert.isTrue(Exit.isFailure(exit));
-        assert.match(stderr, /^AdapterUnavailable: .*REEBEAT_KOKORO_CACHE/u);
+        assert.match(stderr, /^AdapterUnavailable: .*TSUKURI_KOKORO_CACHE/u);
         assert.notInclude(stderr, "standin");
         assert.notInclude(stdout, "built ");
         yield* leftNothing(where);
@@ -150,7 +150,7 @@ layer(platform)("selection of adapters (F14)", (it) => {
         const { exit, stderr } = yield* runBuild(
           where,
           ["--speech", "kokoro", "--aligner", "even"],
-          { env: { REEBEAT_KOKORO_CACHE: models } }
+          { env: { TSUKURI_KOKORO_CACHE: models } }
         );
 
         assert.isTrue(Exit.isFailure(exit));
@@ -173,7 +173,7 @@ layer(platform)("selection of adapters (F14)", (it) => {
         );
 
         assert.isTrue(Exit.isFailure(exit));
-        assert.match(stderr, /^AdapterUnavailable: .*REEBEAT_WHISPER_MODEL/u);
+        assert.match(stderr, /^AdapterUnavailable: .*TSUKURI_WHISPER_MODEL/u);
         assert.notInclude(stderr, "even@1");
         yield* leftNothing(where);
       })

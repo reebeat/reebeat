@@ -1,15 +1,15 @@
 // What `build.json` (v2) must say beyond its file list (spec 0001, F5 and F16): every adapter of the seven services
 // is listed once with its egress declaration, every Line's audio has the provenance of its cache asset, and no
 // `settings` anywhere in the manifest has a secret-looking name. Pure: the manifest and the Plan in, problems out.
-import { timedLines } from "@reebeat/core";
-import type { TimedPlan } from "@reebeat/core";
-import type { BuildManifest } from "@reebeat/pipeline";
+import { timedLines } from "@tsukuri/core";
+import type { TimedPlan } from "@tsukuri/core";
+import type { BuildManifest } from "@tsukuri/pipeline";
 import {
   SettingsSchema,
   secretLikeNames,
   serviceNames,
-} from "@reebeat/services";
-import type { Settings } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { Settings } from "@tsukuri/services";
 import { Array as Arr, Predicate, Record, Schema, String as Str } from "effect";
 
 /** The cache key of a Line's audio file `<key>.<name>`: the part before the first dot. */

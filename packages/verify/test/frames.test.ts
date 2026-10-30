@@ -1,7 +1,7 @@
 // The observation of an event in decoded frames (F1): where a thing starts, ends and is N percent through. Synthetic
 // clips whose truth is known, so each test can say what the observer must find and which mistake it would make.
 import { assert, describe, it } from "@effect/vitest";
-import type { GrayClip } from "@reebeat/encode-ffmpeg";
+import type { GrayClip } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr } from "effect";
 
 import { eventWindow, frameAtFraction } from "../src/frames.ts";

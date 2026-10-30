@@ -15,4 +15,4 @@ export class SoundLibrary extends Context.Service<
     /** The clip of `name`; deterministic; `UnknownSound` for a name outside `names`. */
     readonly sound: (name: string) => Effect.Effect<AudioClip, UnknownSound>;
   }
->()("@reebeat/services/SoundLibrary") {}
+>()("@tsukuri/services/SoundLibrary") {}

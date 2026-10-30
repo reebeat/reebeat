@@ -1,7 +1,7 @@
 // Lossless audio on ffmpeg: float mono samples become FLAC (s16, level 8, bit-exact so the bytes do not depend on
 // the ffmpeg build's encoder tag) and back. The file the cache stores is what `encodeFlac` returns; the decoded
 // samples are what a FLAC held, as float: `s16 / 32768`.
-import type { AudioClip } from "@reebeat/services";
+import type { AudioClip } from "@tsukuri/services";
 import { Array as Arr, Effect, FileSystem, Option, Path } from "effect";
 
 import { MediaToolFailed } from "./errors.ts";
@@ -16,7 +16,7 @@ const scratch = Effect.gen(function* scratch() {
   const tools = yield* MediaTools;
 
   const directory = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-flac-",
+    prefix: "tsukuri-flac-",
   });
 
   return { directory, fs, path, tools };

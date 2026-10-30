@@ -68,7 +68,7 @@ _Avoid_: Loop, animation, tween
 
 ## Machines and time
 
-reebeat declares the state machines that were implicit in the engine, once, as data (`packages/core/src/machines.ts`); every spelling an author can anchor to is generated from them.
+tsukuri declares the state machines that were implicit in the engine, once, as data (`packages/core/src/machines.ts`); every spelling an author can anchor to is generated from them.
 
 **Machine**:
 A declared finite-state machine of one subject: `{ id, subject, initial, states, transitions }`. The machines are `presence` (absent, entering, present, exiting), `position` (still, moving) and `style` (steady, updating) for an Element, `effect` (idle, active, done), `slide` (before, changing, shown) for the Scene's slide change, `dwell` for a State, and `beat` (waiting, changing, done). A **Transition** is a timed edge `{ name, from, during, to, progress }`: it starts when the machine leaves `from`, spends its window in `during` and ends in `to`; with no window it is an instant. Orthogonal Machines (an Element's three regions) run independently.
@@ -93,7 +93,7 @@ _Avoid_: the IR (alone: it means the story IR)
 A reversible format of the IR: it has `encode` and `decode` and the law `decode(encode(ir)) = ir` holds. JSON is the canonical codec; SCXML, XState and the like are codecs too when they carry the whole IR. A migration between two versions of the IR is a codec.
 
 **Importer**:
-A one-way reader of a foreign format into the IR (the Fountain reader is `fountainImporter`). It may lose what the format cannot say, and what it reads is reviewed (`reebeat plan`). It has no `encode`.
+A one-way reader of a foreign format into the IR (the Fountain reader is `fountainImporter`). It may lose what the format cannot say, and what it reads is reviewed (`tsukuri plan`). It has no `encode`.
 _Avoid_: Parser (alone), converter
 
 **Artifact renderer**:
@@ -132,7 +132,7 @@ _Avoid_: Slides (as the unit), presentation
 
 One Fountain file maps onto the vocabulary above. Anything outside this table is an error, never silently dropped.
 
-| Fountain | reebeat | Deck | Video |
+| Fountain | tsukuri | Deck | Video |
 |---|---|---|---|
 | `Title:`, `Author:`, `Speed:` | Story metadata (`Speed:` is the default speech rate, 0.5 to 2.0, 1.1 when absent) | title | title tag |
 | `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
@@ -145,7 +145,7 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 
 ## Pieces of the pipeline
 
-reebeat is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
+tsukuri is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
 
 **Library**:
 Pure functions and types with no runtime: the Fountain importer, the IR and the Plan (`core`), the subtitle writers (`subtitles`), the lint rules (`lint`). A library imports libraries only.
@@ -155,11 +155,11 @@ An Effect interface with a contract that every implementation passes: `SpeechSyn
 _Avoid_: Plug-in, backend
 
 **Adapter**:
-A Layer that fills one service on an outside runtime, such as Kokoro for `SpeechSynthesizer` or ffmpeg for `Encoder`. An adapter imports services and libraries and never another adapter; only the `reebeat` command composes adapters. Release 1 has local adapters only.
+A Layer that fills one service on an outside runtime, such as Kokoro for `SpeechSynthesizer` or ffmpeg for `Encoder`. An adapter imports services and libraries and never another adapter; only the `tsukuri` command composes adapters. Release 1 has local adapters only.
 _Avoid_: Integration (as a package name; it is the tier's description), driver
 
 **Selection**:
-Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `reebeat.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
+Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `tsukuri.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
 
 **Stand-in**:
 An offline adapter for tests and for running the whole pipeline with no model (`silent` narrator, `even` aligner, tone sounds, in-memory cache). Its id ends `-standin`. A build made with a stand-in narrator has silent narration (its sounds are audible), so the check that finds narration onsets (F8) reports `N/A (silent stand-in)` for it, and only for it.
@@ -189,10 +189,10 @@ _Avoid_ for any grouping: Epic (overloaded by agile backlogs and by journey mapp
 
 ## Extension points
 
-How third parties add to reebeat (semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
+How third parties add to tsukuri (semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect). The decisions are in [`docs/decisions/0000-extension-architecture.md`](docs/decisions/0000-extension-architecture.md); these are the words.
 
 **Contract**:
-The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@reebeat/contracts`; the service tags and the runner that executes the clauses stay in `@reebeat/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.
+The declaration of one extension point as data: its methods with Schema-typed requests and responses, its capability set, its conformance clauses, its version and its stability tag. Contracts are declared in `@tsukuri/contracts`; the service tags and the runner that executes the clauses stay in `@tsukuri/services`. Docs, JSON Schema and the studio's plugin screen are generated from the contracts.
 _Avoid_: Interface (alone), API
 
 **Capability**:
@@ -210,7 +210,7 @@ The piece that makes a Beat between two runs, that is between two Scenes on diff
 The last frame of a run's range and the first frame of the next run's range, on which a compositor transition works. For an id shared by both sides, an engine may also give a snapshot (bounds, and an alpha layer with a plate) so the compositor can carry the Element across.
 
 **Plugin**:
-A package (npm, or another language with a `reebeat.plugin.json`) that provides an implementation of one or more contracts. It is installed, enabled explicitly in `reebeat.config.json` with a trust level, and selected; nothing is discovered by scanning.
+A package (npm, or another language with a `tsukuri.plugin.json`) that provides an implementation of one or more contracts. It is installed, enabled explicitly in `tsukuri.config.json` with a trust level, and selected; nothing is discovered by scanning.
 _Avoid_: Extension, add-on, module
 
 **Run**:

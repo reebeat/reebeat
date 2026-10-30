@@ -2,8 +2,8 @@
 // (test/fixturePlan.ts). A pure function of the Plan; the measured lags it encodes are checked in capture.test.ts and
 // lags.test.ts on a real Chromium.
 import { assert, describe, it } from "@effect/vitest";
-import type { TimedPlan } from "@reebeat/core";
-import { stepsOf } from "@reebeat/core";
+import type { TimedPlan } from "@tsukuri/core";
+import { stepsOf } from "@tsukuri/core";
 import { Array as Arr, Order } from "effect";
 
 import {

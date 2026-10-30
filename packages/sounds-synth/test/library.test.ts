@@ -1,12 +1,12 @@
 // The SoundLibrary contract for the synthesised sounds, the clip's relation to the WAV bytes, and a negative
 // control: an adapter that is not deterministic fails clause C3 of the contract and no other.
 import { assert, describe, it } from "@effect/vitest";
-import { SoundLibrary } from "@reebeat/services";
+import { SoundLibrary } from "@tsukuri/services";
 import {
   failingClauses,
   soundLibraryClauses,
   soundLibraryContract,
-} from "@reebeat/services/contract";
+} from "@tsukuri/services/contract";
 import { Effect, Layer } from "effect";
 
 import {

@@ -1,6 +1,6 @@
 // Pure signal helpers: where a clip really starts, a clip behind a stretch of silence, and where a catalogue sound
 // lies in a mixed track.
-import { outputSampleRate } from "@reebeat/encode-ffmpeg";
+import { outputSampleRate } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr } from "effect";
 
 /** The index of the first sample whose magnitude exceeds `threshold`; 0 when none does. */

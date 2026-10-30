@@ -1,8 +1,8 @@
-# @reebeat/render-reveal
+# @tsukuri/render-reveal
 
 The reveal.js `Renderer` (spec 0001, design R3): a Plan in, a Deck out, all in memory: `deck.html`, the theme, the page
 runtime and the binary assets read from the installed packages (reveal.js, Inter). It reads the Plan, never the
-screenplay: its manifest depends on `@reebeat/core` (types only, and the parser-free subpath `@reebeat/core/steps`), `@reebeat/services`, `@reebeat/lint`, `effect`,
+screenplay: its manifest depends on `@tsukuri/core` (types only, and the parser-free subpath `@tsukuri/core/steps`), `@tsukuri/services`, `@tsukuri/lint`, `effect`,
 `reveal.js`, `@fontsource/inter` and `parse5`, and a test and a lint rule keep it that way (spec 0001, F11). Writing the
 files of a `RenderedDeck` to a directory is the pipeline's file-system work, not this package's.
 Spec: [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md).
@@ -22,11 +22,11 @@ PlanJson + deck.html text ──checkDeck──▶ void | DeckMismatch          
 | `readAssets()` | `Effect<DeckAssets, DeckAssetMissing, FileSystem \| Path>`: the bytes of the reveal.js and Inter files and the two package versions |
 | `assembleDeck(plan, bundle, assets)` | `Effect<RenderedDeck, DeckMismatch>`: reads the page back with `checkDeck` and returns the files (`deck.html` is the entry) |
 | `readDeck(html)` | `DeckModel`: per slide the scene id, chapter id, notes paragraphs, fragments, Elements and marks; the two source hashes. Total: it never fails |
-| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index`. The effect and fragment comparison is `@reebeat/lint`'s rule `effect-fragment-agreement`; the page's own checks (the fragment index, the `data-sounds` of the slide and of each step, the Elements, the marks) stay here |
+| `checkDeck(plan, html)` | `Effect<void, DeckMismatch>`; the first difference, naming `check`, `slide` (scene id) and `index`. The effect and fragment comparison is `@tsukuri/lint`'s rule `effect-fragment-agreement`; the page's own checks (the fragment index, the `data-sounds` of the slide and of each step, the Elements, the marks) stay here |
 
 `DeckMismatch.check` is one of `F3 notes` (note $k$ is the narration of Line $k$), `F4 fragments` (one fragment per `show` or `focus` effect
 in resolved-time order with its verb and target, and the `data-sounds` of the slide and of every step equal the sounds the Plan
-carries there), `F5 source hash` (`<html data-source-sha256>` and the `reebeat:source-sha256`
+carries there), `F5 source hash` (`<html data-source-sha256>` and the `tsukuri:source-sha256`
 meta both equal `plan.sourceSha256`), `elements` (every Plan Element is on its slide with the same cell, class, `visible` flag and
 text, and nothing else is), `slides` (same scene ids and chapters in the same order) and `transitions` (`data-auto-animate`,
 `data-auto-animate-id`, `data-transition`).
@@ -62,10 +62,10 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   `<span class="fragment effect" data-fragment-index data-effect-id data-effect-verb data-target>`. A `focus` ring that ends
   by its own `until` before the Scene does has a second step, its END: a fragment with `data-effect-edge="end"` (a start has
   no such attribute; `readDeck` reads `edge` as `end` or `start`), placed at the frame the ring's last frame is at, so the
-  fragments are the `stepsOf` list of `@reebeat/core/steps` exactly, and the lint rule `effect-fragment-agreement` compares
+  fragments are the `stepsOf` list of `@tsukuri/core/steps` exactly, and the lint rule `effect-fragment-agreement` compares
   `{ sceneId, effectId, verb, target, edge }`. A `sound` is never a step:
   it is `data-sounds="whoosh ding"` (names, one per sound instance, in source order) on the thing it plays with, and
-  `@reebeat/core/steps` (`stepsOf`, `soundsOf`: the one definition the Deck and `@reebeat/verify` share) says which. A sound
+  `@tsukuri/core/steps` (`stepsOf`, `soundsOf`: the one definition the Deck and `@tsukuri/verify` share) says which. A sound
   anchored to the slide change, the Scene's start or an Element's lifecycle event of the transition rides on the
   `<section>` and plays when the slide is shown; a sound anchored to a `show` effect's Element, to a step, or later than a
   step rides on that step (a start, never an end) and plays when it runs; a sound with no step before it ("alone", for
@@ -78,13 +78,13 @@ The page follows the Deck page contract of the spec. Where the contract left roo
   when that target is it (a later focus may have moved the ring already); stepping back restores the previous focus (or
   puts the ring back) and hides the Element again; sounds play
   `assets/sfx/<name>.wav` on `fragmentshown` (the step's) and `slidechanged` (the slide's) and ignore a rejection from a
-  blocked autoplay. `reebeatDeck.ready` resolves when Reveal is ready **and both Inter faces are loaded**, so a capture never
+  blocked autoplay. `tsukuriDeck.ready` resolves when Reveal is ready **and both Inter faces are loaded**, so a capture never
   shows a fallback font. `goToScene` throws for an unknown id. reveal.js's notes plugin is loaded, so the arrow keys step
   through the Deck and `s` opens the speaker view. Known interplay: `focused` is not cleared when the slide changes, so an
   Element still focused when an Auto-Animate starts is measured with its scale of 1.04 and animates from that box.
 - **A cut is a cut.** reveal.js takes the transition of the slide it LEAVES from that slide, so `data-transition="none"` on the
   incoming slide still left the old slide fading out for 12 frames under the new one (found by the observer of
-  `@reebeat/verify`: the whole frame of a `> CUT` changed for 12 frames). The last rule of `theme.css`,
+  `@tsukuri/verify`: the whole frame of a `> CUT` changed for 12 frames). The last rule of `theme.css`,
   `.reveal .slides > section.past:has(+ section.present[data-transition="none"])` with `transition: none`, makes the slide
   that a `none` slide replaces leave at once; it is derived from the one mark the page already holds, so a cut has no second
   attribute that could disagree with it. The cut now changes the frame in one frame.
@@ -97,9 +97,9 @@ The page follows the Deck page contract of the spec. Where the contract left roo
 
 `info.lifecycle` is `revealLifecycle` (`src/lifecycle.ts`), the `RendererLifecycle` of spec 0002: when each Element event
 happens in the window of the slide change. `schedule` resolves every effect anchored to such an event from it (the pipeline
-hands it over, `build.json` records it under the Renderer), and `@reebeat/verify` observes the same events in the written video
+hands it over, `build.json` records it under the Renderer), and `@tsukuri/verify` observes the same events in the written video
 (F1), so a wrong number fails there. The numbers are **measured**, in frames of the capture at 30 fps (`measuredFps: 30`: a
-lag is the time of that many frames at that rate, and `lifecycleFrames` of `@reebeat/core` resolves it to frames at the
+lag is the time of that many frames at that rate, and `lifecycleFrames` of `@tsukuri/core` resolves it to frames at the
 Plan's own rate; the capture renders only 30 fps without `ntsc` until another rate is measured), `s` being the Scene's
 slide frame; an event starts at the first frame in which 200 pixels of its region differ by more than 8 gray levels from the old
 picture (a box that moves: when the centre of its ink is 2 pixels from its old place) and is over at the first frame in which less
@@ -120,8 +120,8 @@ story of `packages/verify/test/lifecycle.test.ts`, which anchors one effect to e
 
 The two `+ 1` differences are inside the one-frame tolerance of F1. A renderer whose declaration is wrong by two frames fails: the
 control of `packages/verify/test/checks.test.ts` declares `matched.startLagFrames` 0 and F1 reports the sound anchored to
-`a.move.start` 2 frames off its observed anchor. To measure again: `bun run reebeat build stories/same-id/story.fountain --out
-build/same-id` and `bun run reebeat check build/same-id --source stories/same-id/story.fountain` print each effect with its
+`a.move.start` 2 frames off its observed anchor. To measure again: `bun run tsukuri build stories/same-id/story.fountain --out
+build/same-id` and `bun run tsukuri check build/same-id --source stories/same-id/story.fountain` print each effect with its
 resolved and observed frame, and `cd packages/verify && bunx vp test run test/lifecycle.test.ts --silent=false` prints the table of
 the probes. Release 1 wrote "about 3 frames" for the matched Element; with the pixel rule above it is 2.
 
@@ -139,23 +139,23 @@ the probes. Release 1 wrote "about 3 frames" for the matched Element; with the p
 
 One light palette in `src/theme.ts` (the stylesheet is generated from the same data the tests read; lengths scale with the
 slide height, see Settings). The classes are `box`,
-`title`, `label`, `accent` and `muted`; `test/theme.test.ts` asserts, through `@reebeat/lint`'s `contrast` rule, that each class keeps at least 4.5:1 (WCAG 2.x)
+`title`, `label`, `accent` and `muted`; `test/theme.test.ts` asserts, through `@tsukuri/lint`'s `contrast` rule, that each class keeps at least 4.5:1 (WCAG 2.x)
 against the slide background and against the box background. Inter is bundled
 (`@fontsource/inter`, OFL), so frames do not depend on system fonts.
 
 ## Tests
 
-`bun run test` in this directory; the browser tests need `REEBEAT_CHROMIUM` (set by devenv) and add `--no-sandbox` when
-`REEBEAT_CHROMIUM_NO_SANDBOX=1`.
+`bun run test` in this directory; the browser tests need `TSUKURI_CHROMIUM` (set by devenv) and add `--no-sandbox` when
+`TSUKURI_CHROMIUM_NO_SANDBOX=1`.
 
 | File | Proves |
 | --- | --- |
 | `render.test.ts` | the page structure, hash, escaping, chains of Auto-Animate scenes, `data-transition="none"` on the incoming slide of a cut, one fragment per `show` or `focus` effect in resolved order, `data-sounds` on slides and steps (pure) |
 | `check.test.ts` | F3, F4, F5 and Element controls on the written file: a deleted, swapped, re-targeted fragment, a sound dropped, reordered or moved to another step; `assembleDeck` fails on a bad bundle (pure) |
-| `renderer.test.ts` | the Renderer contract (`@reebeat/services/contract`, C1 to C6 with the lifecycle clause) with negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
+| `renderer.test.ts` | the Renderer contract (`@tsukuri/services/contract`, C1 to C6 with the lifecycle clause) with negative controls; the files of a Deck directory, byte-identical copies, relative URLs that exist, licences |
 | `theme.test.ts` | contrast of every class |
 | `boundaries.test.ts` | F11: the manifest and an import scan of `src` |
-| `browser.test.ts` | Chromium: `reebeatDeck`, each step's effect, the sounds of a slide and of a step, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box; the slide a `> CUT` replaces is invisible in the same task as the change, and a default change is still fading it out |
+| `browser.test.ts` | Chromium: `tsukuriDeck`, each step's effect, the sounds of a slide and of a step, notes, Auto-Animate keeps the matched Element and moves it from its start box to its end box; the slide a `> CUT` replaces is invisible in the same task as the change, and a default change is still fading it out |
 
 The browser tests use the real clock; the controlled clock belongs to `packages/capture-chromium`. The only suppression is the
 Promise adapter of `test/browser.ts` (`EX-0030` in `tools/quality/effect-exceptions.json`).

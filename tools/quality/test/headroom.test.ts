@@ -1,4 +1,4 @@
-// The admission check of skill `verify-reebeat` (spec 0010): `headroom.sh` reads a fake /proc written in a temporary directory. A
+// The admission check of skill `verify-tsukuri` (spec 0010): `headroom.sh` reads a fake /proc written in a temporary directory. A
 // reading that is missing or not a number must be SHORT with its reason, never healthy: each gate has a control for a missing
 // file, an empty value and a value that is not a number, and for a reading over its limit.
 import { NodeServices } from "@effect/platform-node";
@@ -38,23 +38,23 @@ const headroom = Effect.fn("headroom")(function* headroom(
         })
   );
 
-  const script = skillScript(path, "verify-reebeat", "scripts", "headroom.sh");
+  const script = skillScript(path, "verify-tsukuri", "scripts", "headroom.sh");
 
   return yield* spawner.string(
     ChildProcess.make(
       "bash",
       [
         "-c",
-        'if [ -n "$AFTER_VMSTAT" ]; then (sleep 0.3; printf "%s\\n" "$AFTER_VMSTAT" >"$REEBEAT_VERIFY_PROC_ROOT/vmstat") & fi; out=$("$0" 2>&1); code=$?; wait; printf "%s\\n%s" "$code" "$out"',
+        'if [ -n "$AFTER_VMSTAT" ]; then (sleep 0.3; printf "%s\\n" "$AFTER_VMSTAT" >"$TSUKURI_VERIFY_PROC_ROOT/vmstat") & fi; out=$("$0" 2>&1); code=$?; wait; printf "%s\\n%s" "$code" "$out"',
         script,
       ],
       {
         env: {
-          REEBEAT_VERIFY_DEMAND_MIB: "1024",
-          REEBEAT_VERIFY_NPROC: "8",
-          REEBEAT_VERIFY_PROC_ROOT: path.join(dir, "proc"),
-          REEBEAT_VERIFY_ROOT: path.join(dir, "evidence"),
-          REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.1",
+          TSUKURI_VERIFY_DEMAND_MIB: "1024",
+          TSUKURI_VERIFY_NPROC: "8",
+          TSUKURI_VERIFY_PROC_ROOT: path.join(dir, "proc"),
+          TSUKURI_VERIFY_ROOT: path.join(dir, "evidence"),
+          TSUKURI_VERIFY_TEST_SAMPLE_SECONDS: "0.1",
           ...env,
         },
         extendEnv: true,
@@ -161,7 +161,7 @@ describe("headroom.sh reads before it admits", () => {
         }
 
         const { code, short } = verdict(
-          yield* headroom({}, { REEBEAT_VERIFY_NPROC: "many" })
+          yield* headroom({}, { TSUKURI_VERIFY_NPROC: "many" })
         );
 
         assert.strictEqual(code, "1");
@@ -200,7 +200,7 @@ describe("headroom.sh reads before it admits", () => {
           const { code, short } = verdict(
             yield* headroom(
               {},
-              { AFTER_VMSTAT: after, REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.6" }
+              { AFTER_VMSTAT: after, TSUKURI_VERIFY_TEST_SAMPLE_SECONDS: "0.6" }
             )
           );
 
@@ -215,7 +215,7 @@ describe("headroom.sh reads before it admits", () => {
             {},
             {
               AFTER_VMSTAT: "pswpin 400",
-              REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "0.6",
+              TSUKURI_VERIFY_TEST_SAMPLE_SECONDS: "0.6",
             }
           )
         );
@@ -234,8 +234,8 @@ describe("headroom.sh reads before it admits", () => {
             yield* headroom(
               {},
               {
-                REEBEAT_VERIFY_SAMPLE_SECONDS: seconds,
-                REEBEAT_VERIFY_TEST_SAMPLE_SECONDS: "",
+                TSUKURI_VERIFY_SAMPLE_SECONDS: seconds,
+                TSUKURI_VERIFY_TEST_SAMPLE_SECONDS: "",
               }
             )
           );
@@ -255,12 +255,12 @@ describe("headroom.sh reads before it admits", () => {
     60_000
   );
 
-  it.effect("REEBEAT_VERIFY_FORCE continues past a shortage and says so", () =>
+  it.effect("TSUKURI_VERIFY_FORCE continues past a shortage and says so", () =>
     Effect.gen(function* forced() {
       const { code, short } = verdict(
         yield* headroom(
           { loadavg: "9.00 9.00 9.00 1/100 1\n" },
-          { REEBEAT_VERIFY_FORCE: "1" }
+          { TSUKURI_VERIFY_FORCE: "1" }
         )
       );
 

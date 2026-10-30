@@ -1,4 +1,4 @@
-// Public surface of @reebeat/verify: the output-side checks of the falsifiers on a build directory, the table
+// Public surface of @tsukuri/verify: the output-side checks of the falsifiers on a build directory, the table
 // that prints their verdicts and the exit code. It reads the written files and the source only (spec 0001).
 export { runChecks } from "./check.ts";
 

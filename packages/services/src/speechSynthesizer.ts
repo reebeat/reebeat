@@ -32,4 +32,4 @@ export class SpeechSynthesizer extends Context.Service<
       request: SynthesizeRequest
     ) => Effect.Effect<Synthesis, SpeechError>;
   }
->()("@reebeat/services/SpeechSynthesizer") {}
+>()("@tsukuri/services/SpeechSynthesizer") {}

@@ -1,6 +1,6 @@
 // Plan to page: `renderDeck` is a pure function of the Plan (spec 0001, "Module layout" and the Deck page
 // contract). The same Plan gives the same bytes. Nothing here reads a file; `assembleDeck` adds the binary assets.
-import type { Element, PlanJson, Scene } from "@reebeat/core";
+import type { Element, PlanJson, Scene } from "@tsukuri/core";
 import { Array as Arr, String as Str, pipe } from "effect";
 
 import { expectedMarks, expectedSlide } from "./expected.ts";
@@ -130,7 +130,7 @@ const pageHtml = (plan: PlanJson): string => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="reebeat:source-sha256"${attribute("content", plan.sourceSha256)}>${author}
+  <meta name="tsukuri:source-sha256"${attribute("content", plan.sourceSha256)}>${author}
   <title>${escapeHtml(plan.title)}</title>
   <link rel="stylesheet" href="assets/reveal/reset.css">
   <link rel="stylesheet" href="assets/reveal/reveal.css">
@@ -153,7 +153,7 @@ ${sections}
 /**
  * The Deck of a Plan: `html` is `deck.html`; `files` are the generated text files it loads (the theme and the
  * runtime). The binary assets (reveal.js, Inter) are added by `assembleDeck`; the sound files `assets/sfx/<name>.wav`
- * are written by the build program (`@reebeat/pipeline`).
+ * are written by the build program (`@tsukuri/pipeline`).
  */
 export const renderDeck = (plan: PlanJson): DeckBundle => ({
   files: [

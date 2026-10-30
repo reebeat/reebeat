@@ -99,14 +99,14 @@ export const jsonCodec: IrCodec<string> = {
 };
 
 /** The `$id` of the JSON Schema of this version of the IR. */
-export const graphSchemaId = `https://github.com/reebeat/reebeat/schema/ir/${graphVersion}`;
+export const graphSchemaId = `https://github.com/tsukuri-labs/tsukuri/schema/ir/${graphVersion}`;
 
 const jsonText = Schema.encodeResult(
   Schema.fromJsonString(Schema.Unknown, { space: 2 })
 );
 
 /**
- * The JSON Schema (draft 2020-12) of the IR, as the text of `docs/schema/reebeat-ir.schema.json`: a pure function of
+ * The JSON Schema (draft 2020-12) of the IR, as the text of `docs/schema/tsukuri-ir.schema.json`: a pure function of
  * `GraphSchema` (spec 0004). Every construct is a named definition; its provenance annotations `origin` and `deviation`
  * are emitted as extra keywords of its definition, beside `description`. The document is closed, as the decoder is.
  */

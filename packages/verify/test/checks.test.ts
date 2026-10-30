@@ -9,13 +9,13 @@
 //   F6  a frame replaced in one of two builds  F7  a hard cut instead of the transition, and a reversed transition
 //   F8  the audio delayed by three frames      F9  a renamed chapter
 import { assert, layer } from "@effect/vitest";
-import { buildPlan, encodePlan } from "@reebeat/core";
-import { sha256Hex } from "@reebeat/pipeline";
+import { buildPlan, encodePlan } from "@tsukuri/core";
+import { sha256Hex } from "@tsukuri/pipeline";
 import {
   renderDeck,
   revealLifecycle,
   revealRenderer,
-} from "@reebeat/render-reveal";
+} from "@tsukuri/render-reveal";
 import {
   Array as Arr,
   Effect,
@@ -95,7 +95,7 @@ const editedSource = Effect.fn("editedSource")(function* edited(name: string) {
  * sounds near them, so each is found at its own frame.
  */
 const lifecycleStory = `Title: Lifecycle
-Author: reebeat tests
+Author: tsukuri tests
 
 # One
 

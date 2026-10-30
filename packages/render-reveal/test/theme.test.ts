@@ -1,8 +1,8 @@
 // The theme's colours: every text class of the Deck keeps at least 4.5:1 (WCAG 2.x AA, normal text) against every
 // background it can meet, checked by the lint rule `contrast` on the palette the stylesheet is generated from.
 import { assert, describe, it } from "@effect/vitest";
-import { elementClasses } from "@reebeat/core";
-import { contrast } from "@reebeat/lint";
+import { elementClasses } from "@tsukuri/core";
+import { contrast } from "@tsukuri/lint";
 import { Array as Arr, Order, Record, String as Str } from "effect";
 
 import { classColors, palette, themeCss } from "../src/theme.ts";

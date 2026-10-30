@@ -2,10 +2,10 @@
 // of a Scene, in resolved-time order: a `start` fragment for each `show` or `focus`, and an `end` fragment for each
 // `focus` that ends by its own `until` before the Scene does (it takes the ring off). Each carries the effect's verb and
 // target. A `sound` is not a fragment: it rides along with a step or the slide (`stepsOf` and `soundsOf` of
-// `@reebeat/core` say which). The rule compares the Plan with a neutral list of the fragments a Rendering shows, so any
+// `@tsukuri/core` say which). The rule compares the Plan with a neutral list of the fragments a Rendering shows, so any
 // Renderer's reader can use it; for the reveal.js Deck, `readDeck` supplies the list.
-import { stepsOf } from "@reebeat/core";
-import type { PlanJson, Scene } from "@reebeat/core";
+import { stepsOf } from "@tsukuri/core";
+import type { PlanJson, Scene } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";

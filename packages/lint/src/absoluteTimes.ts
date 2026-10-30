@@ -4,8 +4,8 @@
 // the Plan itself (`Effect.when.absoluteFlicks`, exact time in flicks, printed here in seconds), so a Plan that did not
 // come from the importer is held to it too, and it lists every absolute time (severity `info`) so a reviewer sees them
 // all.
-import { flicksPerSecond } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
+import { flicksPerSecond } from "@tsukuri/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Array as Arr, String as Str } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";

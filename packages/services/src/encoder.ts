@@ -56,4 +56,4 @@ export class Encoder extends Context.Service<
       request: MuxRequest
     ) => Effect.Effect<MuxResult, CaptureFailure | EncodeError>;
   }
->()("@reebeat/services/Encoder") {}
+>()("@tsukuri/services/Encoder") {}

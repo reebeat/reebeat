@@ -1,4 +1,4 @@
-# @reebeat/core
+# @tsukuri/core
 
 ## 0.1.0-alpha.0
 

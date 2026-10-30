@@ -9,9 +9,9 @@
 // The catalogue is core's `SfxName`: a sound the Plan can ask for without a synthesis here fails to type-check.
 // Every sound has a sample of magnitude above 0.01 within its first 2 ms and a peak of at most 0.6 full scale.
 
-import { audioClipToWav } from "@reebeat/core";
-import type { SfxName } from "@reebeat/core";
-import type { AudioClip } from "@reebeat/services";
+import { audioClipToWav } from "@tsukuri/core";
+import type { SfxName } from "@tsukuri/core";
+import type { AudioClip } from "@tsukuri/services";
 import { Record } from "effect";
 
 export const sampleRate = 48_000;

@@ -1,6 +1,6 @@
 // The page runtime: the reveal.js configuration, the effect of each fragment (the start of a `show` or `focus` effect, or
 // the end of a `focus` ring, `data-effect-edge="end"`), the sounds that ride along with a fragment or a slide and
-// `window.reebeatDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that
+// `window.tsukuriDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that
 // `deck.html` works from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
 import { Array as Arr } from "effect";
 
@@ -174,13 +174,13 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     }
   });
 
-  window.reebeatDeck = {
+  window.tsukuriDeck = {
     ready: ready,
     sceneIds: sceneIds,
     goToScene: function (sceneId) {
       var index = sceneIds.indexOf(sceneId);
       if (index < 0) {
-        throw new Error("reebeat: unknown scene " + sceneId);
+        throw new Error("tsukuri: unknown scene " + sceneId);
       }
       Reveal.slide(index, 0, -1);
     },

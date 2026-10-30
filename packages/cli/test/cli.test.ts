@@ -12,7 +12,7 @@ import {
   verdict,
 } from "./support.ts";
 
-layer(platform)("the reebeat command line", (it) => {
+layer(platform)("the tsukuri command line", (it) => {
   it.effect("--help lists the four commands and exits 0", () =>
     Effect.gen(function* help() {
       const { exit, stdout } = yield* runCli(["--help"]);

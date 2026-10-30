@@ -37,7 +37,7 @@ export const makeWorkspace = Effect.gen(function* workspace() {
   const path = yield* Path.Path;
 
   const root = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-capture-",
+    prefix: "tsukuri-capture-",
   });
 
   const deckDir = path.join(root, "deck");

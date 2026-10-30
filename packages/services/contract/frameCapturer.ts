@@ -1,7 +1,7 @@
 import { assert } from "@effect/vitest";
 // The contract of FrameCapturer: what every capturer (headless Chromium on a controlled clock) promises. The
 // adapter's layer also provides the Renderer, because a capture needs a written Deck.
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Effect, FileSystem, Path, Predicate, Stream } from "effect";
 import type { Layer } from "effect";
 
@@ -21,7 +21,7 @@ const writeDeck = Effect.fnUntraced(function* writeDeck(plan: PlanJson) {
   const deck = yield* (yield* Renderer).render(plan);
 
   const directory = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-contract-",
+    prefix: "tsukuri-contract-",
   });
 
   yield* Effect.forEach(deck.files, (file) =>

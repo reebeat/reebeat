@@ -1,8 +1,8 @@
 // Writing what the services produced: the Renderer's files under one directory, and each sound the Plan's effects play
 // as `assets/sfx/<name>.wav`, which the Deck fetches when a step or a slide that carries the sound is shown. The file system is the platform `FileSystem`.
-import { audioClipToWav } from "@reebeat/core";
-import { SoundLibrary } from "@reebeat/services";
-import type { RenderedDeck } from "@reebeat/services";
+import { audioClipToWav } from "@tsukuri/core";
+import { SoundLibrary } from "@tsukuri/services";
+import type { RenderedDeck } from "@tsukuri/services";
 import { Effect, FileSystem, Path, Predicate, String as Str } from "effect";
 
 import { BuildOutputFailed, outputFailed } from "./errors.ts";

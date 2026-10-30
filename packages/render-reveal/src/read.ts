@@ -55,7 +55,7 @@ export interface DeckSlide {
 export interface DeckModel {
   /** `<html data-source-sha256>`. */
   readonly htmlSourceSha256: string | null;
-  /** `<meta name="reebeat:source-sha256" content>`. */
+  /** `<meta name="tsukuri:source-sha256" content>`. */
   readonly metaSourceSha256: string | null;
   readonly slides: readonly DeckSlide[];
 }
@@ -193,7 +193,7 @@ export const readDeck = (html: string): DeckModel => {
       everything,
       "meta",
       "content",
-      (attributes) => attributes.name === "reebeat:source-sha256"
+      (attributes) => attributes.name === "tsukuri:source-sha256"
     ),
     slides: Arr.map(
       Arr.filter(

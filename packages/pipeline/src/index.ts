@@ -1,4 +1,4 @@
-// Public surface of @reebeat/pipeline: the build program over services only (speech stage, schedule, render, capture,
+// Public surface of @tsukuri/pipeline: the build program over services only (speech stage, schedule, render, capture,
 // encode, manifest), the files it writes and the manifest's schema. No outside runtime.
 export { buildProgram } from "./buildProgram.ts";
 

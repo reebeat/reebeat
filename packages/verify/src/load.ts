@@ -1,14 +1,14 @@
 // What every check reads: the written files of a build directory and the source, loaded once. Nothing here comes
 // from the pipeline that wrote them; the Plan is rebuilt from the source with the core's `buildPlan`.
-import { buildPlan, decodePlan, requireTimeline } from "@reebeat/core";
+import { buildPlan, decodePlan, requireTimeline } from "@tsukuri/core";
 import type {
   PlanError,
   PlanJson,
   RendererLifecycle,
   TimedPlan,
-} from "@reebeat/core";
-import { decodeBuildManifest, sha256Hex } from "@reebeat/pipeline";
-import type { BuildManifest } from "@reebeat/pipeline";
+} from "@tsukuri/core";
+import { decodeBuildManifest, sha256Hex } from "@tsukuri/pipeline";
+import type { BuildManifest } from "@tsukuri/pipeline";
 import {
   Array as Arr,
   Effect,

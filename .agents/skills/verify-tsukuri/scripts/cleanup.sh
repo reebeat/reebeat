@@ -2,7 +2,7 @@
 # cleanup.sh <run-directory> [--worktree <path>]
 # Stops what a verification run left behind and keeps the evidence. It stops only the process groups recorded in
 # `<run>/pids.txt` ("<pid> <start time>" per line): run.sh records each step (its own session and group), and observe.ts records
-# the Chromium it launches, which Playwright starts detached in a group of its own. A Chromium launched by `reebeat build` or
+# the Chromium it launches, which Playwright starts detached in a group of its own. A Chromium launched by `tsukuri build` or
 # `journey` is not recorded and is not stopped here. A live pid whose start time differs from the record is a reused pid and
 # is left alone. It never searches for processes by name or pattern. It also removes half-written `<out>.partial` builds under
 # the run directory and, with --worktree, the detached review worktree when it is clean. The run directory, REPORT.md and every

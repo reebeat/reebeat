@@ -2,8 +2,8 @@
 // have an `s1` must not play each other's sound. Found on the real story, where the whoosh of one Scene sounded as the
 // ding of the next.
 import { assert, it } from "@effect/vitest";
-import { buildPlan, frameToMs, requireTimeline, schedule } from "@reebeat/core";
-import { alignedLines, contractLifecycle } from "@reebeat/services/contract";
+import { buildPlan, frameToMs, requireTimeline, schedule } from "@tsukuri/core";
+import { alignedLines, contractLifecycle } from "@tsukuri/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 import { sfxStarts } from "../src/tracks.ts";

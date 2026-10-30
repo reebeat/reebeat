@@ -1,4 +1,4 @@
-# @reebeat/sounds-synth
+# @tsukuri/sounds-synth
 
 ## 0.1.0-alpha.0
 
@@ -10,5 +10,5 @@
 
 - Updated dependencies [78ef5b3]
 - Updated dependencies [53782eb]
-  - @reebeat/core@0.1.0-alpha.0
-  - @reebeat/services@0.1.0-alpha.0
+  - @tsukuri/core@0.1.0-alpha.0
+  - @tsukuri/services@0.1.0-alpha.0

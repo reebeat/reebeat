@@ -44,27 +44,11 @@ const located: Record<PlanErrorTag, true> = {
 const hasLine = (failure: Reportable): failure is PlanError =>
   Predicate.hasProperty(located, failure._tag);
 
-/** The flag of `build` and `journey` that fills the speech cache; one name for the flag and the error that points to it. */
-export const refreshSpeechFlag = "refresh-speech";
-
-/**
- * What fixes a `SpeechCacheMiss`. The pipeline's error says what is missing; only the CLI knows which command writes
- * the cache, and that `plan` and `check` only read it.
- */
-const speechCacheFix = `fill the cache with \`tsukuri build <story> --${refreshSpeechFlag}\`, using the same --speech, --aligner and --cache-dir flags as this command (the speech models must be present unless --speech silent is selected)`;
-
-/**
- * One line: `UnknownReference (line 12): the message`, or `SpeechCacheMiss: the message; the fix` when there is no line.
- */
-const describeFailure = (failure: Reportable): string => {
-  if (Predicate.isTagged(failure, "SpeechCacheMiss")) {
-    return `${failure._tag}: ${failure.message}; ${speechCacheFix}`;
-  }
-
-  return hasLine(failure)
+/** One line: `UnknownReference (line 12): the message`, or `SpeechCacheMiss: the message` when there is no line. */
+const describeFailure = (failure: Reportable): string =>
+  hasLine(failure)
     ? `${failure._tag} (line ${failure.line}): ${failure.message}`
     : `${failure._tag}: ${failure.message}`;
-};
 
 /** Prints an expected failure to stderr; `Command.run` has already shown the help of a usage error. */
 export const reportFailure = (failure: Reportable | CliError.CliError) =>

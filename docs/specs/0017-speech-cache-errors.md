@@ -30,7 +30,7 @@ Two failures a user meets in the first hour read as a bug in the tool, not as a 
 ## Goal
 
 - F8 on a speech cache that is missing, or that lacks the audio of a Line, fails **as that**: it says the speech cache has no audio for the Line, names the directory it looked in, and names `--cache-dir` (and the default it used). It never reports an ffmpeg exit code for a file that does not exist.
-- `SpeechCacheMiss` as the CLI prints it ends with the command and the flag that fill the cache: `tsukuri build <story> --refresh-speech`, with the same `--speech`, `--aligner` and `--cache-dir` as the command that failed. The flag name is one constant that the `build` and `journey` flags and the message share, so the message cannot name a flag the command lacks.
+- `SpeechCacheMiss` itself (its `message`, so every reader of the typed error sees it, not only the CLI's printer) ends with the command and the flag that fill the cache: `tsukuri build <story> --refresh-speech`, with the same `--speech`, `--aligner` and `--cache-dir` as the command that failed. That is true of every command that reads the cache: `plan`, `lint`, `check`, `build` and `journey` all take the selection flags and `--cache-dir`.
 
 ## Non-goals
 
@@ -56,8 +56,8 @@ Real: the real `check` over a real build (`verify` tests build a story with the 
 
 ## Constraints and values
 
-- Correctness by construction: the F8 failure is decided before ffmpeg is asked (the file is or is not there); the flag in the message and the flag of the command are one constant (`refreshSpeechFlag`), and a test reads the command and flag out of the message and checks that the command's `--help` lists the flag.
-- The pipeline package does not name CLI commands: its error says what is missing (`the stage was not asked to refresh it`); only the CLI knows that `build` writes the cache and `plan` reads it, so the CLI prints the fix.
+- Correctness by construction: the F8 failure is decided before ffmpeg is asked (the file is or is not there); the command and flag in the message are checked against the real command: a test reads them out of the message and checks that the command's `--help` lists the flag, so the message cannot name a flag `build` lacks.
+- The fix is in the error's own message, at its one throw site (`speechStage.ts`), so the error carries it wherever it is read. The cost is that `@tsukuri/pipeline` names the CLI's command; the pipeline is the only place the miss is raised, and the alternative (a suffix added by the CLI printer) left the typed error without the fix for every other reader.
 - Tests prove the rule (a missing cache is reported as a missing cache; the fix names a command and flag that exist), not exact wording.
 
 ## Falsifiers
@@ -65,9 +65,9 @@ Real: the real `check` over a real build (`verify` tests build a story with the 
 | # | Falsifier (must hold) | Gate | Negative control (must fail) |
 | --- | --- | --- | --- |
 | F1 | F8 on a directory that is not the cache, and on a cache without one Line's file, fails naming that directory and `--cache-dir`, and not with an ffmpeg exit code; the intact cache passes | `packages/verify/test/speechCache.test.ts` | replace the `missingCache` call in `packages/verify/src/narration.ts` by `Option.none()`: the test fails, `expected 'the written files cannot be observed:…' to include '<the directory>'` |
-| F2 | A `SpeechCacheMiss` printed by the CLI names a command and a flag; the command's `--help` lists that flag | `packages/cli/test/plan.test.ts` ("a SpeechCacheMiss names the command and the flag that fill the cache, and both exist") | declare the `build` flag as `Flag.Boolean("refresh")` instead of `refreshSpeechFlag`: the test fails, `expected 'DESCRIPTION…' to include '--refresh-speech'` |
+| F2 | A `SpeechCacheMiss` names a command and a flag; the command's `--help` lists that flag | `packages/cli/test/plan.test.ts` ("a SpeechCacheMiss names the command and the flag that fill the cache, and both exist") | rename the `build` flag to `Flag.Boolean("refresh")`: the test fails, `expected 'DESCRIPTION…' to include '--refresh-speech'` |
 | F3 | The gates pass | `bun run ready` | any gate fails |
 
 ## Revisions
 
-- **2026-10-30, paused for a directory rename (not a plan change).** Built and committed on `feat/0017-speech-cache-errors` (worktree `.worktrees/speech-cache-errors`): the F8 existence check (`packages/verify/src/narration.ts`), the CLI fix text and the shared `refreshSpeechFlag` (`packages/cli/src/report.ts`, `cli.ts`), the new `SpeechCacheMiss` message (`packages/pipeline/src/speechStage.ts`), the two tests (`packages/verify/test/speechCache.test.ts`, `packages/cli/test/plan.test.ts`), the feature-map rows and a changeset. Both new tests pass and both negative controls were observed to fail; `vp check --fix` is clean. Remaining: `bun run ready` on the head (a first run was stopped before it finished, so there is no ready result yet), a `verify-tsukuri` run on the head with the two controls of the feature rows, then the PR with the eight-section body (`Fixes #N` once the issues exist).
+- **2026-10-30, the fix moved from the CLI printer into the error message.** The first build appended the fix in `packages/cli/src/report.ts` and shared a `refreshSpeechFlag` constant. A review note pointed out that every reader of the typed error other than the printer (tests, `lint`, a library user) would still see only "build with refresh". The text now lives in the message at the throw site, the constant and the printer branch are removed, and the test (unchanged in its rule) checks the message against the real `--help`.

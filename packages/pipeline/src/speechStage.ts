@@ -202,7 +202,7 @@ const alignLine = Effect.fn("speechStage.alignLine")(function* alignLine(
     return yield* new SpeechCacheMiss({
       key: made.key,
       lineId: id,
-      message: `the speech cache has no asset ${made.key} for Line ${id} ("${excerpt(line.text)}") and the stage was not asked to refresh it`,
+      message: `the speech cache has no asset ${made.key} for Line ${id} ("${excerpt(line.text)}"); fill it with \`tsukuri build <story> --refresh-speech\`, using the same --speech, --aligner and --cache-dir flags as the command that failed (the speech models must be present unless --speech silent is selected)`,
       textExcerpt: excerpt(line.text),
     });
   }

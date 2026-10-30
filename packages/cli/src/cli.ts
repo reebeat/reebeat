@@ -15,7 +15,7 @@ import { checkBuild } from "./check.ts";
 import { journey } from "./journey.ts";
 import { lintStory } from "./lint.ts";
 import { planText, timedPlanText } from "./plan.ts";
-import { refreshSpeechFlag, reportFailure } from "./report.ts";
+import { reportFailure } from "./report.ts";
 import { readSelection } from "./selection.ts";
 import type { SelectionFlags } from "./selection.ts";
 import { defaultCache, storyName } from "./source.ts";
@@ -32,7 +32,7 @@ const cacheDir = Flag.String("cache-dir").pipe(
   Flag.optional
 );
 
-const refreshSpeech = Flag.Boolean(refreshSpeechFlag).pipe(
+const refreshSpeech = Flag.Boolean("refresh-speech").pipe(
   Flag.withDescription(
     "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
   ),

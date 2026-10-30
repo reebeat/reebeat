@@ -1,11 +1,9 @@
-// How the `tsukuri-mcp` process ends (spec 0018, Revision 23). A client ends a stdio session by closing the server's
-// standard input. Effect's stdio transport answers the end of input by interrupting the program's main fiber, which
-// `runMain` reports as exit status 130, the status of a SIGINT. Closing stdin is the protocol's normal end, not an
-// interruption, so the status is 0 when the interrupt follows the end of input, and stays 130 for a signal.
-import { Cause, Effect, Exit, Layer, Runtime, Stream } from "effect";
+// The stdio transport interrupts its owning fiber after EOF, request drain and stdout drain. The executable owns
+// that transport in a child fiber so only its EOF exit is normalized; a signal interrupts the parent separately.
+import { Effect, Layer, Stream } from "effect";
 import * as Stdio from "effect/Stdio";
 
-/** Whether standard input has reached its end; set by `watchedStdio`, read by `teardownAfter`. */
+/** Whether standard input ended naturally; only used when inspecting the transport child fiber's exit. */
 export interface InputWatch {
   ended: boolean;
 }
@@ -34,20 +32,3 @@ export const watchedStdio = (
       })
     )
   );
-
-/** The teardown of `runMain`: an interrupt after the end of input is a clean exit; everything else as the default. */
-export const teardownAfter =
-  (watch: InputWatch): Runtime.Teardown =>
-  (exit, onExit) => {
-    if (
-      Exit.isFailure(exit) &&
-      Cause.hasInterruptsOnly(exit.cause) &&
-      watch.ended
-    ) {
-      onExit(0);
-
-      return;
-    }
-
-    Runtime.defaultTeardown(exit, onExit);
-  };

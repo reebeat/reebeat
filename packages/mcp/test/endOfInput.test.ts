@@ -57,70 +57,93 @@ const line = (request: (typeof requests)[number]) =>
   encoder.encode(`${Formatter.formatJson(request)}\n`);
 
 /** Starts the executable with ffmpeg and ffprobe replaced by sleeping shims; resolves once a shim is running. */
-const inFlight = Effect.gen(function* started() {
-  const fixture = yield* FixtureService;
-  const fs = yield* FileSystem.FileSystem;
-  const path = yield* Path.Path;
-  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const root = yield* checkout;
-  const shims = yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-shims-" });
-  const pidFile = path.join(shims, "pid");
-  const searchPath = yield* Config.String("PATH");
+const inFlight = (mode: "sleep" | "drain" | "ignore" = "sleep") =>
+  Effect.gen(function* started() {
+    const fixture = yield* FixtureService;
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const root = yield* checkout;
 
-  for (const tool of ["ffmpeg", "ffprobe"]) {
-    yield* fs.writeFileString(
-      path.join(shims, tool),
-      `#!/bin/sh\necho $$ > "${pidFile}"\nexec sleep 120\n`
-    );
-    yield* fs.chmod(path.join(shims, tool), 0o755);
-  }
+    const shims = yield* fs.makeTempDirectoryScoped({
+      prefix: "tsukuri-shims-",
+    });
 
-  const input = yield* Queue.make<Uint8Array, Cause.Done>();
+    const pidFile = path.join(shims, "pid");
+    const terminating = path.join(shims, "terminating");
 
-  for (const request of requests) {
-    yield* Queue.offer(input, line(request));
-  }
+    const scripts = {
+      drain: `#!/bin/sh\ntrap 'echo term > "${terminating}"; exec sleep 2' TERM\necho $$ > "${pidFile}"\nsleep 120 &\nwait\n`,
+      ignore: `#!/bin/sh\ntrap '' TERM\necho $$ > "${pidFile}"\nexec sleep 120\n`,
+      sleep: `#!/bin/sh\necho $$ > "${pidFile}"\nexec sleep 120\n`,
+    };
 
-  const handle = yield* spawner.spawn(
-    serverCommand(
-      root,
-      fixture.workspace,
-      { PATH: `${shims}:${searchPath}` },
-      { stream: Stream.fromQueue(input) }
-    )
-  );
+    const script = scripts[mode];
 
-  const seen = yield* Ref.make<readonly string[]>([]);
+    const searchPath = yield* Config.String("PATH");
 
-  for (const stream of [handle.stdout, handle.stderr]) {
-    yield* Effect.forkScoped(
-      stream.pipe(
-        Stream.decodeText(),
-        Stream.runForEach((text) =>
-          Ref.update(seen, (all) => Arr.append(all, text))
-        )
+    for (const tool of ["ffmpeg", "ffprobe"]) {
+      yield* fs.writeFileString(path.join(shims, tool), script);
+      yield* fs.chmod(path.join(shims, tool), 0o755);
+    }
+
+    const input = yield* Queue.make<Uint8Array, Cause.Done>();
+
+    for (const request of requests) {
+      yield* Queue.offer(input, line(request));
+    }
+
+    const handle = yield* spawner.spawn(
+      serverCommand(
+        root,
+        fixture.workspace,
+        { PATH: `${shims}:${searchPath}` },
+        { stream: Stream.fromQueue(input) }
       )
     );
-  }
 
-  const pid = yield* fs.readFileString(pidFile).pipe(
-    Effect.map((text) => Number(Str.trim(text))),
-    Effect.filterOrFail(
-      (n) => Number.isInteger(n) && n > 1,
-      () => "no pid yet"
-    ),
-    Effect.retry(Schedule.spaced("200 millis")),
-    Effect.timeoutOrElse({
-      duration: "30 seconds",
-      orElse: () =>
-        Effect.flatMap(Ref.get(seen), (all) =>
-          Effect.die(`no shim ran; the server wrote: ${Arr.join(all, "")}`)
-        ),
-    })
-  );
+    const seen = yield* Ref.make<readonly string[]>([]);
 
-  return { handle, input, pid };
-});
+    for (const stream of [handle.stdout, handle.stderr]) {
+      yield* Effect.forkScoped(
+        stream.pipe(
+          Stream.decodeText(),
+          Stream.runForEach((text) =>
+            Ref.update(seen, (all) => Arr.append(all, text))
+          )
+        )
+      );
+    }
+
+    const pid = yield* fs.readFileString(pidFile).pipe(
+      Effect.map((text) => Number(Str.trim(text))),
+      Effect.filterOrFail(
+        (n) => Number.isInteger(n) && n > 1,
+        () => "no pid yet"
+      ),
+      Effect.retry(Schedule.spaced("200 millis")),
+      Effect.timeoutOrElse({
+        duration: "30 seconds",
+        orElse: () =>
+          Effect.flatMap(Ref.get(seen), (all) =>
+            Effect.die(`no shim ran; the server wrote: ${Arr.join(all, "")}`)
+          ),
+      })
+    );
+
+    yield* Effect.addFinalizer(() =>
+      spawner
+        .exitCode(
+          ChildProcess.make("kill", ["-KILL", String(pid)], {
+            stderr: "ignore",
+            stdout: "ignore",
+          })
+        )
+        .pipe(Effect.ignore)
+    );
+
+    return { handle, input, pid, terminating };
+  });
 
 /** Whether process `pid` exists (`kill -0`). */
 const alive = (pid: number) =>
@@ -145,7 +168,7 @@ describe("the end of a stdio session", () => {
       () =>
         Effect.scoped(
           Effect.gen(function* closed() {
-            const { handle, input, pid } = yield* inFlight;
+            const { handle, input, pid } = yield* inFlight();
 
             assert.isTrue(yield* alive(pid), "the shim is running");
             yield* Queue.end(input);
@@ -184,7 +207,7 @@ describe("the end of a stdio session", () => {
       () =>
         Effect.scoped(
           Effect.gen(function* interrupted() {
-            const { handle, pid } = yield* inFlight;
+            const { handle, pid } = yield* inFlight();
 
             yield* handle.kill({ killSignal: "SIGINT" });
 
@@ -196,6 +219,66 @@ describe("the end of a stdio session", () => {
             assert.isFalse(
               Arr.some([yield* alive(pid)], (up) => up),
               "the in-flight ffmpeg is killed"
+            );
+          })
+        ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),
+      { timeout: 90_000 }
+    );
+
+    it.live.each(["drain", "ignore"] as const)(
+      "SIGINT after EOF with a %s child exits 130 and reaps it",
+      (mode) =>
+        Effect.scoped(
+          Effect.gen(function* interruptedDrain() {
+            const fs = yield* FileSystem.FileSystem;
+            const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+            const { handle, input, pid, terminating } = yield* inFlight(mode);
+            yield* Queue.end(input);
+
+            if (mode === "drain") {
+              // The observation deadline has begun cleanup: EOF was consumed while the request drained.
+              yield* fs
+                .readFileString(terminating)
+                .pipe(
+                  Effect.retry(Schedule.spaced("20 millis")),
+                  Effect.timeout("30 seconds")
+                );
+            }
+
+            yield* spawner.exitCode(
+              ChildProcess.make("kill", ["-INT", String(handle.pid)])
+            );
+
+            const code = yield* handle.exitCode.pipe(
+              Effect.timeout("5 seconds")
+            );
+
+            assert.strictEqual(Number(code), 130);
+            assert.isFalse(
+              yield* alive(pid),
+              "the child is reaped before server exit"
+            );
+          })
+        ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),
+      { timeout: 90_000 }
+    );
+
+    it.live(
+      "EOF alone times out an observation even when its child ignores SIGTERM",
+      () =>
+        Effect.scoped(
+          Effect.gen(function* hostileEof() {
+            const { handle, input, pid } = yield* inFlight("ignore");
+            yield* Queue.end(input);
+
+            const code = yield* handle.exitCode.pipe(
+              Effect.timeout("30 seconds")
+            );
+
+            assert.strictEqual(Number(code), 0);
+            assert.isFalse(
+              yield* alive(pid),
+              "SIGKILL reaped the hostile child"
             );
           })
         ).pipe(Effect.provide(Layer.merge(fixtureLayer, platform))),

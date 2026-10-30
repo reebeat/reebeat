@@ -142,7 +142,11 @@ const Frame = Schema.Struct({
 const decodeFrame = Schema.decodeEffect(Schema.fromJsonString(Frame));
 
 /** Starts the executable over the fixture workspace, sends `requests`, and reads `count` responses. */
-const exchange = (requests: readonly Request[], count: number) =>
+const exchange = (
+  requests: readonly Request[],
+  count: number,
+  endInput: boolean
+) =>
   Effect.scoped(
     Effect.gen(function* run() {
       const fixture = yield* FixtureService;
@@ -150,14 +154,13 @@ const exchange = (requests: readonly Request[], count: number) =>
       const root = yield* checkout;
       const encoder = new TextEncoder();
 
-      const input = Stream.concat(
-        Stream.fromIterable(
-          Arr.map(requests, (request) =>
-            encoder.encode(`${Formatter.formatJson(request)}\n`)
-          )
-        ),
-        Stream.never
+      const sent = Stream.fromIterable(
+        Arr.map(requests, (request) =>
+          encoder.encode(`${Formatter.formatJson(request)}\n`)
+        )
       );
+
+      const input = endInput ? sent : Stream.concat(sent, Stream.never);
 
       const handle = yield* spawner.spawn(
         serverCommand(
@@ -166,7 +169,7 @@ const exchange = (requests: readonly Request[], count: number) =>
           Rec.fromEntries(
             Arr.map(secretNames, (name) => [name, canary] as const)
           ),
-          { endOnDone: false, stream: input }
+          { endOnDone: endInput, stream: input }
         )
       );
 
@@ -188,7 +191,15 @@ const exchange = (requests: readonly Request[], count: number) =>
 
       const frames = yield* Effect.forEach(lines, (line) => decodeFrame(line));
 
-      yield* handle.kill();
+      if (endInput) {
+        assert.strictEqual(
+          Number(yield* handle.exitCode),
+          0,
+          "EOF drains every reply and exits cleanly"
+        );
+      } else {
+        yield* handle.kill();
+      }
 
       return {
         frames,
@@ -202,71 +213,83 @@ const exchange = (requests: readonly Request[], count: number) =>
   ).pipe(Effect.provide(platform));
 
 describe.each([
-  ["2025-11-25", legacy("2025-11-25")],
-  ["2025-06-18", legacy("2025-06-18")],
-  ["2026-07-28", modern],
-] as const)("tsukuri-mcp over stdio in the %s era", (era, requests) => {
-  it.layer(fixtureLayer)("on a real process", (suite) => {
-    suite.effect(
-      "answers list, call and declared failures, keeps stdout to frames, logs to stderr and leaks no secret",
-      () =>
-        Effect.gen(function* session() {
-          const { frames, lines, stderr } = yield* exchange(requests, 6);
-
-          const byId = (id: number) =>
-            Arr.findFirst(frames, (frame) => frame.id === id).pipe(
-              Option.map((frame) => frame.result)
+  ["2025-11-25", legacy("2025-11-25"), false],
+  ["2025-06-18", legacy("2025-06-18"), false],
+  ["2026-07-28", modern, false],
+  ["2025-11-25", legacy("2025-11-25"), true],
+  ["2025-06-18", legacy("2025-06-18"), true],
+  ["2026-07-28", modern, true],
+] as const)(
+  "tsukuri-mcp over stdio in the %s era (EOF=%s)",
+  (era, requests, endInput) => {
+    it.layer(fixtureLayer)("on a real process", (suite) => {
+      suite.effect(
+        "answers list, call and declared failures, keeps stdout to frames, logs to stderr and leaks no secret",
+        () =>
+          Effect.gen(function* session() {
+            const { frames, lines, stderr } = yield* exchange(
+              requests,
+              6,
+              endInput
             );
 
-          const listed = Option.flatMap(byId(2), (result) =>
-            Option.fromNullishOr(result.tools)
-          );
+            const byId = (id: number) =>
+              Arr.findFirst(frames, (frame) => frame.id === id).pipe(
+                Option.map((frame) => frame.result)
+              );
 
-          assert.deepStrictEqual(
-            Option.map(listed, (tools) => Arr.map(tools, (tool) => tool.name)),
-            Option.some(Arr.map(declarations, (tool) => tool.name)),
-            era
-          );
+            const listed = Option.flatMap(byId(2), (result) =>
+              Option.fromNullishOr(result.tools)
+            );
 
-          const projects = yield* Effect.flatMap(
-            Effect.fromOption(byId(3)),
-            (result) =>
-              Schema.decodeUnknownEffect(projectList.output)(
-                result.structuredContent
+            assert.deepStrictEqual(
+              Option.map(listed, (tools) =>
+                Arr.map(tools, (tool) => tool.name)
+              ),
+              Option.some(Arr.map(declarations, (tool) => tool.name)),
+              era
+            );
+
+            const projects = yield* Effect.flatMap(
+              Effect.fromOption(byId(3)),
+              (result) =>
+                Schema.decodeUnknownEffect(projectList.output)(
+                  result.structuredContent
+                )
+            );
+
+            const lint = yield* Effect.flatMap(
+              Effect.fromOption(byId(5)),
+              (result) =>
+                Schema.decodeUnknownEffect(storyLint.output)(
+                  result.structuredContent
+                )
+            );
+
+            assert.isTrue(
+              Arr.some(
+                projects.projects,
+                (project) => project.project === "harbour"
               )
-          );
+            );
+            assert.strictEqual(lint.errors, 0);
+            assert.deepStrictEqual(
+              Arr.map([byId(4), byId(6)], (result) =>
+                Option.map(result, (found) => found.isError)
+              ),
+              [Option.some(true), Option.some(true)]
+            );
+            assert.include(
+              stderr,
+              "does not decode",
+              "the refused manifest is logged to stderr"
+            );
 
-          const lint = yield* Effect.flatMap(
-            Effect.fromOption(byId(5)),
-            (result) =>
-              Schema.decodeUnknownEffect(storyLint.output)(
-                result.structuredContent
-              )
-          );
-
-          assert.isTrue(
-            Arr.some(
-              projects.projects,
-              (project) => project.project === "harbour"
-            )
-          );
-          assert.strictEqual(lint.errors, 0);
-          assert.deepStrictEqual(
-            Arr.map([byId(4), byId(6)], (result) =>
-              Option.map(result, (found) => found.isError)
-            ),
-            [Option.some(true), Option.some(true)]
-          );
-          assert.include(
-            stderr,
-            "does not decode",
-            "the refused manifest is logged to stderr"
-          );
-
-          for (const text of [...lines, stderr]) {
-            assert.isFalse(Str.includes(canary)(text), "the canary leaked");
-          }
-        })
-    );
-  });
-});
+            for (const text of [...lines, stderr]) {
+              assert.isFalse(Str.includes(canary)(text), "the canary leaked");
+            }
+          })
+      );
+    });
+  }
+);

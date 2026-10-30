@@ -3,24 +3,36 @@
 // SHA-256 digest and the workspace from the environment, then the server over stdio. Nothing is written to stdout but
 // the protocol's frames.
 import { NodeCrypto, NodeRuntime, NodeServices } from "@effect/platform-node";
-import { Effect, Layer, Logger } from "effect";
+import { Cause, Effect, Exit, Fiber, Layer, Logger } from "effect";
 
-import {
-  newInputWatch,
-  teardownAfter,
-  watchedStdio,
-} from "../src/endOfInput.ts";
+import { newInputWatch, watchedStdio } from "../src/endOfInput.ts";
 import { roots, stdioServer } from "../src/runtime.ts";
+
+const input = newInputWatch();
 
 const main = Effect.gen(function* main() {
   const { checkout, workspace } = yield* roots;
 
-  return yield* Layer.launch(stdioServer(workspace, checkout));
+  // EOF interrupts this child after the RPC and stdout queues drain. Signals interrupt the parent awaiting it,
+  // so they cannot pass through the EOF normalization, including while child finalizers are running.
+  const server = yield* Effect.forkChild(
+    Layer.launch(stdioServer(workspace, checkout))
+  );
+
+  const exit = yield* Fiber.await(server);
+
+  if (Exit.isSuccess(exit)) {
+    return yield* Effect.void;
+  }
+
+  if (input.ended && Cause.hasInterruptsOnly(exit.cause)) {
+    return yield* Effect.void;
+  }
+
+  return yield* Effect.failCause(exit.cause);
 });
 
-// stdout carries the protocol's frames and nothing else, so the logger writes to stderr. A client ends the session by
-// closing stdin: that is a clean exit (0), not the interrupt (130) Effect's transport reports it as.
-const input = newInputWatch();
+// stdout carries protocol frames only; diagnostics go to stderr. The default teardown preserves signal status 130.
 
 NodeRuntime.runMain(
   Effect.provide(
@@ -30,5 +42,5 @@ NodeRuntime.runMain(
       Layer.merge(NodeServices.layer, NodeCrypto.layerDigest)
     )
   ),
-  { disableErrorReporting: true, teardown: teardownAfter(input) }
+  { disableErrorReporting: true }
 );

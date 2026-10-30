@@ -510,6 +510,8 @@ describe("the pre-release tag", () => {
       "npm dist-tag add x@1.0.0-alpha.1 alpha",
       "npx --yes npm@11.19.0 dist-tag add x@1.0.0-alpha.1 alpha",
       "npx --yes npm@10.9.9 dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@12.0.2 dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@12.1.0 dist-tag add x@1.0.0-alpha.1 alpha",
     ]) {
       assert.isTrue(
         mentioning("older than 11.21.0")(tagFindings(release({ tagRun })))

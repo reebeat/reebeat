@@ -126,6 +126,18 @@ describe("token-free trusted publishing", () => {
     }
   });
 
+  it("detects literal npm credentials at the length boundary", () => {
+    assert.deepStrictEqual(
+      tokenFindings(fixture(`run: echo npm_${Str.repeat(19)("x")}`)),
+      []
+    );
+    assert.isTrue(
+      mentioning("npm credential")(
+        tokenFindings(fixture(`run: echo npm_${Str.repeat(20)("x")}`))
+      )
+    );
+  });
+
   it("requires the publishing environment and OIDC permission", () => {
     assert.isTrue(
       mentioning("npm-release environment")(

@@ -399,6 +399,39 @@ describe("the real repository", () => {
     }).pipe(Effect.provide(NodeServices.layer))
   );
 
+  it.effect(
+    "every published package points at the product site and at the repository directory (spec 0015)",
+    () =>
+      Effect.gen(function* site() {
+        const { manifest: top, packages } = yield* repository;
+        const versions = versionsOf(packages);
+
+        const staged = Arr.map(
+          publicPackages(packages),
+          (workspace) => publishManifest(workspace, top, versions).manifest
+        );
+
+        assert.deepStrictEqual(
+          Arr.dedupe(Arr.map(staged, (shipped) => shipped.homepage)),
+          ["https://tsukuri.dev"]
+        );
+        assert.deepStrictEqual(
+          Arr.map(staged, (shipped) => shipped.repository.url),
+          Arr.map(
+            staged,
+            () => "git+https://github.com/tsukuri-labs/tsukuri.git"
+          )
+        );
+        assert.deepStrictEqual(
+          Arr.map(staged, (shipped) => shipped.repository.directory),
+          Arr.map(
+            publicPackages(packages),
+            ({ directory }) => `packages/${directory}`
+          )
+        );
+      }).pipe(Effect.provide(NodeServices.layer))
+  );
+
   it.effect("the Changesets fixed group is exactly the published set", () =>
     Effect.gen(function* fixed() {
       const { changesets, packages } = yield* repository;

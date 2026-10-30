@@ -15,7 +15,7 @@ import { checkBuild } from "./check.ts";
 import { journey } from "./journey.ts";
 import { lintStory } from "./lint.ts";
 import { planText, timedPlanText } from "./plan.ts";
-import { reportFailure } from "./report.ts";
+import { refreshSpeechFlag, reportFailure } from "./report.ts";
 import { readSelection } from "./selection.ts";
 import type { SelectionFlags } from "./selection.ts";
 import { defaultCache, storyName } from "./source.ts";
@@ -30,6 +30,13 @@ const cacheDir = Flag.String("cache-dir").pipe(
     "The directory of the fs cache (default: speech-cache beside the story)"
   ),
   Flag.optional
+);
+
+const refreshSpeech = Flag.Boolean(refreshSpeechFlag).pipe(
+  Flag.withDescription(
+    "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
+  ),
+  Flag.withDefault(false)
 );
 
 const Seconds = Schema.Finite.check(Schema.isGreaterThan(0));
@@ -175,12 +182,7 @@ const build = Command.make(
         "The build directory; an earlier build there is replaced"
       )
     ),
-    refreshSpeech: Flag.Boolean("refresh-speech").pipe(
-      Flag.withDescription(
-        "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
-      ),
-      Flag.withDefault(false)
-    ),
+    refreshSpeech,
     story,
   },
   Effect.fn("tsukuri.build")(function* handleBuild(input) {
@@ -281,12 +283,7 @@ const journeyCommand = Command.make(
       ),
       Flag.withDefault("build")
     ),
-    refreshSpeech: Flag.Boolean("refresh-speech").pipe(
-      Flag.withDescription(
-        "Fill missing speech cache entries with the selected speech adapter (a stand-in narrator always does)"
-      ),
-      Flag.withDefault(false)
-    ),
+    refreshSpeech,
     story,
   },
   Effect.fn("tsukuri.journey")(function* handleJourney(input) {

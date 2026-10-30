@@ -225,6 +225,35 @@ layer(platform)("tsukuri plan", (it) => {
   );
 
   it.effect(
+    "a SpeechCacheMiss names the command and the flag that fill the cache, and both exist",
+    () =>
+      Effect.gen(function* miss() {
+        const story = yield* storyFile();
+
+        const { exit, stderr } = yield* runCli([
+          "plan",
+          story,
+          "--timing",
+          ...offline,
+        ]);
+
+        const named =
+          /`tsukuri (?<command>[a-z]+) <story> (?<flag>--[a-z-]+)`/u.exec(
+            stderr
+          )?.groups;
+
+        assert.isTrue(Exit.isFailure(exit));
+        assert.isDefined(named);
+
+        // The command the error names is one that writes the cache: it takes the flag the error names.
+        const help = yield* runCli([named?.command ?? "", "--help"]);
+
+        assert.isTrue(Exit.isSuccess(help.exit));
+        assert.include(help.stdout, named?.flag ?? "");
+      })
+  );
+
+  it.effect(
     "--timing under the other narrator is a miss: the key names the adapter that made the audio",
     () =>
       Effect.gen(function* otherNarrator() {

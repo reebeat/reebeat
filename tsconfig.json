@@ -149,6 +149,7 @@
   "include": [
     "vite.config.ts",
     "commitlint.config.ts",
+    "oxDepLint.config.ts",
     "tools/oxlint/**/*.ts",
     "tools/quality/**/*.ts"
   ]

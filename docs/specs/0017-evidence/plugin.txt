@@ -1,0 +1,9 @@
+  help: Remove this empty export.
+
+  x dep-lint(imports): forbidden-edge: a library package may not import @tsukuri/services, a service
+   ,-[packages/core/src/plant.ts:2:8]
+ 1 | export {};
+ 2 | import "@tsukuri/services";
+   :        ^^^^^^^^^^^^^^^^^^^
+   `----
+

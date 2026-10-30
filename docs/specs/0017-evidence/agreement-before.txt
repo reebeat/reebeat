@@ -1,0 +1,120 @@
+== clean tree
+clean tree                                                 old=0 new=0
+== tier table and allowed edges
+library imports a service (AGENTS.md example)              old=1 new=1
+    new: packages/core/src/plant.ts:2:8 forbidden-edge: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/plant.ts:2
+service imports an adapter                                 old=1 new=1
+    new: packages/services/src/plant.ts:1:8 forbidden-edge: a service package may not import @tsukuri/cache-fs, an adapter
+    old: @tsukuri/services (services): tier services must not depend on tier adapters: @tsukuri/cache-fs at packages/services/src/plant.ts:1
+adapter imports another adapter                            old=1 new=1
+    new: packages/cache-fs/src/plant.ts:1:8 forbidden-edge: an adapter package may not import @tsukuri/encode-ffmpeg, an adapter
+    old: @tsukuri/cache-fs (adapters): tier adapters must not depend on tier adapters: @tsukuri/encode-ffmpeg/something at packages/cache-fs/src/plant.ts:1
+program imports an adapter                                 old=1 new=1
+    new: packages/pipeline/src/plant.ts:1:8 forbidden-edge: a program package may not import @tsukuri/encode-ffmpeg, an adapter
+    old: @tsukuri/pipeline (programs): tier programs must not depend on tier adapters: @tsukuri/encode-ffmpeg at packages/pipeline/src/plant.ts:1
+adapter imports a program                                  old=1 new=1
+    new: packages/cache-fs/src/plant.ts:1:8 forbidden-edge: an adapter package may not import @tsukuri/pipeline, a program
+    old: @tsukuri/cache-fs (adapters): tier adapters must not depend on tier programs: @tsukuri/pipeline at packages/cache-fs/src/plant.ts:1
+library imports a tool                                     old=1 new=1
+    new: packages/core/src/plant.ts:1:8 forbidden-edge: a library package may not import @tsukuri/cli, a tool
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier tools: @tsukuri/cli at packages/core/src/plant.ts:1
+library imports a library (allowed)                        old=0 new=0
+tool imports an adapter and a program (allowed)            old=0 new=0
+adapter imports a library (allowed)                        old=0 new=0
+== manifest edges, all four fields
+core package.json dependencies names @tsukuri/services     old=1 new=1
+    new: packages/core/package.json:1:1 forbidden-edge: dependencies: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/package.json
+core package.json devDependencies names @tsukuri/services  old=1 new=1
+    new: packages/core/package.json:1:1 forbidden-edge: devDependencies: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/package.json
+core package.json optionalDependencies names @tsukuri/services old=1 new=1
+    new: packages/core/package.json:1:1 forbidden-edge: optionalDependencies: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/package.json
+core package.json peerDependencies names @tsukuri/services old=1 new=1
+    new: packages/core/package.json:1:1 forbidden-edge: peerDependencies: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/package.json
+core depends on @tsukuri/mystery (no such package)         old=1 new=1
+    new: packages/core/package.json:1:1 unknown-workspace-package: dependencies names @tsukuri/mystery, which is not a workspace package
+    old: @tsukuri/core (libraries): mystery has no tier, so libraries cannot be shown to be allowed to use it: @tsukuri/mystery at packages/core/package.json
+== static, re-export, dynamic, type-only and computed imports
+re-export of a service from a library                      old=1 new=1
+    new: packages/core/src/plant.ts:1:15 forbidden-edge: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/plant.ts:1
+named re-export of a service from a library                old=1 new=1
+    new: packages/core/src/plant.ts:1:19 forbidden-edge: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/plant.ts:1
+dynamic import of a service from a library                 old=1 new=1
+    new: packages/core/src/plant.ts:1:25 forbidden-edge: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/plant.ts:1
+type-only import of a service from a library               old=1 new=1
+    new: packages/core/src/plant.ts:1:24 forbidden-edge: a library package may not import @tsukuri/services, a service
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: @tsukuri/services at packages/core/src/plant.ts:1
+computed dynamic import in a library                       old=1 new=1
+    new: packages/core/src/plant.ts:1:43 computed-import: name: its module is an expression, not a plain string; nothing can check what it loads
+    old: @tsukuri/core (libraries): a dynamic import with a computed specifier cannot be checked: <computed> at packages/core/src/plant.ts:1
+computed dynamic import in an adapter                      old=1 new=1
+    new: packages/cache-fs/src/plant.ts:1:43 computed-import: name: its module is an expression, not a plain string; nothing can check what it loads
+    old: @tsukuri/cache-fs (adapters): a dynamic import with a computed specifier cannot be checked: <computed> at packages/cache-fs/src/plant.ts:1
+computed dynamic import in a tool                          old=0 new=1
+    new: packages/cli/src/plant.ts:1:43 computed-import: name: its module is an expression, not a plain string; nothing can check what it loads
+== relative paths
+relative import into another package's sources             old=1 new=1
+    new: packages/core/src/plant.ts:1:8 relative-import-leaves-package: ../../services/src/index.ts reaches into @tsukuri/services; import a package by its name
+    old: @tsukuri/core (libraries): tier libraries must not depend on tier services: ../../services/src/index.ts at packages/core/src/plant.ts:1
+relative import leaving packages/ (repository file)        old=1 new=1
+    new: packages/core/src/plant.ts:1:8 relative-import-leaves-package: ../../../commitlint.config.ts reaches a file outside every package; import a package by its name
+    old: @tsukuri/core (libraries): reaches outside packages/: ../../../commitlint.config.ts at packages/core/src/plant.ts:1
+relative import leaving packages/ (tools package)          old=1 new=1
+    new: packages/core/src/plant.ts:1:8 relative-import-leaves-package: ../../../tools/quality/release.ts reaches into @tsukuri/quality; import a package by its name
+    old: @tsukuri/core (libraries): reaches outside packages/: ../../../tools/quality/release.ts at packages/core/src/plant.ts:1
+== directories under packages/ in no tier
+packages/mystery with a package.json (AGENTS.md example)   old=1 new=1
+    new: packages/mystery/package.json:1:1 package-without-kind: @tsukuri/mystery matches no kind: add its directory to one
+    old: @tsukuri/mystery (no tier): has no tier: add it to the table in tools/quality/tiers.ts: packages/mystery at packages/mystery
+packages/mystery without a package.json, with sources      old=1 new=1
+    new: packages/mystery:1:1 directory-without-package: packages/mystery matches the workspaces glob packages/* but has no package.json, so no package owns what it holds and nothing in it is checked: make it a package, remove it, or add packages/mystery/** to ignore
+    old: @tsukuri/mystery (no tier): has no tier: add it to the table in tools/quality/tiers.ts: packages/mystery at packages/mystery
+packages/empty, an empty directory                         old=1 new=1
+    new: packages/empty:1:1 directory-without-package: packages/empty matches the workspaces glob packages/* but has no package.json, so no package owns what it holds and nothing in it is checked: make it a package, remove it, or add packages/empty/** to ignore
+    old: @tsukuri/empty (no tier): has no tier: add it to the table in tools/quality/tiers.ts: packages/empty at packages/empty
+packages/.template, a dot directory                        old=1 new=1
+    new: packages/.template:1:1 directory-without-package: packages/.template is a dot directory, which workspaces globs never match, so it is no package though it has a package.json and nothing in it is checked: rename it, list it in workspaces by its full path, remove it, or add packages/.template/** to ignore
+== symbolic links under a package's sources
+ln -s ../../services/src packages/core/src/link (AGENTS.md example) old=1 new=1
+    new: packages/core/src/link:1:1 symbolic-link: packages/core/src/link is a symbolic link to ../../services/src, which the check never follows, so what it reaches goes unchecked: replace it with the files themselves, or baseline it
+    old: @tsukuri/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/link at packages/core/src/link
+a link to a file                                           old=1 new=1
+    new: packages/core/src/link:1:1 symbolic-link: packages/core/src/link is a symbolic link to ../package.json, which the check never follows, so what it reaches goes unchecked: replace it with the files themselves, or baseline it
+    old: @tsukuri/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/link at packages/core/src/link
+a dangling link                                            old=1 new=1
+    new: packages/core/src/link:1:1 symbolic-link: packages/core/src/link is a symbolic link to nowhere, which the check never follows, so what it reaches goes unchecked: replace it with the files themselves, or baseline it
+    old: @tsukuri/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/link at packages/core/src/link
+a link inside test/ (skipped by both)                      old=0 new=0
+== unreadable directory
+    (running as root: mode 000 does not deny root; see the unprivileged run)
+packages/core/src/locked with mode 000                     old=0 new=0
+== skips: test, live, fixtures, dist, .d.ts
+violation in packages/core/test/plant.ts (skipped)         old=0 new=0
+violation in packages/core/src/test/plant.ts (skipped)     old=0 new=0
+violation in packages/core/live/plant.ts (skipped)         old=0 new=0
+violation in packages/core/src/live/plant.ts (skipped)     old=0 new=0
+violation in packages/core/test/fixtures/plant.ts (skipped) old=0 new=0
+violation in packages/core/src/fixtures/plant.ts (skipped) old=0 new=0
+violation in packages/core/dist/plant.ts (skipped)         old=0 new=0
+violation in packages/core/src/plant.d.ts (skipped)        old=0 new=0
+== differences (the new gate is stricter, or the old one read it and the new does not)
+violation in packages/core/src/dist (nested dist)          old=0 new=1
+    new: packages/core/src/dist/plant.ts:1:8 forbidden-edge: a library package may not import @tsukuri/services, a service
+violation in a .js file                                    old=0 new=1
+    new: packages/core/src/plant.js:1:8 forbidden-edge: a library package may not import @tsukuri/services, a service
+require of a service                                       old=0 new=1
+    new: packages/core/src/plant.ts:1:26 forbidden-edge: a library package may not import @tsukuri/services, a service
+escaped specifier                                          old=0 new=1
+    new: packages/core/src/plant.ts:1:25 computed-import: "\u0040tsukuri/services": it is written with an escape sequence, so its text is not the module it loads (@tsukuri/services); nothing can check what it loads
+    new: packages/core/src/plant.ts:1:25 forbidden-edge: a library package may not import @tsukuri/services, a service
+tools/extra, a new tools package in no kind                old=0 new=1
+    new: tools/extra/package.json:1:1 package-without-kind: @tsukuri/extra matches no kind: add its directory to one
+a FIFO under a package's sources                           old=1 new=0
+    old: @tsukuri/core (libraries): cannot be checked: a symbolic link or an entry of unknown type, which the tier check does not follow: packages/core/src/fifo.ts at packages/core/src/fifo.ts

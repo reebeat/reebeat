@@ -1,0 +1,21 @@
+== unmutated
+      Tests  19 passed (19)
+== mutation: library may use service
+     × negative control: a library importing a service 21ms
+     × negative control: dependencies alone is enough, with no import 14ms
+     × negative control: devDependencies alone is enough, with no import 21ms
+     × negative control: optionalDependencies alone is enough, with no import 7ms
+     × negative control: peerDependencies alone is enough, with no import 17ms
+     × negative control: a re-export, a dynamic import and a type-only import of a service from a library 7ms
+      Tests  6 failed | 13 passed (19)
+== mutation: no .d.ts in the unchecked class
+     × tests, live suites, fixtures (at any depth), build output and declarations are not read 19ms
+      Tests  1 failed | 18 passed (19)
+== mutation: tools/oxlint not ignored
+     × every package is in a kind, no package depends against the direction, and the baseline is needed 240ms
+      Tests  1 failed | 18 passed (19)
+== mutation: encode-ffmpeg dropped from the adapter kind
+     × negative control: an adapter importing another adapter 16ms
+     × negative control: a program importing an adapter 6ms
+     × every package is in a kind, no package depends against the direction, and the baseline is needed 242ms
+      Tests  3 failed | 16 passed (19)

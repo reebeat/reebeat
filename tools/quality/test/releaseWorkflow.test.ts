@@ -57,7 +57,9 @@ interface Changes {
   readonly jobEnv?: string;
   readonly mode?: string;
   readonly noHold?: boolean;
+  readonly noDevEngines?: boolean;
   readonly noTag?: boolean;
+  readonly tagRun?: string;
   readonly needs?: string;
   readonly publishIf?: string;
   readonly publishRun?: string;
@@ -71,6 +73,18 @@ const holdBlock = (changes: Changes): string =>
   changes.noHold === true
     ? ""
     : `      - name: Release hold\n        run: if [ -e .github/release-hold ]; then exit 1; fi\n${changes.holdExtra ?? ""}`;
+
+/** The step of the fixture that removes `devEngines`, before the npm steps. */
+const devEnginesBlock = (changes: Changes): string =>
+  changes.noDevEngines === true
+    ? ""
+    : "      - name: Remove devEngines\n        run: jq 'del(.devEngines)' package.json > p && mv p package.json\n";
+
+/** The step of the fixture that points the pre tag at what was published. */
+const tagBlock = (changes: Changes): string =>
+  changes.noTag === true
+    ? ""
+    : `      - name: Tag the pre-release\n        run: ${changes.tagRun ?? "npx --yes npm@11.21.1 dist-tag add x@1.0.0-alpha.1 alpha"}\n`;
 
 /** A release workflow in the shape the real one has, with the lines a control changes made explicit. */
 const release = (changes: Changes): WorkflowFile => ({
@@ -102,11 +116,11 @@ ${changes.needs ?? ""}
 ${changes.jobEnv ?? ""}${changes.jobExtra ?? ""}
     steps:
       - uses: actions/checkout@abc
-${changes.beforeHold ?? ""}${holdBlock(changes)}      - name: Publish
+${changes.beforeHold ?? ""}${holdBlock(changes)}${devEnginesBlock(changes)}      - name: Publish
 ${changes.publishExtra ?? ""}        env:
           NODE_AUTH_TOKEN: ${expression("NPM_TOKEN")}
         run: ${changes.publishRun ?? "bunx changeset publish"}
-${changes.noTag === true ? "" : "      - name: Tag the pre-release\n        run: npm dist-tag add x@1.0.0-alpha.1 alpha\n"}`,
+${tagBlock(changes)}`,
 });
 
 /** A one-file workflow fixture. */
@@ -491,6 +505,32 @@ describe("the pre-release tag", () => {
     );
   });
 
+  it("fails a tag step with an old, unpinned or newer-looking npm, or no devEngines removal (controls)", () => {
+    for (const tagRun of [
+      "npm dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@11.19.0 dist-tag add x@1.0.0-alpha.1 alpha",
+      "npx --yes npm@10.9.9 dist-tag add x@1.0.0-alpha.1 alpha",
+    ]) {
+      assert.isTrue(
+        mentioning("older than 11.21.0")(tagFindings(release({ tagRun })))
+      );
+    }
+
+    assert.deepStrictEqual(
+      tagFindings(
+        release({
+          tagRun: "npx --yes npm@12.2.0 dist-tag add x@1.0.0-alpha.1 alpha",
+        })
+      ),
+      []
+    );
+    assert.isTrue(
+      mentioning("removes devEngines")(
+        tagFindings(release({ noDevEngines: true }))
+      )
+    );
+  });
+
   it.effect(
     "the real step tags every published version with the pre tag in pre mode, and nothing otherwise",
     () =>
@@ -498,14 +538,14 @@ describe("the pre-release tag", () => {
         const { fs, path, spawner } = yield* services;
         const { script, workflow } = yield* stepOfRelease(tagScript);
 
-        // A checkout in a temporary directory with two staged packages, and an `npm` that records its arguments.
+        // A checkout in a temporary directory with two staged packages, and an `npx` that records its arguments.
         const tree = Effect.fnUntraced(function* tree(preMode: string) {
           const root = yield* fs.makeTempDirectoryScoped();
           const bin = path.join(root, "bin");
 
           yield* fs.makeDirectory(bin);
           yield* fs.writeFileString(
-            path.join(bin, "npm"),
+            path.join(bin, "npx"),
             `#!/bin/sh\necho "$@" >> "${path.join(root, "npm.log")}"\n`,
             { mode: 0o755 }
           );
@@ -549,9 +589,10 @@ describe("the pre-release tag", () => {
           };
         });
 
+        const pin = /npm@\d+\.\d+\.\d+/u.exec(script)?.[0];
+
         assert.deepStrictEqual(yield* run("pre"), {
-          calls:
-            "dist-tag add @reebeat/core@0.1.0-alpha.1 alpha\ndist-tag add @reebeat/lint@0.1.0-alpha.1 alpha\n",
+          calls: `--yes ${pin}\u0020dist-tag add @reebeat/core@0.1.0-alpha.1 alpha\n--yes ${pin}\u0020dist-tag add @reebeat/lint@0.1.0-alpha.1 alpha\n`,
           exit: 0,
         });
         assert.deepStrictEqual(yield* run("exit"), { calls: "", exit: 0 });

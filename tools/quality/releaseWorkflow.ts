@@ -563,16 +563,33 @@ export const holdFindings = (file: WorkflowFile): readonly string[] =>
   });
 
 const tagsPreRelease = (step: typeof Step.Type): boolean =>
-  Predicate.isString(step.run) && Str.includes("npm dist-tag add")(step.run);
+  Predicate.isString(step.run) && Str.includes("dist-tag add")(step.run);
 
 /** The script of the step that points the pre-release tag at what was published, or none. */
 export const tagScript = (file: WorkflowFile): Option.Option<string> =>
   stepScript(file, tagsPreRelease);
 
+/** `npm dist-tag` through trusted publishing needs npm 11.21.0 or later (docs.npmjs.com/trusted-publishers). */
+const npmPin = /\bnpm@(?<major>\d+)\.(?<minor>\d+)\.\d+\b/u;
+
+const pinsNewEnoughNpm = (run: string): boolean => {
+  const groups = npmPin.exec(run)?.groups;
+  const major = Number(groups?.major);
+  const minor = Number(groups?.minor);
+
+  return major > 11 || (major === 11 && minor >= 21);
+};
+
+const removesDevEngines = (step: typeof Step.Type): boolean =>
+  Predicate.isString(step.run) && Str.includes("del(.devEngines)")(step.run);
+
 /**
  * Sentences about the pre-release tag. `changeset publish` tags only the first pre-release of a package with the pre tag
- * and sends later ones to `latest`, so every job that publishes must run a `npm dist-tag add` step after the publish
- * step. (That the step tags the right versions is run by the test, on `tagScript`.)
+ * and sends later ones to `latest`, so every job that publishes must run a `dist-tag add` step after the publish step,
+ * with an npm of 11.21.0 or later (pinned: the runner's and devenv's npm are older and a trusted publisher could not
+ * move a tag with them), and both npm steps must come after the step that removes `devEngines` from the checkout (npm
+ * refuses to run under another package manager's `devEngines`). That the step tags the right versions is run by the
+ * test, on `tagScript`.
  */
 export const tagFindings = (file: WorkflowFile): readonly string[] =>
   publishingJobFindings(file, (name, _job, steps) => {
@@ -580,10 +597,29 @@ export const tagFindings = (file: WorkflowFile): readonly string[] =>
       publishCommand.test(step.run ?? "")
     );
 
-    return Option.isSome(published) &&
-      Arr.some(Arr.drop(steps, published.value + 1), tagsPreRelease)
-      ? []
-      : [
-          `${file.name}: job ${name} publishes and has no later step that runs npm dist-tag add, so a second pre-release would be tagged latest`,
-        ];
+    const tag = Option.flatMap(published, (index) =>
+      Arr.findFirst(Arr.drop(steps, index + 1), tagsPreRelease)
+    );
+
+    const removal = Arr.findFirstIndex(steps, removesDevEngines);
+
+    return [
+      ...(Option.isSome(tag)
+        ? []
+        : [
+            `${file.name}: job ${name} publishes and has no later step that runs dist-tag add, so a second pre-release would be tagged latest`,
+          ]),
+      ...(Option.exists(tag, (step) => pinsNewEnoughNpm(step.run ?? "")) ||
+      Option.isNone(tag)
+        ? []
+        : [
+            `${file.name}: job ${name} tags with an npm older than 11.21.0 or an unpinned one, which a trusted publisher cannot use for dist-tag`,
+          ]),
+      ...(Option.isSome(removal) &&
+      Option.exists(published, (index) => removal.value < index)
+        ? []
+        : [
+            `${file.name}: job ${name} has no step that removes devEngines before the publish step`,
+          ]),
+    ];
   });

@@ -1,9 +1,9 @@
 // What the mux needs of a scheduled Plan, as plain functions: where each narration clip and each sound starts, the
 // chapters in milliseconds and the length of the Video. No I/O: the build program fetches the clips and hands the
 // results to `Encoder.mux`.
-import { frameToMs, timedLines } from "@reebeat/core";
-import type { TimedPlan } from "@reebeat/core";
-import type { MuxRequest } from "@reebeat/services";
+import { frameToMs, timedLines } from "@tsukuri/core";
+import type { TimedPlan } from "@tsukuri/core";
+import type { MuxRequest } from "@tsukuri/services";
 import { Array as Arr, Option, String as Str } from "effect";
 
 import { audioName } from "./speechAsset.ts";

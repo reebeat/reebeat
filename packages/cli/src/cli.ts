@@ -1,10 +1,10 @@
-// The commands of `reebeat` and what runs them. A handler turns its flags into the options of one program
-// (`plan.ts`, `build.ts`, `check.ts`, `journey.ts`) and chooses the adapters: `reebeat.config.json` beside the story
+// The commands of `tsukuri` and what runs them. A handler turns its flags into the options of one program
+// (`plan.ts`, `build.ts`, `check.ts`, `journey.ts`) and chooses the adapters: `tsukuri.config.json` beside the story
 // and the `--speech`, `--aligner`, `--sounds`, `--renderer`, `--capturer`, `--encoder` and `--cache` flags select them
 // (`selection.ts`), and `Composition` turns the selection into Layers (`adapters.ts`). Every expected failure is
 // printed once, by `run`.
-import { choices, defaults, requireOutputName } from "@reebeat/services";
-import type { Selection, SelectionKey } from "@reebeat/services";
+import { choices, defaults, requireOutputName } from "@tsukuri/services";
+import type { Selection, SelectionKey } from "@tsukuri/services";
 import { Array as Arr, Console, Effect, Option, Record, Schema } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 
@@ -38,7 +38,7 @@ const Seconds = Schema.Finite.check(Schema.isGreaterThan(0));
 const selectionFlags = Record.map(choices, (options, key) =>
   Flag.String(key).pipe(
     Flag.withDescription(
-      `The ${key} adapter: ${Arr.join(options, " | ")} (default ${defaults[key]}); beats reebeat.config.json`
+      `The ${key} adapter: ${Arr.join(options, " | ")} (default ${defaults[key]}); beats tsukuri.config.json`
     ),
     Flag.optional
   )
@@ -84,7 +84,7 @@ const plan = Command.make(
       Flag.withDefault(false)
     ),
   },
-  Effect.fn("reebeat.plan")(function* handlePlan(input) {
+  Effect.fn("tsukuri.plan")(function* handlePlan(input) {
     const options = { json: input.json, story: input.story };
 
     if (!input.timing) {
@@ -107,11 +107,11 @@ const plan = Command.make(
   ),
   Command.withExamples([
     {
-      command: "reebeat plan stories/same-id/story.fountain",
+      command: "tsukuri plan stories/same-id/story.fountain",
       description: "The review text",
     },
     {
-      command: "reebeat plan stories/same-id/story.fountain --timing",
+      command: "tsukuri plan stories/same-id/story.fountain --timing",
       description:
         "The review text with intent and resolved frames, from the speech cache",
     },
@@ -125,7 +125,7 @@ const lint = Command.make(
     cacheDir,
     story,
   },
-  Effect.fn("reebeat.lint")(function* handleLint(input) {
+  Effect.fn("tsukuri.lint")(function* handleLint(input) {
     const { run, selection } = yield* settingsFor(
       input.story,
       flagsOf(input),
@@ -140,12 +140,12 @@ const lint = Command.make(
   ),
   Command.withExamples([
     {
-      command: "reebeat lint stories/same-id/story.fountain",
+      command: "tsukuri lint stories/same-id/story.fountain",
       description: "Exits non-zero when the story has an error",
     },
     {
       command:
-        "reebeat lint stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin",
+        "tsukuri lint stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin",
       description:
         "Also schedules the Plan against the speech cache that the named adapters filled",
     },
@@ -183,7 +183,7 @@ const build = Command.make(
     ),
     story,
   },
-  Effect.fn("reebeat.build")(function* handleBuild(input) {
+  Effect.fn("tsukuri.build")(function* handleBuild(input) {
     // The name first: nothing is read or written for a name that is not a plain stem (`--name ../../escaped`).
     const name = yield* requireOutputName(
       Option.isSome(input.name)
@@ -216,12 +216,12 @@ const build = Command.make(
   Command.withExamples([
     {
       command:
-        "reebeat build stories/same-id/story.fountain --out build/same-id",
+        "tsukuri build stories/same-id/story.fountain --out build/same-id",
       description: "Compile, narrate from the cache, capture and mux",
     },
     {
       command:
-        "reebeat build stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin --out build/offline",
+        "tsukuri build stories/same-id/story.fountain --speech silent --aligner even --cache-dir /tmp/standin --out build/offline",
       description: "The whole build with no model: the stand-in narrator",
     },
   ])
@@ -233,13 +233,13 @@ const check = Command.make(
     ...selectionFlags,
     cacheDir,
     dir: Argument.String("dir").pipe(
-      Argument.withDescription("A build directory made by `reebeat build`")
+      Argument.withDescription("A build directory made by `tsukuri build`")
     ),
     source: Flag.String("source").pipe(
       Flag.withDescription("The .fountain file the build was made from")
     ),
   },
-  Effect.fn("reebeat.check")(function* handleCheck(input) {
+  Effect.fn("tsukuri.check")(function* handleCheck(input) {
     const { run, selection } = yield* settingsFor(
       input.source,
       flagsOf(input),
@@ -264,7 +264,7 @@ const check = Command.make(
   Command.withExamples([
     {
       command:
-        "reebeat check build/same-id --source stories/same-id/story.fountain",
+        "tsukuri check build/same-id --source stories/same-id/story.fountain",
       description: "Exits non-zero when any verdict fails",
     },
   ])
@@ -289,7 +289,7 @@ const journeyCommand = Command.make(
     ),
     story,
   },
-  Effect.fn("reebeat.journey")(function* handleJourney(input) {
+  Effect.fn("tsukuri.journey")(function* handleJourney(input) {
     const { run, selection } = yield* settingsFor(
       input.story,
       flagsOf(input),
@@ -315,13 +315,13 @@ const journeyCommand = Command.make(
   ),
   Command.withExamples([
     {
-      command: "reebeat journey stories/same-id/story.fountain",
+      command: "tsukuri journey stories/same-id/story.fountain",
       description: "Builds build/same-id and build/same-id-2",
     },
   ])
 );
 
-const reebeat = Command.make("reebeat").pipe(
+const tsukuri = Command.make("tsukuri").pipe(
   Command.withDescription(
     "Explainer decks and videos from a Fountain screenplay"
   ),
@@ -329,11 +329,11 @@ const reebeat = Command.make("reebeat").pipe(
 );
 
 /**
- * Runs `reebeat` with `args`. A usage error prints the help; any other expected failure prints one line (its tag,
+ * Runs `tsukuri` with `args`. A usage error prints the help; any other expected failure prints one line (its tag,
  * its source line if it has one, its message); either way the program fails, which the entry point turns into a
  * non-zero exit code.
  */
 export const run = (args: readonly string[]) =>
-  Command.runWith(reebeat, { version })(args).pipe(
+  Command.runWith(tsukuri, { version })(args).pipe(
     Effect.tapError(reportFailure)
   );

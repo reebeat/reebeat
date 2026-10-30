@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "reebeat",
+      "name": "tsukuri",
       "devDependencies": {
         "@changesets/cli": "3.0.3",
         "@commitlint/cli": "21.2.3",
@@ -21,11 +21,11 @@
       },
     },
     "packages/align-whisper": {
-      "name": "@reebeat/align-whisper",
+      "name": "@tsukuri/align-whisper",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -37,10 +37,10 @@
       },
     },
     "packages/cache-fs": {
-      "name": "@reebeat/cache-fs",
+      "name": "@tsukuri/cache-fs",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -52,11 +52,11 @@
       },
     },
     "packages/capture-chromium": {
-      "name": "@reebeat/capture-chromium",
+      "name": "@tsukuri/capture-chromium",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "effect": "catalog:",
         "playwright-core": "catalog:",
         "timeweb": "catalog:",
@@ -72,25 +72,25 @@
       },
     },
     "packages/cli": {
-      "name": "@reebeat/cli",
+      "name": "@tsukuri/cli",
       "version": "0.0.0",
       "bin": {
-        "reebeat": "./bin/reebeat.ts",
+        "tsukuri": "./bin/tsukuri.ts",
       },
       "dependencies": {
         "@effect/platform-node": "catalog:",
-        "@reebeat/align-whisper": "workspace:*",
-        "@reebeat/cache-fs": "workspace:*",
-        "@reebeat/capture-chromium": "workspace:*",
-        "@reebeat/core": "workspace:*",
-        "@reebeat/encode-ffmpeg": "workspace:*",
-        "@reebeat/lint": "workspace:*",
-        "@reebeat/pipeline": "workspace:*",
-        "@reebeat/render-reveal": "workspace:*",
-        "@reebeat/services": "workspace:*",
-        "@reebeat/sounds-synth": "workspace:*",
-        "@reebeat/speech-kokoro": "workspace:*",
-        "@reebeat/verify": "workspace:*",
+        "@tsukuri/align-whisper": "workspace:*",
+        "@tsukuri/cache-fs": "workspace:*",
+        "@tsukuri/capture-chromium": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/encode-ffmpeg": "workspace:*",
+        "@tsukuri/lint": "workspace:*",
+        "@tsukuri/pipeline": "workspace:*",
+        "@tsukuri/render-reveal": "workspace:*",
+        "@tsukuri/services": "workspace:*",
+        "@tsukuri/sounds-synth": "workspace:*",
+        "@tsukuri/speech-kokoro": "workspace:*",
+        "@tsukuri/verify": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -101,7 +101,7 @@
       },
     },
     "packages/core": {
-      "name": "@reebeat/core",
+      "name": "@tsukuri/core",
       "version": "0.0.0",
       "dependencies": {
         "fountain-js": "catalog:",
@@ -120,10 +120,10 @@
       },
     },
     "packages/encode-ffmpeg": {
-      "name": "@reebeat/encode-ffmpeg",
+      "name": "@tsukuri/encode-ffmpeg",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -135,10 +135,10 @@
       },
     },
     "packages/lint": {
-      "name": "@reebeat/lint",
+      "name": "@tsukuri/lint",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
+        "@tsukuri/core": "workspace:*",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
@@ -152,12 +152,12 @@
       },
     },
     "packages/pipeline": {
-      "name": "@reebeat/pipeline",
+      "name": "@tsukuri/pipeline",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
-        "@reebeat/services": "workspace:*",
-        "@reebeat/subtitles": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/services": "workspace:*",
+        "@tsukuri/subtitles": "workspace:*",
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
@@ -172,13 +172,13 @@
       },
     },
     "packages/render-reveal": {
-      "name": "@reebeat/render-reveal",
+      "name": "@tsukuri/render-reveal",
       "version": "0.0.0",
       "dependencies": {
         "@fontsource/inter": "catalog:",
-        "@reebeat/core": "workspace:*",
-        "@reebeat/lint": "workspace:*",
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/lint": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "parse5": "catalog:",
         "reveal.js": "catalog:",
       },
@@ -196,10 +196,10 @@
       },
     },
     "packages/services": {
-      "name": "@reebeat/services",
+      "name": "@tsukuri/services",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
+        "@tsukuri/core": "workspace:*",
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
@@ -218,11 +218,11 @@
       ],
     },
     "packages/sounds-synth": {
-      "name": "@reebeat/sounds-synth",
+      "name": "@tsukuri/sounds-synth",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/services": "workspace:*",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
@@ -236,11 +236,11 @@
       },
     },
     "packages/speech-kokoro": {
-      "name": "@reebeat/speech-kokoro",
+      "name": "@tsukuri/speech-kokoro",
       "version": "0.0.0",
       "dependencies": {
         "@huggingface/transformers": "catalog:",
-        "@reebeat/services": "workspace:*",
+        "@tsukuri/services": "workspace:*",
         "effect": "catalog:",
         "kokoro-js": "catalog:",
       },
@@ -252,10 +252,10 @@
       },
     },
     "packages/subtitles": {
-      "name": "@reebeat/subtitles",
+      "name": "@tsukuri/subtitles",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
+        "@tsukuri/core": "workspace:*",
       },
       "devDependencies": {
         "@effect/vitest": "catalog:",
@@ -269,24 +269,24 @@
       },
     },
     "packages/verify": {
-      "name": "@reebeat/verify",
+      "name": "@tsukuri/verify",
       "version": "0.0.0",
       "dependencies": {
-        "@reebeat/core": "workspace:*",
-        "@reebeat/encode-ffmpeg": "workspace:*",
-        "@reebeat/lint": "workspace:*",
-        "@reebeat/pipeline": "workspace:*",
-        "@reebeat/render-reveal": "workspace:*",
-        "@reebeat/services": "workspace:*",
-        "@reebeat/sounds-synth": "workspace:*",
-        "@reebeat/subtitles": "workspace:*",
+        "@tsukuri/core": "workspace:*",
+        "@tsukuri/encode-ffmpeg": "workspace:*",
+        "@tsukuri/lint": "workspace:*",
+        "@tsukuri/pipeline": "workspace:*",
+        "@tsukuri/render-reveal": "workspace:*",
+        "@tsukuri/services": "workspace:*",
+        "@tsukuri/sounds-synth": "workspace:*",
+        "@tsukuri/subtitles": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
         "@effect/platform-node": "catalog:",
         "@effect/vitest": "catalog:",
-        "@reebeat/cache-fs": "workspace:*",
-        "@reebeat/capture-chromium": "workspace:*",
+        "@tsukuri/cache-fs": "workspace:*",
+        "@tsukuri/capture-chromium": "workspace:*",
         "@types/node": "catalog:",
         "oxc-parser": "catalog:",
         "typescript": "catalog:",
@@ -294,11 +294,11 @@
       },
     },
     "tools/quality": {
-      "name": "@reebeat/quality",
+      "name": "@tsukuri/quality",
       "version": "0.0.0",
       "dependencies": {
         "@effect/platform-node": "catalog:",
-        "@reebeat/core": "workspace:*",
+        "@tsukuri/core": "workspace:*",
         "effect": "catalog:",
         "oxc-parser": "catalog:",
         "yaml": "2.9.1",
@@ -734,35 +734,35 @@
 
     "@redis/time-series": ["@redis/time-series@6.3.0", "", { "peerDependencies": { "@redis/client": "^6.3.0" } }, "sha512-+fJOB8mN1z5WRakCJNh5lVdz1KqvHGSOistsKeitD24QsCtPwyRQXWC0iq6T/i/ubLE/YcguZqPm8F598MKk4A=="],
 
-    "@reebeat/align-whisper": ["@reebeat/align-whisper@workspace:packages/align-whisper"],
+    "@tsukuri/align-whisper": ["@tsukuri/align-whisper@workspace:packages/align-whisper"],
 
-    "@reebeat/cache-fs": ["@reebeat/cache-fs@workspace:packages/cache-fs"],
+    "@tsukuri/cache-fs": ["@tsukuri/cache-fs@workspace:packages/cache-fs"],
 
-    "@reebeat/capture-chromium": ["@reebeat/capture-chromium@workspace:packages/capture-chromium"],
+    "@tsukuri/capture-chromium": ["@tsukuri/capture-chromium@workspace:packages/capture-chromium"],
 
-    "@reebeat/cli": ["@reebeat/cli@workspace:packages/cli"],
+    "@tsukuri/cli": ["@tsukuri/cli@workspace:packages/cli"],
 
-    "@reebeat/core": ["@reebeat/core@workspace:packages/core"],
+    "@tsukuri/core": ["@tsukuri/core@workspace:packages/core"],
 
-    "@reebeat/encode-ffmpeg": ["@reebeat/encode-ffmpeg@workspace:packages/encode-ffmpeg"],
+    "@tsukuri/encode-ffmpeg": ["@tsukuri/encode-ffmpeg@workspace:packages/encode-ffmpeg"],
 
-    "@reebeat/lint": ["@reebeat/lint@workspace:packages/lint"],
+    "@tsukuri/lint": ["@tsukuri/lint@workspace:packages/lint"],
 
-    "@reebeat/pipeline": ["@reebeat/pipeline@workspace:packages/pipeline"],
+    "@tsukuri/pipeline": ["@tsukuri/pipeline@workspace:packages/pipeline"],
 
-    "@reebeat/quality": ["@reebeat/quality@workspace:tools/quality"],
+    "@tsukuri/quality": ["@tsukuri/quality@workspace:tools/quality"],
 
-    "@reebeat/render-reveal": ["@reebeat/render-reveal@workspace:packages/render-reveal"],
+    "@tsukuri/render-reveal": ["@tsukuri/render-reveal@workspace:packages/render-reveal"],
 
-    "@reebeat/services": ["@reebeat/services@workspace:packages/services"],
+    "@tsukuri/services": ["@tsukuri/services@workspace:packages/services"],
 
-    "@reebeat/sounds-synth": ["@reebeat/sounds-synth@workspace:packages/sounds-synth"],
+    "@tsukuri/sounds-synth": ["@tsukuri/sounds-synth@workspace:packages/sounds-synth"],
 
-    "@reebeat/speech-kokoro": ["@reebeat/speech-kokoro@workspace:packages/speech-kokoro"],
+    "@tsukuri/speech-kokoro": ["@tsukuri/speech-kokoro@workspace:packages/speech-kokoro"],
 
-    "@reebeat/subtitles": ["@reebeat/subtitles@workspace:packages/subtitles"],
+    "@tsukuri/subtitles": ["@tsukuri/subtitles@workspace:packages/subtitles"],
 
-    "@reebeat/verify": ["@reebeat/verify@workspace:packages/verify"],
+    "@tsukuri/verify": ["@tsukuri/verify@workspace:packages/verify"],
 
     "@sec-ant/readable-stream": ["@sec-ant/readable-stream@0.4.1", "", {}, "sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg=="],
 

@@ -1,14 +1,14 @@
 // The Renderer adapter of release 1: reveal.js. ABI: the installed `reveal.js` and `@fontsource/inter` packages, read
 // as files when the layer is built; their absence is raised on first use. The page itself is the pure `renderDeck`.
-// Outside runtime: none; nothing is sent anywhere. Retirement trigger: reebeat's own motion engine replaces reveal.js
+// Outside runtime: none; nothing is sent anywhere. Retirement trigger: tsukuri's own motion engine replaces reveal.js
 // behind the same Renderer.
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import {
   AdapterUnavailable,
   RenderFailed,
   Renderer,
   localEgress,
-} from "@reebeat/services";
+} from "@tsukuri/services";
 import { Array as Arr, Effect, Exit, Layer, Record } from "effect";
 import type { FileSystem, Path } from "effect";
 

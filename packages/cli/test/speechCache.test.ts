@@ -1,12 +1,12 @@
 // The committed cache of stories/same-id against the committed story: it must not be stale. Built with the real
 // adapters' declarations (their layers build without a model, a binary or a network), every Line's key resolves to
 // an asset whose words are the Line's words 1:1, and the aligned Lines schedule. A copy with one asset removed is
-// the F12 cache-miss control. The cache is refilled by `reebeat build ... --refresh-speech` (see the pipeline README).
+// the F12 cache-miss control. The cache is refilled by `tsukuri build ... --refresh-speech` (see the pipeline README).
 import { assert, layer } from "@effect/vitest";
-import { planLines, schedule, wordsOf } from "@reebeat/core";
-import { speechStage } from "@reebeat/pipeline";
-import { revealLifecycle } from "@reebeat/render-reveal";
-import { AssetCache } from "@reebeat/services";
+import { planLines, schedule, wordsOf } from "@tsukuri/core";
+import { speechStage } from "@tsukuri/pipeline";
+import { revealLifecycle } from "@tsukuri/render-reveal";
+import { AssetCache } from "@tsukuri/services";
 import {
   Array as Arr,
   Effect,
@@ -102,7 +102,7 @@ layer(platform)("the committed speech cache", (it) => {
         const { cache, plan } = yield* story;
 
         const copy = yield* fs.makeTempDirectoryScoped({
-          prefix: "reebeat-cache-",
+          prefix: "tsukuri-cache-",
         });
 
         yield* fs.copy(cache, copy, { overwrite: true });

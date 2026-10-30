@@ -35,7 +35,7 @@ The format follows the donor repository's (Context, Decision, Consequences, with
 
 | ADR | Decision | Date | Status |
 | --- | --- | --- | --- |
-| [0000](0000-extension-architecture.md) | Extension architecture: where contracts live and how third parties extend reebeat | 2026-10-29 | Proposed (confirmed decision by decision) |
+| [0000](0000-extension-architecture.md) | Extension architecture: where contracts live and how third parties extend tsukuri | 2026-10-29 | Proposed (confirmed decision by decision) |
 
 ## Template
 

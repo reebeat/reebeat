@@ -1,6 +1,6 @@
-// The drift check of skill `verify-reebeat` (spec 0010): the feature map (`.agents/skills/verify-reebeat/features.md`) is held to
+// The drift check of skill `verify-tsukuri` (spec 0010): the feature map (`.agents/skills/verify-tsukuri/features.md`) is held to
 // the code and to the specs by plain functions over text. The map is the one list of what a viewer can observe; a spec points
-// into it with a `Verify skill:` line; the vocabulary of `@reebeat/core` must have a row for each of its members.
+// into it with a `Verify skill:` line; the vocabulary of `@tsukuri/core` must have a row for each of its members.
 import { Array as Arr, Option, String as Str, pipe } from "effect";
 
 /** A spec file: its name (`0010-review-and-verify-skills.md`) and its text. */
@@ -9,7 +9,7 @@ export interface SpecFile {
   readonly text: string;
 }
 
-/** What the map must cover, taken from `@reebeat/core` by the caller. */
+/** What the map must cover, taken from `@tsukuri/core` by the caller. */
 export interface Vocabulary {
   /** Every kind of anchor, written as the map's id suffix (`word`, `scene`, `transition`, `element`, `effect`, `absolute`). */
   readonly anchorKinds: readonly string[];

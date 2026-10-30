@@ -1,4 +1,4 @@
-// The JSON Schema of the IR (spec 0004, Revisions "the JSON Schema is generated"): `docs/schema/reebeat-ir.schema.json`
+// The JSON Schema of the IR (spec 0004, Revisions "the JSON Schema is generated"): `docs/schema/tsukuri-ir.schema.json`
 // is the text `graphJsonSchema()` writes (so an edit of the Effect Schema fails until `bun tools/quality/genJsonSchema.ts`
 // is run), and every construct of the IR is a named definition that says where it comes from (`origin`) and where its
 // meaning differs (`deviation`). A construct that loses its `origin` fails here.
@@ -8,7 +8,7 @@ import { Array as Arr, Effect, Predicate, Record, Schema } from "effect";
 import { graphJsonSchema, graphSchemaId, graphVersion } from "../src/graph.ts";
 import { readLocal } from "./support.ts";
 
-const checkedIn = readLocal("../../../docs/schema/reebeat-ir.schema.json");
+const checkedIn = readLocal("../../../docs/schema/tsukuri-ir.schema.json");
 
 const documentOf = Schema.decodeUnknownEffect(
   Schema.fromJsonString(Schema.Json)
@@ -54,7 +54,7 @@ const origins: Readonly<Record<string, string>> = {
   WordAnchor: "SMIL 3.0 timing",
 };
 
-/** Where reebeat's meaning differs from its origin, said in the definition: the words each `deviation` must contain. */
+/** Where tsukuri's meaning differs from its origin, said in the definition: the words each `deviation` must contain. */
 const deviations: Readonly<Record<string, string>> = {
   EachEvent: "stagger",
   Effect: 'restart="always"',

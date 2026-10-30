@@ -1,4 +1,4 @@
-// The journey program (`reebeat journey`): build, check, build again, compare (F6); the first failure stops it. It
+// The journey program (`tsukuri journey`): build, check, build again, compare (F6); the first failure stops it. It
 // runs the real build program on the stand-ins and a fake capturer, with a fake verification.
 import { assert, layer } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path } from "effect";

@@ -1,5 +1,5 @@
 // A small Plan built by the real core: three Scenes, a `show`, a `focus`, three sounds and one absolute time.
-import { buildPlan } from "@reebeat/core";
+import { buildPlan } from "@tsukuri/core";
 import { Array as Arr, String as Str } from "effect";
 
 const source = Arr.join(

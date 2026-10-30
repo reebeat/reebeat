@@ -1,4 +1,4 @@
-# @reebeat/lint
+# @tsukuri/lint
 
 ## 0.1.0-alpha.0
 
@@ -11,4 +11,4 @@
 
 - Updated dependencies [78ef5b3]
 - Updated dependencies [53782eb]
-  - @reebeat/core@0.1.0-alpha.0
+  - @tsukuri/core@0.1.0-alpha.0

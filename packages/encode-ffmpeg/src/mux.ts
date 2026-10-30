@@ -5,8 +5,8 @@
 // none that a check could accept.
 //
 // Determinism flags: `-fflags +bitexact -flags:v +bitexact -flags:a +bitexact -map_metadata:g -1` (`settings.ts`).
-import { requireOutputName } from "@reebeat/services";
-import type { MuxRequest } from "@reebeat/services";
+import { requireOutputName } from "@tsukuri/services";
+import type { MuxRequest } from "@tsukuri/services";
 import { Array as Arr, Effect, FileSystem, Path, Ref, Stream } from "effect";
 
 import { audioMix } from "./audioMix.ts";

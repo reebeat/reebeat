@@ -1,4 +1,4 @@
-// The review text of `reebeat plan`: deterministic, equal to the golden text, one row per Element per Scene with
+// The review text of `tsukuri plan`: deterministic, equal to the golden text, one row per Element per Scene with
 // `+ - ~` marks across auto-animate boundaries, the effects as `intent -> frame`, a summary line, the absolute
 // times with their reasons and their count, and frames with `--timing` once a timeline exists.
 import { assert, describe, it } from "@effect/vitest";

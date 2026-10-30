@@ -32,4 +32,4 @@ export class AssetCache extends Context.Service<
       asset: Asset
     ) => Effect.Effect<void, CacheError>;
   }
->()("@reebeat/services/AssetCache") {}
+>()("@tsukuri/services/AssetCache") {}

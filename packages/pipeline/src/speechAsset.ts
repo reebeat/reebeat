@@ -1,7 +1,7 @@
 // The cached asset of one narrated Line (design R3): two files, `flac` (the narration, s16 mono) and `words.json`
 // (its duration and the aligned time of every word). The cache stores them as `<key>.flac` and `<key>.words.json`.
 // The words file is read through its Schema like any external input: the cache is a directory a human may edit.
-import type { AlignedLine } from "@reebeat/core";
+import type { AlignedLine } from "@tsukuri/core";
 import { Schema } from "effect";
 
 /** The file name of the narration audio inside an asset; the cache prefixes the key: `<key>.flac`. */

@@ -1,6 +1,6 @@
 // The FrameCapturer service (spec 0001, design R3): a written Deck and its Plan to a stream of PNG frames on a
 // controlled clock (headless Chromium in release 1).
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Context } from "effect";
 import type { Scope, Stream } from "effect";
 
@@ -27,4 +27,4 @@ export class FrameCapturer extends Context.Service<
     readonly frames: (plan: PlanJson) => number;
     readonly info: AdapterInfo;
   }
->()("@reebeat/services/FrameCapturer") {}
+>()("@tsukuri/services/FrameCapturer") {}

@@ -58,7 +58,7 @@ describe("buildPlan of the fixture", () => {
       assert.strictEqual(plan.sourceSha256, "any caller-computed string");
       assert.strictEqual(plan.schema, 1);
       assert.strictEqual(plan.title, "Boxes and ids");
-      assert.strictEqual(plan.author, "Reebeat tests");
+      assert.strictEqual(plan.author, "Tsukuri tests");
       assert.isFalse("timeline" in plan);
     })
   );

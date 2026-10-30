@@ -145,9 +145,9 @@ export const importsOf = (text: string): readonly Import[] => {
   ];
 };
 
-const scope = "@reebeat/";
+const scope = "@tsukuri/";
 
-/** The directory name a `@reebeat/<name>[/subpath]` specifier or dependency names, or none for anything else. */
+/** The directory name a `@tsukuri/<name>[/subpath]` specifier or dependency names, or none for anything else. */
 const workspaceTarget = (specifier: string): Option.Option<string> =>
   Str.startsWith(scope)(specifier)
     ? Option.fromNullishOr(
@@ -290,7 +290,7 @@ const finding = (
   dependency,
   file,
   line,
-  package: `@reebeat/${checked.dir}`,
+  package: `@tsukuri/${checked.dir}`,
   reason,
   tier: Option.getOrElse(tierOf(checked.dir), () => "no tier"),
 });

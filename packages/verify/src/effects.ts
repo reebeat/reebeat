@@ -21,15 +21,15 @@ import {
   formatAnchor,
   formatEvent,
   lifecycleFrames,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import type {
   Evaluate,
   EventExpr,
   Scene,
   TimedEvent,
   TimedPlan,
-} from "@reebeat/core";
-import { decodeMonoPcm } from "@reebeat/encode-ffmpeg";
+} from "@tsukuri/core";
+import { decodeMonoPcm } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Effect, Option, Result } from "effect";
 
 import {

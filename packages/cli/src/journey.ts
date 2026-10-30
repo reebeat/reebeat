@@ -1,7 +1,7 @@
-// `reebeat journey`: the whole road on one story (spec 0001, "Journey"). Build it, check the build, build it a
+// `tsukuri journey`: the whole road on one story (spec 0001, "Journey"). Build it, check the build, build it a
 // second time and compare the two builds (F6). The first failure stops the journey. Both builds run on the same
 // selection, and so does the check.
-import type { Selection } from "@reebeat/services";
+import type { Selection } from "@tsukuri/services";
 import { Console, Duration, Effect, Path } from "effect";
 
 import { buildStory, renderSummary } from "./build.ts";

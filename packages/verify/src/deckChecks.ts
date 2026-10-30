@@ -4,12 +4,12 @@
 // fragments never hides one in a later slide's notes. `checkDeck` then covers what these two do not compare (the
 // revealed Element of a fragment, the Elements, the slide marks, the slide order); its findings go to F4, because
 // they are about what the slides show, not what they say.
-import { soundsOf, stepsOf } from "@reebeat/core";
-import type { PlanJson, Scene } from "@reebeat/core";
-import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
-import type { Fragment } from "@reebeat/lint";
-import { checkDeck, readDeck } from "@reebeat/render-reveal";
-import type { DeckModel, DeckSlide } from "@reebeat/render-reveal";
+import { soundsOf, stepsOf } from "@tsukuri/core";
+import type { PlanJson, Scene } from "@tsukuri/core";
+import { effectFragmentAgreement, firstDifference } from "@tsukuri/lint";
+import type { Fragment } from "@tsukuri/lint";
+import { checkDeck, readDeck } from "@tsukuri/render-reveal";
+import type { DeckModel, DeckSlide } from "@tsukuri/render-reveal";
 import { Array as Arr, Effect, Option, Result } from "effect";
 
 import type { Build } from "./load.ts";

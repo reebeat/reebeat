@@ -1,10 +1,10 @@
-// Opt-in: `bun run test:live` in packages/align-whisper, with REEBEAT_WHISPER_MODEL naming ggml-base.en.bin and
+// Opt-in: `bun run test:live` in packages/align-whisper, with TSUKURI_WHISPER_MODEL naming ggml-base.en.bin and
 // whisper-cli and ffmpeg on the PATH. Two suites: the WordAligner contract, and real speech (the committed
 // narration of one Line of stories/same-id) aligned to the times its asset records. When the binary or the model
 // is absent both FAIL (every clause fails with AdapterUnavailable); neither skips.
 import { assert, layer } from "@effect/vitest";
-import { WordAligner } from "@reebeat/services";
-import { wordAlignerContract } from "@reebeat/services/contract";
+import { WordAligner } from "@tsukuri/services";
+import { wordAlignerContract } from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Effect,

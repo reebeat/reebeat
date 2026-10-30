@@ -1,4 +1,4 @@
-// Observations of one build, made without reading `reebeat check`'s code: frames at the resolved anchors, audio onsets,
+// Observations of one build, made without reading `tsukuri check`'s code: frames at the resolved anchors, audio onsets,
 // subtitles and chapters, the Deck in headless Chromium, and the speech cache. Each command prints raw lines, writes
 // its files under <outDir>, and exits 1 when the observation disagrees with plan.json.
 //   bun observe.ts <frames|onsets|subtitles|deck|cache> <buildDir> <outDir> [repoRoot] [cacheDir]
@@ -395,10 +395,10 @@ const subtitles = async (): Promise<void> => {
 };
 
 const deck = async (): Promise<void> => {
-  const chromiumPath = process.env.REEBEAT_CHROMIUM;
+  const chromiumPath = process.env.TSUKURI_CHROMIUM;
 
   if (chromiumPath === undefined) {
-    throw new Error("REEBEAT_CHROMIUM is not set: run inside `devenv shell`");
+    throw new Error("TSUKURI_CHROMIUM is not set: run inside `devenv shell`");
   }
   const entry = join(
     repoRoot,
@@ -428,12 +428,12 @@ const deck = async (): Promise<void> => {
       m.type() === "error" && errors.push(m.text())
   );
   await page.goto(pathToFileURL(join(buildDir, "deck.html")).href);
-  await page.evaluate("window.reebeatDeck.ready");
+  await page.evaluate("window.tsukuriDeck.ready");
   const report: unknown[] = [];
 
   for (const scene of plan.scenes) {
     await page.evaluate(
-      `window.reebeatDeck.goToScene(${JSON.stringify(scene.id)})`
+      `window.tsukuriDeck.goToScene(${JSON.stringify(scene.id)})`
     );
     await page.waitForTimeout(1200);
     const slide = `.reveal .slides > section[data-scene="${scene.id}"]`;
@@ -467,7 +467,7 @@ const deck = async (): Promise<void> => {
     await page.screenshot({ path: join(outDir, `deck-${scene.id}-0.png`) });
 
     for (let step = 1; step <= seen.fragments; step += 1) {
-      await page.evaluate("window.reebeatDeck.stepFragment()");
+      await page.evaluate("window.tsukuriDeck.stepFragment()");
       await page.waitForTimeout(400);
       await page.screenshot({
         path: join(outDir, `deck-${scene.id}-${step}.png`),

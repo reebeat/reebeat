@@ -5,9 +5,9 @@
 // plan, the manifest, nor anything printed. Two controls prove the search finds a leak: an adapter that logs its key
 // leaves the canary in the output, and one that declares a setting named like a secret is refused.
 import { assert, layer } from "@effect/vitest";
-import { decodeBuildManifest } from "@reebeat/pipeline";
-import { AdapterUnavailable, SpeechSynthesizer } from "@reebeat/services";
-import { silentSynthesizer } from "@reebeat/services/standins";
+import { decodeBuildManifest } from "@tsukuri/pipeline";
+import { AdapterUnavailable, SpeechSynthesizer } from "@tsukuri/services";
+import { silentSynthesizer } from "@tsukuri/services/standins";
 import {
   Array as Arr,
   Config,

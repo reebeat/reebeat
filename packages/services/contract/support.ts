@@ -1,6 +1,6 @@
 // Plain helpers the clauses share: comparisons of clips and spans, and the checks every adapter's `info` passes.
 import { assert } from "@effect/vitest";
-import type { RendererLifecycle } from "@reebeat/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 import { Array as Arr, Effect } from "effect";
 
 import { secretLikeNames } from "../src/cacheKey.ts";

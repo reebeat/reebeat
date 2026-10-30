@@ -1,8 +1,8 @@
 // The filesystem AssetCache beyond the contract: the on-disk layout (files named `<key>.<name>`, the provenance
 // file last), and the entries a reader must not trust.
 import { assert, layer } from "@effect/vitest";
-import { localEgress, AssetCache } from "@reebeat/services";
-import type { Asset } from "@reebeat/services";
+import { localEgress, AssetCache } from "@tsukuri/services";
+import type { Asset } from "@tsukuri/services";
 import {
   Array as Arr,
   Effect,
@@ -41,7 +41,7 @@ const inTemp = <A, E>(
 ) =>
   Effect.gen(function* run() {
     const fs = yield* FileSystem.FileSystem;
-    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-cache-" });
+    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-cache-" });
 
     return yield* Effect.provide(
       Effect.gen(function* inCache() {

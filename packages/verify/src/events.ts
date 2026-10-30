@@ -15,15 +15,15 @@
 // ringed picture, the "old picture" is the ring, the "new picture" is the cell without it, and the ring is going from
 // the first frame the cell differs from the ringed picture (the capture commands the ring off one frame before, as it
 // commands it on one frame before its fire frame).
-import { lifecycleFrames } from "@reebeat/core";
+import { lifecycleFrames } from "@tsukuri/core";
 import type {
   ElementEvent,
   LifecycleFrames,
   RendererLifecycle,
   TimedPlan,
-} from "@reebeat/core";
-import { decodeGrayFrames } from "@reebeat/encode-ffmpeg";
-import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
+} from "@tsukuri/core";
+import { decodeGrayFrames } from "@tsukuri/encode-ffmpeg";
+import type { Box, GrayClip } from "@tsukuri/encode-ffmpeg";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { eventWindow, frameAtFraction } from "./frames.ts";

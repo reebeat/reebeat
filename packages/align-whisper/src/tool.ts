@@ -1,7 +1,7 @@
 // Child processes of the aligner run through Effect's `ChildProcessSpawner`: one helper that collects the output,
 // waits for the exit code and turns a failure to start into `AdapterUnavailable` (the binary is missing) and a
 // non-zero exit into `AlignmentFailed`.
-import { AdapterUnavailable, AlignmentFailed } from "@reebeat/services";
+import { AdapterUnavailable, AlignmentFailed } from "@tsukuri/services";
 import { Effect, Stream, String as Str, pipe } from "effect";
 import { ChildProcess } from "effect/process";
 import type { ChildProcessSpawner } from "effect/process";

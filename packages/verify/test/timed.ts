@@ -5,8 +5,8 @@ import {
   requireTimeline,
   schedule,
   wordsOf,
-} from "@reebeat/core";
-import type { RendererLifecycle } from "@reebeat/core";
+} from "@tsukuri/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 /** `text` spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */

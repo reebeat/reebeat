@@ -3,10 +3,10 @@
 // (F4/F5: one per step, a start for each `show` or `focus` effect and an end for each ring that ends by its `until`, in
 // resolved order, and the `data-sounds` of every sound), the Elements and the
 // slide marks. It reports the first difference, naming the slide and the position in it.
-import type { PlanJson, Scene } from "@reebeat/core";
-import { lineIdOf } from "@reebeat/core/steps";
-import { effectFragmentAgreement, firstDifference } from "@reebeat/lint";
-import type { Diagnostic, Fragment } from "@reebeat/lint";
+import type { PlanJson, Scene } from "@tsukuri/core";
+import { lineIdOf } from "@tsukuri/core/steps";
+import { effectFragmentAgreement, firstDifference } from "@tsukuri/lint";
+import type { Diagnostic, Fragment } from "@tsukuri/lint";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { DeckMismatch } from "./errors.ts";
@@ -24,7 +24,7 @@ const sourceMismatch = (
 ): DeckMismatch | undefined => {
   const found = [
     ["<html data-source-sha256>", model.htmlSourceSha256],
-    ['<meta name="reebeat:source-sha256">', model.metaSourceSha256],
+    ['<meta name="tsukuri:source-sha256">', model.metaSourceSha256],
   ] as const;
 
   const wrong = Option.getOrUndefined(

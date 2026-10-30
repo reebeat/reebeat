@@ -1,7 +1,7 @@
 {
-  "name": "@reebeat/render-reveal",
+  "name": "@tsukuri/render-reveal",
   "version": "0.1.0-alpha.0",
-  "description": "reebeat render-reveal: the Renderer adapter that writes a Plan as a reveal.js Deck.",
+  "description": "tsukuri render-reveal: the Renderer adapter that writes a Plan as a reveal.js Deck.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -18,9 +18,9 @@
   },
   "dependencies": {
     "@fontsource/inter": "catalog:",
-    "@reebeat/core": "workspace:*",
-    "@reebeat/lint": "workspace:*",
-    "@reebeat/services": "workspace:*",
+    "@tsukuri/core": "workspace:*",
+    "@tsukuri/lint": "workspace:*",
+    "@tsukuri/services": "workspace:*",
     "parse5": "catalog:",
     "reveal.js": "catalog:"
   },

@@ -1,4 +1,4 @@
-// Public surface of @reebeat/capture-chromium: the `FrameCapturer` adapter `chromiumCapturer`, and the pure and
+// Public surface of @tsukuri/capture-chromium: the `FrameCapturer` adapter `chromiumCapturer`, and the pure and
 // lower-level parts behind it: the capture schedule, the capture under the controlled clock, the browser layer.
 export { Browser } from "./browser.ts";
 

@@ -1,11 +1,11 @@
-// `reebeat plan`: the Plan of a story, for review. Needs no browser and no audio. `--timing` also reads the speech
+// `tsukuri plan`: the Plan of a story, for review. Needs no browser and no audio. `--timing` also reads the speech
 // cache, read-only (a stage that never refreshes), and schedules the Plan, so the review text shows the intent of each
 // effect and each derived event next to its resolved frame or frames (`ReviewOptions.timing` of `reviewText`).
-import { buildPlan, encodePlan, reviewText, schedule } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
-import { readSource, speechStage } from "@reebeat/pipeline";
-import { Renderer } from "@reebeat/services";
-import type { Selection } from "@reebeat/services";
+import { buildPlan, encodePlan, reviewText, schedule } from "@tsukuri/core";
+import type { PlanJson } from "@tsukuri/core";
+import { readSource, speechStage } from "@tsukuri/pipeline";
+import { Renderer } from "@tsukuri/services";
+import type { Selection } from "@tsukuri/services";
 import { Effect } from "effect";
 
 import { Composition, speechServicesOf } from "./adapters.ts";

@@ -1,8 +1,8 @@
 // The story of the repository and the real default adapters over its speech cache, for the committed-cache test and
 // the live test. Building the adapters loads no model and needs no network.
-import { buildPlan } from "@reebeat/core";
-import { sha256Hex } from "@reebeat/pipeline";
-import { decodeSelection } from "@reebeat/services";
+import { buildPlan } from "@tsukuri/core";
+import { sha256Hex } from "@tsukuri/pipeline";
+import { decodeSelection } from "@tsukuri/services";
 import { Effect, FileSystem, Layer, Path } from "effect";
 
 import { realParts, speechServicesOf } from "../src/adapters.ts";

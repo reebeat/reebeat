@@ -1,5 +1,5 @@
 {
-  "name": "@reebeat/quality",
+  "name": "@tsukuri/quality",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@effect/platform-node": "catalog:",
-    "@reebeat/core": "workspace:*",
+    "@tsukuri/core": "workspace:*",
     "effect": "catalog:",
     "oxc-parser": "catalog:",
     "yaml": "2.9.1"

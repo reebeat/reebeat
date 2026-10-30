@@ -10,7 +10,7 @@
 // The commands run after the clock step, as in the measurement. The lag between a Reveal call and the first
 // changed frame, measured on the real deck (spec Revision "capture lags re-measured", `captureSchedule.ts`): an
 // Auto-Animate scene change and a cut 0 frames, a default fade 1, `next` and `focus` 1, and `sfx` changes no pixel.
-import type { AdapterUnavailable } from "@reebeat/services";
+import type { AdapterUnavailable } from "@tsukuri/services";
 import { Duration, Effect, Ref, Stream } from "effect";
 
 import { Browser } from "./browser.ts";

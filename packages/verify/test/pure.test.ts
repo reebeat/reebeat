@@ -1,9 +1,9 @@
 // The pure parts: the table and exit code, the Plan comparison, the signal helpers.
 import { assert, describe, it } from "@effect/vitest";
-import { buildPlan, referenceLifecycle } from "@reebeat/core";
-import type { PlanJson, RendererLifecycle } from "@reebeat/core";
-import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
-import { synthClip } from "@reebeat/sounds-synth";
+import { buildPlan, referenceLifecycle } from "@tsukuri/core";
+import type { PlanJson, RendererLifecycle } from "@tsukuri/core";
+import { audioOffsetMs } from "@tsukuri/encode-ffmpeg";
+import { synthClip } from "@tsukuri/sounds-synth";
 import { Array as Arr, Effect, Option, String as Str } from "effect";
 
 import { observationRange } from "../src/events.ts";

@@ -1,4 +1,4 @@
-// Public surface of @reebeat/align-whisper: the WordAligner adapter on whisper.cpp (local).
+// Public surface of @tsukuri/align-whisper: the WordAligner adapter on whisper.cpp (local).
 export {
   heardWords,
   resampleCommand,

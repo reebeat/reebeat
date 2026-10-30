@@ -1,12 +1,12 @@
-# @reebeat/lint
+# @tsukuri/lint
 
 A library (design R3): pure rules that return diagnostics `{ rule, message, line?, sceneId?, index?, severity? }`. An empty
 list means the rule holds; `severity` is `error` when absent and `info` for a finding that only lists. It depends on
-`@reebeat/core` (types and `stepsOf`) and `effect` only.
+`@tsukuri/core` (types and `stepsOf`) and `effect` only.
 
-## What `reebeat lint <story>` prints
+## What `tsukuri lint <story>` prints
 
-`reebeat lint` is the core's `collectErrors` (every problem of the screenplay, in document order: the syntax and every
+`tsukuri lint` is the core's `collectErrors` (every problem of the screenplay, in document order: the syntax and every
 cross-reference of a Scene's effects, each with its line, what was found, what was expected and the nearest valid form;
 it runs the Fountain importer, `fountainImporter`, and the validation of the IR it reads), then `lintPlan` (this package:
 the absolute times, listed with their reasons, and the two event rules below). The cross-references (an Element that
@@ -17,7 +17,7 @@ unique ids, cycles) are **one rule in one place**, the core's `validate.ts`; thi
 before the first word) is found when the Plan is scheduled. `lint` schedules the Plan only when the speech cache of the story
 exists under the selected adapters (`--cache-dir` and the selection flags); then it reports `EffectOutsideScene`,
 `EmptyWindow`, `UnresolvedAnchor` and the others with the effect's line. Without the cache it checks no timing, and says so
-in its last line: `reebeat plan --timing` or `reebeat build` finds such an error, not `reebeat lint`.
+in its last line: `tsukuri plan --timing` or `tsukuri build` finds such an error, not `tsukuri lint`.
 
 | Rule | What it checks |
 | --- | --- |
@@ -30,6 +30,6 @@ in its last line: `reebeat plan --timing` or `reebeat build` finds such an error
 
 Each rule has a control in `test/rules.test.ts`: a missing, extra, re-verbed, re-targeted and re-edged fragment (a ring with
 no end step, an end step without a ring), a blank reason, an unused `let` (also one only another unused `let` uses), an
-`until` equal to its own fire (also through a `let`), a colour pair below the minimum. The `reebeat lint` output, with and
+`until` equal to its own fire (also through a `let`), a colour pair below the minimum. The `tsukuri lint` output, with and
 without the speech cache, is tested in
 `packages/cli/test/lint.test.ts`.

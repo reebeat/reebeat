@@ -32,7 +32,7 @@ const specifiersOf = (text: string): readonly string[] => {
 };
 
 const allowed =
-  /^(?:\.{1,2}\/|effect(?:\/|$)|@reebeat\/(?:core|encode-ffmpeg|lint|pipeline|render-reveal|services|sounds-synth|subtitles)$)/u;
+  /^(?:\.{1,2}\/|effect(?:\/|$)|@tsukuri\/(?:core|encode-ffmpeg|lint|pipeline|render-reveal|services|sounds-synth|subtitles)$)/u;
 
 /** The specifiers of a file that it may not import. */
 const violations = (name: string, text: string): readonly string[] =>
@@ -53,14 +53,14 @@ describe("F11: packages/verify imports no parser", () => {
         assert.deepStrictEqual(
           Arr.sort(Record.keys(dependencies), Order.String),
           [
-            "@reebeat/core",
-            "@reebeat/encode-ffmpeg",
-            "@reebeat/lint",
-            "@reebeat/pipeline",
-            "@reebeat/render-reveal",
-            "@reebeat/services",
-            "@reebeat/sounds-synth",
-            "@reebeat/subtitles",
+            "@tsukuri/core",
+            "@tsukuri/encode-ffmpeg",
+            "@tsukuri/lint",
+            "@tsukuri/pipeline",
+            "@tsukuri/render-reveal",
+            "@tsukuri/services",
+            "@tsukuri/sounds-synth",
+            "@tsukuri/subtitles",
             "effect",
           ]
         );
@@ -87,7 +87,7 @@ describe("F11: packages/verify imports no parser", () => {
       'import { chromium } from "playwright-core";',
       'import { readFile } from "node:fs";',
       'export { parse } from "fountain-js";',
-      'import { parse } from "@reebeat/core/src/parse.ts";',
+      'import { parse } from "@tsukuri/core/src/parse.ts";',
     ]) {
       assert.strictEqual(violations("check.ts", bad).length, 1, bad);
     }
@@ -95,7 +95,7 @@ describe("F11: packages/verify imports no parser", () => {
     assert.deepStrictEqual(
       violations(
         "check.ts",
-        'import { buildPlan } from "@reebeat/core";\nimport { Effect } from "effect";\nimport { x } from "./x.ts";'
+        'import { buildPlan } from "@tsukuri/core";\nimport { Effect } from "effect";\nimport { x } from "./x.ts";'
       ),
       []
     );

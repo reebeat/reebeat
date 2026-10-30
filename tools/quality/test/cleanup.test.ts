@@ -1,4 +1,4 @@
-// `cleanup.sh` of skill `verify-reebeat` (spec 0010): it stops the process groups that `run.sh` and `observe.ts` recorded in `pids.txt`
+// `cleanup.sh` of skill `verify-tsukuri` (spec 0010): it stops the process groups that `run.sh` and `observe.ts` recorded in `pids.txt`
 // and nothing it could find by name. Scenario 1: a recorded step group dies; an unrelated process whose command line names the run
 // directory and "chromium" survives; a live group leader whose recorded start time is not its own (a reused pid) survives.
 // Scenario 2: a step launches the real Chromium through Playwright (detached, a group of its own) and records it with `recordBrowser`;
@@ -43,11 +43,11 @@ mkdir -p "$run"
 cat >"$run/launch.ts" <<EOF
 import { chromium } from "$playwright";
 import { recordBrowser } from "$record";
-const browser = await chromium.launch({ args: ["--disable-gpu"], executablePath: process.env.REEBEAT_CHROMIUM });
+const browser = await chromium.launch({ args: ["--disable-gpu"], executablePath: process.env.TSUKURI_CHROMIUM });
 console.log("browser", await recordBrowser(browser));
 await new Promise((resolve) => setTimeout(resolve, 300000));
 EOF
-export REEBEAT_VERIFY_PIDS="$run/pids.txt"
+export TSUKURI_VERIFY_PIDS="$run/pids.txt"
 setsid bun "$run/launch.ts" >"$run/launch.out" 2>&1 &
 step=$!
 printf '%s %s\n' "$step" "$(start "$step")" >"$run/pids.txt"
@@ -76,7 +76,7 @@ describe("cleanup.sh stops what was recorded and nothing else", () => {
 
         const script = skillScript(
           path,
-          "verify-reebeat",
+          "verify-tsukuri",
           "scripts",
           "cleanup.sh"
         );
@@ -113,13 +113,13 @@ describe("cleanup.sh stops what was recorded and nothing else", () => {
 
         const script = skillScript(
           path,
-          "verify-reebeat",
+          "verify-tsukuri",
           "scripts",
           "cleanup.sh"
         );
 
         const playwright = path.resolve(
-          skillScript(path, "verify-reebeat"),
+          skillScript(path, "verify-tsukuri"),
           "..",
           "..",
           "..",
@@ -132,7 +132,7 @@ describe("cleanup.sh stops what was recorded and nothing else", () => {
 
         const record = skillScript(
           path,
-          "verify-reebeat",
+          "verify-tsukuri",
           "scripts",
           "recordPid.ts"
         );

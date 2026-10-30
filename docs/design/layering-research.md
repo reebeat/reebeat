@@ -1,8 +1,8 @@
 # Layering research: how other tools handle layers, depth, cameras, blending and focus
 
-Status: research note for the design of [spec 0013](../specs/0013-layering.md). Nothing in it is built in reebeat. Date read: 2026-10-29. Prepared for the operator's later review.
+Status: research note for the design of [spec 0013](../specs/0013-layering.md). Nothing in it is built in tsukuri. Date read: 2026-10-29. Prepared for the operator's later review.
 
-reebeat is a declarative multimedia build compiler. The people creating a story declare States that hold Elements with story-wide ids, and the build derives the motion from the identity diff between States ([GLOSSARY](../../GLOSSARY.md), "Identity diff"). The operator approved 2.5D layering: each Layer has one scalar depth, seen through a 2D camera (parallax). That the Layers are blended and blurred by declared functions, and what those functions are, is the operator's idea and spec 0013's proposal. This note asks one question of the existing tools and specifications below: **what do they already do, and what does it cost, so that reebeat can adopt, adapt or reject it?**
+tsukuri is a declarative multimedia build compiler. The people creating a story declare States that hold Elements with story-wide ids, and the build derives the motion from the identity diff between States ([GLOSSARY](../../GLOSSARY.md), "Identity diff"). The operator approved 2.5D layering: each Layer has one scalar depth, seen through a 2D camera (parallax). That the Layers are blended and blurred by declared functions, and what those functions are, is the operator's idea and spec 0013's proposal. This note asks one question of the existing tools and specifications below: **what do they already do, and what does it cost, so that tsukuri can adopt, adapt or reject it?**
 
 ## Rules of this note
 
@@ -10,7 +10,7 @@ reebeat is a declarative multimedia build compiler. The people creating a story 
 - **"Not found in the pages read" is not "absent".** A page that does not mention a feature says nothing about the tool. The table says `not found`, never "the tool lacks it".
 - **`not verified`** marks a claim that could not be confirmed from a primary page. It is kept so that the gap is visible.
 - **Quotes are at most 25 words.** Everything else is a paraphrase that stays close to the page.
-- **No performance number is quoted that a page does not give.** reebeat has measured none of these tools.
+- **No performance number is quoted that a page does not give.** tsukuri has measured none of these tools.
 
 ### What the author re-checked, and what was relayed
 
@@ -98,7 +98,7 @@ Each entry answers four questions: what it surfaces as a capability, how it matc
 | Godot | `CanvasLayer.layer`; `scroll_scale` [GODOT-PARALLAX] | Renderer limits DoF [GODOT-CAMATTR] | n/f | Distances and `dof_blur_amount` (3D only) | Equal-index order "non-deterministic" |
 | Keynote, PowerPoint, reveal.js | Stack order; depth n/f | Fade unmatched on or off | By object; `!!name`; `data-id` [PPT-TIPS], [REVEAL-AA] | n/f | Browser CSS; not frame-pure |
 
-## Synthesis: adopt, adapt, reject for reebeat
+## Synthesis: adopt, adapt, reject for tsukuri
 
 Each line names the finding, the decision it feeds in [spec 0013](../specs/0013-layering.md), and why. All are proposals for the operator's review; only the scalar-depth choice is approved.
 
@@ -106,31 +106,31 @@ Each line names the finding, the decision it feeds in [spec 0013](../specs/0013-
 
 - **Porter and Duff plus a separate blend step**, in W3C's order: blend first, then composite ([PD84], [CSS-COMP]). It gives the operator's two wishes (set overlap, difference) as two orthogonal knobs. Fusion's Merge lists operators and apply modes separately, and Blender has Alpha Over beside Mix ([FUS17], [BL-ALPHAOVER]).
 - **Premultiplied alpha as the working form.** Fusion, Nuke, Blender and Porter and Duff say that images are premultiplied or store colour that way ([FUS17], [NUKE-MERGE], [BL-ALPHAOVER], [PD84]); the other tools' alpha model was `not found`. It makes the operators plain multiply-and-add.
-- **Identity-keyed matching with a default dissolve for the unmatched.** Keynote, PowerPoint, reveal.js, Figma and Manim all fade the unmatched in or out ([KEY-TRANS], [PPT-MORPH], [REVEAL-AA], [FIG-SMART], [MANIM-BASE]); Figma, PowerPoint and reveal.js add an explicit key. reebeat already has the key (story-wide ids) and gains layers as one more identity-bearing kind.
-- **A focus band and a maximum.** Fusion and Nuke parameterise blur by an in-focus band plus a size and a clamp ([FUS17], [NUKE-ZDEFOCUS]); Unity's Gaussian mode has a start, an end and a maximum radius, and its page gives no law between them ([UNITY-DOF-REF]). reebeat's own rule over such parameters is linear (spec 0013, Decision 5), so it needs no transcendental function.
-- **Two renderers is a documented hazard, not a feature.** Fusion names a software renderer that "produces consistent results on all machines" ([FUS17]). reebeat adopts the software path as the definition and treats any other as a conformance subject.
+- **Identity-keyed matching with a default dissolve for the unmatched.** Keynote, PowerPoint, reveal.js, Figma and Manim all fade the unmatched in or out ([KEY-TRANS], [PPT-MORPH], [REVEAL-AA], [FIG-SMART], [MANIM-BASE]); Figma, PowerPoint and reveal.js add an explicit key. tsukuri already has the key (story-wide ids) and gains layers as one more identity-bearing kind.
+- **A focus band and a maximum.** Fusion and Nuke parameterise blur by an in-focus band plus a size and a clamp ([FUS17], [NUKE-ZDEFOCUS]); Unity's Gaussian mode has a start, an end and a maximum radius, and its page gives no law between them ([UNITY-DOF-REF]). tsukuri's own rule over such parameters is linear (spec 0013, Decision 5), so it needs no transcendental function.
+- **Two renderers is a documented hazard, not a feature.** Fusion names a software renderer that "produces consistent results on all machines" ([FUS17]). tsukuri adopts the software path as the definition and treats any other as a conformance subject.
 
 **Adapt (the idea fits after a change).**
 
-- **Depth as one number.** CSS perspective gives `d/(d − Z)` ([CSS-TRANSFORMS2]); Nuke's Card3D page is the 2.5D precedent but gives no such formula ([NUKE-CARD3D]); Godot's `scroll_scale` is a per-axis multiplier ([GODOT-PARALLAX]). reebeat keeps one scalar `z` and derives the multiplier, so one number drives parallax, blur and order, as the operator approved for the scalar depth.
-- **Order from depth, with a total tie-break.** After Effects and Motion split order (2D list) from depth (3D); Unity and Godot document unguaranteed ties ([AE-3D], [MOT-GROUPS], [UNITY-SORT], [GODOT-LAYER]). reebeat orders by depth and breaks ties by declaration order, so the order is total.
-- **Blur by a deterministic recipe.** CSS names the standard deviation and a three-box approximation that "can be used" ([CSS-FILTER]). reebeat defines its own integer box recipe as the blur, so it does not claim to equal a browser's.
-- **The camera as data per State.** After Effects, Fusion and Blender keep a camera with focus distance ([AE-CAM], [FUS17], [BL-DEFOCUS]). reebeat keeps a 2D camera (pan, zoom) and a focus per State, and derives its motion between States.
-- **The static and dynamic split.** Motion Canvas needs a cached offscreen node for filters and composite operations ([MC-FILTERS]); Rive says a non-normal blend "forces the renderer to re-read the frame" on WebGL2 ([RIVE-CANVAS]). Both pages describe a cost the creator meets; neither describes a split derived from what a layer contains. reebeat derives the split from the content (see spec 0013, Decision 10).
+- **Depth as one number.** CSS perspective gives `d/(d − Z)` ([CSS-TRANSFORMS2]); Nuke's Card3D page is the 2.5D precedent but gives no such formula ([NUKE-CARD3D]); Godot's `scroll_scale` is a per-axis multiplier ([GODOT-PARALLAX]). tsukuri keeps one scalar `z` and derives the multiplier, so one number drives parallax, blur and order, as the operator approved for the scalar depth.
+- **Order from depth, with a total tie-break.** After Effects and Motion split order (2D list) from depth (3D); Unity and Godot document unguaranteed ties ([AE-3D], [MOT-GROUPS], [UNITY-SORT], [GODOT-LAYER]). tsukuri orders by depth and breaks ties by declaration order, so the order is total.
+- **Blur by a deterministic recipe.** CSS names the standard deviation and a three-box approximation that "can be used" ([CSS-FILTER]). tsukuri defines its own integer box recipe as the blur, so it does not claim to equal a browser's.
+- **The camera as data per State.** After Effects, Fusion and Blender keep a camera with focus distance ([AE-CAM], [FUS17], [BL-DEFOCUS]). tsukuri keeps a 2D camera (pan, zoom) and a focus per State, and derives its motion between States.
+- **The static and dynamic split.** Motion Canvas needs a cached offscreen node for filters and composite operations ([MC-FILTERS]); Rive says a non-normal blend "forces the renderer to re-read the frame" on WebGL2 ([RIVE-CANVAS]). Both pages describe a cost the creator meets; neither describes a split derived from what a layer contains. tsukuri derives the split from the content (see spec 0013, Decision 10).
 - **Isolation.** Figma's Pass through versus Normal and CSS's isolated group ([FIG-BLEND], [CSS-COMP]) become a declared group flag.
 
 **Reject.**
 
-- **Separate 2D and 3D layer kinds** (After Effects, Motion). A layer switch per layer, a renderer per composition and rules about which layers intersect ([AE-3D], [AE-COMP], [MOT-GROUPS]) are the cost of full 3D. reebeat declares scalar depth, so every layer is one kind.
+- **Separate 2D and 3D layer kinds** (After Effects, Motion). A layer switch per layer, a renderer per composition and rules about which layers intersect ([AE-3D], [AE-COMP], [MOT-GROUPS]) are the cost of full 3D. tsukuri declares scalar depth, so every layer is one kind.
 - **Physical lens models** (f-stop, focal length, aperture; [AE-CAM], [BL-DEFOCUS], [UNITY-DOF-REF]). No page read gives the radius formula, the Unity pages read word the aperture in opposite directions, and the model needs functions that are not exact.
 - **Any blend or blur that is allowed to differ by device**: GPU compositors without a byte-equality check, "approximation can be used", half-precision storage ([AE-RENDER], [CSS-FILTER], [BL-SYS], [FUS17]).
-- **Keying a blend mode** is impossible in After Effects ([AE-BLEND]); reebeat does not need it, because opacity over time is a curve and a blend change is a Beat's `step`.
+- **Keying a blend mode** is impossible in After Effects ([AE-BLEND]); tsukuri does not need it, because opacity over time is a curve and a blend change is a Beat's `step`.
 - **Deep compositing** ([NUKE-DEEP]): many samples per pixel is a different data type, with a cost the story does not need at scalar depth.
-- **Layer matching by name and hierarchy or by geometry hash** (Figma, Manim). reebeat matches by declared id.
+- **Layer matching by name and hierarchy or by geometry hash** (Figma, Manim). tsukuri matches by declared id.
 
 ## Not verified, and gaps that matter to the design
 
-1. The radius of a depth-of-field blur as a function of depth is documented by none of the pages read. reebeat therefore defines its own (spec 0013, Decision 5) and does not claim equivalence with any tool.
+1. The radius of a depth-of-field blur as a function of depth is documented by none of the pages read. tsukuri therefore defines its own (spec 0013, Decision 5) and does not claim equivalence with any tool.
 2. Whether any tool's output is byte-identical across machines: after Effects, Resolve (OpenGL), Blender, Nuke and Unity say nothing or say it varies; Fusion's Software renderer "produces consistent results on all machines" ([FUS17], page ±1, not re-opened by the author).
 3. The alpha model of After Effects, Figma, Motion Canvas, Manim, Rive and Lottie: `not found`.
 4. After Effects' rule for ordering 2D and 3D layers and Motion's equivalent for list versus depth beyond the quoted sentence: `not verified`.

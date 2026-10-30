@@ -9,8 +9,8 @@ import {
   EncodeFailed,
   AdapterUnavailable,
   localEgress,
-} from "@reebeat/services";
-import type { AudioClip, MuxRequest } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { AudioClip, MuxRequest } from "@tsukuri/services";
 import type { FileSystem, Path } from "effect";
 import { Array as Arr, Effect, Layer, Option, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";

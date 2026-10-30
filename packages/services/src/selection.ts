@@ -1,5 +1,5 @@
 // The ONE registry of choices (spec 0001, design R3): which adapter fills each service. Selection is explicit
-// configuration read at the composition root (`reebeat.config.json` or flags); an unknown key or value fails
+// configuration read at the composition root (`tsukuri.config.json` or flags); an unknown key or value fails
 // naming the key and the choices, and a selected adapter whose requirement is missing fails `AdapterUnavailable`
 // when its Layer is built. There is never a fallback to another adapter. Defaults are the local adapters.
 import {
@@ -144,7 +144,7 @@ const diagnose = (input: Schema.Json, detail: string): UnknownSelection => {
 };
 
 /**
- * Decodes a selection (the parsed JSON of `reebeat.config.json`): absent keys take the local default. Fails
+ * Decodes a selection (the parsed JSON of `tsukuri.config.json`): absent keys take the local default. Fails
  * `UnknownSelection` naming the key, the value and the choices for an unknown key or an unknown value.
  */
 export const decodeSelection = (

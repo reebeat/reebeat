@@ -2,9 +2,9 @@
 // F12, "failure is loud": a speech-cache miss, a failing capture or a refused output directory leaves neither `<out>`
 // nor `<out>.partial` for `check` to accept. The adapters' own behaviour is the contract suites' job.
 import { assert, describe, it } from "@effect/vitest";
-import { decodePlan, frameToMs, requireTimeline } from "@reebeat/core";
-import { CaptureError } from "@reebeat/services";
-import { contractLifecycle } from "@reebeat/services/contract";
+import { decodePlan, frameToMs, requireTimeline } from "@tsukuri/core";
+import { CaptureError } from "@tsukuri/services";
+import { contractLifecycle } from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Deferred,
@@ -40,7 +40,7 @@ const setup = (text: string) =>
   Effect.gen(function* setupStory() {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-build-" });
+    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-build-" });
     const story = path.join(dir, "story.fountain");
 
     yield* fs.writeFileString(story, text);
@@ -220,7 +220,7 @@ describe("buildProgram: a finished build", () => {
         assert.strictEqual(muxed?.request.metadata.title, "Build");
         assert.strictEqual(
           muxed?.request.metadata.comment,
-          `reebeat source-sha256 ${timed.sourceSha256}`
+          `tsukuri source-sha256 ${timed.sourceSha256}`
         );
         assert.isTrue(
           Str.includes(timed.sourceSha256)(muxed?.request.vtt ?? "")
@@ -534,7 +534,7 @@ describe("buildProgram: failure is loud (F12)", () => {
 
         // Two levels below a root the test owns: `<out>.partial/../../escaped` would land inside the root.
         const root = yield* fs.makeTempDirectoryScoped({
-          prefix: "reebeat-build-",
+          prefix: "tsukuri-build-",
         });
 
         const dir = path.join(root, "a", "b");

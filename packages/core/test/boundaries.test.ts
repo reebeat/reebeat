@@ -169,7 +169,7 @@ describe("F11: packages/core is pure", () => {
   );
 
   it.effect(
-    "the `@reebeat/core/steps` subpath reaches no parser: what steps.ts imports, all the way down, reads only effect and the Plan's data and algebra",
+    "the `@tsukuri/core/steps` subpath reaches no parser: what steps.ts imports, all the way down, reads only effect and the Plan's data and algebra",
     () =>
       Effect.gen(function* subpath() {
         const byName = new Map(

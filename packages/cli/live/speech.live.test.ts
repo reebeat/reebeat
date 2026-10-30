@@ -1,10 +1,10 @@
-// Opt-in: `bun run test:live` in packages/cli, with REEBEAT_KOKORO_CACHE and REEBEAT_WHISPER_MODEL set (the models
-// are the ones `reebeat build --refresh-speech` uses). It regenerates one Line of stories/same-id with the real adapters into a scratch
+// Opt-in: `bun run test:live` in packages/cli, with TSUKURI_KOKORO_CACHE and TSUKURI_WHISPER_MODEL set (the models
+// are the ones `tsukuri build --refresh-speech` uses). It regenerates one Line of stories/same-id with the real adapters into a scratch
 // cache and compares the aligned Line with the committed one: the models, ffmpeg and whisper-cli must still
 // produce what the committed cache holds. The aligned Line holds the SHA-256 of its FLAC, so equal Lines are
 // equal audio.
 import { assert, it } from "@effect/vitest";
-import { speechStage } from "@reebeat/pipeline";
+import { speechStage } from "@tsukuri/pipeline";
 import { Effect, FileSystem } from "effect";
 
 import { adapters, story } from "../test/story.ts";
@@ -20,7 +20,7 @@ it.live("regenerates a Line to the committed asset", () =>
     const oneLine = { ...plan, scenes: [{ ...scene, lines: [line] }] };
 
     const fresh = yield* fs.makeTempDirectoryScoped({
-      prefix: "reebeat-live-",
+      prefix: "tsukuri-live-",
     });
 
     const regenerated = yield* Effect.provide(

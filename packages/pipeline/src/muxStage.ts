@@ -1,10 +1,10 @@
 // The mux stage: the captured frames, the narration of every Line at its start, the sound of every `sound` effect at its
 // fire frame, the WebVTT subtitles and the chapters become `<name>.mp4` (through `Encoder.mux`) and `<name>.vtt`
 // beside it. The Encoder owns the scope its frame stream needs.
-import type { TimedPlan } from "@reebeat/core";
-import { Encoder, SoundLibrary } from "@reebeat/services";
-import type { CaptureFailure } from "@reebeat/services";
-import { vtt } from "@reebeat/subtitles";
+import type { TimedPlan } from "@tsukuri/core";
+import { Encoder, SoundLibrary } from "@tsukuri/services";
+import type { CaptureFailure } from "@tsukuri/services";
+import { vtt } from "@tsukuri/subtitles";
 import { Effect, FileSystem, Path } from "effect";
 import type { Scope, Stream } from "effect";
 
@@ -51,7 +51,7 @@ export const muxStage = Effect.fn("muxStage")(function* muxStage(
     frames,
     height: plan.settings.height,
     metadata: {
-      comment: `reebeat source-sha256 ${plan.sourceSha256}`,
+      comment: `tsukuri source-sha256 ${plan.sourceSha256}`,
       title: plan.title,
     },
     ntsc: plan.settings.ntsc,

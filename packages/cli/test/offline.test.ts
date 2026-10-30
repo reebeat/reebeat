@@ -1,6 +1,6 @@
 // F15, the offline pipeline, and the capture lags measured on the real deck (moved here from the capture adapter,
 // which must not depend on the Renderer): the whole build of a small story runs with no model, `--speech silent
-// --aligner even`, on the real reveal.js deck, the real Chromium and the real ffmpeg, and `reebeat check` on its
+// --aligner even`, on the real reveal.js deck, the real Chromium and the real ffmpeg, and `tsukuri check` on its
 // output passes F1 (the show and focus effects, every anchor in the picture, and the sounds, which are audible in an
 // offline build), F2, F3, F4, F5, F7 and F9. Only F8 compares narration audio that is silent by construction: its
 // verdict says `N/A (silent stand-in)`, which is only ever the case because the build's own manifest lists a stand-in
@@ -10,8 +10,8 @@
 // and sound effects. F1 and F7 observe the first changed frame of every step, of every anchor in the picture and of every
 // scene change within a frame of the Timeline, which is the measurement the capture lags were chosen by.
 import { assert, layer } from "@effect/vitest";
-import { chromiumCapturer } from "@reebeat/capture-chromium";
-import { MediaTools } from "@reebeat/encode-ffmpeg";
+import { chromiumCapturer } from "@tsukuri/capture-chromium";
+import { MediaTools } from "@tsukuri/encode-ffmpeg";
 import { Effect, Exit, FileSystem, Layer, Path } from "effect";
 
 import { Verifier } from "../src/verifier.ts";

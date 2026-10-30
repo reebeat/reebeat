@@ -1,7 +1,7 @@
 // The lint rules, each with a control that shows the rule fails when the thing it guards is broken.
 import { assert, describe, it } from "@effect/vitest";
-import { buildPlan } from "@reebeat/core";
-import type { Effect as PlanEffect, PlanJson } from "@reebeat/core";
+import { buildPlan } from "@tsukuri/core";
+import type { Effect as PlanEffect, PlanJson } from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 import {

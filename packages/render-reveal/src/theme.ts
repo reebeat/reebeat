@@ -1,7 +1,7 @@
 // The fixed theme of the Deck (spec 0001, "Action Elements"): one light palette, Inter bundled, a 3x3 grid per slide.
 // The palette is data; `themeCss` derives the stylesheet from it and the contrast test reads the same data, so the
 // claim "every class has at least 4.5:1" is checked on the values the stylesheet uses.
-import type { Element } from "@reebeat/core";
+import type { Element } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 type Cell = Element["cell"];

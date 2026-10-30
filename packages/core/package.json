@@ -1,7 +1,7 @@
 {
-  "name": "@reebeat/core",
+  "name": "@tsukuri/core",
   "version": "0.1.0-alpha.0",
-  "description": "reebeat core: a Fountain screenplay to a Plan, its timeline and review text. Pure, no runtime.",
+  "description": "tsukuri core: a Fountain screenplay to a Plan, its timeline and review text. Pure, no runtime.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {

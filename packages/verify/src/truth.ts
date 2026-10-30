@@ -1,7 +1,7 @@
 // The Plan that the current source builds is the truth the written files are compared with. When the source no
 // longer builds, every check that needs it fails with the core's error and its line.
-import { planLines, timedLines } from "@reebeat/core";
-import type { PlanJson, TimedLine } from "@reebeat/core";
+import { planLines, timedLines } from "@tsukuri/core";
+import type { PlanJson, TimedLine } from "@tsukuri/core";
 import { Array as Arr, Result } from "effect";
 
 import type { Build } from "./load.ts";

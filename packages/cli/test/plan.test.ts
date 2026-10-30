@@ -1,9 +1,9 @@
-// `reebeat plan`: the Plan for review, its JSON, the timing from the speech cache, and the loud failures (spec 0001,
+// `tsukuri plan`: the Plan for review, its JSON, the timing from the speech cache, and the loud failures (spec 0001,
 // F10 and F12: each error class stops with its tag and the source line, and the exit is not zero).
 import { assert, layer } from "@effect/vitest";
-import { decodePlan } from "@reebeat/core";
-import type { PlanError } from "@reebeat/core";
-import { sha256Hex } from "@reebeat/pipeline";
+import { decodePlan } from "@tsukuri/core";
+import type { PlanError } from "@tsukuri/core";
+import { sha256Hex } from "@tsukuri/pipeline";
 import {
   Array as Arr,
   Effect,
@@ -49,7 +49,7 @@ const combinatorStory = Str.replace(
   )(storyText)
 );
 
-layer(platform)("reebeat plan", (it) => {
+layer(platform)("tsukuri plan", (it) => {
   it.effect(
     "prints the review text of the committed story and exits 0, its summary counting what plan.json holds",
     () =>
@@ -383,7 +383,7 @@ const lineOf = (source: string, needle: string): number =>
     )
   ) + 1;
 
-layer(platform)("reebeat plan on a story with a mistake (F12)", (it) => {
+layer(platform)("tsukuri plan on a story with a mistake (F12)", (it) => {
   it.effect.each(cases)(
     "$tag stops the command with its source line and a non-zero exit",
     ({ needle, source, tag }) =>

@@ -14,9 +14,9 @@
 //     clock makes two captures differ, the same jitter makes them equal) is in `packages/capture-chromium/test/capture.test.ts`;
 //   - capture with the settle wait off and capture without the virtual clock are recorded manual measurements (spec
 //     0001, Revision "M0 measured: the clock decides the mechanism"), not automated tests.
-import { changedPixels, decodeGrayFrames } from "@reebeat/encode-ffmpeg";
-import type { FrameSize } from "@reebeat/encode-ffmpeg";
-import { sha256Hex } from "@reebeat/pipeline";
+import { changedPixels, decodeGrayFrames } from "@tsukuri/encode-ffmpeg";
+import type { FrameSize } from "@tsukuri/encode-ffmpeg";
+import { sha256Hex } from "@tsukuri/pipeline";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { guarded } from "./guard.ts";

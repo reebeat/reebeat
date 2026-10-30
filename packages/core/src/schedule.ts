@@ -288,8 +288,9 @@ const timelineOf = (
  * Adds the `timeline` to a Plan from the aligned Lines and the renderer's declared lifecycle. Fails with
  * `SceneLeadTooShort` when `sceneLead` is below `transition`, with `LifecycleMismatch` when the renderer's Auto-Animate
  * is not the Plan's transition, with `AlignmentMismatch` when a Line's aligned words differ from its words (or a Line
- * is missing, or an aligned Line is not in the Plan), and with `EffectOutsideScene`, `EmptyWindow` or
- * `UnresolvedAnchor` (naming the effect) when an effect cannot be placed.
+ * is missing, or an aligned Line is not in the Plan), with `SimultaneousFocus` when two `focus` effects of a Scene fire on
+ * one frame (naming both and the frame), and with `EffectOutsideScene`, `EmptyWindow` or `UnresolvedAnchor` (naming the
+ * effect) when an effect cannot be placed.
  */
 export const schedule = Effect.fn("schedule")(
   (

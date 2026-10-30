@@ -660,17 +660,6 @@ describe("the one ring: a later focus takes it over, whatever its target", () =>
       ],
     ],
     [
-      "gives the later declaration the ring when two focuses fire at one frame",
-      [
-        'g1: focus tag at word("alpha").start',
-        'g2: focus fresh at word("alpha").start',
-      ],
-      [
-        ["g1", 93, 93, "replaced", null],
-        ["g2", 93, 179, "slide-change", null],
-      ],
-    ],
-    [
       "still lets a focus start at the end of another: the takeover is the same frame",
       [
         'g1: focus tag at word("alpha").start until word("charlie").start',
@@ -690,6 +679,75 @@ describe("the one ring: a later focus takes it over, whatever its target", () =>
       })
     );
   }
+});
+
+const clash = (rows: readonly string[]) =>
+  Effect.flip(
+    scheduledAt(statesSource(['r1: show note at word("hotel").end', ...rows]))
+  );
+
+describe("two focus effects on one frame are rejected, naming both and the frame (spec 0018)", () => {
+  const cases: readonly (readonly [string, readonly string[]])[] = [
+    [
+      "two Elements",
+      [
+        'g1: focus tag at word("alpha").start',
+        'g2: focus fresh at word("alpha").start',
+      ],
+    ],
+    [
+      "one Element twice",
+      [
+        'g1: focus tag at word("alpha").start',
+        'g2: focus tag at word("alpha").start',
+      ],
+    ],
+    [
+      "two anchors that land on one frame",
+      [
+        'g1: focus tag at word("alpha").start',
+        'g2: focus fresh at word("bravo").start -0.3s',
+      ],
+    ],
+  ];
+
+  for (const [name, rows] of cases) {
+    it.effect(name, () =>
+      Effect.gen(function* rejected() {
+        const error = yield* clash(rows);
+        assert.strictEqual(error._tag, "SimultaneousFocus");
+        assert.include(error.message, "g1 (line");
+        assert.include(error.message, "g2 (line");
+        assert.include(error.message, "frame 93");
+      })
+    );
+  }
+
+  it.effect(
+    "one frame apart is accepted, and a show with a focus on one frame is too",
+    () =>
+      Effect.gen(function* accepted() {
+        assert.deepStrictEqual(
+          yield* ringOf([
+            'g1: focus tag at word("alpha").start',
+            'g2: focus fresh at word("alpha").start +1f',
+          ]),
+          [
+            ["g1", 93, 94, "replaced", null],
+            ["g2", 94, 179, "slide-change", null],
+          ]
+        );
+
+        const plan = yield* scheduledAt(
+          statesSource([
+            'r1: show note at word("hotel").end',
+            'g1: focus tag at word("hotel").end',
+          ])
+        );
+
+        assert.strictEqual(mainOf(plan).effects.length, 2);
+      })
+  );
 });
 
 describe("plan --timing says a focus was replaced by the next one", () => {

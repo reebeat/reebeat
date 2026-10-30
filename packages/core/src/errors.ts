@@ -246,6 +246,21 @@ export class UnresolvedAnchor extends Schema.TaggedError<
   sceneId: Schema.String,
 }) {}
 
+/**
+ * Two `focus` effects of one Scene fire on the same frame. There is one focus ring, so the first would end where it
+ * starts and never be drawn; `effectId` is the later-declared effect, `otherEffectId` the earlier.
+ */
+export class SimultaneousFocus extends Schema.TaggedError<
+  SimultaneousFocus,
+  { readonly brand: unique symbol }
+>()("SimultaneousFocus", {
+  effectId: Schema.String,
+  frame: Schema.Finite,
+  message: Schema.String,
+  otherEffectId: Schema.String,
+  sceneId: Schema.String,
+}) {}
+
 /** Everything `schedule` can fail with. */
 export type ScheduleError =
   | AlignmentMismatch
@@ -253,6 +268,7 @@ export type ScheduleError =
   | EffectOutsideScene
   | EmptyWindow
   | LifecycleMismatch
+  | SimultaneousFocus
   | UnresolvedAnchor;
 
 /** The Plan has no Timeline, or its Timeline names a Scene, Line or effect the Plan does not have. */

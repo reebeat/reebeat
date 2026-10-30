@@ -1,7 +1,7 @@
 // The narration audio of a built Plan: for each Line, the clip its cached FLAC decodes to, started where the Timeline
 // starts the Line. The mux mixes these with the sounds of the Cues.
-import type { TimedPlan } from "@reebeat/core";
-import { AssetCache, Encoder } from "@reebeat/services";
+import type { TimedPlan } from "@tsukuri/core";
+import { AssetCache, Encoder } from "@tsukuri/services";
 import { Array as Arr, Effect, Option } from "effect";
 
 import { SpeechAssetInvalid } from "./errors.ts";

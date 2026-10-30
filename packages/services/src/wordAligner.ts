@@ -29,4 +29,4 @@ export class WordAligner extends Context.Service<
     ) => Effect.Effect<Alignment, AlignError>;
     readonly info: AdapterInfo;
   }
->()("@reebeat/services/WordAligner") {}
+>()("@tsukuri/services/WordAligner") {}

@@ -2,7 +2,7 @@
 // refused with a typed error naming the setting, before a browser is launched (the stream fails at its start, so no
 // Chromium process runs here).
 import { assert, describe, it } from "@effect/vitest";
-import { AdapterUnavailable, FrameCapturer } from "@reebeat/services";
+import { AdapterUnavailable, FrameCapturer } from "@tsukuri/services";
 import { Effect, Layer, Stream } from "effect";
 
 import { chromiumCapturer } from "../src/index.ts";

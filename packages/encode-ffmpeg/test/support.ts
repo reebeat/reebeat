@@ -1,7 +1,7 @@
 // The tests' one runtime adapter (the platform services) and the independent reader of a written media file: it
 // uses the probes (ffprobe and ffmpeg), never the Encoder under test.
 import { NodeServices } from "@effect/platform-node";
-import type { MuxProbe } from "@reebeat/services/contract";
+import type { MuxProbe } from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Effect,

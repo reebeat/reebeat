@@ -1,15 +1,15 @@
-// The selection of adapters (spec 0001, "composable pieces"): `reebeat.config.json` beside the story, if it has one,
+// The selection of adapters (spec 0001, "composable pieces"): `tsukuri.config.json` beside the story, if it has one,
 // with the flags on top. Nothing is guessed: an unknown key or value fails `UnknownSelection` naming the key, the value
 // and the choices (`decodeSelection`), and a key neither the file nor a flag names takes the local default. Secrets are
 // never read here: a credential comes from the environment, inside the adapter that needs it.
-import { decodeSelection } from "@reebeat/services";
-import type { SelectionKey } from "@reebeat/services";
+import { decodeSelection } from "@tsukuri/services";
+import type { SelectionKey } from "@tsukuri/services";
 import type { Option } from "effect";
 import { Effect, FileSystem, Path, Record, Schema } from "effect";
 
 import { ConfigInvalid } from "./errors.ts";
 
-const configFile = "reebeat.config.json";
+const configFile = "tsukuri.config.json";
 
 /** What a flag says per key: the adapter's name, or nothing. */
 export type SelectionFlags = Readonly<
@@ -29,7 +29,7 @@ const invalid = (path: string, what: string) => (cause: unknown) =>
     path,
   });
 
-/** The object `reebeat.config.json` holds beside `story`, or an empty one when the story has no such file. */
+/** The object `tsukuri.config.json` holds beside `story`, or an empty one when the story has no such file. */
 const readConfig = Effect.fnUntraced(function* readConfig(story: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;

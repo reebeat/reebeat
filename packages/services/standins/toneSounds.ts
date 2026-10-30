@@ -1,6 +1,6 @@
 // The tone stand-in for SoundLibrary: one short deterministic sine tone per name of the core's catalogue.
 // Offline and pure; its id ends `-standin`.
-import { sfxNames } from "@reebeat/core";
+import { sfxNames } from "@tsukuri/core";
 import { Array as Arr, Effect, Layer, Option } from "effect";
 
 import { UnknownSound } from "../src/errors.ts";

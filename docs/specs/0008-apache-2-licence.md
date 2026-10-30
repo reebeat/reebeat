@@ -8,7 +8,7 @@ Process: [spec 0000](0000-development-lifecycle.md). Number 0008: the lead named
 Replace "licence deferred, all rights reserved" with a published licence, and record the decisions that go with it.
 
 - **Open source, Apache-2.0:** the compiler and its formats: the IR, the JSON Schema generated from the Effect Schema, and the codecs.
-- **Closed source:** products built on top, in separate repositories that depend on the published packages (see the 2026-10-29 revision on `reebeat/studio`). The first is a collaborative multiplayer video editor. Free: features that cost nothing to run. Paid: costly features (the sync server, deeply integrated hosted AI agents). Users can bring their own agents, give them the editing tools, and write plugins and extensions.
+- **Closed source:** products built on top, in separate repositories that depend on the published packages (see the 2026-10-29 revision on `tsukuri-labs/studio`). The first is a collaborative multiplayer video editor. Free: features that cost nothing to run. Paid: costly features (the sync server, deeply integrated hosted AI agents). Users can bring their own agents, give them the editing tools, and write plugins and extensions.
 - **Dependencies:** the compiler may depend on experimental or alpha packages (XState v6 alpha, `@xstate/effect` alpha), pinned exactly, because they are build-time assets.
 
 ## Journey
@@ -19,7 +19,7 @@ devenv shell -- bun run test                         # the licence gates, with t
 $EDITOR docs/design/third-party.md docs/design/open-core-boundary.md
 ```
 
-A reader opens the repository and sees `LICENSE` and `NOTICE`; every `package.json` says `"license": "Apache-2.0"`; `docs/design/third-party.md` says what reebeat depends on and under which licence, and what a product that distributes ffmpeg takes on; `docs/design/open-core-boundary.md` says what is open and what is closed, each item decided (by the operator, with its date), proposed (by the lead) or open. Everything is real: the licence text comes from apache.org, every dependency licence from its own source.
+A reader opens the repository and sees `LICENSE` and `NOTICE`; every `package.json` says `"license": "Apache-2.0"`; `docs/design/third-party.md` says what tsukuri depends on and under which licence, and what a product that distributes ffmpeg takes on; `docs/design/open-core-boundary.md` says what is open and what is closed, each item decided (by the operator, with its date), proposed (by the lead) or open. Everything is real: the licence text comes from apache.org, every dependency licence from its own source.
 
 ## What is built
 
@@ -47,21 +47,21 @@ The GLOSSARY and STATE do not mention the licence and are unchanged.
 ## Not in scope
 
 - Publishing to npm (the packages stay `"private": true`), a DCO check, a trademark policy, any code of a closed product.
-- Deciding the distribution of ffmpeg with libx264: [issue #7](https://github.com/reebeat/reebeat/issues/7).
+- Deciding the distribution of ffmpeg with libx264: [issue #7](https://github.com/tsukuri-labs/tsukuri/issues/7).
 - Reading licence files inside packages: the gate reads the declared `license` field.
 
 ## Open questions for the operator
 
 1. **Copyright holder.** Closed 2026-10-29: Philip Bjørknes Krogh, see Revisions.
 2. **The donor repository.** Closed 2026-10-29, see the second round-2 entry in Revisions: one human contributor plus three commits by an agent identity, all the operator's work.
-3. The open items of the open-core note: the licence, visibility and contribution terms of `reebeat/studio`, the tool protocol, plugin extension points beyond adapters, a gate for experimental types in the public API, and DCO enforcement.
+3. The open items of the open-core note: the licence, visibility and contribution terms of `tsukuri-labs/studio`, the tool protocol, plugin extension points beyond adapters, a gate for experimental types in the public API, and DCO enforcement.
 
 ## Revisions
 
 - **2026-10-29, built with the plan.** The licence check of every manifest is a test, not a one-off edit, so a package added later without `license` fails `bun run test`. The package gate keeps one JSON file of `name@version` to licence because `bun.lock` carries no licences and `node_modules` does not hold the optional packages of other platforms.
 - **2026-10-29, copyright holder decided (supersedes the first open question and the `NOTICE` row's earlier name).** The operator decided that the holder is **Philip Bjørknes Krogh**, his full legal name. His sole proprietorship is not a separate legal person, so the holder is the individual, and `NOTICE` reads `Copyright 2026 Philip Bjørknes Krogh`. If a company is founded later, the copyright in his own code moves to it by written assignment. Contributions stay with their authors under Apache-2.0, inbound equals outbound, so closed products need no contributor licence agreement. No organisation number and no business name is published.
 - **2026-10-29, review round 1 (supersedes statements above).**
-  - `reebeat/studio`, the first product's repository, is **public with no licence** (`gh api repos/reebeat/studio`: `visibility: public`, `license: null`, created 2026-10-29 14:01Z, after this spec was written). This supersedes "separate private repositories" in the Goal and "a separate private repository" in the first version of the note: the products are closed source in separate repositories, and whether `reebeat/studio` stays public, its licence and its contribution terms are open. The "no contributor licence agreement" statement of the entry above holds for this Apache-2.0 repository only.
+  - `tsukuri-labs/studio`, the first product's repository, is **public with no licence** (`gh api repos/tsukuri-labs/studio`: `visibility: public`, `license: null`, created 2026-10-29 14:01Z, after this spec was written). This supersedes "separate private repositories" in the Goal and "a separate private repository" in the first version of the note: the products are closed source in separate repositories, and whether `tsukuri-labs/studio` stays public, its licence and its contribution terms are open. The "no contributor licence agreement" statement of the entry above holds for this Apache-2.0 repository only.
   - Only the operator's decisions are marked decided in `open-core-boundary.md`: the compiler and formats are open, products are closed, a feature is paid when it costs money to run, bring-your-own agents, plugins and extensions with a modular design, pinned experimental dependencies with their types kept out of the public API. The plugin shape (an adapter Layer that passes `xContract`), open renderers and importers, an open tool protocol, closed billing and "the price of Apache-2.0 was accepted" are marked proposed.
   - The per-package list `docs/design/third-party-packages.md` and the counts table of `third-party.md` were hand-kept copies of `tools/quality/third-party-licences.json`; both are removed. The JSON file, tied to `bun.lock` by the gate, is the only list.
   - The donor repository question is closed with its evidence (second open question); round 2 corrects the evidence below.

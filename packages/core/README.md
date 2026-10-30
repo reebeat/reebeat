@@ -1,4 +1,4 @@
-# @reebeat/core
+# @tsukuri/core
 
 Screenplay in, Plan out. Pure: it depends on `effect` and `fountain-js` only, and reads no file (the CLI reads the
 `.fountain` file and passes its text). Specs: [`0001`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md) (the pipeline), [`0002`](../../docs/specs/0002-explicit-anchors-and-syntax.md) (explicit ids, the effects block and anchors) and [`0004`](../../docs/specs/0004-explicit-state-machines-and-timing-combinators.md) (the state machines, the event algebra, the IR, exact time). The syntax is documented in [`docs/grammar/effects.md`](../../docs/grammar/effects.md), which is generated from `src/grammar.ts`, `src/machines.ts` and `src/plan.ts` (`bun tools/quality/genGrammar.ts`); a test fails when it differs and parses every example in it.
@@ -7,7 +7,7 @@ Screenplay in, Plan out. Pure: it depends on `effect` and `fountain-js` only, an
 source ──fountainImporter (parseFountain, adaptTokens, validateScene)──▶ Graph (the IR)
 Graph ──planOf (identity diff, settings)──▶ PlanJson                                              buildPlan = both
 PlanJson + AlignedLine[] + RendererLifecycle ──schedule (resolveEffects)──▶ PlanJson with a timeline schedule
-PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`                                    reviewText
+PlanJson ──reviewText──▶ the text of `tsukuri plan [--timing]`                                    reviewText
 ```
 
 ## The modules
@@ -27,7 +27,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | `build.ts` | `fountainImporter`, `planOf` (the Plan is a function of the IR, a hash and a frame rate) and `buildPlan` |
 | `resolve.ts`, `schedule.ts` | Every event becomes integer frames; `schedule` adds the Timeline |
 | `steps.ts` | The fragment steps and the carrier of every sound instance |
-| `review.ts` | The review text of `reebeat plan` |
+| `review.ts` | The review text of `tsukuri plan` |
 
 | Export | What it is |
 | --- | --- |
@@ -35,7 +35,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | `fountainImporter`, `planOf(graph, sourceSha256, rate?)` | The two halves of `buildPlan`: the Fountain text into the IR (every error, in document order), and the IR into the Plan (30 fps unless a `{ fps, ntsc }` preset is given) |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
 | `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, for every Scene its derived events (`events`: the name and the frames of each `let`) and its effects, one `TimedEffect` for each INSTANCE: `instance` (1-based; an `each` makes a `sound` run once for each occurrence), `fireFrame`, `commandFrame`, and for an effect with a window `endFrame`, `endedBy` (`until`, `replaced`, `slide-change` or `window`) and, for a `focus` that ends by its own `until`, `endCommandFrame`. `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
-| `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (a start for each `show` and `focus`, an END for each `focus` that ends by its own `until`, in resolved-time order) and, for each `sound` instance, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@reebeat/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
+| `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (a start for each `show` and `focus`, an END for each `focus` that ends by its own `until`, in resolved-time order) and, for each `sound` instance, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@tsukuri/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
 | `machines`, `vocabulary`, `formatAnchor`, `formatEvent`, `evaluator`, `occupancies`, `rateOf`, `framesOfFlicks`, `lifecycleFrames` | The machines and what is generated from them, the canonical writers, the algebra and exact time, for the verifier and the tools |
 | `grammarDocument()` | The text of `docs/grammar/effects.md` |
 | `reviewText(plan, { timing })` | the review text, deterministic |
@@ -90,7 +90,7 @@ A Scene with a repeated id is not cross-checked for its references (nor is the S
   parenthetical, which applies to the dialogue after it) and names no Scene. It stands alone, between blank lines, right before the
   scene heading it leads into (a `# Section` or `= synopsis` may stand between); anywhere else is a `BadTransition`. A Scene needs
   a Section before it and at least one `NARRATOR` Line. `docs/grammar/effects.md` ends with what is not yet explicit.
-- `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
+- `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `tsukuri plan` shows it.
 - No title: the Plan title is `Untitled`.
 - The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).
 - A Scene with an error on an Element or effect line, a repeated id, or no Section is not cross-checked, so the one mistake is the one error.
@@ -102,7 +102,7 @@ A Scene with a repeated id is not cross-checked for its references (nor is the S
 - `(speed <number>)` before a Line sets that Line's rate absolutely (same range). `(slowly)` and `(quickly)` are
   presets relative to the story default (x 0.9 and x 1.1, rounded to four decimals, clamped to 0.5 to 2.0). `(pause N)`
   is unchanged. A Line takes one speed hint and one pause.
-- The resolved rate of every Line is `Line.hints.speed` in `plan.json`; `reebeat plan` prints it only for a Line that
+- The resolved rate of every Line is `Line.hints.speed` in `plan.json`; `tsukuri plan` prints it only for a Line that
   differs from the default. The rate is part of the speech cache key, so changing it re-synthesises a Line and never
   reuses audio made at another rate.
 - Errors name their line: `BadSpeed` (a `Speed:` or `(speed N)` that is not a number from 0.5 to 2, or a second
@@ -114,7 +114,7 @@ A Scene with a repeated id is not cross-checked for its references (nor is the S
 
 - **Until, and the slide change.** A `focus` rings its Element from its fire frame until its `until` event (the first occurrence strictly after the fire frame) or, with none, to the Scene's last frame. The slide change interrupts every effect still running: `endedBy` says `slide-change`. A later `focus` (any target: the renderer has one ring) takes the ring over: the earlier one ends at the later one's fire frame, `endedBy: replaced`, with no end step (the later start moves the ring); the ring ends at the earliest of its `until`, the next focus and the slide change. A `focus` that ends by its own `until` has an end step in `stepsOf` and a command at `endCommandFrame`. A `show` runs its declared fade (`endedBy: window`); a `sound` has no window, so `.end` of one and `until` on one are errors (write `<id>.start`).
 - **Instances.** An effect whose `at` event has several occurrences (`each`) runs once for each: one `TimedEffect` per occurrence, in time order. Only a `sound` may (a `show` and a `focus` happen once). Instances do not restart each other.
-- **`reebeat plan --timing`** prints, for every effect instance, `s1  sound whoosh  one.move.start  ->  frame 732 (24.40 s)  (rides the slide)` (the time is at the Plan's rate, NTSC included; a sound's last column says where the Deck plays it: `rides the slide`, `rides step r1` or `plays alone`) and `s1#2` for the second instance. The timing is printed in its canonical form only (`formatEvent`: `one.move.50%` is read as, and printed as, `when(one.move.progress >= 50%)`; `+0.1s` is `+100ms`); the sugar the author wrote is read and never kept. A row under a `show` or `focus` says where it ended and what ended it (`ends frame 75 (2.50 s), by until`, `interrupted by the slide change`, `by its window`); every derived event is listed under `Events` with its frames, and the absolute times with their reasons.
+- **`tsukuri plan --timing`** prints, for every effect instance, `s1  sound whoosh  one.move.start  ->  frame 732 (24.40 s)  (rides the slide)` (the time is at the Plan's rate, NTSC included; a sound's last column says where the Deck plays it: `rides the slide`, `rides step r1` or `plays alone`) and `s1#2` for the second instance. The timing is printed in its canonical form only (`formatEvent`: `one.move.50%` is read as, and printed as, `when(one.move.progress >= 50%)`; `+0.1s` is `+100ms`); the sugar the author wrote is read and never kept. A row under a `show` or `focus` says where it ended and what ended it (`ends frame 75 (2.50 s), by until`, `interrupted by the slide change`, `by its window`); every derived event is listed under `Events` with its frames, and the absolute times with their reasons.
 
 An effect that resolves outside its Scene, or whose command frame would come before the slide change, is an `EffectOutsideScene` error that names the effect; a percent on a window the renderer declares an instant is `EmptyWindow`.
 

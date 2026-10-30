@@ -562,7 +562,7 @@ describe("the pre-release tag", () => {
               yield* fs.makeDirectory(dist, { recursive: true });
               yield* fs.writeFileString(
                 path.join(dist, "package.json"),
-                `{"name":"@reebeat/${name}","version":"0.1.0-alpha.1"}`
+                `{"name":"@tsukuri/${name}","version":"0.1.0-alpha.1"}`
               );
             })
           );
@@ -592,7 +592,7 @@ describe("the pre-release tag", () => {
         const pin = /npm@\d+\.\d+\.\d+/u.exec(script)?.[0];
 
         assert.deepStrictEqual(yield* run("pre"), {
-          calls: `--yes ${pin}\u0020dist-tag add @reebeat/core@0.1.0-alpha.1 alpha\n--yes ${pin}\u0020dist-tag add @reebeat/lint@0.1.0-alpha.1 alpha\n`,
+          calls: `--yes ${pin}\u0020dist-tag add @tsukuri/core@0.1.0-alpha.1 alpha\n--yes ${pin}\u0020dist-tag add @tsukuri/lint@0.1.0-alpha.1 alpha\n`,
           exit: 0,
         });
         assert.deepStrictEqual(yield* run("exit"), { calls: "", exit: 0 });

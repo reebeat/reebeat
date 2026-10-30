@@ -33,7 +33,7 @@ import {
   refsOf,
   stateEvent,
   statesOf,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import type {
   Anchor,
   Effect,
@@ -48,7 +48,7 @@ import type {
   Sources,
   TimedPlan,
   Window,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import { Array as Arr, Match, Option, Result } from "effect";
 
 import type { Observed, Subject } from "./events.ts";

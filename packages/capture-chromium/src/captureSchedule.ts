@@ -18,7 +18,7 @@
 // so a Scene's slide change is commanded `lag` frames before its `slideFrame`, a fragment step at the command frame
 // the Timeline gives it: a start at its effect's `commandFrame` (`fireFrame - 1`), an END step of a `focus` whose ring
 // ends by its own `until` at its `endCommandFrame` (`endFrame - 1`: the ring's last frame is `endFrame`). Which steps a
-// Scene has, and in which order, is `stepsOf` of `@reebeat/core`, the one definition the Deck (`@reebeat/render-reveal`)
+// Scene has, and in which order, is `stepsOf` of `@tsukuri/core`, the one definition the Deck (`@tsukuri/render-reveal`)
 // and the verifier share: the Nth step shows the Nth fragment of the Deck, so the steps are commanded in that order
 // (the command frames follow the step frames, a start before an end in one frame). Only `show` and `focus` effects are
 // steps: a `sound` is mixed at each instance's `fireFrame` and needs no command, however many instances it has. A step
@@ -28,8 +28,8 @@
 //
 // The lags are frames at `capturedFps`: that is the only frame rate they were measured at, and the capture refuses
 // another (`unsupportedRate`) rather than render a video whose timing is wrong.
-import { stepsOf } from "@reebeat/core";
-import type { Scene, Settings, TimedPlan, TimedScene } from "@reebeat/core";
+import { stepsOf } from "@tsukuri/core";
+import type { Scene, Settings, TimedPlan, TimedScene } from "@tsukuri/core";
 import { Array as Arr, Option, Order } from "effect";
 
 export type CaptureCommand =

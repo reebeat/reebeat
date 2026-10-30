@@ -1,4 +1,4 @@
-import type { RendererLifecycle } from "@reebeat/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 // Test-only adapters for the three services that have no stand-in (Renderer, FrameCapturer, Encoder). They are small
 // but real: they pass the contract suites, so the suites themselves are exercised here, and each takes a flaw that
 // breaks exactly one clause, so the suites are seen to fail (the negative controls).

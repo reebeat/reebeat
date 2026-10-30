@@ -2,14 +2,14 @@
 // provenance, and determinism. No model, no binary: the synthesiser, the aligner and the cache are stand-ins and
 // the encoder is a fake that stores the samples as they are.
 import { assert, layer } from "@effect/vitest";
-import { buildPlan, planLines, schedule, wordsOf } from "@reebeat/core";
-import { AssetCache, SpeechSynthesizer, WordAligner } from "@reebeat/services";
-import { contractLifecycle } from "@reebeat/services/contract";
+import { buildPlan, planLines, schedule, wordsOf } from "@tsukuri/core";
+import { AssetCache, SpeechSynthesizer, WordAligner } from "@tsukuri/services";
+import { contractLifecycle } from "@tsukuri/services/contract";
 import {
   evenAligner,
   memoryCache,
   silentSynthesizer,
-} from "@reebeat/services/standins";
+} from "@tsukuri/services/standins";
 import {
   Array as Arr,
   Effect,

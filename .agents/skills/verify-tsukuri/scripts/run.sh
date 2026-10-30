@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # run.sh <label> [--story <file>] [--journey] [--speech-flags "<flags>"] [--cache-dir <dir>]
-# One verification run of the checkout you are in (REEBEAT_VERIFY_TREE overrides): headroom, plan, lint, build into a scratch
-# directory, `reebeat check`, then the independent observations (frames, onsets, subtitles and chapters, Deck, speech cache);
-# with --journey also `reebeat journey` (two builds compared, F6). Every step's command and raw output is a file in the run
+# One verification run of the checkout you are in (TSUKURI_VERIFY_TREE overrides): headroom, plan, lint, build into a scratch
+# directory, `tsukuri check`, then the independent observations (frames, onsets, subtitles and chapters, Deck, speech cache);
+# with --journey also `tsukuri journey` (two builds compared, F6). Every step's command and raw output is a file in the run
 # directory <root>/<date>-<label>/, and REPORT.md lists them with exit codes and SHA-256. Nothing is written to the checkout.
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
-tree=${REEBEAT_VERIFY_TREE:-$(git rev-parse --show-toplevel)}
-if [ -z "${REEBEAT_CHROMIUM:-}" ]; then
+tree=${TSUKURI_VERIFY_TREE:-$(git rev-parse --show-toplevel)}
+if [ -z "${TSUKURI_CHROMIUM:-}" ]; then
   # Re-enter devenv: the system Bun can hang, and Chromium, ffmpeg and whisper come from it.
   cd "$tree" && exec devenv shell -- "$here/run.sh" "$@"
 fi
@@ -27,13 +27,13 @@ while [ $# -gt 0 ]; do
 done
 [[ "$label" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "label must be letters, digits, . _ -" >&2; exit 64; }
 
-root=${REEBEAT_VERIFY_ROOT:-$HOME/.local/state/reebeat-verify}
+root=${TSUKURI_VERIFY_ROOT:-$HOME/.local/state/tsukuri-verify}
 run=$root/$(date +%F)-$label
 [ ! -e "$run" ] || { echo "run directory exists: $run (pick another label; evidence is never overwritten)" >&2; exit 65; }
 cd "$tree"
-"$here/headroom.sh" | tee /dev/stderr >/tmp/reebeat-verify-headroom.$$ || { rm -f /tmp/reebeat-verify-headroom.$$; exit 1; }
+"$here/headroom.sh" | tee /dev/stderr >/tmp/tsukuri-verify-headroom.$$ || { rm -f /tmp/tsukuri-verify-headroom.$$; exit 1; }
 mkdir -p "$run"
-mv /tmp/reebeat-verify-headroom.$$ "$run/headroom.txt"
+mv /tmp/tsukuri-verify-headroom.$$ "$run/headroom.txt"
 
 name=$(basename "$(dirname "$story")")
 cache_flag=(); [ -z "$cache" ] || cache_flag=(--cache-dir "$cache")
@@ -44,9 +44,9 @@ steps=()
 
 # Every step runs in its own session (setsid) so that its pid is also its process group, and `<run>/pids.txt` records
 # "<pid> <start time>" for it. Playwright launches Chromium detached, in a group of its own, so `observe.ts` appends the
-# browser's own "<pid> <start time>" to the same file (REEBEAT_VERIFY_PIDS). cleanup.sh stops exactly the recorded groups
-# and nothing it merely finds by name. A Chromium that `reebeat build` or `journey` launches is not recorded.
-export REEBEAT_VERIFY_PIDS="$run/pids.txt"
+# browser's own "<pid> <start time>" to the same file (TSUKURI_VERIFY_PIDS). cleanup.sh stops exactly the recorded groups
+# and nothing it merely finds by name. A Chromium that `tsukuri build` or `journey` launches is not recorded.
+export TSUKURI_VERIFY_PIDS="$run/pids.txt"
 step() { # step <name> <command...>: writes <run>/<name>.txt, "$ command" first, then the raw output
   local n=$1; shift
   local started; started=$(date +%s)
@@ -67,11 +67,11 @@ step() { # step <name> <command...>: writes <run>/<name>.txt, "$ command" first,
   echo "status:"; git status --short
 } >"$run/meta.txt"
 
-reebeat=(bun packages/cli/bin/reebeat.ts)
-step plan "${reebeat[@]}" plan "$story" --timing "${cache_flag[@]}" "${speech[@]}"
-step lint "${reebeat[@]}" lint "$story" "${cache_flag[@]}" "${speech[@]}"
-step build "${reebeat[@]}" build "$story" --out "$build" "${cache_flag[@]}" "${speech[@]}"
-step check "${reebeat[@]}" check "$build" --source "$story" "${cache_flag[@]}" "${speech[@]}"
+tsukuri=(bun packages/cli/bin/tsukuri.ts)
+step plan "${tsukuri[@]}" plan "$story" --timing "${cache_flag[@]}" "${speech[@]}"
+step lint "${tsukuri[@]}" lint "$story" "${cache_flag[@]}" "${speech[@]}"
+step build "${tsukuri[@]}" build "$story" --out "$build" "${cache_flag[@]}" "${speech[@]}"
+step check "${tsukuri[@]}" check "$build" --source "$story" "${cache_flag[@]}" "${speech[@]}"
 obs=(bun "$here/observe.ts")
 cache_dir=${cache:-}
 step obs-frames "${obs[@]}" frames "$build" "$run/frames" "$tree"
@@ -80,7 +80,7 @@ step obs-subtitles "${obs[@]}" subtitles "$build" "$run/obs" "$tree"
 step obs-deck "${obs[@]}" deck "$build" "$run/deck" "$tree"
 step obs-cache "${obs[@]}" cache "$build" "$run/obs" "$tree" ${cache_dir:+"$cache_dir"}
 if [ "$journey" = 1 ]; then
-  step journey "${reebeat[@]}" journey "$story" --out-root "$run/journey" "${cache_flag[@]}" "${speech[@]}"
+  step journey "${tsukuri[@]}" journey "$story" --out-root "$run/journey" "${cache_flag[@]}" "${speech[@]}"
 fi
 
 {

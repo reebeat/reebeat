@@ -4,7 +4,7 @@
 // show neither hides in the transition nor changes the picture in which the transition is observed. The shows are the probes: the anchor each is written against is
 // observed in the written video, so a number of `revealLifecycle` that is wrong for any event fails here, naming it.
 import { assert, layer } from "@effect/vitest";
-import { revealRenderer } from "@reebeat/render-reveal";
+import { revealRenderer } from "@tsukuri/render-reveal";
 import { Array as Arr, Context, Effect, Layer } from "effect";
 
 import { runChecks } from "../src/index.ts";
@@ -19,7 +19,7 @@ import {
 import type { FixtureData } from "./support.ts";
 
 const story = `Title: Lifecycle coverage
-Author: reebeat tests
+Author: tsukuri tests
 
 # One
 
@@ -88,7 +88,7 @@ Red orange yellow green blue indigo violet white grey black.
 `;
 
 class Coverage extends Context.Service<Coverage, FixtureData>()(
-  "@reebeat/verify/test/Coverage"
+  "@tsukuri/verify/test/Coverage"
 ) {
   static readonly layer = Layer.effect(
     Coverage,

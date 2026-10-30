@@ -6,14 +6,14 @@
 // - `until-is-its-own-fire`: an `until` written as the very event the effect fires at. `until` is the first occurrence
 //   strictly AFTER the fire frame, so such an end can never come and the ring would last to the end of the Scene, which
 //   is what leaving `until` out says.
-import { formatEvent, refsOf } from "@reebeat/core";
+import { formatEvent, refsOf } from "@tsukuri/core";
 import type {
   DerivedEvent,
   Effect as PlanEffect,
   EventExpr,
   PlanJson,
   Scene,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";

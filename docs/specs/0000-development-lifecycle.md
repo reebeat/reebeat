@@ -2,11 +2,11 @@
 
 Status: **spec** (frozen when its PR opens). Date: 2026-10-28. Decided by: the operator, 2026-10-28.
 Binding for: every later PR in this repository. Implemented by the PR that carries this file.
-Verify skill: none, development tooling and process: it changes no output of `reebeat`; the gates are its own check.
+Verify skill: none, development tooling and process: it changes no output of `tsukuri`; the gates are its own check.
 
 ## Goal
 
-Every change to reebeat travels one road: **spec → code → PR**, strictly 1:1, and no change reaches `main` without passing the same gates locally, in CI and in a recorded review round. The road is built from tools that already exist (Vite+, Oxlint, Oxfmt, Ultracite, `@effect/tsgo`, gitleaks, commitlint, knip, jscpd, `gh`). What we write ourselves is only what no tool does: the exception registry check, the Effect-family check, the review-round record and the merge gate.
+Every change to tsukuri travels one road: **spec → code → PR**, strictly 1:1, and no change reaches `main` without passing the same gates locally, in CI and in a recorded review round. The road is built from tools that already exist (Vite+, Oxlint, Oxfmt, Ultracite, `@effect/tsgo`, gitleaks, commitlint, knip, jscpd, `gh`). What we write ourselves is only what no tool does: the exception registry check, the Effect-family check, the review-round record and the merge gate.
 
 ## Journey
 
@@ -82,7 +82,7 @@ A PR carries the spec and its code together (plan and build are one step, Revisi
 
 In scope: everything in *What is built*, committed to `main` by the PR that carries this spec.
 
-Not in scope: any reebeat code (spec 0001 and later), a release process, npm publishing, deployment, a database, browser tests, generated documentation, the store-boundary check, Renovate, and a LICENSE file (the operator deferred the licence; the README says so).
+Not in scope: any tsukuri code (spec 0001 and later), a release process, npm publishing, deployment, a database, browser tests, generated documentation, the store-boundary check, Renovate, and a LICENSE file (the operator deferred the licence; the README says so).
 
 ## Falsifiers
 
@@ -105,7 +105,7 @@ Each falsifier has a negative control that is run and observed to fail, with the
 
 - Free on mechanism, specific on behaviour: the scripts may be arranged differently as long as the names `ready`, `check`, `test`, `check:exceptions`, `knip`, `cpd` and `secrets` exist and the journey above holds.
 - `tools/quality` is the only workspace that holds code in this PR. Tests prove the exception check, the family check and the diagnostic coverage; they use fixtures written to temporary directories, not files outside the repository.
-- No placeholder implementation of reebeat is added. `packages/` holds no package yet (workspace globs may match nothing).
+- No placeholder implementation of tsukuri is added. `packages/` holds no package yet (workspace globs may match nothing).
 - Every copied file names its source in its header or in a `PROVENANCE.md` beside the copied directory (repository, commit, deviations).
 
 ## Risks
@@ -116,7 +116,7 @@ Each falsifier has a negative control that is run and observed to fail, with the
 | `@effect/tsgo` patching of the TypeScript 7 server breaks on a TypeScript or Effect bump | Versions are pinned; `prepare` re-patches on install; an upgrade is its own spec |
 | The exception registry becomes a rubber stamp | Each entry needs a retirement trigger and the review loop's conformance reviewer checks new entries; the check also fails on entries without a live suppression |
 | A donor rule fits the donor domain, not ours | Only the rules in *Anti-slop rules kept* are enabled; adding one is a reviewed change |
-| Branch protection with administrators included blocks the operator in an emergency | The operator can remove the protection with `gh api -X DELETE repos/reebeat/reebeat/branches/main/protection`; the command is in `AGENTS.md` |
+| Branch protection with administrators included blocks the operator in an emergency | The operator can remove the protection with `gh api -X DELETE repos/tsukuri-labs/tsukuri/branches/main/protection`; the command is in `AGENTS.md` |
 
 ## Open questions for the operator
 
@@ -137,4 +137,4 @@ Dated entries. A spec is revised only here; its text above is never edited silen
   5. The 18 generic anti-slop rules are enabled only through Ultracite's bundled preset, which already enables the identical rules; the vendored generic sources stay as the copy to change if a rule must diverge, and the five Effect rules load from `tools/oxlint/anti-slop/effect`.
   6. `vite` stays a devDependency and is listed in the knip ignore list (knip otherwise reports the catalog entry unused); `engines.node` is `>=24.0.0`; `devenv.lock` is the donor's.
   7. Falsifier F3's control uses a violation `vp check --fix` cannot repair (`console.log` and an `any` parameter): a fixable one such as `var x = 1;` is rewritten and restaged by `vp staged`, not refused.
-- **2026-10-29, spec 0010: the review loop gained a verification skill and a record header.** `review-pr` now has the verification reviewer run skill `verify-reebeat` and keep its feature map true, `record-round.sh` validates an `Author`, `Reviewers` and `Checked` header (a pass by the author is refused), and every spec from 0010 on carries a `Verify skill:` line. This spec's "Donor-specific parts are dropped" paragraph above is superseded for the verification skills only: reebeat has its own. Added to this spec: its `Verify skill:` line. No change to the journey, scope or a falsifier.
+- **2026-10-29, spec 0010: the review loop gained a verification skill and a record header.** `review-pr` now has the verification reviewer run skill `verify-tsukuri` and keep its feature map true, `record-round.sh` validates an `Author`, `Reviewers` and `Checked` header (a pass by the author is refused), and every spec from 0010 on carries a `Verify skill:` line. This spec's "Donor-specific parts are dropped" paragraph above is superseded for the verification skills only: tsukuri has its own. Added to this spec: its `Verify skill:` line. No change to the journey, scope or a falsifier.

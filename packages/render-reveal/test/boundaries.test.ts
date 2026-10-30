@@ -1,6 +1,6 @@
 // F11, single source (spec 0001): packages/render-reveal reads the Plan and never the screenplay. Its manifest depends on
-// exactly @reebeat/core (types, and the parser-free `@reebeat/core/steps` that says which effects are steps and where each
-// sound plays), @reebeat/services, @reebeat/lint, effect, reveal.js, @fontsource/inter and parse5, and no file under src
+// exactly @tsukuri/core (types, and the parser-free `@tsukuri/core/steps` that says which effects are steps and where each
+// sound plays), @tsukuri/services, @tsukuri/lint, effect, reveal.js, @fontsource/inter and parse5, and no file under src
 // imports a parser, a browser driver or a Node built-in; the core's own entry is a type-only import, so its parser is never loaded; the services and the lint rules are
 // libraries and service contracts, never an adapter. The lint rule `no-restricted-imports` (vite.config.ts) is the second
 // guard; this scan reads every specifier.
@@ -35,14 +35,14 @@ const importsOf = (text: string): readonly Found[] =>
     typeOnly: groups?.type !== undefined,
   }));
 
-/** What a file under src may import: itself, effect, parse5, the services, the lint rules, `@reebeat/core/steps` and the types of @reebeat/core. */
+/** What a file under src may import: itself, effect, parse5, the services, the lint rules, `@tsukuri/core/steps` and the types of @tsukuri/core. */
 const violations = (text: string): readonly string[] =>
   Arr.flatMap(importsOf(text), ({ specifier, typeOnly }) => {
     const allowed =
-      /^(?:\.{1,2}\/|effect(?:\/|$)|parse5$|@reebeat\/(?:services|lint|core\/steps)$)/u.test(
+      /^(?:\.{1,2}\/|effect(?:\/|$)|parse5$|@tsukuri\/(?:services|lint|core\/steps)$)/u.test(
         specifier
       ) ||
-      (specifier === "@reebeat/core" && typeOnly);
+      (specifier === "@tsukuri/core" && typeOnly);
 
     return allowed ? [] : [specifier];
   });
@@ -60,9 +60,9 @@ describe("F11: packages/render-reveal reads the Plan, never the screenplay", () 
         // One deepStrictEqual covers the key set and every value: nothing else is a dependency.
         assert.deepStrictEqual(dependencies, {
           "@fontsource/inter": "catalog:",
-          "@reebeat/core": "workspace:*",
-          "@reebeat/lint": "workspace:*",
-          "@reebeat/services": "workspace:*",
+          "@tsukuri/core": "workspace:*",
+          "@tsukuri/lint": "workspace:*",
+          "@tsukuri/services": "workspace:*",
           parse5: "catalog:",
           "reveal.js": "catalog:",
         });
@@ -88,18 +88,18 @@ describe("F11: packages/render-reveal reads the Plan, never the screenplay", () 
 
   it("control: the scan flags each forbidden import in a scratch source", () => {
     for (const bad of [
-      'import { buildPlan } from "@reebeat/core";',
-      'import { type PlanJson } from "@reebeat/core";',
-      'export { buildPlan } from "@reebeat/core";',
+      'import { buildPlan } from "@tsukuri/core";',
+      'import { type PlanJson } from "@tsukuri/core";',
+      'export { buildPlan } from "@tsukuri/core";',
       'import Fountain from "fountain-js";',
       'import "playwright-core";',
       'import { readFileSync } from "node:fs";',
       'import { join } from "path";',
-      'import { encode } from "@reebeat/encode-ffmpeg";',
-      'import { capture } from "@reebeat/capture-chromium";',
+      'import { encode } from "@tsukuri/encode-ffmpeg";',
+      'import { capture } from "@tsukuri/capture-chromium";',
       'const parser = await import("fountain-js");',
       'const fs = require("fs");',
-      'import {\n  buildPlan,\n  collectErrors,\n} from "@reebeat/core";',
+      'import {\n  buildPlan,\n  collectErrors,\n} from "@tsukuri/core";',
     ]) {
       assert.strictEqual(violations(bad).length, 1, bad);
     }
@@ -110,11 +110,11 @@ describe("F11: packages/render-reveal reads the Plan, never the screenplay", () 
       'import { Effect } from "effect";',
       'import { parse } from "parse5";',
       'import { x } from "./x.ts";',
-      'import type { PlanJson } from "@reebeat/core";',
-      'import type {\n  Element,\n  Scene,\n} from "@reebeat/core";',
+      'import type { PlanJson } from "@tsukuri/core";',
+      'import type {\n  Element,\n  Scene,\n} from "@tsukuri/core";',
       'import * as Arr from "effect/Array";',
-      'import { effectFragmentAgreement } from "@reebeat/lint";',
-      'import { Renderer } from "@reebeat/services";',
+      'import { effectFragmentAgreement } from "@tsukuri/lint";',
+      'import { Renderer } from "@tsukuri/services";',
     ]) {
       assert.deepStrictEqual(violations(good), [], good);
     }

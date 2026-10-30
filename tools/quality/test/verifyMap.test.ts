@@ -1,5 +1,5 @@
-// The drift check of skill `verify-reebeat` (spec 0010, V3 and V4): controls on text, then the real map against the real specs
-// and the real vocabulary of `@reebeat/core`. A spec from 0010 on names the map's rows on a `Verify skill:` line; every effect verb,
+// The drift check of skill `verify-tsukuri` (spec 0010, V3 and V4): controls on text, then the real map against the real specs
+// and the real vocabulary of `@tsukuri/core`. A spec from 0010 on names the map's rows on a `Verify skill:` line; every effect verb,
 // sound, anchor kind, Element event and transition has a row.
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
@@ -9,7 +9,7 @@ import {
   referenceLifecycle,
   sfxNames,
   verbs,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import {
   Array as Arr,
   Effect,
@@ -189,7 +189,7 @@ describe("this repository", () => {
     const specs = path.join(root, "docs", "specs");
 
     const map = yield* fs.readFileString(
-      path.join(root, ".agents", "skills", "verify-reebeat", "features.md")
+      path.join(root, ".agents", "skills", "verify-tsukuri", "features.md")
     );
 
     const files = yield* Effect.forEach(

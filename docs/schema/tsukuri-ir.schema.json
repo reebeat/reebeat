@@ -1,5 +1,5 @@
 {
-  "$id": "https://github.com/reebeat/reebeat/schema/ir/1",
+  "$id": "https://github.com/tsukuri-labs/tsukuri/schema/ir/1",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$ref": "#/$defs/Graph",
   "$defs": {

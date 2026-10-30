@@ -35,7 +35,7 @@ export const elementClasses = [
   "muted",
 ] as const;
 
-/** The built-in sound catalogue (synthesised in TypeScript by `@reebeat/sounds-synth`); the one list of sound names. */
+/** The built-in sound catalogue (synthesised in TypeScript by `@tsukuri/sounds-synth`); the one list of sound names. */
 export const sfxNames = ["pop", "whoosh", "ding"] as const;
 
 export type SfxName = (typeof sfxNames)[number];
@@ -59,9 +59,9 @@ export const offsetUnits = ["flicks", "f", "percent"] as const;
 export const idPattern = /^[A-Za-z][A-Za-z0-9_-]*$/u;
 
 /**
- * What a construct of the IR says about itself in the generated JSON Schema (`docs/schema/reebeat-ir.schema.json`, spec
+ * What a construct of the IR says about itself in the generated JSON Schema (`docs/schema/tsukuri-ir.schema.json`, spec
  * 0004): its `identifier` (the name of its definition), a `description`, where it comes from (`origin`: SMIL 3.0 timing,
- * Harel 1987, SCXML, Fran; RxJS only explains) and, where reebeat's meaning differs, how (`deviation`). A test fails when
+ * Harel 1987, SCXML, Fran; RxJS only explains) and, where tsukuri's meaning differs, how (`deviation`). A test fails when
  * a construct of the IR has no `origin`.
  */
 export const construct = (

@@ -3,11 +3,11 @@
 // only Chromium and the verification are replaced by fakes, through `Composition`, which is the seam the composition
 // root offers. The environment the adapters read is a test's own `ConfigProvider`, never the machine's.
 import { assert } from "@effect/vitest";
-import { buildPlan } from "@reebeat/core";
-import { MediaTools } from "@reebeat/encode-ffmpeg";
-import { sha256Hex, speechStage } from "@reebeat/pipeline";
-import { FrameCapturer, decodeSelection, localEgress } from "@reebeat/services";
-import type { Selection, CaptureError } from "@reebeat/services";
+import { buildPlan } from "@tsukuri/core";
+import { MediaTools } from "@tsukuri/encode-ffmpeg";
+import { sha256Hex, speechStage } from "@tsukuri/pipeline";
+import { FrameCapturer, decodeSelection, localEgress } from "@tsukuri/services";
+import type { Selection, CaptureError } from "@tsukuri/services";
 import {
   Array as Arr,
   ConfigProvider,
@@ -70,7 +70,7 @@ export const storyText = asText([
 export const tempDirectory = Effect.gen(function* create() {
   const fs = yield* FileSystem.FileSystem;
 
-  return yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-cli-test-" });
+  return yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-cli-test-" });
 });
 
 /** The committed story of release 1 and its speech cache. */
@@ -234,7 +234,7 @@ export interface Fakes {
   readonly capturer?: Parts["capturer"];
   /** The environment names and values the adapters can read; default none. */
   readonly env?: Readonly<Record<string, string>>;
-  /** Read the real environment instead (`REEBEAT_CHROMIUM` and the like): for the run that drives the real Chromium. */
+  /** Read the real environment instead (`TSUKURI_CHROMIUM` and the like): for the run that drives the real Chromium. */
   readonly machineEnv?: boolean;
   /** Told what every `Composition` call was asked, before it answers. */
   readonly spy?: (selection: Selection, options: RunOptions) => void;
@@ -269,7 +269,7 @@ export const fakeWorld = (fakes: Fakes = {}) => {
   );
 };
 
-/** Runs `reebeat <args>` and returns how it ended with everything it printed. */
+/** Runs `tsukuri <args>` and returns how it ended with everything it printed. */
 export const runCli = (args: readonly string[], fakes: Fakes = {}) =>
   Effect.gen(function* execute() {
     const exit = yield* Effect.exit(run(args));
@@ -291,7 +291,7 @@ interface BuildSetup {
   readonly story: string;
 }
 
-/** Runs `reebeat build <story> --out <out> <extra>`. */
+/** Runs `tsukuri build <story> --out <out> <extra>`. */
 export const runBuild = (
   setup: BuildSetup,
   extra: readonly string[] = [],

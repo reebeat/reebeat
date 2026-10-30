@@ -1,9 +1,9 @@
 // writeRenderedDeck and writeSounds: the Renderer's files (text and bytes) land under one directory and nowhere else;
 // each sound is a RIFF file of the library's clip.
 import { assert, it } from "@effect/vitest";
-import { SoundLibrary } from "@reebeat/services";
-import type { RenderedDeck } from "@reebeat/services";
-import { toneSounds } from "@reebeat/services/standins";
+import { SoundLibrary } from "@tsukuri/services";
+import type { RenderedDeck } from "@tsukuri/services";
+import { toneSounds } from "@tsukuri/services/standins";
 import { Effect, FileSystem, Layer, Predicate } from "effect";
 
 import { writeRenderedDeck, writeSounds } from "../src/writeDeck.ts";
@@ -12,7 +12,7 @@ import { platform } from "./support.ts";
 const withSounds = Layer.provideMerge(toneSounds, platform);
 
 const directory = Effect.flatMap(FileSystem.FileSystem, (fs) =>
-  fs.makeTempDirectoryScoped({ prefix: "reebeat-write-" })
+  fs.makeTempDirectoryScoped({ prefix: "tsukuri-write-" })
 );
 
 const deck: RenderedDeck = {

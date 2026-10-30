@@ -5,7 +5,7 @@
 //   a `show`         the first frame that differs in its target's cell, and the frame the fade settles
 //   a `focus`        the first frame that differs in its target's cell; and, when the ring ends by its own `until`,
 //                    the frame the ring starts to go (events.ts, "ring-end")
-import { synthClip } from "@reebeat/sounds-synth";
+import { synthClip } from "@tsukuri/sounds-synth";
 import { Array as Arr } from "effect";
 
 import { effectKey, ownSubject } from "./effectFacts.ts";

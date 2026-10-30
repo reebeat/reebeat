@@ -20,7 +20,7 @@ import {
   stateNames,
   transitionNames,
   verbs,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import {
   Array as Arr,
   Effect,

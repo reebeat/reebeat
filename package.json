@@ -1,15 +1,15 @@
 {
-  "name": "reebeat",
+  "name": "tsukuri",
   "version": "0.0.0",
   "private": true,
-  "homepage": "https://github.com/reebeat/reebeat#readme",
+  "homepage": "https://github.com/tsukuri-labs/tsukuri#readme",
   "bugs": {
-    "url": "https://github.com/reebeat/reebeat/issues"
+    "url": "https://github.com/tsukuri-labs/tsukuri/issues"
   },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/reebeat/reebeat.git"
+    "url": "git+https://github.com/tsukuri-labs/tsukuri.git"
   },
   "workspaces": [
     "packages/*",
@@ -27,11 +27,11 @@
     "cpd": "jscpd --config .jscpd.json .",
     "secrets": "gitleaks git --config .gitleaks.toml --redact",
     "commitlint": "commitlint",
-    "reebeat": "bun packages/cli/bin/reebeat.ts",
+    "tsukuri": "bun packages/cli/bin/tsukuri.ts",
     "changeset": "changeset",
     "release:version": "changeset version",
     "release:stage": "bun tools/quality/stagePackages.ts",
-    "journey": "bun packages/cli/bin/reebeat.ts journey stories/same-id/story.fountain"
+    "journey": "bun packages/cli/bin/tsukuri.ts journey stories/same-id/story.fountain"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",

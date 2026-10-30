@@ -4,8 +4,8 @@
 // lists a stand-in narrator (F1 still observes the sounds: `offline.test.ts`): the same silenced track under a manifest
 // that lists a real narrator still fails both.
 import { assert, layer } from "@effect/vitest";
-import { decodeBuildManifest, encodeBuildManifest } from "@reebeat/pipeline";
-import type { BuildManifest } from "@reebeat/pipeline";
+import { decodeBuildManifest, encodeBuildManifest } from "@tsukuri/pipeline";
+import type { BuildManifest } from "@tsukuri/pipeline";
 import { Array as Arr, Effect, FileSystem, Path } from "effect";
 
 import { exitCode } from "../src/index.ts";

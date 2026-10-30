@@ -1,6 +1,6 @@
 { pkgs, lib, ... }:
 let
-  # nixpkgs builds Chromium for Linux only; elsewhere set REEBEAT_CHROMIUM to a local browser.
+  # nixpkgs builds Chromium for Linux only; elsewhere set TSUKURI_CHROMIUM to a local browser.
   chromium = lib.optional pkgs.stdenv.hostPlatform.isLinux pkgs.chromium;
 in
 {
@@ -23,6 +23,6 @@ in
   ++ chromium;
 
   env = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-    REEBEAT_CHROMIUM = lib.getExe pkgs.chromium;
+    TSUKURI_CHROMIUM = lib.getExe pkgs.chromium;
   };
 }

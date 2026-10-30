@@ -1,5 +1,5 @@
-// `reebeat check`: the output-side falsifiers over a finished build. It reads only the written files and the
-// source: the verdicts come from `@reebeat/verify`, through the `Verifier` service.
+// `tsukuri check`: the output-side falsifiers over a finished build. It reads only the written files and the
+// source: the verdicts come from `@tsukuri/verify`, through the `Verifier` service.
 import { Array as Arr, Console, Effect } from "effect";
 
 import { ChecksFailed } from "./errors.ts";

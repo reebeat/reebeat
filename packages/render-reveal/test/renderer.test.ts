@@ -1,13 +1,13 @@
 // The Renderer contract for reveal.js, and the files of a Deck (spec 0001, Deck page contract): generated text plus
 // assets read from the installed packages, relative URLs only, no network, licences kept.
 import { assert, describe, it } from "@effect/vitest";
-import { AdapterUnavailable, Renderer } from "@reebeat/services";
-import type { RenderedDeck } from "@reebeat/services";
+import { AdapterUnavailable, Renderer } from "@tsukuri/services";
+import type { RenderedDeck } from "@tsukuri/services";
 import {
   failingClauses,
   rendererClauses,
   rendererContract,
-} from "@reebeat/services/contract";
+} from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Effect,

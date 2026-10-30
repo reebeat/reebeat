@@ -1,6 +1,6 @@
 /* oxlint-disable typescript/promise-function-async -- EX-0030: Playwright returns Promises; every call goes through one of the helpers of this file */
 // The browser boundary of the tests: the only module that imports Playwright. ABI: Playwright's Promise API driving
-// the Chromium named by `REEBEAT_CHROMIUM` (1280x720, no determinism flags: see `launchFlags`). Each `openDeck` launches a fresh
+// the Chromium named by `TSUKURI_CHROMIUM` (1280x720, no determinism flags: see `launchFlags`). Each `openDeck` launches a fresh
 // browser in the caller's Scope and closes it when the Scope closes. The page records every request that is not a
 // `file:` URL (the Deck must make none).
 // Retirement trigger: an Effect-native browser driver in the installed Effect packages.
@@ -17,9 +17,9 @@ import type { Browser, Page } from "playwright-core";
 const launchFlags = ["--hide-scrollbars"];
 
 const launch = Effect.gen(function* launching() {
-  const executablePath = yield* Config.String("REEBEAT_CHROMIUM");
+  const executablePath = yield* Config.String("TSUKURI_CHROMIUM");
 
-  const noSandbox = yield* Config.String("REEBEAT_CHROMIUM_NO_SANDBOX").pipe(
+  const noSandbox = yield* Config.String("TSUKURI_CHROMIUM_NO_SANDBOX").pipe(
     Config.withDefault("")
   );
 
@@ -45,7 +45,7 @@ interface OpenDeck {
 
 /**
  * Opens `deck.html` of a written Deck directory in a fresh page (a script of `init`, if any, runs before the page's
- * own) and waits for `reebeatDeck.ready`. Network requests outside `file:` are aborted and recorded.
+ * own) and waits for `tsukuriDeck.ready`. Network requests outside `file:` are aborted and recorded.
  */
 export const openDeck = (directory: string, init = "") =>
   Effect.gen(function* opening() {
@@ -84,7 +84,7 @@ export const openDeck = (directory: string, init = "") =>
     )).toString();
 
     yield* Effect.promise(() => page.goto(url));
-    yield* Effect.promise(() => page.evaluate("window.reebeatDeck.ready"));
+    yield* Effect.promise(() => page.evaluate("window.tsukuriDeck.ready"));
 
     return { external, page, pageErrors } satisfies OpenDeck;
   }).pipe(Effect.provide(NodeServices.layer));

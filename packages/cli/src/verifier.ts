@@ -1,6 +1,6 @@
 // The verification as a capability of the CLI: `check` and `journey` ask it, and the composition root decides
 // what answers. The live layer is the verify package (through `verify.ts`); the tests answer with fakes.
-import type { MediaTools } from "@reebeat/encode-ffmpeg";
+import type { MediaTools } from "@tsukuri/encode-ffmpeg";
 import type { FileSystem, Path } from "effect";
 import { Context, Effect, Layer } from "effect";
 import type { Digest } from "effect/crypto";
@@ -23,7 +23,7 @@ export class Verifier extends Context.Service<
       readonly sourcePath: string;
     }) => Effect.Effect<readonly Verdict[], VerifyError>;
   }
->()("@reebeat/cli/verifier/Verifier") {
+>()("@tsukuri/cli/verifier/Verifier") {
   static readonly layer = Layer.effect(
     Verifier,
     Effect.gen(function* build() {

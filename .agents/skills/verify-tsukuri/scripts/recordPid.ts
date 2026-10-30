@@ -1,7 +1,7 @@
 // Records a process that a step of `run.sh` started outside the step's own process group, so that `cleanup.sh` can stop it.
 // Playwright launches Chromium detached (a new session and process group of its own), so the group `run.sh` recorded for the
 // step does not contain it. The line written is `<pid> <start time>`, the same form `run.sh` writes, in the file named by
-// REEBEAT_VERIFY_PIDS (set by `run.sh`; absent when the script is run by hand, then nothing is recorded).
+// TSUKURI_VERIFY_PIDS (set by `run.sh`; absent when the script is run by hand, then nothing is recorded).
 // Playwright 1.64 has no `browser.process()`: the browser process id comes from Chromium's own `SystemInfo.getProcessInfo`.
 import { appendFileSync, readFileSync } from "node:fs";
 
@@ -26,11 +26,11 @@ const startTime = (pid: number): string => {
   return stat.slice(stat.lastIndexOf(") ") + 2).split(" ")[19] ?? "";
 };
 
-/** Appends the browser process (the leader of Chromium's group) to the file named by REEBEAT_VERIFY_PIDS, if there is one. */
+/** Appends the browser process (the leader of Chromium's group) to the file named by TSUKURI_VERIFY_PIDS, if there is one. */
 export const recordBrowser = async (
   browser: BrowserWithCdp
 ): Promise<number | undefined> => {
-  const file = process.env.REEBEAT_VERIFY_PIDS;
+  const file = process.env.TSUKURI_VERIFY_PIDS;
   const { processInfo } = await (
     await browser.newBrowserCDPSession()
   ).send("SystemInfo.getProcessInfo");

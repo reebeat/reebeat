@@ -4,7 +4,7 @@
 // picture of the video is not a change). Each span is the observed counterpart of the window `resolve.ts` computes from
 // the renderer's declared lifecycle, so an expression evaluated over them (`leaves.ts`) and the resolved frames can be
 // compared. Pure: the decoding happened before, `World` holds its results.
-import { eventKind, showEffectOf, stateStart, stepsOf } from "@reebeat/core";
+import { eventKind, showEffectOf, stateStart, stepsOf } from "@tsukuri/core";
 import type {
   ElementEvent,
   LifecycleFrames,
@@ -12,7 +12,7 @@ import type {
   TimedPlan,
   TimedScene,
   Window,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import { Array as Arr, Option, Order, Result } from "effect";
 
 import { instanceKey } from "./effectFacts.ts";

@@ -152,7 +152,7 @@ const restrictedSourcePatterns = [
   {
     message:
       "Import another workspace package through its export map, not its source path.",
-    regex: "^@reebeat/[^/]+/src(?:/|$)",
+    regex: "^@tsukuri/[^/]+/src(?:/|$)",
   },
   {
     message:
@@ -172,7 +172,7 @@ export default defineConfig({
       "packages/*/test/fixtures/**",
       // The JSON Schema of the IR is generated from `GraphSchema` and compared byte for byte (spec 0004).
       "docs/schema/**",
-      // The speech cache is written by `@reebeat/cache-fs` in its own JSON layout.
+      // The speech cache is written by `@tsukuri/cache-fs` in its own JSON layout.
       "stories/*/speech-cache/**",
     ],
   },
@@ -271,7 +271,7 @@ export default defineConfig({
                   message:
                     "packages/services imports libraries only (design R3): core, subtitles and lint.",
                   regex:
-                    "^@reebeat/(?!(?:core|subtitles|lint|services)(?:/|$))",
+                    "^@tsukuri/(?!(?:core|subtitles|lint|services)(?:/|$))",
                 },
               ],
             },
@@ -290,8 +290,8 @@ export default defineConfig({
                 {
                   allowTypeImports: true,
                   message:
-                    "packages/render-reveal takes types from @reebeat/core only (spec 0001, F11): it must not reach the parser.",
-                  name: "@reebeat/core",
+                    "packages/render-reveal takes types from @tsukuri/core only (spec 0001, F11): it must not reach the parser.",
+                  name: "@tsukuri/core",
                 },
               ],
               patterns: [

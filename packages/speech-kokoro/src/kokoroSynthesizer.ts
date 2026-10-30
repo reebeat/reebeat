@@ -10,8 +10,8 @@ import {
   SpeechSynthesizer,
   SynthesisFailed,
   localEgress,
-} from "@reebeat/services";
-import type { SynthesizeRequest } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { SynthesizeRequest } from "@tsukuri/services";
 import {
   Array as Arr,
   Config,
@@ -29,8 +29,8 @@ const sampleRate = 24_000;
 
 const adapter = `kokoro@${kokoroJs}`;
 
-/** Where Hugging Face models are kept: `REEBEAT_KOKORO_CACHE`, a directory outside the repository. */
-const cacheDirectory = Config.String("REEBEAT_KOKORO_CACHE");
+/** Where Hugging Face models are kept: `TSUKURI_KOKORO_CACHE`, a directory outside the repository. */
+const cacheDirectory = Config.String("TSUKURI_KOKORO_CACHE");
 
 /** What a loaded model gives for one request: mono float samples and their rate. */
 export interface RawSpeech {
@@ -56,13 +56,13 @@ const unavailable = (requirement: string, message: string) =>
 const failed = (message: string) => (cause: unknown) =>
   new SynthesisFailed({ adapter, cause, message });
 
-/** Loads the model from `REEBEAT_KOKORO_CACHE`. Every foreign Promise is wrapped here, once. */
+/** Loads the model from `TSUKURI_KOKORO_CACHE`. Every foreign Promise is wrapped here, once. */
 const loadModel: Effect.Effect<KokoroModel, AdapterUnavailable> = Effect.gen(
   function* loadKokoro() {
     const directory = yield* Effect.mapError(cacheDirectory, () =>
       unavailable(
-        "env REEBEAT_KOKORO_CACHE",
-        "REEBEAT_KOKORO_CACHE names the directory of the Kokoro model and is not set"
+        "env TSUKURI_KOKORO_CACHE",
+        "TSUKURI_KOKORO_CACHE names the directory of the Kokoro model and is not set"
       )
     );
 

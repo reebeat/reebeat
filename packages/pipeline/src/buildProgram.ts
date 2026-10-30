@@ -8,14 +8,14 @@
 //
 // Everything is written into `<out>.partial` and moved to `<out>` in one rename after `build.json`, the last file,
 // is in. Any failure, or an interrupt, removes `<out>.partial`; an earlier build at `<out>` is removed before the
-// new one starts, so a failed build leaves no directory `reebeat check` could accept (F12).
+// new one starts, so a failed build leaves no directory `tsukuri check` could accept (F12).
 import {
   buildPlan,
   encodePlan,
   requireTimeline,
   schedule,
-} from "@reebeat/core";
-import type { TimedPlan } from "@reebeat/core";
+} from "@tsukuri/core";
+import type { TimedPlan } from "@tsukuri/core";
 import {
   AssetCache,
   Encoder,
@@ -26,8 +26,8 @@ import {
   WordAligner,
   rejectSecretSettings,
   requireOutputName,
-} from "@reebeat/services";
-import type { AdapterInfo } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { AdapterInfo } from "@tsukuri/services";
 import {
   Array as Arr,
   Duration,

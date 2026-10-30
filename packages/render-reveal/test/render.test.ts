@@ -1,7 +1,7 @@
 // renderDeck is pure and follows the Deck page contract of spec 0001. These tests read the generated page back with
 // readDeck and with plain string checks, so they need no browser.
 import { assert, describe, it } from "@effect/vitest";
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Array as Arr, Effect, Option, Order, String as Str } from "effect";
 
 import { readDeck, renderDeck } from "../src/index.ts";
@@ -98,7 +98,7 @@ describe("renderDeck", () => {
         );
         assert.include(
           html,
-          `<meta name="reebeat:source-sha256" content="${fixtureSha256}">`
+          `<meta name="tsukuri:source-sha256" content="${fixtureSha256}">`
         );
         assert.strictEqual(model.htmlSourceSha256, fixtureSha256);
         assert.strictEqual(model.metaSourceSha256, fixtureSha256);

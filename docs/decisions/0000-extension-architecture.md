@@ -1,9 +1,9 @@
-# ADR-0000: Extension architecture: where contracts live and how third parties extend reebeat
+# ADR-0000: Extension architecture: where contracts live and how third parties extend tsukuri
 
 **Date:** 2026-10-29
-**Status:** Proposed, confirmed decision by decision (operator, 2026-10-29, `reebeat-D7`: "the extension ADR-0000 is adopted in stages; open points are tagged unstable"). Points stay **unstable** until a second real engine has run the protocol, and may change in a minor release of their contract (Decision 5). A decision's head says **Proposed**; only the parts inside it marked **Decided** come from the operator, with the date. The source for every **Decided** mark is the operator decisions log of October 2026, cited by decision id, date and line: its public copy is `sources/operator-decisions-2026-10.md` in the `reebeat/.github` repository (the line numbers are those of that copy).
+**Status:** Proposed, confirmed decision by decision (operator, 2026-10-29, `reebeat-D7`: "the extension ADR-0000 is adopted in stages; open points are tagged unstable"). Points stay **unstable** until a second real engine has run the protocol, and may change in a minor release of their contract (Decision 5). A decision's head says **Proposed**; only the parts inside it marked **Decided** come from the operator, with the date. The source for every **Decided** mark is the operator decisions log of October 2026, cited by decision id, date and line: its public copy is `sources/operator-decisions-2026-10.md` in the `tsukuri-labs/.github` repository (the line numbers are those of that copy).
 
-**Declarative multimedia: accessible, reproducible, rebuilt as you edit.** *We take care of building; you focus on creating.* **Semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect.** This record fixes where its extension contracts are declared, which extension points exist, how an engine written in another language talks to the compiler, how the compiler checks a story against what an engine can do, how contracts are versioned, how a plugin is packaged and trusted, and what every plugin owes the determinism guarantee. Throughout, *creating* is what authors do and *building* is what reebeat does.
+**Declarative multimedia: accessible, reproducible, rebuilt as you edit.** *We take care of building; you focus on creating.* **Semantically declared story beats, compiled into multimedia artifacts: statecharts for structure, functional reactive time, and an incremental build graph, written in Effect.** This record fixes where its extension contracts are declared, which extension points exist, how an engine written in another language talks to the compiler, how the compiler checks a story against what an engine can do, how contracts are versioned, how a plugin is packaged and trusted, and what every plugin owes the determinism guarantee. Throughout, *creating* is what authors do and *building* is what tsukuri does.
 
 ## Context
 
@@ -19,15 +19,15 @@
 
 | Item | Status |
 | --- | --- |
-| The model: a story is a statechart. A **State** is a node, a **Beat** is a generated edge, a **Scene** is a compound State. Identity is story-wide. Effects subscribe to generated events, with SMIL-style combinators. Curves are data. Time is exact (whole flicks) on three clocks: logical, media, frame. See [PR #17](https://github.com/reebeat/reebeat/pull/17) (spec 0004) and [spec 0007](../specs/0007-scxml-persistent-ir-spike.md). | Decided (operator, 2026-10-29) |
+| The model: a story is a statechart. A **State** is a node, a **Beat** is a generated edge, a **Scene** is a compound State. Identity is story-wide. Effects subscribe to generated events, with SMIL-style combinators. Curves are data. Time is exact (whole flicks) on three clocks: logical, media, frame. See [PR #17](https://github.com/tsukuri-labs/tsukuri/pull/17) (spec 0004) and [spec 0007](../specs/0007-scxml-persistent-ir-spike.md). | Decided (operator, 2026-10-29) |
 | Three kinds of format: IR codecs, artifact renderers, importers. | Decided (operator, 2026-10-29) |
 | Open core: the compiler, the formats, the plugin seams and the agent tool protocol are open; products are closed. | Decided (operator, 2026-10-29), see [`open-core-boundary.md`](../design/open-core-boundary.md) |
 | Experimental dependencies are pinned exactly and their types never appear in the public API. | Decided (operator, 2026-10-29) |
-| **Multiple render engines, chosen per Scene.** `reveal` today; Manim, Motion Canvas and others later. A Beat between Scenes on different engines uses a compositor transition on boundary frames, plus snapshot carry-over for shared ids. reebeat provides an SDK for building render engines. | Decided (operator, 2026-10-29) |
+| **Multiple render engines, chosen per Scene.** `reveal` today; Manim, Motion Canvas and others later. A Beat between Scenes on different engines uses a compositor transition on boundary frames, plus snapshot carry-over for shared ids. tsukuri provides an SDK for building render engines. | Decided (operator, 2026-10-29) |
 | Plugin peer ranges: a plugin that uses an unstable contract caps its range below the next minor. | **Proposed** (a rule the lead relayed as agreed on 2026-10-29; no operator decision is recorded; question 11 asks the operator to confirm) |
-| **Interactions are elements.** An interaction declares the event it raises, with a Schema-typed payload, a label and a description; each artifact renderer realises it by its capabilities. Artifact renderers are **static** (video, VTT, Fountain, PDF: build-time realisation only) or **dynamic** (website, Deck runtime: realised at view time). *Authoring tools* act on creational formats (the story IR and its codecs); *interaction tools* act on produced artifacts. See [issue #19](https://github.com/reebeat/reebeat/issues/19). | Decided (operator, 2026-10-29) |
+| **Interactions are elements.** An interaction declares the event it raises, with a Schema-typed payload, a label and a description; each artifact renderer realises it by its capabilities. Artifact renderers are **static** (video, VTT, Fountain, PDF: build-time realisation only) or **dynamic** (website, Deck runtime: realised at view time). *Authoring tools* act on creational formats (the story IR and its codecs); *interaction tools* act on produced artifacts. See [issue #19](https://github.com/tsukuri-labs/tsukuri/issues/19). | Decided (operator, 2026-10-29) |
 | The interactive website artifact (issue #19) and viewer input events (issue #20) are later, not v1; #20 waits for an investigation. | Decided (operator, 2026-10-29) |
-| React's core (reconciler and scheduler) is **not** reebeat's engine core; React stays possible as one render engine under the SDK and JSX as an authoring importer. The layering is statechart, per-artifact plan, build DAG. | Decided (operator, 2026-10-29) |
+| React's core (reconciler and scheduler) is **not** tsukuri's engine core; React stays possible as one render engine under the SDK and JSX as an authoring importer. The layering is statechart, per-artifact plan, build DAG. | Decided (operator, 2026-10-29) |
 | **Adoption in stages.** This record is confirmed decision by decision, and its open points are unstable until a second real engine has run the protocol (`reebeat-D7`, log line 86). | Decided (operator, 2026-10-29) |
 | **Story IR and timeline IR.** The story IR is public and versioned; the timeline IR (the Plan after scheduling, with frames) is an **unstable build artifact**, never decoded back and not a contract plugins may rely on; flicks stay the unit of exact time (`reebeat-D6`, log line 85). | Decided (operator, 2026-10-29) |
 | **Interaction realisation.** One interaction declaration; an artifact that cannot realise it fails at plan time for that output; a flag bypasses it, so the drift is silent but explicit, a declared opt-out and never a default (`reebeat-D8`, log line 87). The form of the flag and the recording of the bypass are **Proposed** (question 12). See "Interactions" in Decision 2 and the `cap/interaction-unrealisable` rule in Decision 4. | Decided (operator, 2026-10-29), except the form and recording of the bypass |
@@ -41,13 +41,13 @@ The operator's stated intent (2026-10-29, **Decided**) names four aims. An exten
 | Aim | What it demands of extension | How this record serves it |
 | --- | --- | --- |
 | **Declarative scenes and transitions** | A plugin adds *declarations*, never code inside a story. A story says what, not how. | Contracts are data (Decision 1). The Scene names an engine id; the config names the package (Decision 6). Effect kinds and transition types are data plus implementation claims (Decision 2). Curves stay data and closed (Decision 2). The compiler checks the declared story against declared capabilities (Decision 4). |
-| **Accessible** | No engine may silently drop what a viewer or an assistive tool needs. Like reproducibility, it is on by default and relaxed only by a visible line in the config. | `accessible: true` is the default (Decision 4): an engine whose `semantics` is `none` is refused unless the config says `accessible: false`. The `semantics` capability and the clauses E7, E9 and E22 (Decisions 3 and 4). `cap/no-semantics` and `cap/deck-needs-web` refuse to build what cannot be made accessible (Decision 4). Pure artifact renderers (captions) and pure lint rules (contrast, the teaching lint) are open (Decision 2), so accessibility checks need no privilege. The `reducedMotion` capability (Decision 4). Interactions, when they come, must have a keyboard and screen-reader route on the web or fail the plan (Decision 2). See [issue #12](https://github.com/reebeat/reebeat/issues/12). |
+| **Accessible** | No engine may silently drop what a viewer or an assistive tool needs. Like reproducibility, it is on by default and relaxed only by a visible line in the config. | `accessible: true` is the default (Decision 4): an engine whose `semantics` is `none` is refused unless the config says `accessible: false`. The `semantics` capability and the clauses E7, E9 and E22 (Decisions 3 and 4). `cap/no-semantics` and `cap/deck-needs-web` refuse to build what cannot be made accessible (Decision 4). Pure artifact renderers (captions) and pure lint rules (contrast, the teaching lint) are open (Decision 2), so accessibility checks need no privilege. The `reducedMotion` capability (Decision 4). Interactions, when they come, must have a keyboard and screen-reader route on the web or fail the plan (Decision 2). See [issue #12](https://github.com/tsukuri-labs/tsukuri/issues/12). |
 | **Reproducible** | Equal input gives equal output; anything else is declared and refused by default. | Three determinism levels, `reproducible: true` by default, E3 and F6 (Decision 7). The render brief digest and a `seed` derived from stable identity, not from the digest (Decision 3). Identity of decoded pixels, not PNG bytes (Decision 3). Exact plugin pins, manifest and artifact digests and trust levels recorded in `build.json` (Decision 6). Explicit stability tags and a load-time compatibility check (Decision 5). |
-| **Rebuilt as you edit** (fast, incremental, reactive) | An edit redoes only what it changes, and feedback arrives before pixels. | **Feedback before pixels is the main gain this record secures:** `run/describe` and the `cap/*` rules need no pixels, so a plan verdict follows each edit (Decision 4). **Reuse of pixels is smaller and honest about it:** a segment is cached under the digest of its **render brief** (Decisions 3 and 7, [issue #9](https://github.com/reebeat/reebeat/issues/9)). A story on one engine is one run, so until the implementing spec defines a per-State dependency digest the unit of reuse is the run, and only a `random` engine can then narrow it to a frame range (Decision 4). `runtime: browser` lets the editor preview live (Decisions 4 and 6). The compositor redoes only the Beats at the seams between runs (Decision 3). An engine is a pure function of its brief and the frame number, the same shape as the rest of the build (AGENTS.md: the Rendering is a pure function of the frame number). |
+| **Rebuilt as you edit** (fast, incremental, reactive) | An edit redoes only what it changes, and feedback arrives before pixels. | **Feedback before pixels is the main gain this record secures:** `run/describe` and the `cap/*` rules need no pixels, so a plan verdict follows each edit (Decision 4). **Reuse of pixels is smaller and honest about it:** a segment is cached under the digest of its **render brief** (Decisions 3 and 7, [issue #9](https://github.com/tsukuri-labs/tsukuri/issues/9)). A story on one engine is one run, so until the implementing spec defines a per-State dependency digest the unit of reuse is the run, and only a `random` engine can then narrow it to a frame range (Decision 4). `runtime: browser` lets the editor preview live (Decisions 4 and 6). The compositor redoes only the Beats at the seams between runs (Decision 3). An engine is a pure function of its brief and the frame number, the same shape as the rest of the build (AGENTS.md: the Rendering is a pure function of the frame number). |
 
 ### Constraints
 
-1. **Config is explicit.** What the story is lives in the story. Which piece fills a service lives in `reebeat.config.json`. Nothing is found by scanning (AGENTS.md, "Selection").
+1. **Config is explicit.** What the story is lives in the story. Which piece fills a service lives in `tsukuri.config.json`. Nothing is found by scanning (AGENTS.md, "Selection").
 2. **F6.** Two builds of the same source and cache on the same machine give identical decoded frames and audio ([spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), F6). A plugin may not weaken it silently.
 3. **One dependency direction.** Libraries import libraries. Services import libraries. Integrations import services and libraries, never another integration.
 4. **Docs are generated.** A fact has one home. The grammar page is generated from `grammar.ts` and held by a drift test (`tools/quality/test/grammarCopies.test.ts`); extension docs follow the same ladder (generate, then test, never hand-sync).
@@ -87,7 +87,7 @@ flowchart TB
 
 ## Decision 1: where contracts are declared
 
-**Decision (Proposed).** One new package, **`@reebeat/contracts`**, in the **library tier**, holds the *declaration* of every extension point as data. `@reebeat/services` keeps the *behaviour*: the Effect service tags, the `xContract` runner and the stand-ins. The package `contracts` imports `core` only. The package `services` imports `contracts` and `core`. Unstable: question 1 is open.
+**Decision (Proposed).** One new package, **`@tsukuri/contracts`**, in the **library tier**, holds the *declaration* of every extension point as data. `@tsukuri/services` keeps the *behaviour*: the Effect service tags, the `xContract` runner and the stand-ins. The package `contracts` imports `core` only. The package `services` imports `contracts` and `core`. Unstable: question 1 is open.
 
 A contract declaration is data of this shape (a sketch, not code of this change):
 
@@ -110,14 +110,14 @@ What is generated from the registry `contracts` (the one list), and how drift is
 | JSON Schema of every request, response, capability set and manifest (`Schema.toJsonSchemaDocument`, as 0004 does for the IR) | the Effect Schema | generate; drift test on the committed copy |
 | `docs/contracts/<id>.md`: methods, capabilities, clauses, stability, openness | the declaration | generate; drift test (the `grammarCopies` pattern) |
 | The studio plugin screen: capability table, settings form, permissions, stability badge | the registry and the plugin manifest | read at run time, nothing copied |
-| The tag in `@reebeat/services` for each contract | hand-written, but its method types are `typeof Schema.Type` of the contract's Schemas | generate the types; test: every registry entry has a tag, every clause id has a body, and a type test fails when a tag's method differs from the Schema |
+| The tag in `@tsukuri/services` for each contract | hand-written, but its method types are `typeof Schema.Type` of the contract's Schemas | generate the types; test: every registry entry has a tag, every clause id has a body, and a type test fails when a tag's method differs from the Schema |
 | The `@stability` JSDoc tag that the Effect language service reads | the contract's `stability` field | test: the tag equals the field (the data is the root; the tag is its derivation) |
 
 ### Alternatives considered
 
 | Alternative | Why not |
 | --- | --- |
-| **A. Keep everything in `@reebeat/services`.** | Pure extension points (codec, importer, lint rule, artifact text renderers) must be reachable by libraries, and a library may not import a service. `services` also pulls `@effect/vitest`, which the studio and a Python author do not need ([spec 0009](../specs/0009-npm-prereleases.md) already had to make it an optional peer). |
+| **A. Keep everything in `@tsukuri/services`.** | Pure extension points (codec, importer, lint rule, artifact text renderers) must be reachable by libraries, and a library may not import a service. `services` also pulls `@effect/vitest`, which the studio and a Python author do not need ([spec 0009](../specs/0009-npm-prereleases.md) already had to make it an optional peer). |
 | **B. One new package at the service tier holding both data and tags.** | Same tier problem: `lint` and `core` could not implement a contract they cannot import. Their tests could not run the contract suite either, because `check:tiers` reads `devDependencies` too. |
 | **C. One package per extension point** (`engine-sdk`, `artifact-sdk`, ...). | One version axis and one peer range per point, for every plugin author. The registry and the generated docs need one list, so one home. |
 | **D. Put the declarations in `core`.** | `core` is the IR and the machines. Extension contracts change at another speed and carry stability tags; mixing them forces a `core` release for every contract change. |
@@ -138,7 +138,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 | 2 | `WordAligner` | an aligner | integration | **now** | Exists. |
 | 3 | `SoundLibrary` | a sound source | integration | **now** | Exists. New sounds are open now; new *kinds* of audio effect are row 13. |
 | 4 | `AssetCache` | a store (object storage, a shared cache) | integration | **now** | Exists. Egress and credentials are the risk; both are declared. |
-| 5 | `Encoder` | a muxer or codec path | integration | **now** | Exists. Licence of the binary is the author's problem ([issue #7](https://github.com/reebeat/reebeat/issues/7)). |
+| 5 | `Encoder` | a muxer or codec path | integration | **now** | Exists. Licence of the binary is the author's problem ([issue #7](https://github.com/tsukuri-labs/tsukuri/issues/7)). |
 | 6 | `FrameCapturer` | a capturer for browser-based engines | integration | **now** | Exists. Browser engines (reveal, Motion Canvas) reuse it. |
 | 7 | `Renderer` (Plan to Deck) | nothing | integration | **never, as its own point** | Becomes the internals of the `reveal` engine and, until another engine declares `web: bundle` (Decision 4), the only producer of the Deck. Not offered separately once `Engine` ships. |
 | 8 | **`Engine`** (per run of Scenes, Decision 3) | a render engine | integration (service tag, in-process or over the wire) | **now, unstable** | Decided: engines are a product goal. Unstable until a second real engine (Manim) has run the whole protocol. |
@@ -149,12 +149,12 @@ What is generated from the registry `contracts` (the one list), and how drift is
 | 12 | `Importer` | a foreign format to IR | library | **now** | Pure, one way, lossy. The contract requires a report of what was dropped; silent dropping is a failed clause (GLOSSARY: "never silently dropped"). |
 | 13 | `EffectKind` (sfx, vfx) | a verb: its arguments, restart and fill modes, and which engine or mixer realises it | data plus implementation claims | **later** | The verb table must be data first (`grammar.ts` is, after 0004). Sounds themselves are row 3. |
 | 14 | `TransitionType` | a named transition between Scenes | data plus compositor or engine implementation | **later** | Rides on row 9. |
-| 15 | `LintRule` (the teaching lint, [issue #8](https://github.com/reebeat/reebeat/issues/8)) | a rule: IR and context to diagnostics | library | **now** | Pure, no I/O, and the cheapest extension with real value. |
+| 15 | `LintRule` (the teaching lint, [issue #8](https://github.com/tsukuri-labs/tsukuri/issues/8)) | a rule: IR and context to diagnostics | library | **now** | Pure, no I/O, and the cheapest extension with real value. |
 | 16 | `StatechartInterpreter` | an alternative walk of the statechart (XState adapter) | library (reference interpreter in `core`), integration (adapters) | **later, conformance-gated** | The interpreter *defines* what a story means. An adapter must produce byte-equal logs on the reference corpus. The spike measured one XState interpreter equal to itself over 20 runs; the cross-interpreter suite is spec 0007's proposal and is not measured. Semantics stay closed. |
 | 17 | `AgentTool`, **authoring** (read a story, apply an edit, run `check`) | a tool an agent calls to change or check the story | integration (one adapter per tool protocol; **MCP is the first adapter**) | **later** | **Decided** (operator, 2026-10-29, `agent-protocol`, log line 77): tools are declared once, protocol-neutrally; MCP is the first adapter. The tool set stays open. A tool is a name, input and output Schemas, an annotation (read-only or edits the IR) and an Effect, and each adapter generates its protocol's schema from it (for MCP, JSON Schema) (**Proposed**). The first-party tool set is unbuilt. Interaction tools are a different kind (row 22). |
 | 18 | `Sandbox` (Decision 6) | a way to run an out-of-process plugin under limits | integration | **later** | Needed by every untrusted out-of-process plugin. First-party adapters first. |
-| 19 | `InteractiveArtifact` (an interactive website for learning material, [issue #19](https://github.com/reebeat/reebeat/issues/19)) | an artifact renderer whose output is a viewer-paced site: step or scrub, keyboard and screen-reader access, reduced motion, transcripts | integration | **later, not v1** | Roadmap item queued by the operator (2026-10-29, after the IR work and this record). It generalises the Deck. It is a **dynamic** artifact (Decision 4) whose files are assets that a build can reproduce. It needs `semantics`, `reducedMotion` and `web` from every engine (Decision 4). |
-| 20 | `InputSource` (viewer input events: answers, choices, branching; [issue #20](https://github.com/reebeat/reebeat/issues/20)) | an event source that feeds the statechart from outside the build | integration | **later, not v1; investigation first** | Deferred by the operator (2026-10-29). It changes what a story is (learner state, privacy, assessment) and needs SMIL `excl` and SCXML conditional transitions, both "later" in spec 0007. Declared here only so the catalogue has a place for it; no shape is decided. |
+| 19 | `InteractiveArtifact` (an interactive website for learning material, [issue #19](https://github.com/tsukuri-labs/tsukuri/issues/19)) | an artifact renderer whose output is a viewer-paced site: step or scrub, keyboard and screen-reader access, reduced motion, transcripts | integration | **later, not v1** | Roadmap item queued by the operator (2026-10-29, after the IR work and this record). It generalises the Deck. It is a **dynamic** artifact (Decision 4) whose files are assets that a build can reproduce. It needs `semantics`, `reducedMotion` and `web` from every engine (Decision 4). |
+| 20 | `InputSource` (viewer input events: answers, choices, branching; [issue #20](https://github.com/tsukuri-labs/tsukuri/issues/20)) | an event source that feeds the statechart from outside the build | integration | **later, not v1; investigation first** | Deferred by the operator (2026-10-29). It changes what a story is (learner state, privacy, assessment) and needs SMIL `excl` and SCXML conditional transitions, both "later" in spec 0007. Declared here only so the catalogue has a place for it; no shape is decided. |
 | 21 | `ElementKind` | nothing | closed (grammar) | **never as a plugin**; changes by spec | Which Element kinds exist is the story language, owned by `grammar.ts`. An engine declares which grammar kinds it draws (`elements`); it may not bring a private kind, because a private kind makes the story engine-specific. A kind Manim needs (an equation) enters by a spec that adds it for every engine to support or decline. |
 | 22 | `InteractionKind` and **interaction tools** | the way an artifact renderer realises a declared interaction | integration | **later, not v1** | See "Interactions" below. |
 | | **Curves and the expression language** | nothing | closed | **never as a plugin** | See below. |
@@ -163,12 +163,12 @@ What is generated from the registry `contracts` (the one list), and how drift is
 
 1. A plugin-defined function makes the IR code, and code cannot be serialised, linted or diffed. Authored attributes stay data-bound and serialisable.
 2. A new operation changes what a story means, so it is a language change made in a spec, not a plugin.
-3. Engines never evaluate expressions. reebeat materialises curves into frame values at build time, so an engine receives numbers or a named easing. That is why a new engine is easy to write.
+3. Engines never evaluate expressions. tsukuri materialises curves into frame values at build time, so an engine receives numbers or a named easing. That is why a new engine is easy to write.
 4. Authors can still *write* any curve the language can express; only new *operations* need a spec.
 
 **Engines and curves.** Some engines own their easing (reveal's Auto-Animate, Manim's `rate_func`). The protocol has two drive modes, declared as a capability: `sampled` (the engine draws exactly the per-frame values it is given, in a file the host writes) and `windowed` (the engine animates inside a window of frames with its own easing from a declared list of curve *names*, and reports when each lifecycle event happened). A `windowed` engine may only be given curves on its list; anything else is a lint error, never a silent change of easing. The host evaluates curves, so the one copy of the language stays in the host (Decision 3).
 
-**Interactions (later, not v1).** The operator's direction of 2026-10-29 ([issue #19](https://github.com/reebeat/reebeat/issues/19)): **an interaction is an element.** It declares the event it raises, with a Schema-typed payload, a label and a description. There is one declaration, and each artifact renderer realises it according to its capabilities:
+**Interactions (later, not v1).** The operator's direction of 2026-10-29 ([issue #19](https://github.com/tsukuri-labs/tsukuri/issues/19)): **an interaction is an element.** It declares the event it raises, with a Schema-typed payload, a label and a description. There is one declaration, and each artifact renderer realises it according to its capabilities:
 
 | Surface | How the declared interaction is realised |
 | --- | --- |
@@ -182,7 +182,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 - **Two kinds of agent tool, kept apart, by what they act on.** *Authoring tools* act on the **creational formats**, the story IR and its codecs (the studio, bring-your-own agents; row 17). *Interaction tools* act on **produced artifacts**: they raise events inside a running dynamic artifact (a viewer's or a tutor agent's actions), are generated from the interaction elements, and can fire only declared events whose payload validates. They cannot change the story, and a static artifact has none. They have different contracts and different trust.
 - **Determinism.** The video stays reproducible because its interactions are scheduled. A website's files are reproducible; a viewing session is not meant to be, and is not a build.
 - **What an interaction event may do.** It may fire only a transition the story already declares, at a declared time for a static artifact. Anything that depends on the payload, branches the story or consumes learner input is row 20 (`InputSource`), whose shape is not decided. Until row 20 exists, an interaction is a trigger of a declared Beat, not a new source of story state.
-- **What this record decides now:** the shape (an element, an event, a payload Schema, a per-renderer realisation) and the capability name. It decides no contract, no syntax and nothing about learner input ([issue #20](https://github.com/reebeat/reebeat/issues/20)).
+- **What this record decides now:** the shape (an element, an event, a payload Schema, a per-renderer realisation) and the capability name. It decides no contract, no syntax and nothing about learner input ([issue #20](https://github.com/tsukuri-labs/tsukuri/issues/20)).
 
 ### Alternatives considered
 
@@ -197,7 +197,7 @@ What is generated from the registry `contracts` (the one list), and how drift is
 
 ## Decision 3: the engine protocol for engines in other languages
 
-**Decision (Proposed).** A versioned, language-neutral wire protocol: **JSON-RPC 2.0** messages framed with the **`Content-Length` header** of LSP and DAP, over the engine's **stdin and stdout**. Messages are defined by Effect Schemas in `contracts`; the JSON Schema is generated and published. Frames and other large payloads never travel in JSON: they are files in a directory that reebeat owns, named in the messages with their SHA-256. An HTTP transport (the same JSON-RPC bodies, artifacts by URL) is **later**. Unstable until a second real engine has run it; question 9 (the `sdk` tier) is open.
+**Decision (Proposed).** A versioned, language-neutral wire protocol: **JSON-RPC 2.0** messages framed with the **`Content-Length` header** of LSP and DAP, over the engine's **stdin and stdout**. Messages are defined by Effect Schemas in `contracts`; the JSON Schema is generated and published. Frames and other large payloads never travel in JSON: they are files in a directory that tsukuri owns, named in the messages with their SHA-256. An HTTP transport (the same JSON-RPC bodies, artifacts by URL) is **later**. Unstable until a second real engine has run it; question 9 (the `sdk` tier) is open.
 
 ```mermaid
 sequenceDiagram
@@ -239,7 +239,7 @@ sequenceDiagram
 The **plan brief** (`run/describe`; its digest is what E2 compares):
 
 - the run: its Scenes in order, the engine id and the engine's validated `settings`;
-- canvas size and frame rate, which is one of the rates the IR supports (24, 30, 50 and 60, each with or without `ntsc`), so that one frame is a whole number of flicks (25 is refused until 0005 rounds once, [PR #17](https://github.com/reebeat/reebeat/pull/17));
+- canvas size and frame rate, which is one of the rates the IR supports (24, 30, 50 and 60, each with or without `ntsc`), so that one frame is a whole number of flicks (25 is refused until 0005 rounds once, [PR #17](https://github.com/tsukuri-labs/tsukuri/pull/17));
 - the resolved **theme** (colour tokens, font names with file digests, spacing);
 - for each State, the order, its Elements with their story-wide ids, kinds and *resolved* properties (nothing is inherited from outside the run), and the Beats of the run with their transition and their curve, as a curve **name** for a `windowed` engine;
 - the **anchors** known without the engine: the frames of the narration words and other named moments inside the run; and the vfx effects to realise, with their anchors **unresolved**;
@@ -257,7 +257,7 @@ The **render brief** (`run/render` and `run/web`; its digest is the cache key of
 
 **Frame format.** PNG, 8 bits per channel, sRGB, straight alpha. **Identity of frames is identity of decoded pixels**, never of PNG bytes: two PNG encoders may write different bytes for the same picture, and the Encoder decodes anyway. Other formats (OpenEXR, ProRes) are future capabilities.
 
-**Errors** are JSON-RPC errors whose `data._tag` is the tag of a reebeat error: `ProtocolVersionMismatch`, `UnsupportedCapability`, `InvalidBrief`, `RenderFailed`, `Cancelled`. The client maps them onto the same tagged errors an in-process engine fails with.
+**Errors** are JSON-RPC errors whose `data._tag` is the tag of a tsukuri error: `ProtocolVersionMismatch`, `UnsupportedCapability`, `InvalidBrief`, `RenderFailed`, `Cancelled`. The client maps them onto the same tagged errors an in-process engine fails with.
 
 **Version negotiation** copies MCP's: the host sends the highest version it speaks; the engine answers with that version or its own highest; if the host cannot speak the answer it disconnects ([MCP lifecycle](https://modelcontextprotocol.io/specification/2025-06-18/basic/lifecycle)). **Additive change** copies DAP's: a new feature gets a capability flag, and "the absence of the flag always means that the feature is not supported" ([DAP overview](https://microsoft.github.io/debug-adapter-protocol/overview#initialization)).
 
@@ -282,7 +282,7 @@ flowchart LR
 
 ### The TypeScript SDK
 
-The SDK is a package in a **new tier, `sdk`**, between services and adapters (`engine-sdk`; the name is settled by the implementing spec). `tools/quality/tiers.ts` gains the row `sdk`, which may import services and libraries, and the `adapters` row may then import `sdk`, services and libraries. A new tier is needed because a first-party engine adapter (reveal wrapped with `defineEngine`) imports the SDK, and an adapter may not import another adapter (`allowedTargets.adapters` is services and libraries). Two alternatives were rejected: keeping the SDK an adapter (the first engine would fail `check:tiers`), and moving `defineEngine` and the browser helper into `@reebeat/services` (the service tier would then own stdio and process spawning). The SDK imports **no adapter**; the CLI, the only composition root, supplies the adapters it needs. It has two sides:
+The SDK is a package in a **new tier, `sdk`**, between services and adapters (`engine-sdk`; the name is settled by the implementing spec). `tools/quality/tiers.ts` gains the row `sdk`, which may import services and libraries, and the `adapters` row may then import `sdk`, services and libraries. A new tier is needed because a first-party engine adapter (reveal wrapped with `defineEngine`) imports the SDK, and an adapter may not import another adapter (`allowedTargets.adapters` is services and libraries). Two alternatives were rejected: keeping the SDK an adapter (the first engine would fail `check:tiers`), and moving `defineEngine` and the browser helper into `@tsukuri/services` (the service tier would then own stdio and process spawning). The SDK imports **no adapter**; the CLI, the only composition root, supplies the adapters it needs. It has two sides:
 
 - **Server side**, for a plugin author: `defineEngine({ manifest, describe, render })` returns an in-process `Layer` for the `Engine` tag *and* a `serve()` that runs the same engine as a stdio server. A TypeScript engine is written once and runs either way. `serve()` serves the methods of **any** contract, so a pure plugin (a lint rule, a codec) runs under the sandbox as a child process that speaks the same JSON-RPC with that contract's methods.
 - **Client side**, for the host: `wireEngine(command)` returns an `Engine` Layer that spawns the process and speaks the protocol. Out-of-process engines become ordinary `Engine` services, so every clause runs on them unchanged.
@@ -295,13 +295,13 @@ There is **no first-party Python SDK** in this decision. The protocol, the gener
 `xContract` runs one clause set against a `Layer`. The language-neutral runner is the same clause set run against the **client Layer** of the wire:
 
 ```text
-reebeat conform engine -- python3 -m reebeat_manim      # any language: the command is the engine
-reebeat conform engine ./dist/engine.js                 # a TypeScript engine in process
+tsukuri conform engine -- python3 -m tsukuri_manim      # any language: the command is the engine
+tsukuri conform engine ./dist/engine.js                 # a TypeScript engine in process
 ```
 
-Two things must change first, and the implementing spec does them. Today `packages/services/contract/clause.ts` imports `@effect/vitest` and the clause bodies assert with it, and `Clause` has no `requires` field. So `Clause` and `failingClauses` move to a module without vitest, a clause failure becomes a typed failure, and `Clause` gains `requires` (the capability path the clause tests). The clause **bodies stay TypeScript Effects**, so **`reebeat conform` is the only conformance authority**. The JSON fixtures (briefs and expected frames) are its inputs and are published beside the JSON Schema; they are not a second implementation of the invariants, and a harness in another language can send them but cannot judge E6 or E7 by itself.
+Two things must change first, and the implementing spec does them. Today `packages/services/contract/clause.ts` imports `@effect/vitest` and the clause bodies assert with it, and `Clause` has no `requires` field. So `Clause` and `failingClauses` move to a module without vitest, a clause failure becomes a typed failure, and `Clause` gains `requires` (the capability path the clause tests). The clause **bodies stay TypeScript Effects**, so **`tsukuri conform` is the only conformance authority**. The JSON fixtures (briefs and expected frames) are its inputs and are published beside the JSON Schema; they are not a second implementation of the invariants, and a harness in another language can send them but cannot judge E6 or E7 by itself.
 
-Each clause reports `pass`, `fail` or `unchecked`. `unchecked` means the clause could not run (for example E14 on a machine whose sandbox cannot deny the network). It never reads as a pass: `reebeat conform` exits non-zero for a plugin whose declared capability has only unchecked clauses, unless `--allow-unchecked` is given, and the report says which. A clause with no `requires` runs for every engine (E1, E2, E4, E8, E10, E12, E13, E15). The others run only when the capability they name is declared (the DAP rule): E3 `determinism`, E5 `access`, E6 `lifecycle`, E7 and E9 and E22 `semantics`, E11 and E14 `permissions`, E16 `effects`, E17 `elements`, E18 `boundary.snapshots`, E19 `drive`, E20 `fps`, `canvas` and `color`, E21 `reducedMotion`, E23 `web`, E24 `identity.morph`, E25 `identity.carry`. A registry test holds the rule that makes "every declared capability is exercised" true: **every field of every capability Schema is named by the `requires` of at least one clause, except the fields the Schema marks `disclosed` (`egress`, `runtime`: what the plugin says about itself) and the host-enforced `permissions` fields, which E11, E14 and the enforcement record cover**. Artifact renderers get a clause family of their own (A1: a `static` artifact contains no live endpoint, `requires: kind`; A2: each declared interaction surface realises a fixture interaction, `requires: interactions`; A3: a `scheduled` realisation is reproducible, `requires: interactions`; A4: an artifact whose `needs` names a capability fails the plan against an engine that lacks it, `requires: needs`), defined by the artifact contract's spec; the same registry rule applies to it.
+Each clause reports `pass`, `fail` or `unchecked`. `unchecked` means the clause could not run (for example E14 on a machine whose sandbox cannot deny the network). It never reads as a pass: `tsukuri conform` exits non-zero for a plugin whose declared capability has only unchecked clauses, unless `--allow-unchecked` is given, and the report says which. A clause with no `requires` runs for every engine (E1, E2, E4, E8, E10, E12, E13, E15). The others run only when the capability they name is declared (the DAP rule): E3 `determinism`, E5 `access`, E6 `lifecycle`, E7 and E9 and E22 `semantics`, E11 and E14 `permissions`, E16 `effects`, E17 `elements`, E18 `boundary.snapshots`, E19 `drive`, E20 `fps`, `canvas` and `color`, E21 `reducedMotion`, E23 `web`, E24 `identity.morph`, E25 `identity.carry`. A registry test holds the rule that makes "every declared capability is exercised" true: **every field of every capability Schema is named by the `requires` of at least one clause, except the fields the Schema marks `disclosed` (`egress`, `runtime`: what the plugin says about itself) and the host-enforced `permissions` fields, which E11, E14 and the enforcement record cover**. Artifact renderers get a clause family of their own (A1: a `static` artifact contains no live endpoint, `requires: kind`; A2: each declared interaction surface realises a fixture interaction, `requires: interactions`; A3: a `scheduled` realisation is reproducible, `requires: interactions`; A4: an artifact whose `needs` names a capability fails the plan against an engine that lacks it, `requires: needs`), defined by the artifact contract's spec; the same registry rule applies to it.
 
 | Clause | Means |
 | --- | --- |
@@ -338,7 +338,7 @@ Each clause reports `pass`, `fail` or `unchecked`. `unchecked` means the clause 
 | **gRPC and protobuf** | Binary-native and streaming, but every author needs a code generator, and the Effect Schema would no longer be the one definition. Revisit if frame throughput over files proves too slow. |
 | **HTTP and OpenAPI** | Good for hosted engines, awkward for a local child process (ports, discovery, lifecycle). Kept as the later second transport. |
 | **Newline-delimited JSON, custom** | Simpler framing, but it throws away every ready JSON-RPC library. LSP's framing exists in most languages. |
-| **Per-language SDKs only, no protocol** | Needs a reebeat-maintained SDK per language and gives Manim no way in. |
+| **Per-language SDKs only, no protocol** | Needs a tsukuri-maintained SDK per language and gives Manim no way in. |
 | **MCP as the engine protocol** | MCP is for tools and context for a model. Its lifecycle is borrowed; its method set does not fit frames. |
 | **WebAssembly components** | Strong isolation and determinism, but Manim (Python, Cairo, LaTeX, ffmpeg) cannot run in it. Possible later for pure points (lint rules, codecs). |
 | **Frames inline as base64** | A third more bytes and a huge JSON message per frame. |
@@ -364,7 +364,7 @@ The capability set (a sketch; the exact fields are fixed in the implementing spe
 | `boundary.snapshots` | `none`, `bounds`, `layers` | What it gives the compositor. |
 | `runtime` | `browser`, `node`, `process` | Where it can run. `browser` lets the editor preview it live. |
 | `web` | `none`, `bundle` | Whether `run/web` gives a static, steppable web bundle (`seek(frame)`, `step(n)`). The Deck and the interactive website need it. Only `reveal` has it today. |
-| `reducedMotion` | `none`, `variant` | Whether it can render a reduced-motion variant of a Scene (transitions become fades or cuts) when the config asks for one ([issue #12](https://github.com/reebeat/reebeat/issues/12)). |
+| `reducedMotion` | `none`, `variant` | Whether it can render a reduced-motion variant of a Scene (transitions become fades or cuts) when the config asks for one ([issue #12](https://github.com/tsukuri-labs/tsukuri/issues/12)). |
 | `fps`, `canvas`, `color` | lists or ranges | Output limits. |
 | `egress`, `permissions` | Decision 6 | What it sends out and may touch. |
 
@@ -396,7 +396,7 @@ The check is a pure function over the IR and a table of declared capabilities. I
 | An interaction element on an artifact whose `interactions` lacks a realisation of it (a live surface asked of a `static` artifact is the same case: a video can show a scheduled cursor, never answer a live call) | a realisation, or an explicit fallback declared in the story for that artifact; or the declared opt-out flag for that output (**Decided**, `reebeat-D8`; the flag's form is **Proposed**, question 12) | `cap/interaction-unrealisable` (later, not v1). |
 | A web realisation of an interaction without a keyboard and screen-reader route | that route | `cap/interaction-inaccessible` (later, not v1). |
 
-Two guards keep the declaration honest. First, the **manifest is the root** for planning: its capability set is read without starting the engine, and the capability set the engine returns from `initialize` must equal it or the plugin is refused. Second, **every capability field that describes behaviour is named by at least one conformance clause** (a registry test, Decision 3: clauses E3 and E5 to E25, with `egress`, `runtime` and `permissions` as the stated exceptions), so a declared capability is tested against behaviour and not trusted. The plan-time check is **necessary, not sufficient**: `run/describe` diagnostics of severity error fail the plan like a `cap/*` rule, and a build's `reebeat check` observes events in the written video (F1) as it does today.
+Two guards keep the declaration honest. First, the **manifest is the root** for planning: its capability set is read without starting the engine, and the capability set the engine returns from `initialize` must equal it or the plugin is refused. Second, **every capability field that describes behaviour is named by at least one conformance clause** (a registry test, Decision 3: clauses E3 and E5 to E25, with `egress`, `runtime` and `permissions` as the stated exceptions), so a declared capability is tested against behaviour and not trusted. The plan-time check is **necessary, not sufficient**: `run/describe` diagnostics of severity error fail the plan like a `cap/*` rule, and a build's `tsukuri check` observes events in the written video (F1) as it does today.
 
 ```mermaid
 flowchart LR
@@ -420,12 +420,12 @@ flowchart LR
 
 **Decision (Proposed).** Unstable: question 11 (the peer-range rule) is open.
 
-1. **Each contract has its own semver** (`engine 0.1.0`), and the package `@reebeat/contracts` has a version too (lockstep with the other published packages, per [spec 0009](../specs/0009-npm-prereleases.md)). A generated table maps each package version to the contract versions it carries.
+1. **Each contract has its own semver** (`engine 0.1.0`), and the package `@tsukuri/contracts` has a version too (lockstep with the other published packages, per [spec 0009](../specs/0009-npm-prereleases.md)). A generated table maps each package version to the contract versions it carries.
 2. **Every contract and every export of a contract carries an explicit stability tag**: `stable`, `unstable` or `experimental`. **No tag is a gate failure.** There is no implicit default.
    - `stable`: strict semver. A breaking change is a major.
    - `unstable`: may break in a **minor**. Its version is `0.y.z` while unstable. Promotion to stable is `1.0.0` and changes the tag only, never an import path.
    - `experimental`: may break in any release, including a patch. First-party only; never offered to third parties.
-3. **No leak.** A stable contract may not expose an unstable Schema, and no contract exposes a type of an experimental dependency (the rule already decided). Effect's language service ships an `apiStabilityLeak` diagnostic for exactly this ("reports any stable API whose signature exposes a less stable type") and says library authors may enable it for their own packages. reebeat enables it for `@reebeat/*`, and the registry test checks the same fact at the data level, because the Schemas carry a `stability` annotation (as 0004's schema annotations `origin` and `deviation` do).
+3. **No leak.** A stable contract may not expose an unstable Schema, and no contract exposes a type of an experimental dependency (the rule already decided). Effect's language service ships an `apiStabilityLeak` diagnostic for exactly this ("reports any stable API whose signature exposes a less stable type") and says library authors may enable it for their own packages. tsukuri enables it for `@tsukuri/*`, and the registry test checks the same fact at the data level, because the Schemas carry a `stability` annotation (as 0004's schema annotations `origin` and `deviation` do).
 4. **What counts as breaking, for implementers and for the host.**
 
 | Change | Level for a stable contract |
@@ -440,11 +440,11 @@ flowchart LR
 5. **How a plugin declares what it implements.** Its manifest lists, per contract, the exact contract version it was built and tested against:
 
 ```json
-"reebeat": { "provides": [ { "contract": "engine", "version": "0.3.1" } ] }
+"tsukuri": { "provides": [ { "contract": "engine", "version": "0.3.1" } ] }
 ```
 
    At load the host applies one pure function, `compatible(hostVersion, pluginVersion, stability)`: for `stable`, the same major and a host minor at least the plugin's; for `unstable`, the same minor. A plugin written in Python has no npm peer range, so **this load-time check is the primary guard**.
-6. **The peer range of an npm plugin.** The agreed rule: a plugin that uses only stable contracts declares `^X.Y.Z` of `@reebeat/contracts` (and of `@reebeat/services` when it uses a tag); a plugin that uses **any unstable contract** declares a range **capped below the next minor**, `>=X.Y.Z <X.(Y+1).0` (`~X.Y.Z`). Two facts limit it today, and this record says so. While `@reebeat/contracts` is `0.x` and in lockstep with the other published packages ([spec 0009](../specs/0009-npm-prereleases.md)), `^` and `~` are the same range, and an unrelated release of another package moves the version; so **until the packages leave `0.x` the load-time `compatible()` check on contract versions is the only effective guard**, and `reebeat plugin check` derives a peer range only from `1.0`. An in-process plugin's `effect` peer follows spec 0009's rule (`^` or `~` by *measured* use of unstable Effect APIs); the host and the plugin must still share one copy of Effect.
+6. **The peer range of an npm plugin.** The agreed rule: a plugin that uses only stable contracts declares `^X.Y.Z` of `@tsukuri/contracts` (and of `@tsukuri/services` when it uses a tag); a plugin that uses **any unstable contract** declares a range **capped below the next minor**, `>=X.Y.Z <X.(Y+1).0` (`~X.Y.Z`). Two facts limit it today, and this record says so. While `@tsukuri/contracts` is `0.x` and in lockstep with the other published packages ([spec 0009](../specs/0009-npm-prereleases.md)), `^` and `~` are the same range, and an unrelated release of another package moves the version; so **until the packages leave `0.x` the load-time `compatible()` check on contract versions is the only effective guard**, and `tsukuri plugin check` derives a peer range only from `1.0`. An in-process plugin's `effect` peer follows spec 0009's rule (`^` or `~` by *measured* use of unstable Effect APIs); the host and the plugin must still share one copy of Effect.
 
 ### Alternatives considered
 
@@ -461,18 +461,18 @@ flowchart LR
 
 ### Package and manifest
 
-A plugin is an **npm package** with a `reebeat` field in its `package.json`, or, for a plugin in another language, a **`reebeat.plugin.json`** with the same content shipped with it (a Python package, a container image, a release archive). The manifest is a Schema in `contracts`; its JSON Schema is generated and published.
+A plugin is an **npm package** with a `tsukuri` field in its `package.json`, or, for a plugin in another language, a **`tsukuri.plugin.json`** with the same content shipped with it (a Python package, a container image, a release archive). The manifest is a Schema in `contracts`; its JSON Schema is generated and published.
 
 ```json
 {
-  "name": "@acme/reebeat-engine-manim",
+  "name": "@acme/tsukuri-engine-manim",
   "version": "0.4.1",
   "license": "MIT",
-  "reebeat": {
+  "tsukuri": {
     "plugin": 1,
     "id": "@acme/manim",
     "provides": [{ "contract": "engine", "version": "0.3.1" }],
-    "launch": { "command": ["python3", "-m", "reebeat_manim"] },
+    "launch": { "command": ["python3", "-m", "tsukuri_manim"] },
     "capabilities": { "access": "sequential", "drive": "windowed", "determinism": "deterministic" },
     "settings": { "$ref": "./settings.schema.json" },
     "egress": { "kind": "local", "sends": [] },
@@ -487,13 +487,13 @@ The **plugin id** is scoped (`@acme/manim`). It may never equal a built-in name 
 
 ### Discovery is explicit
 
-`reebeat.config.json` lists the plugins that are *enabled*, each with its pin and its trust level, and the Selection maps keys to them:
+`tsukuri.config.json` lists the plugins that are *enabled*, each with its pin and its trust level, and the Selection maps keys to them:
 
 ```json
 {
   "plugins": {
-    "@acme/manim": { "source": "path", "manifest": "plugins/manim/reebeat.plugin.json", "sha256": "<manifest digest>", "artifact": "<archive or image digest>", "trust": "sandbox" },
-    "@acme/teaching-lint": { "source": "npm", "package": "@acme/reebeat-teaching-lint", "trust": "sandbox" }
+    "@acme/manim": { "source": "path", "manifest": "plugins/manim/tsukuri.plugin.json", "sha256": "<manifest digest>", "artifact": "<archive or image digest>", "trust": "sandbox" },
+    "@acme/teaching-lint": { "source": "npm", "package": "@acme/tsukuri-teaching-lint", "trust": "sandbox" }
   },
   "engines": { "reveal": "reveal", "manim": "@acme/manim" },
   "speech": "kokoro"
@@ -509,7 +509,7 @@ The **plugin id** is scoped (`@acme/manim`). It may never equal a built-in name 
 
 ### What the studio does
 
-The studio (a closed product) **reads manifests as data**: id, contract versions and stability tags, capability table, settings form (generated from the plugin's settings JSON Schema), permissions, egress, trust level and the last recorded conformance report for that exact version, labelled as the author's claim until the studio runs `reebeat conform` itself. Enabling a plugin writes the config. The studio runs an untrusted engine only out of process under a sandbox, never in the editor's page. A `runtime: browser` engine may run in a worker or an iframe for live preview; any other engine previews as its last rendered segment, and the screen says so. **Third-party pure plugins** (lint rules and the like) run in a worker with no credentials and no access to the user's session or to the sync connection, or not at all until such isolation exists; they never run in the editor's page beside the session.
+The studio (a closed product) **reads manifests as data**: id, contract versions and stability tags, capability table, settings form (generated from the plugin's settings JSON Schema), permissions, egress, trust level and the last recorded conformance report for that exact version, labelled as the author's claim until the studio runs `tsukuri conform` itself. Enabling a plugin writes the config. The studio runs an untrusted engine only out of process under a sandbox, never in the editor's page. A `runtime: browser` engine may run in a worker or an iframe for live preview; any other engine previews as its last rendered segment, and the screen says so. **Third-party pure plugins** (lint rules and the like) run in a worker with no credentials and no access to the user's session or to the sync connection, or not at all until such isolation exists; they never run in the editor's page beside the session.
 
 ### Trust, sandboxing and egress
 
@@ -526,7 +526,7 @@ Rules:
 
 1. **Every third-party plugin defaults to `sandbox`. If no Sandbox adapter can enforce the declared permissions on this machine, it does not run.** The user may choose `in-process` or `host` explicitly, per plugin. Fail closed.
 2. The manifest `permissions` are a **maximum** the user sees before enabling. A plugin that needs more declares more; a plugin that declares less than it needs fails its conformance run under the sandbox (clauses E11 and E14).
-3. The build manifest records for each plugin and each of its permissions one of `enforced`, `disclosed` or `unchecked`. A check that did not run is `unchecked`, never a pass; `reebeat conform` reports it the same way.
+3. The build manifest records for each plugin and each of its permissions one of `enforced`, `disclosed` or `unchecked`. A check that did not run is `unchecked`, never a pass; `tsukuri conform` reports it the same way.
 4. **Limits of the platform, so nobody over-trusts it.** Node's permission model restricts the file system, child processes, worker threads, native addons and WASI, and since the v24 documentation this record first read it has gained `--allow-net`; but Node's own documentation says it "does not protect against malicious code" and calls it a "seat belt" for trusted code ([Node permissions](https://nodejs.org/docs/latest/api/permissions.html)). It is a mitigation for a plugin's mistakes, not a boundary against a hostile plugin. Candidate Sandbox adapters are a container runtime, bubblewrap or Landlock on Linux; which first is **open** and **[INFERENCE]** until measured.
 5. Pure plugins (lint rules, codecs, importers, pure artifact renderers) are typed so that they cannot ask for a service (`Effect<A, E, never>`), but TypeScript cannot stop an `import "node:fs"`. They default to `sandbox` like every other plugin; until a WASM or isolate sandbox exists (**later**) that means a child process.
 
@@ -534,7 +534,7 @@ Rules:
 
 | Alternative | Why not |
 | --- | --- |
-| **Auto-discovery** (scan for `reebeat-plugin-*`, as ESLint and Babel once did) | Breaks "config explicit"; a dependency update could change a build; supply-chain risk. |
+| **Auto-discovery** (scan for `tsukuri-plugin-*`, as ESLint and Babel once did) | Breaks "config explicit"; a dependency update could change a build; supply-chain risk. |
 | **A hosted plugin registry** | A server of ours, which the open-core rule forbids for the open part. npm and PyPI already exist. |
 | **Egress declaration as the security model** | A disclosure is not a control. Honest levels beat a false guarantee. |
 | **Run everything in WebAssembly** | Cannot host Manim. Later for pure points. |
@@ -547,12 +547,12 @@ Rules:
 | Level | Meaning | Examples | Compiler |
 | --- | --- | --- | --- |
 | `deterministic` | Equal input gives equal output (pixels for frames, bytes for files, equal text for text) on one machine and toolchain. | `reveal` with the controlled clock, codecs, lint rules, VTT writer, `ffmpeg` encode | Runs freely. |
-| `cache-pinned` | Not repeatable by itself, but each output is stored in the `AssetCache` under `assetKey` (adapter id, settings, input, extra) and rebuilds read it. | Speech models, hosted services. **An `Engine` may not declare it in the first protocol version**: frames must be reproducible (`deterministic`) or declared otherwise (`nondeterministic`). | Needs a cache. A reproducible build **fails on a miss** instead of regenerating, and says which asset; `--refresh <plugin-id>` regenerates it (speech has `--refresh-speech` today). `reebeat check` prints F6 for an asset of a pinned plugin as `pinned (cache: <id>)`: it compares the cache with itself, and says so. |
-| `nondeterministic` | Neither. Reads a clock or live data the key cannot capture. | A chart of a live data feed | **Refused** when the build is reproducible. Allowed only when the config says `"reproducible": false`; the build manifest records it and `reebeat check` prints F6 as `N/A (nondeterministic: <id>)`, the way F8 prints `N/A (silent stand-in)`. |
+| `cache-pinned` | Not repeatable by itself, but each output is stored in the `AssetCache` under `assetKey` (adapter id, settings, input, extra) and rebuilds read it. | Speech models, hosted services. **An `Engine` may not declare it in the first protocol version**: frames must be reproducible (`deterministic`) or declared otherwise (`nondeterministic`). | Needs a cache. A reproducible build **fails on a miss** instead of regenerating, and says which asset; `--refresh <plugin-id>` regenerates it (speech has `--refresh-speech` today). `tsukuri check` prints F6 for an asset of a pinned plugin as `pinned (cache: <id>)`: it compares the cache with itself, and says so. |
+| `nondeterministic` | Neither. Reads a clock or live data the key cannot capture. | A chart of a live data feed | **Refused** when the build is reproducible. Allowed only when the config says `"reproducible": false`; the build manifest records it and `tsukuri check` prints F6 as `N/A (nondeterministic: <id>)`, the way F8 prints `N/A (silent stand-in)`. |
 
 `reproducible` is **true by default**. This is the fail-closed reading of "config explicit": relaxing the guarantee is a visible line in the config.
 
-**Obligations per kind of plugin**, each a clause id in the contract and so run by `xContract` and `reebeat conform`:
+**Obligations per kind of plugin**, each a clause id in the contract and so run by `xContract` and `tsukuri conform`:
 
 | Obligation | Applies to | Clause |
 | --- | --- | --- |
@@ -569,7 +569,7 @@ Rules:
 
 **Scope of identity** is the one F6 already states: same machine, same toolchain. Cross-machine bit identity is **not** required. An engine that renders with fonts or a GPU may differ across machines; it says so by declaring nothing stronger than `deterministic`, and the build manifest records the machine class. Whether to offer a `portable` capability is open.
 
-**Incremental builds** ([issue #9](https://github.com/reebeat/reebeat/issues/9)) fall out of this: a rendered segment is an asset keyed by the brief digest, the range and the engine id, settings and manifest digest. A `deterministic` engine's segment may be cached; a `nondeterministic` one may not.
+**Incremental builds** ([issue #9](https://github.com/tsukuri-labs/tsukuri/issues/9)) fall out of this: a rendered segment is an asset keyed by the brief digest, the range and the engine id, settings and manifest digest. A `deterministic` engine's segment may be cached; a `nondeterministic` one may not.
 
 ### Alternatives considered
 
@@ -577,29 +577,29 @@ Rules:
 | --- | --- |
 | **Require every plugin to be deterministic** | Excludes speech models and hosted services, which the project already uses through the speech cache. The cache is what makes them reproducible. |
 | **Allow nondeterminism silently and report F6 as failed** | A failing check that is "expected" teaches people to ignore F6. Declared and refused is clearer than permitted and noisy. |
-| **Require cross-machine bit identity** | F6 is defined for one machine. GPUs and font stacks make a stronger promise something reebeat cannot keep, and a promise that is often broken is worse than a narrower true one. |
+| **Require cross-machine bit identity** | F6 is defined for one machine. GPUs and font stacks make a stronger promise something tsukuri cannot keep, and a promise that is often broken is worse than a narrower true one. |
 | **Compare PNG bytes** | Equal pictures can have different PNG bytes. The check would punish a library choice, not a behaviour. |
 | **Trust the declaration** | A `deterministic` claim that is false is the failure that costs most. E3 runs twice and compares; `check` runs F6 on the real build. |
 
-## Considered alternative: React's core as reebeat's engine
+## Considered alternative: React's core as tsukuri's engine
 
-**Decided (operator, 2026-10-29): rejected as the core.** The idea is to adopt React's reconciler and scheduler as reebeat's engine, the way React Native uses them for native trees and Remotion uses them for video. React is a good tool for a different problem: it renders the present state of a tree into one host. reebeat builds timelines of many artifacts.
+**Decided (operator, 2026-10-29): rejected as the core.** The idea is to adopt React's reconciler and scheduler as tsukuri's engine, the way React Native uses them for native trees and Remotion uses them for video. React is a good tool for a different problem: it renders the present state of a tree into one host. tsukuri builds timelines of many artifacts.
 
-| React's design | Why it does not fit reebeat | Evidence |
+| React's design | Why it does not fit tsukuri | Evidence |
 | --- | --- | --- |
-| It renders the present only; there is no pass that plans the whole timeline. | Narration durations, lead and follow, and anchors resolve only when the whole timeline is planned, before any frame is made. | reebeat's `schedule` stage and 0004's resolution order ([PR #17](https://github.com/reebeat/reebeat/pull/17)). |
-| Reconciliation makes the fewest mutations to a host tree. | reebeat needs *meaningful, timed transitions* derived from the identity diff (enter, exit, move, update with windows and easing), not the smallest edit. | GLOSSARY, "Identity diff" and "Lifecycle event". |
+| It renders the present only; there is no pass that plans the whole timeline. | Narration durations, lead and follow, and anchors resolve only when the whole timeline is planned, before any frame is made. | tsukuri's `schedule` stage and 0004's resolution order ([PR #17](https://github.com/tsukuri-labs/tsukuri/pull/17)). |
+| Reconciliation makes the fewest mutations to a host tree. | tsukuri needs *meaningful, timed transitions* derived from the identity diff (enter, exit, move, update with windows and easing), not the smallest edit. | GLOSSARY, "Identity diff" and "Lifecycle event". |
 | A key is scoped to its siblings. | Identity is story-wide: one id is one entity across parents and Scenes (decided). | React documents it: "Keys must be unique among siblings" ([Rendering lists](https://react.dev/learn/rendering-lists)). |
 | The scheduler depends on wall-clock time and on priorities. | Builds must be deterministic (F6). | The scheduler reads `performance.now()` and runs tasks by priority level ([`Scheduler.js`](https://github.com/facebook/react/blob/main/packages/scheduler/src/forks/Scheduler.js)). |
 | It targets one host tree. | One IR compiles to many artifacts (Video, Deck, VTT, Fountain, SCXML, and later a website). | Decision 2, rows 10a, 10b, 19. |
-| Incrementality lives in one process. | reebeat needs a persistent build graph: segments cached across runs under digests. | Decision 3 (brief digests) and the layering below. |
+| Incrementality lives in one process. | tsukuri needs a persistent build graph: segments cached across runs under digests. | Decision 3 (brief digests) and the layering below. |
 | It has no audio model. | Narration, sounds and their sample-accurate onsets are half of the product. | Spec 0001, F1 and F8. |
 
-Remotion is not a candidate engine either: its licence has a company tier (free only for individuals, for-profit organisations of up to 3 employees and non-profits; [Remotion licence](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)), so building reebeat's core on it would put a licence condition on an Apache-2.0 compiler and on the products above it. That last step is **[INFERENCE]**; it has not been put to a lawyer.
+Remotion is not a candidate engine either: its licence has a company tier (free only for individuals, for-profit organisations of up to 3 employees and non-profits; [Remotion licence](https://github.com/remotion-dev/remotion/blob/main/LICENSE.md)), so building tsukuri's core on it would put a licence condition on an Apache-2.0 compiler and on the products above it. That last step is **[INFERENCE]**; it has not been put to a lawyer.
 
 **Kept as options**, both inside this architecture:
 
-- **React as one render engine** under the engine SDK: a frame-in, pixels-out engine of reebeat's own (not Remotion), declared with its own capabilities (row 8). It is the natural first engine for authors who already write React.
+- **React as one render engine** under the engine SDK: a frame-in, pixels-out engine of tsukuri's own (not Remotion), declared with its own capabilities (row 8). It is the natural first engine for authors who already write React.
 - **JSX as an authoring importer** (row 12): a front end that compiles JSX to the story IR, never a runtime dependency of the build.
 
 ## Layering: the story, the plans and the build graph
@@ -618,8 +618,8 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 
 **Easier**
 
-- Once plugin loading and a Sandbox adapter exist (the last steps of the order of work), a third party can write a lint rule, an importer, a codec or a text artifact against a data contract with an executable suite, with no change to reebeat. Until then only a plugin the user wrote and trusts runs, in process.
-- A Python engine author needs the JSON Schema, the protocol page and the runner. Nothing else from reebeat.
+- Once plugin loading and a Sandbox adapter exist (the last steps of the order of work), a third party can write a lint rule, an importer, a codec or a text artifact against a data contract with an executable suite, with no change to tsukuri. Until then only a plugin the user wrote and trusts runs, in process.
+- A Python engine author needs the JSON Schema, the protocol page and the runner. Nothing else from tsukuri.
 - Docs, the JSON Schema, the plugin screen and the stability table cannot disagree with the contracts: they are generated or tested.
 - A story that cannot be built on its engines fails at plan time with a location, not after a ten-minute render.
 - Studio and agents see one list of contracts and one list of capabilities.
@@ -635,7 +635,7 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 **Stays the same**
 
 - The tier model and the direction of dependencies. `check:tiers` gains `contracts` in the library row and a new `sdk` row between services and adapters (Decision 3).
-- `reebeat.config.json` is the one place a build's pieces are chosen; no fallback.
+- `tsukuri.config.json` is the one place a build's pieces are chosen; no fallback.
 - F6, the stand-in rule, `assetKey`, the exceptions registry.
 - Curves and the expression language are data and closed.
 - The compiler, the formats and the contracts are Apache-2.0; plugins pick their own licence.
@@ -650,14 +650,14 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 ### Order of work (specs numbered when written)
 
 1. `contracts` package, the registry, generated docs and JSON Schema, the stability gate and the plugin manifest Schema; no behaviour change. Needs the grammar-as-data of 0005 for effect kinds only.
-2. `Engine` contract, in-process adapters (reveal wrapped, declaring `access: sequential`), the SDK and `reebeat conform` (with the clause module moved out of vitest); the `engines` selection key and the per-Scene engine Hint.
+2. `Engine` contract, in-process adapters (reveal wrapped, declaring `access: sequential`), the SDK and `tsukuri conform` (with the clause module moved out of vitest); the `engines` selection key and the per-Scene engine Hint.
 3. The wire protocol and the first out-of-process engine (Manim, or a reference one in Python).
 4. The compositor, boundary frames, carry-over, the `cap/*` rules.
 5. Plugin loading, `plugins` in the config, the `Sandbox` service.
 
 ## Open questions for the operator
 
-1. **Package name and tier.** `@reebeat/contracts` in the library tier, with tags in `services`, is proposed. The alternative the operator may prefer is keeping one package (`services`) and accepting that pure points cannot be implemented by libraries.
+1. **Package name and tier.** `@tsukuri/contracts` in the library tier, with tags in `services`, is proposed. The alternative the operator may prefer is keeping one package (`services`) and accepting that pure points cannot be implemented by libraries.
 2. **Engine as content.** Is the engine id of a Scene part of the Screenplay (proposed), or configuration only?
 3. **Default trust.** `sandbox` that refuses to run without a working Sandbox adapter (proposed) means no out-of-process plugin runs on a machine without one. Is `host` after an explicit prompt acceptable as the day-one path?
 4. **TypeScript-only SDK.** Accept that a Python SDK is community work?
@@ -665,7 +665,7 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 6. **Compositor open "later".** Third parties wait until two engines exist.
 7. **ADR numbering.** This directory starts at `0000`, as the donor repository's does; its numbers are independent of spec numbers.
 8. **WebMCP.** It is a candidate surface for agent endpoints on a dynamic website, and it is still a Draft Community Group Report. Proposed: define `tool-endpoint` without it and treat a WebMCP adapter as experimental. Confirm, or rule it out.
-9. **A new `sdk` tier.** `tools/quality/tiers.ts` gains a row between services and adapters so that first-party engine adapters can import the SDK (Decision 3). The alternative is to put the SDK's in-process half into `@reebeat/services`.
+9. **A new `sdk` tier.** `tools/quality/tiers.ts` gains a row between services and adapters so that first-party engine adapters can import the SDK (Decision 3). The alternative is to put the SDK's in-process half into `@tsukuri/services`.
 10. **The agent tool protocol. Resolved.** The operator decided on 2026-10-29 (`agent-protocol`, log line 77) that tools are declared protocol-neutrally and MCP is the first adapter; row 17 records it. Kept here so the numbering of the other questions does not move.
 11. **Plugin peer ranges.** The cap below the next minor for unstable contracts reached this record as an agreed rule without a recorded operator decision. Confirm it.
 12. **The interaction bypass.** The operator decided that a flag bypasses the plan-time failure for an output, as a declared opt-out and never a default. Proposed: a per-output command-line flag, recorded in `build.json` with the output it applies to. Confirm, or choose another form.
@@ -680,7 +680,7 @@ How the build graph meets this record: a brief digest is the key of a segment; a
 - WebMCP specification (Draft Community Group Report): <https://webmachinelearning.github.io/webmcp/>, and community technical notes: <https://w3c-cg.github.io/aikr/webMCP/webmcp-technical-notes.html>
 - Manim output settings: <https://docs.manim.community/en/stable/tutorials/output_and_config.html>
 - Motion Canvas image sequence: <https://motioncanvas.io/docs/rendering/image-sequence>
-- In this repository: `packages/services/src/selection.ts`, `packages/services/src/types.ts`, `packages/services/src/renderer.ts`, `packages/services/contract/clause.ts`, `packages/capture-chromium/src/capture.ts`, `tools/quality/tiers.ts`, `tools/quality/test/grammarCopies.test.ts`, [`AGENTS.md`](../../AGENTS.md), [`open-core-boundary.md`](../design/open-core-boundary.md), [`keyframe-engine.md`](../design/keyframe-engine.md) R3, [spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), [spec 0007](../specs/0007-scxml-persistent-ir-spike.md), [spec 0009](../specs/0009-npm-prereleases.md) (npm pre-releases and the rule for `effect` peer ranges), [PR #17](https://github.com/reebeat/reebeat/pull/17) (spec 0004), [issue #12](https://github.com/reebeat/reebeat/issues/12), [issue #19](https://github.com/reebeat/reebeat/issues/19) and [issue #20](https://github.com/reebeat/reebeat/issues/20).
+- In this repository: `packages/services/src/selection.ts`, `packages/services/src/types.ts`, `packages/services/src/renderer.ts`, `packages/services/contract/clause.ts`, `packages/capture-chromium/src/capture.ts`, `tools/quality/tiers.ts`, `tools/quality/test/grammarCopies.test.ts`, [`AGENTS.md`](../../AGENTS.md), [`open-core-boundary.md`](../design/open-core-boundary.md), [`keyframe-engine.md`](../design/keyframe-engine.md) R3, [spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md), [spec 0007](../specs/0007-scxml-persistent-ir-spike.md), [spec 0009](../specs/0009-npm-prereleases.md) (npm pre-releases and the rule for `effect` peer ranges), [PR #17](https://github.com/tsukuri-labs/tsukuri/pull/17) (spec 0004), [issue #12](https://github.com/tsukuri-labs/tsukuri/issues/12), [issue #19](https://github.com/tsukuri-labs/tsukuri/issues/19) and [issue #20](https://github.com/tsukuri-labs/tsukuri/issues/20).
 
 ## Revisions
 
@@ -700,7 +700,7 @@ The critic found one blocker, ten majors and three minors, and found no text aim
 | 8 | major | Nobody owned Element kinds, yet Manim's reason to exist is equations. | **Accepted.** Row 21 `ElementKind`: closed, owned by `grammar.ts`; engines declare which grammar kinds they draw and may not bring a private kind. |
 | 9 | major | Decision 1 splits each contract across two homes held together by an existence test; stability has three homes; a simpler option (contracts where they are used) was not listed. | **Partly accepted.** The tag's method types are now derived from the Schemas with a type test, and the JSDoc `@stability` tag is a tested derivation of the data field. Alternative F (contracts where used, registry in the tools tier) is listed and rejected with reasons, as the fallback if the drift tests prove heavy. The two-package split stays: libraries cannot import a service. |
 | 10 | major | Two version numbers collide: at `0.x` `^` equals `~`; lockstep releases strand plugins; the Effect peer rule conflicts with spec 0009's measured rule. | **Accepted.** The record says the load-time `compatible()` check is the only effective guard until the packages leave `0.x`; `plugin check` derives a peer range from 1.0; the `effect` peer defers to spec 0009's rule. |
-| 11 | major | "The runner needs no vitest" was false: `clause.ts` imports `@effect/vitest`, bodies assert with it, `Clause` has no `requires`. | **Accepted.** The record states what must change first (move `Clause` and `failingClauses` out of vitest, typed failures, add `requires`), that clause bodies stay TypeScript, that `reebeat conform` is the only authority and the JSON fixtures are inputs. |
+| 11 | major | "The runner needs no vitest" was false: `clause.ts` imports `@effect/vitest`, bodies assert with it, `Clause` has no `requires`. | **Accepted.** The record states what must change first (move `Clause` and `failingClauses` out of vitest, typed failures, add `requires`), that clause bodies stay TypeScript, that `tsukuri conform` is the only authority and the JSON fixtures are inputs. |
 | 12 | minor | Wrong facts: "seven services ... stand-ins" (four have them); the XState 20 of 20 claim; Node version; falsifiers check only shape. | **Accepted.** Corrected the three facts. Spec 0012 gains F-ext10, which checks every path and symbol the ADR names against the repository (and F-ext10's output is in the PR body). |
 | 13 | minor | Status "Accepted when the spec merges" with seven open questions; "Decided (the agreed rule)" had no owner or date. | **Accepted.** The ADR stays Proposed at merge and each decision becomes Accepted on the operator's confirmation; the peer-range row names who relayed it and when. |
 | 14 | minor | Inconsistent tiers for rows 16, 17, 20; `#8` and `#13` mixed rows and issues; E2 "byte-equal JSON"; plugin id and `AdapterInfo.id` format. | **Accepted.** Tiers corrected; rows are written "row N" and issues "issue #N"; E2 compares decoded results; ids split at the last `@`. |
@@ -726,7 +726,7 @@ The second pass verified all fourteen resolutions in the text and found two bloc
 
 ### 2026-10-29, operator direction: React's core and the layering
 
-After the two review rounds the operator decided that React's core is rejected as reebeat's engine core, with seven reasons, and that React as one engine and JSX as an importer stay open. The ADR gained the section "Considered alternative: React's core as reebeat's engine" and the section "Layering: the story, the plans and the build graph" (the story is a statechart that may cycle; each artifact's plan unrolls it; "DAG" applies only to the build graph, which has dynamic dependencies and early cutoff, after Build Systems à la Carte). The Remotion licence point is marked as an inference.
+After the two review rounds the operator decided that React's core is rejected as tsukuri's engine core, with seven reasons, and that React as one engine and JSX as an importer stay open. The ADR gained the section "Considered alternative: React's core as tsukuri's engine" and the section "Layering: the story, the plans and the build graph" (the story is a statechart that may cycle; each artifact's plan unrolls it; "DAG" applies only to the build graph, which has dynamic dependencies and early cutoff, after Build Systems à la Carte). The Remotion licence point is marked as an inference.
 
 ### 2026-10-29, reviewer round 1 of the PR record (reviewer RevExt23, on head `dd24d8c`): changes requested
 

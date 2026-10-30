@@ -7,14 +7,14 @@ import {
   referenceLifecycle,
   schedule,
   wordsOf,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import type {
   AlignedLine,
   PlanError,
   PlanJson,
   RendererLifecycle,
   ScheduleError,
-} from "@reebeat/core";
+} from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
@@ -53,7 +53,7 @@ export const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
     })),
   }));
 
-/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@reebeat/core`'s reference one. */
+/** A renderer's declaration of its slide change for the Plan the contracts schedule: `@tsukuri/core`'s reference one. */
 export const contractLifecycle: RendererLifecycle = referenceLifecycle;
 
 /** The contract Plan, with its Timeline. */

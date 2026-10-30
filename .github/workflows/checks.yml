@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Nix's Chromium has no setuid sandbox and Ubuntu runners restrict unprivileged user namespaces (spec 0001).
-      REEBEAT_CHROMIUM_NO_SANDBOX: "1"
+      TSUKURI_CHROMIUM_NO_SANDBOX: "1"
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:

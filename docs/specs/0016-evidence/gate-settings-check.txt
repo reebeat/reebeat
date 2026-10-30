@@ -1,0 +1,32 @@
+# F16 control: the settings check run against npm-release as it is today (read-only; session account = the operator login that this workstation holds; jq from nixpkgs)
+$ nix shell nixpkgs#jq -c gate-settings-check.sh tsukuri-labs/tsukuri npm-release
+session account: phibkro; repo admin: true; token scopes: 'gist', 'read:org', 'repo', 'workflow'
+environment npm-release: {"bypass":true,"reviewers":[{"self":false,"who":["phibkro"]}]}
+PASS  a required_reviewers rule exists
+FAIL  the session account is not a required reviewer
+FAIL  prevent_self_review is true
+FAIL  can_admins_bypass is false
+FAIL  the session token has no repository admin
+FAIL  the session token has no classic repo scope
+result: FAIL
+exit=1
+
+# the script (gate-settings-check.sh)
+#!/usr/bin/env bash
+# usage: gate-settings-check.sh <owner/repo> <environment>   (read-only; run with the token an agent session uses)
+set -u
+repo=$1; env=$2; fail=0
+me=$(gh api user --jq .login)
+rules=$(gh api "repos/$repo/environments/$env" --jq '{bypass: .can_admins_bypass, reviewers: [.protection_rules[]|select(.type=="required_reviewers")|{self: .prevent_self_review, who: [.reviewers[].reviewer.login]}]}')
+admin=$(gh api "repos/$repo" --jq .permissions.admin)
+scopes=$(gh auth status 2>&1 | sed -n "s/.*Token scopes: //p")
+echo "session account: $me; repo admin: $admin; token scopes: ${scopes:-none shown (fine-grained or app token)}"
+echo "environment $env: $rules"
+check() { if [ "$2" = true ]; then echo "PASS  $1"; else echo "FAIL  $1"; fail=1; fi; }
+check "a required_reviewers rule exists" "$(echo "$rules" | jq '.reviewers|length>0')"
+check "the session account is not a required reviewer" "$(echo "$rules" | jq --arg me "$me" '[.reviewers[].who[]]|index($me)==null')"
+check "prevent_self_review is true" "$(echo "$rules" | jq '[.reviewers[].self]|all(.==true) and (length>0)')"
+check "can_admins_bypass is false" "$(echo "$rules" | jq '.bypass==false')"
+check "the session token has no repository admin" "$([ "$admin" = false ] && echo true || echo false)"
+check "the session token has no classic repo scope" "$(echo "$scopes" | grep -qE "'repo'" && echo false || echo true)"
+echo "result: $([ $fail = 0 ] && echo pass || echo FAIL)"; exit $fail

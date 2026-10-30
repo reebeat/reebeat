@@ -65,7 +65,7 @@ Real: the real `check` over a real build (`verify` tests build a story with the 
 | # | Falsifier (must hold) | Gate | Negative control (must fail) |
 | --- | --- | --- | --- |
 | F1 | F8 on a directory that is not the cache, and on a cache without one Line's file, fails naming that directory and `--cache-dir`, and not with an ffmpeg exit code; the intact cache passes | `packages/verify/test/speechCache.test.ts` | replace the `missingCache` call in `packages/verify/src/narration.ts` by `Option.none()`: the test fails, `expected 'the written files cannot be observed:…' to include '<the directory>'` |
-| F2 | A `SpeechCacheMiss` names a command and a flag; the command's `--help` lists that flag | `packages/cli/test/plan.test.ts` ("a SpeechCacheMiss names the command and the flag that fill the cache, and both exist") | rename the `build` flag to `Flag.Boolean("refresh")`: the test fails, `expected 'DESCRIPTION…' to include '--refresh-speech'` |
+| F2 | A `SpeechCacheMiss` names a command and a flag; the command's `--help` lists that flag | `packages/cli/test/plan.test.ts` ("--timing without a cache entry fails with SpeechCacheMiss naming the Line and the key, and the command and flag that fill the cache (both exist)") | rename the `build` flag to `Flag.Boolean("refresh")`: the test fails, `expected 'DESCRIPTION…' to include '--refresh-speech'` |
 | F3 | The gates pass | `bun run ready` | any gate fails |
 
 ## Revisions

@@ -17,6 +17,8 @@ export interface MuxRequest {
   readonly frames: Stream.Stream<Uint8Array, CaptureFailure, Scope.Scope>;
   readonly height: number;
   readonly metadata: { readonly comment: string; readonly title: string };
+  /** True: the rate is the 1000/1001 fraction of `fps` (`settings.ntsc`); the ffmpeg encoder refuses it for now. */
+  readonly ntsc: boolean;
   readonly outPath: string;
   /** Clips mixed into one audio stream, each starting at `startMs`. */
   readonly tracks: readonly {

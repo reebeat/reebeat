@@ -13,6 +13,14 @@ export interface PhraseMatch {
   readonly to: number;
 }
 
+/**
+ * The words of a Line: its text split on single spaces (the text has its whitespace collapsed). The one place that
+ * splits it; a Line stores no list of words, so the text and its words cannot disagree. The speech cache keys and
+ * the aligner read these words, so the split is part of the cache contract.
+ */
+export const wordsOf = (text: string): readonly string[] =>
+  text === "" ? [] : Str.split(text, " ");
+
 /** The normalised words of a phrase. */
 export const phraseTokens = (phrase: string): readonly string[] =>
   Arr.map(
@@ -22,7 +30,7 @@ export const phraseTokens = (phrase: string): readonly string[] =>
 
 /** Every place the phrase stands in the Lines of a Scene, in narration order. */
 export const findPhrase = (
-  lines: readonly Pick<Line, "words">[],
+  lines: readonly Pick<Line, "text">[],
   phrase: string
 ): readonly PhraseMatch[] => {
   const wanted = phraseTokens(phrase);
@@ -32,8 +40,8 @@ export const findPhrase = (
     return found;
   }
 
-  for (const [line, { words }] of lines.entries()) {
-    const spoken = Arr.map(words, normaliseWord);
+  for (const [line, { text }] of lines.entries()) {
+    const spoken = Arr.map(wordsOf(text), normaliseWord);
 
     for (let from = 0; from + wanted.length <= spoken.length; from += 1) {
       if (
@@ -49,12 +57,14 @@ export const findPhrase = (
 
 /** The distinct words of a Scene's narration as the author writes them (punctuation stripped), for `did you mean`. */
 export const narrationWords = (
-  lines: readonly Pick<Line, "words">[]
+  lines: readonly Pick<Line, "text">[]
 ): readonly string[] =>
   Arr.dedupe(
-    Arr.flatMap(lines, ({ words }) =>
+    Arr.flatMap(lines, ({ text }) =>
       Arr.filter(
-        Arr.map(words, (word) => Str.replaceAll(/[^\p{L}\p{N}'-]/gu, "")(word)),
+        Arr.map(wordsOf(text), (word) =>
+          Str.replaceAll(/[^\p{L}\p{N}'-]/gu, "")(word)
+        ),
         (word) => word !== ""
       )
     )

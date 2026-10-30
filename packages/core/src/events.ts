@@ -4,6 +4,7 @@
 import { Array as Arr, Option } from "effect";
 
 import { elementOf } from "./lookup.ts";
+import type { Machine } from "./machines.ts";
 import type { Effect, ElementEvent, Scene } from "./plan.ts";
 
 /**
@@ -28,6 +29,9 @@ export const showEffectOf = (scene: Scene, id: string): Effect | undefined =>
       (effect) => effect.verb === "show" && effect.target === id
     )
   );
+
+/** An effect that changes what is on screen and so is a fragment step of its Scene, and opens a Beat. */
+export const isStep = (effect: Effect): boolean => effect.verb !== "sound";
 
 const changesOf = (scene: Scene, id: string): readonly string[] =>
   Option.match(
@@ -91,3 +95,23 @@ export const eventKind = (
 export const hasWindow = (scene: Scene, kind: EventKind): boolean =>
   Arr.contains(["matched", "show-enter", "unmatched-enter"], kind) ||
   (kind === "slide-enter" && scene.transition === "default");
+
+/**
+ * Whether an Element is already on the slide when the Scene opens: it is in both Scenes of an Auto-Animate change
+ * (`same` or `update`), or it is the Element that exits.
+ */
+const isCarried = (scene: Scene, id: string): boolean =>
+  scene.identity !== null &&
+  (scene.identity.same.includes(id) ||
+    scene.identity.exit.includes(id) ||
+    Arr.some(scene.identity.update, (change) => change.id === id));
+
+/** The state an Element's machine is in when the Scene opens: `present` for a carried Element, the machine's own otherwise. */
+export const initialState = (
+  scene: Scene,
+  id: string,
+  machine: Machine
+): string =>
+  machine.id === "presence" && isCarried(scene, id)
+    ? "present"
+    : machine.initial;

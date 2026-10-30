@@ -3,17 +3,17 @@
 // silent drop. A plain function.
 import { Array as Arr, Option, Result, String as Str, pipe } from "effect";
 
-import { parseEffectLine } from "./effects.ts";
+import { isLetLine, parseEffectLine, parseLetLine } from "./effects.ts";
 import { parseElementLine } from "./elements.ts";
 import { planError } from "./errors.ts";
 import type { PlanError } from "./errors.ts";
-import { oneOf, problem, reservedIds } from "./grammar.ts";
+import { freeName, idForm, problem } from "./grammar.ts";
 import { cueErrors } from "./hints.ts";
 import type { SceneCue } from "./hints.ts";
 import { parseNarration } from "./narration.ts";
 import type { FountainToken } from "./parse.ts";
 import { idPattern } from "./plan.ts";
-import type { Effect, Element, Line, Scene } from "./plan.ts";
+import type { DerivedEvent, Effect, Element, Line, Scene } from "./plan.ts";
 import {
   defaultSpeed,
   parseSpeed,
@@ -21,13 +21,6 @@ import {
   scaleSpeed,
   slowFactor,
 } from "./speed.ts";
-
-export interface LineDraft {
-  readonly line: number;
-  readonly text: string;
-  readonly words: readonly string[];
-  readonly hints: Line["hints"];
-}
 
 export interface SceneDraft {
   readonly heading: string;
@@ -40,14 +33,14 @@ export interface SceneDraft {
   readonly effects: Effect[];
   /** The line of the `[[effects` block; none: the Scene has no block yet. */
   effectsLine: number | undefined;
-  /** Ids of the effects whose `word(...)` wrote an occurrence number. */
-  readonly explicitOccurrences: Set<string>;
+  /** The `let` lines of the block, in source order. */
+  readonly events: DerivedEvent[];
   /** An Element or effect line of the Scene has an error: its references are not checked until it is fixed. */
   invalid: boolean;
   readonly elements: Element[];
   /** The release-1 cues of the Scene's dialogue, in order, each with the Line it stood in. */
   readonly cues: SceneCue[];
-  readonly lines: LineDraft[];
+  readonly lines: Line[];
   /** The ids of the hidden Elements in document order (release 1's `hidden` included): what `[[next]]` cues revealed. */
   readonly hidden: string[];
 }
@@ -226,7 +219,11 @@ const synopsisToken = (state: State, token: FountainToken): void => {
 
 /** The id of a Scene: the `#id#` of its heading, or the generated fallback after the error that says it is missing. */
 const sceneIdOf = (state: State, token: FountainToken): string => {
-  const fallback = `sc${state.scenes.length + 1}`;
+  const fallback = freeName(
+    Arr.map(state.scenes, (scene) => scene.id),
+    `sc${state.scenes.length + 1}`
+  );
+
   const heading = Str.trim(token.text);
   const id = token.sceneNumber;
 
@@ -245,30 +242,16 @@ const sceneIdOf = (state: State, token: FountainToken): string => {
             )
           : problem(
               `"${Str.trim(written)}" is not a Scene id`,
-              "an identifier: a letter, then letters, digits, _ and -, between #"
+              `${idForm}, between #`
             )
       )
     );
-  } else if (!idPattern.test(id) || Arr.contains(reservedIds, id)) {
+  } else if (!idPattern.test(id)) {
     state.errors.push(
       planError(
         "BadSceneId",
         token.line,
-        problem(
-          `Scene id "#${id}#" is not usable`,
-          `an identifier (a letter, then letters, digits, _ and -) that is not ${oneOf(reservedIds)}`
-        )
-      )
-    );
-  } else if (Arr.some(state.scenes, (scene) => scene.id === id)) {
-    state.errors.push(
-      planError(
-        "DuplicateId",
-        token.line,
-        problem(
-          `Scene id "${id}" is already used`,
-          "a different id for each Scene"
-        )
+        problem(`Scene id "#${id}#" is not usable`, idForm)
       )
     );
   }
@@ -307,7 +290,7 @@ const headingToken = (state: State, token: FountainToken): void => {
     effects: [],
     effectsLine: undefined,
     elements: [],
-    explicitOccurrences: new Set(),
+    events: [],
     heading: Str.trim(token.text),
     hidden: [],
     id,
@@ -317,16 +300,6 @@ const headingToken = (state: State, token: FountainToken): void => {
     transition: pending?.kind ?? "default",
   });
 };
-
-const reservedId = (line: number, what: string, id: string): PlanError =>
-  planError(
-    "BadProperty",
-    line,
-    problem(
-      `${what} id "${id}" is reserved by the anchor grammar`,
-      `an identifier that is not ${oneOf(reservedIds)}`
-    )
-  );
 
 const elementLine = (
   state: State,
@@ -345,30 +318,11 @@ const elementLine = (
     return;
   }
 
-  const earlier = Arr.findFirst(
-    scene.elements,
-    (other) => other.id === element.id
-  );
+  scene.elements.push(element);
 
-  if (Option.isSome(earlier)) {
-    state.errors.push(
-      planError(
-        "DuplicateId",
-        line,
-        problem(
-          `Element id "${element.id}" is already used in this Scene (line ${earlier.value.line})`,
-          "a different id for each Element of a Scene"
-        )
-      )
-    );
-  } else if (Arr.contains(reservedIds, element.id)) {
-    state.errors.push(reservedId(line, "Element", element.id));
-  } else {
-    scene.elements.push(element);
-
-    if (!element.visible) {
-      scene.hidden.push(element.id);
-    }
+  // A reserved or repeated id is said once, for every way into the IR, by `validateGraph`.
+  if (!element.visible && !Arr.contains(scene.hidden, element.id)) {
+    scene.hidden.push(element.id);
   }
 };
 
@@ -385,29 +339,24 @@ const effectRows = (
       continue;
     }
 
+    if (isLetLine(row)) {
+      const derived = parseLetLine(row, line);
+
+      if (Result.isFailure(derived)) {
+        state.errors.push(derived.failure);
+      } else {
+        scene.events.push(derived.success);
+      }
+
+      continue;
+    }
+
     const parsed = parseEffectLine(row, line);
 
     if (Result.isFailure(parsed)) {
       state.errors.push(parsed.failure);
-    } else if (
-      Arr.some(scene.effects, (other) => other.id === parsed.success.effect.id)
-    ) {
-      state.errors.push(
-        planError(
-          "DuplicateId",
-          line,
-          problem(
-            `effect id "${parsed.success.effect.id}" is already used in this Scene`,
-            "a different id for each effect of a Scene"
-          )
-        )
-      );
     } else {
-      scene.effects.push(parsed.success.effect);
-
-      if (parsed.success.explicitOccurrence) {
-        scene.explicitOccurrences.add(parsed.success.effect.id);
-      }
+      scene.effects.push(parsed.success);
     }
   }
 };
@@ -679,7 +628,6 @@ const dialogueToken = (state: State, token: FountainToken): void => {
     hints,
     line: token.line,
     text: narration.text,
-    words: narration.words,
   });
 };
 
@@ -829,16 +777,6 @@ const finish = (state: State): void => {
         "a transition must lead into a scene heading: this one ends the story"
       )
     );
-  }
-
-  for (const [index, chapter] of state.chapters.entries()) {
-    if (!Arr.some(state.scenes, (scene) => scene.chapterIndex === index)) {
-      unsupported(
-        state,
-        chapter.line,
-        `Section "${chapter.title}" has no Scene`
-      );
-    }
   }
 
   for (const scene of state.scenes) {

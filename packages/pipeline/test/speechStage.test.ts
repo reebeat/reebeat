@@ -2,7 +2,7 @@
 // provenance, and determinism. No model, no binary: the synthesiser, the aligner and the cache are stand-ins and
 // the encoder is a fake that stores the samples as they are.
 import { assert, layer } from "@effect/vitest";
-import { buildPlan, schedule } from "@tsukuri/core";
+import { buildPlan, planLines, schedule, wordsOf } from "@tsukuri/core";
 import { AssetCache, SpeechSynthesizer, WordAligner } from "@tsukuri/services";
 import { contractLifecycle } from "@tsukuri/services/contract";
 import {
@@ -78,9 +78,7 @@ const audioFilesAt = (speed: number) =>
     Arr.map((line) => line.audio.file)
   );
 
-const linesOf = Effect.map(fixturePlan, (plan) =>
-  Arr.flatMap(plan.scenes, (scene) => scene.lines)
-);
+const linesOf = Effect.map(fixturePlan, planLines);
 
 const sha256Of = (bytes: Uint8Array) =>
   Digest.Digest.use((digest) => digest.digestHex(Digest.sha256, bytes));
@@ -132,7 +130,7 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
         const cache = yield* AssetCache;
         const aligned = yield* speechStage(plan, { refresh: true });
 
-        for (const [index, line] of (yield* linesOf).entries()) {
+        for (const [index, { id, line }] of (yield* linesOf).entries()) {
           const entry = aligned[index];
 
           const key =
@@ -144,11 +142,11 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
             Arr.findFirst(found.files, (file) => file.name === "flac")
           );
 
-          assert.strictEqual(entry?.lineId, line.id);
+          assert.strictEqual(entry?.lineId, id);
           assert.match(entry?.audio.file ?? "", /^[0-9a-f]{64}\.flac$/u);
           assert.deepStrictEqual(
             Arr.map(entry?.words ?? [], (word) => word.w),
-            line.words
+            wordsOf(line.text)
           );
           assert.isTrue(Option.isSome(flac));
           assert.strictEqual(
@@ -178,7 +176,7 @@ layer(world)("speech stage: miss, refresh, hit", (it) => {
 
         const stored = yield* cache.list;
 
-        for (const line of yield* linesOf) {
+        for (const { line } of yield* linesOf) {
           const found = Arr.findFirst(
             stored,
             (entry) => entry.keyParts.input === line.text

@@ -37,10 +37,7 @@ describe("timeOfProgress", () => {
 });
 
 describe("findPhrase", () => {
-  const lines = [
-    { words: ["Box", "one,", "box", "TWO.", "Box"] },
-    { words: ["The", "box", "two"] },
-  ];
+  const lines = [{ text: "Box one, box TWO. Box" }, { text: "The box two" }];
 
   it("finds a word whatever its case and punctuation, in narration order", () => {
     assert.deepStrictEqual(findPhrase(lines, "box"), [

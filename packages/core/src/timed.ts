@@ -3,20 +3,14 @@
 import { Array as Arr, Option, Result } from "effect";
 
 import { PlanNotScheduled } from "./errors.ts";
-import type { Line, PlanJson, Timeline } from "./plan.ts";
+import { lineIdOf } from "./lines.ts";
+import type { PlanJson, Timeline } from "./plan.ts";
 
 /** The millisecond at which `frame` starts: `round(1000 * frame / fps)`. */
 export const frameToMs = (frame: number, fps: number): number =>
   Math.round((1000 * frame) / fps);
 
 export type TimedPlan = PlanJson & { readonly timeline: Timeline };
-
-const planLines = (plan: PlanJson): readonly Line[] =>
-  Arr.flatMap(plan.scenes, (scene) => scene.lines);
-
-/** Every Line of the Plan by id. */
-export const linesById = (plan: PlanJson): ReadonlyMap<string, Line> =>
-  new Map(Arr.map(planLines(plan), (line): [string, Line] => [line.id, line]));
 
 const notScheduled = (
   message: string
@@ -28,7 +22,6 @@ const firstDisagreement = (
   plan: PlanJson,
   timeline: Timeline
 ): string | undefined => {
-  const lines = linesById(plan);
   const chapterIds = new Set(Arr.map(plan.chapters, (chapter) => chapter.id));
 
   for (const scene of timeline.scenes) {
@@ -40,10 +33,8 @@ const firstDisagreement = (
       return `the Timeline has Scene ${scene.sceneId}, the Plan does not`;
     }
 
-    for (const line of scene.lines) {
-      if (!lines.has(line.lineId)) {
-        return `the Timeline has Line ${line.lineId}, the Plan does not`;
-      }
+    if (scene.lines.length > planned.lines.length) {
+      return `the Timeline has Line ${lineIdOf(scene.sceneId, planned.lines.length + 1)}, the Plan does not`;
     }
 
     const unknownEffect = Arr.findFirst(

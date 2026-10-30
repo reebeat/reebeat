@@ -7,7 +7,8 @@ import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import { buildPlan, collectErrors } from "../src/build.ts";
 import type { PlanError } from "../src/errors.ts";
-import { asText, fixtureSha256, lineOf } from "./support.ts";
+import { anchorFormsText } from "../src/grammar.ts";
+import { asText, fixtureSha256, lineOf, replacedOnce } from "./support.ts";
 
 const base = asText([
   "Title: Errors",
@@ -45,15 +46,8 @@ const base = asText([
 ]);
 
 /** The base story with its only occurrence of `from` replaced by `to`. */
-const change = (from: string, to: string): string => {
-  assert.strictEqual(
-    Str.split(base, from).length,
-    2,
-    `${from} occurs once in the base`
-  );
-
-  return Str.replace(from, to)(base);
-};
+const change = (from: string, to: string): string =>
+  replacedOnce(base, from, to);
 
 const firstError = (source: string) =>
   Effect.flip(buildPlan(source, fixtureSha256));
@@ -142,7 +136,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Element id "scene" is reserved by the anchor grammar; expected an identifier that is not scene, transition or word',
+      'Element id "scene" is reserved by the anchor grammar; expected an identifier that is not beat, scene, state, transition, word, each, first, last, when, within or let',
     name: "an Element id the anchor grammar reserves",
     needle: "id=scene",
     source: change(
@@ -169,7 +163,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'Scene id "one" is already used; expected a different id for each Scene',
+      'Scene id "one" is already used (line 5); expected a different id for each Scene; did you mean one2?',
     name: "two Scenes with one id",
     needle: "INT. TWO #one#",
     source: change("INT. TWO #two#", "INT. TWO #one#"),
@@ -200,16 +194,14 @@ const cases: readonly Case[] = [
     tag: "UnknownSfx",
   },
   {
-    message:
-      'unknown event "moev" in a.moev.start; expected enter, exit, move or update; did you mean move?',
+    message: `"a.moev.start" names no moment of a declared machine; expected ${anchorFormsText}; did you mean a.move.start?`,
     name: "an unknown Element event",
     needle: "a.moev.start",
     source: change("a.move.start", "a.moev.start"),
     tag: "BadEffect",
   },
   {
-    message:
-      'unknown edge "strat" in r1.strat; expected start or end; did you mean start?',
+    message: `"r1.strat" names no moment of a declared machine; expected ${anchorFormsText}; did you mean r1.start?`,
     name: "an unknown edge",
     needle: "r1.strat",
     source: change("at r1.end +100ms", "at r1.strat +100ms"),
@@ -233,7 +225,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'effect id "scene" is not usable; expected an identifier that is not scene, transition or word',
+      'effect id "scene" is not usable; expected an identifier that is not beat, scene, state, transition, word, each, first, last, when, within or let',
     name: "an effect id the anchor grammar reserves",
     needle: "scene: focus",
     source: change("f1: focus", "scene: focus"),
@@ -241,7 +233,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      'effect id "r1" is already used in this Scene; expected a different id for each effect of a Scene',
+      'effect id "r1" is already used in this Scene (line 11); expected a different name for each effect and derived event of a Scene; did you mean r2?',
     name: "two effects with one id",
     needle: "r1: focus",
     source: change("f1: focus", "r1: focus"),
@@ -327,7 +319,7 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "effects wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event",
+      "effects and derived events wait for each other: s1 -> s2 -> s1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "two effects that wait for each other",
     needle: "s1: sound pop at s2.start",
     source: change(
@@ -337,7 +329,8 @@ const cases: readonly Case[] = [
     tag: "EffectCycle",
   },
   {
-    message: "s1.end: a sound has no end; use s1.start",
+    message:
+      "s1.end: a sound has no end (it plays to its own end, which the plan does not know); use s1.start",
     name: "the end of a sound, which has no window",
     needle: "s2: sound ding at s1.end",
     source: change(
@@ -347,15 +340,8 @@ const cases: readonly Case[] = [
     tag: "UnsupportedEdge",
   },
   {
-    message: "f1.end: a focus has no end; use f1.start",
-    name: "the end of a focus, which has no window",
-    needle: "s1: sound pop at f1.end",
-    source: change("s1: sound pop at r1.end +100ms", "s1: sound pop at f1.end"),
-    tag: "UnsupportedEdge",
-  },
-  {
     message:
-      "effects wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event",
+      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
     name: "a show that waits for its own Element to enter",
     needle: "r1: show h at h.enter.end",
     source: change(
@@ -366,15 +352,18 @@ const cases: readonly Case[] = [
   },
   {
     message:
-      "percent offset 50% on scene.end, which has no window (it is an instant); expected start or end, or a percent of a move, an update, a show, or the transition of a Scene that is not > CUT",
+      "percent offset 50% on h.exit.start, which has no window (it is an instant); expected start or end, or a percent of a move, an update, a show, a focus, or the transition of a Scene that is not > CUT",
     name: "a percent offset on an anchor with no window",
-    needle: "scene.end +50%",
-    source: change("at r1.end +100ms", "at scene.end +50%"),
+    needle: "h.exit.start +50%",
+    source: change(
+      "m1: sound ding at a.move.start",
+      "m1: sound ding at h.exit.start +50%"
+    ),
     tag: "BadPercent",
   },
   {
     message:
-      "percent point 50% on h.exit.50%, which has no window (it is an instant); expected start or end, or a percent of a move, an update, a show, or the transition of a Scene that is not > CUT",
+      "percent point 50% on h.exit.50%, which has no window (it is an instant); expected start or end, or a percent of a move, an update, a show, a focus, or the transition of a Scene that is not > CUT",
     name: "a percent point on an exit",
     needle: "h.exit.50%",
     source: change(
@@ -382,6 +371,104 @@ const cases: readonly Case[] = [
       "m1: sound ding at h.exit.50%"
     ),
     tag: "BadPercent",
+  },
+  {
+    message:
+      "effects and derived events wait for each other: a -> b -> a; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
+    name: "two derived events that wait for each other",
+    needle: "let a = b",
+    source: change(
+      "s1: sound pop at r1.end +100ms",
+      "let a = b\n  let b = a\n  s1: sound pop at a"
+    ),
+    tag: "EffectCycle",
+  },
+  {
+    message:
+      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
+    name: "a focus whose until is its own end",
+    needle: 'f1: focus a at word("goodbye").start until f1.end',
+    source: change(
+      'f1: focus a at word("goodbye").start',
+      'f1: focus a at word("goodbye").start until f1.end'
+    ),
+    tag: "EffectCycle",
+  },
+  {
+    message:
+      "effects and derived events wait for each other: r1 -> r1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
+    name: "a step timed by the Beat it opens",
+    needle: "r1: show h at beat(1).start",
+    source: change(
+      'r1: show h at word("hello").end',
+      "r1: show h at beat(1).start"
+    ),
+    tag: "EffectCycle",
+  },
+  {
+    message:
+      "effects and derived events wait for each other: f1 -> f1; expected a chain that ends at a word, the scene, the transition or an Element event (a show or a focus cannot be timed by a State or a Beat of its own Scene: which step opens which Beat is not known until they are resolved)",
+    name: "a step timed by a State it opens",
+    needle: "f1: focus a at state(2).enter",
+    source: change(
+      'f1: focus a at word("goodbye").start',
+      "f1: focus a at state(2).enter"
+    ),
+    tag: "EffectCycle",
+  },
+  {
+    message:
+      'r1: each(word("hello").end, word("goodbye").end) can happen 2 times, but a show happens once; expected first(...) or last(...) to pick one moment (only a sound runs once for each occurrence)',
+    name: "a show that fires more than once",
+    needle: "r1: show h at each",
+    source: change(
+      'r1: show h at word("hello").end',
+      'r1: show h at each(word("hello").end, word("goodbye").end)'
+    ),
+    tag: "BadEffect",
+  },
+  {
+    message:
+      "until on a sound, which plays to its own end; expected until only on focus",
+    name: "an until on a sound",
+    needle: "s1: sound pop at r1.end +100ms until",
+    source: change(
+      "s1: sound pop at r1.end +100ms",
+      "s1: sound pop at r1.end +100ms until scene.end"
+    ),
+    tag: "BadEffect",
+  },
+  {
+    message: "until on a show, which stays shown; expected until only on focus",
+    name: "an until on a show",
+    needle: 'r1: show h at word("hello").end until',
+    source: change(
+      'r1: show h at word("hello").end',
+      'r1: show h at word("hello").end until scene.end'
+    ),
+    tag: "BadEffect",
+  },
+  {
+    message:
+      "state(9) in Scene one, which has at most 3 (one State, and one more State and one Beat for each show or focus); expected a number from 1 to 3",
+    name: "a State the Scene cannot have",
+    needle: "within(",
+    source: change(
+      "s1: sound pop at r1.end +100ms",
+      "s1: sound pop at within(r1.end, state(9))"
+    ),
+    tag: "UnknownReference",
+  },
+  {
+    message:
+      'Element "a" is never entering in Scene two; expected a state a reaches: its events are move',
+    name: "a state an Element never reaches",
+    needle: "m1: sound ding at a.entering.leave",
+    source: change(
+      "m1: sound ding at a.move.start",
+      "m1: sound ding at a.entering.leave"
+    ),
+    tag: "NoSuchEvent",
   },
   {
     message:
@@ -605,6 +692,24 @@ describe("what is valid stays valid", () => {
     const source = change(
       "at r1.end +100ms",
       'at 0.5s because "the music has a beat here"'
+    );
+
+    assert.deepStrictEqual(collectErrors(source), []);
+  });
+
+  it("the end of a focus is an event, and a focus may end by its own until", () => {
+    const source = change(
+      "s1: sound pop at r1.end +100ms",
+      'f2: focus a at word("hello").end until word("goodbye").start\n  s1: sound pop at f2.end'
+    );
+
+    assert.deepStrictEqual(collectErrors(source), []);
+  });
+
+  it("a sound may be timed by a Beat or a State that a step opens, and by a derived event, once for each occurrence", () => {
+    const source = change(
+      "s1: sound pop at r1.end +100ms",
+      'let both = last(r1.end, word("goodbye").end)\n  s1: sound pop at beat(1).end\n  s2: sound ding at state(2).enter\n  s3: sound pop at each(both, scene.end)'
     );
 
     assert.deepStrictEqual(collectErrors(source), []);

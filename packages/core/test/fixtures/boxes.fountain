@@ -8,7 +8,7 @@ Author: Tsukuri tests
 
 = One box, two screens.
 
-INT. FIRST SCREEN - DAY #first#
+INT. FIRST SCREEN - DAY #opening#
 
 A box {id=box cell=tl class=box}
 The caption {id=cap cell=bc class=muted visible=false}

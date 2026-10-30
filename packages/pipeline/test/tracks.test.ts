@@ -72,3 +72,64 @@ it.effect(
       );
     })
 );
+
+it.effect(
+  "mixes a sound once for each instance of its event, at each instance's own fire frame",
+  () =>
+    Effect.gen(function* instances() {
+      const plan = yield* buildPlan(
+        Arr.join(
+          [
+            "Title: Instances",
+            "",
+            "# Part",
+            "",
+            "INT. ONE #sc1#",
+            "",
+            "Box {id=a cell=mc class=box}",
+            "",
+            "[[effects",
+            "  p1: sound pop at each(scene.start +0.1s, scene.start +0.5s)",
+            "]]",
+            "",
+            "NARRATOR",
+            "One two three.",
+            "",
+          ],
+          "\n"
+        ),
+        digest
+      );
+
+      const timed = yield* Effect.fromResult(
+        requireTimeline(
+          yield* schedule(plan, alignedLines(plan), contractLifecycle)
+        )
+      );
+
+      const fires = Arr.map(
+        Arr.flatMap(timed.timeline.scenes, (scene) => scene.effects),
+        (effect) => [effect.instance, effect.fireFrame] as const
+      );
+
+      assert.strictEqual(fires.length, 2);
+      assert.deepStrictEqual(
+        Arr.map(sfxStarts(timed), ({ effectId, instance, name, startMs }) => [
+          effectId,
+          instance,
+          name,
+          startMs,
+        ]),
+        Arr.map(fires, ([instance, frame]) => [
+          "p1",
+          instance,
+          "pop",
+          frameToMs(frame, timed.settings.fps),
+        ])
+      );
+      assert.deepStrictEqual(
+        Arr.map(fires, ([instance]) => instance),
+        [1, 2]
+      );
+    })
+);

@@ -2,11 +2,19 @@
 // expected timestamps can be worked out by hand (a Line starts `sceneLead` = 1 s after its slide frame).
 import {
   buildPlan,
+  lineIdOf,
+  planLines,
   referenceLifecycle,
   requireTimeline,
   schedule,
+  wordsOf,
 } from "@tsukuri/core";
-import type { AlignedLine, Line, PlanJson, TimedPlan } from "@tsukuri/core";
+import type {
+  AlignedLine,
+  PlacedLine,
+  PlanJson,
+  TimedPlan,
+} from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(
@@ -45,11 +53,11 @@ export const hash = Str.repeat(32)("5a");
 const wordMs = 500;
 
 /** One Line as the aligner reports it: each word starts when the one before it ends, and is spoken for 450 ms. */
-const alignedLine = (line: Line): AlignedLine => ({
+const alignedLine = ({ id, line }: PlacedLine): AlignedLine => ({
   audio: { file: `${hash}.flac`, sha256: hash },
-  durationMs: wordMs * line.words.length,
-  lineId: line.id,
-  words: Arr.map(line.words, (w, index) => ({
+  durationMs: wordMs * wordsOf(line.text).length,
+  lineId: id,
+  words: Arr.map(wordsOf(line.text), (w, index) => ({
     endMs: index * wordMs + 450,
     startMs: index * wordMs,
     w,
@@ -57,10 +65,7 @@ const alignedLine = (line: Line): AlignedLine => ({
 });
 
 const alignedLines = (plan: PlanJson): readonly AlignedLine[] =>
-  Arr.map(
-    Arr.flatMap(plan.scenes, (scene) => scene.lines),
-    alignedLine
-  );
+  Arr.map(planLines(plan), alignedLine);
 
 /** The scheduled Plan of the source above. */
 export const timed = Effect.gen(function* timedPlan() {
@@ -82,8 +87,8 @@ export const withLineText = (
   ...plan,
   scenes: Arr.map(plan.scenes, (scene) => ({
     ...scene,
-    lines: Arr.map(scene.lines, (line) =>
-      line.id === lineId ? { ...line, text } : line
+    lines: Arr.map(scene.lines, (line, index) =>
+      lineIdOf(scene.id, index + 1) === lineId ? { ...line, text } : line
     ),
   })),
 });

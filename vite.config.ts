@@ -170,6 +170,8 @@ export default defineConfig({
       ...(ultraciteFmt.ignorePatterns ?? []),
       "**/*.md",
       "packages/*/test/fixtures/**",
+      // The JSON Schema of the IR is generated from `GraphSchema` and compared byte for byte (spec 0004).
+      "docs/schema/**",
       // The speech cache is written by `@tsukuri/cache-fs` in its own JSON layout.
       "stories/*/speech-cache/**",
     ],
@@ -180,6 +182,8 @@ export default defineConfig({
     ignorePatterns: [
       ...(core.ignorePatterns ?? []),
       "tools/oxlint/anti-slop/**",
+      // Skill scripts run under Bun outside every workspace: no tsconfig gives them types. They are exercised by the verify run, not linted.
+      ".agents/skills/*/scripts/**",
     ],
     jsPlugins: [
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },

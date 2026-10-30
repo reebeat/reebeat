@@ -6,6 +6,7 @@ import type { PlanJson } from "@tsukuri/core";
 
 import { absoluteTimesNeedReason } from "./absoluteTimes.ts";
 import type { Diagnostic } from "./diagnostic.ts";
+import { derivedEventsNeverUsed, untilsOfTheirOwnFire } from "./eventRules.ts";
 
 export {
   absoluteTimesListed,
@@ -28,6 +29,16 @@ export {
 
 export type { Fragment } from "./effectFragments.ts";
 
+export {
+  derivedEventNeverUsedRule,
+  derivedEventsNeverUsed,
+  untilIsItsOwnFireRule,
+  untilsOfTheirOwnFire,
+} from "./eventRules.ts";
+
 /** Every rule that reads only the Plan, as `tsukuri lint` runs them. */
-export const lintPlan = (plan: PlanJson): readonly Diagnostic[] =>
-  absoluteTimesNeedReason(plan);
+export const lintPlan = (plan: PlanJson): readonly Diagnostic[] => [
+  ...absoluteTimesNeedReason(plan),
+  ...derivedEventsNeverUsed(plan),
+  ...untilsOfTheirOwnFire(plan),
+];

@@ -16,6 +16,10 @@ export const revealLifecycle: RendererLifecycle = {
     // changed frame is 2 after the slide change (measured on the box of `stories/same-id`, a 524 px move).
     startLagFrames: 2,
   },
+  // The frame rate the lags below, and those of the README table, were measured at: frames of the capture at 30 fps.
+  // A lag is a time, so `lifecycleFrames` of `@tsukuri/core` resolves it to frames at the Plan's rate; the capture
+  // adapter still renders only this rate, since no other was measured.
+  measuredFps: 30,
   // `.el.shown` fades opacity in 0.2 s (`theme.ts`); under 1% of the change is left after 4 frames (133 ms).
   showMs: 133,
   transitionMs: {

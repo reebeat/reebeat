@@ -1,7 +1,7 @@
 // One subtitle cue per Line of a scheduled Plan: the Line's id, its start and end in milliseconds, its narration
 // text. Both writers read the same list, so WebVTT and SubRip cannot disagree about timing or text.
-import { frameToMs, linesById } from "@tsukuri/core";
-import type { TimedPlan } from "@tsukuri/core";
+import { frameToMs, planLines, timedLines } from "@tsukuri/core";
+import type { Line, TimedPlan } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 export interface SubtitleCue {
@@ -15,15 +15,15 @@ export interface SubtitleCue {
 /** The cues of a scheduled Plan, in Timeline order. */
 export const subtitleCues = (plan: TimedPlan): readonly SubtitleCue[] => {
   const { fps } = plan.settings;
-  const lines = linesById(plan);
 
-  return Arr.map(
-    Arr.flatMap(plan.timeline.scenes, (scene) => scene.lines),
-    (timed) => ({
-      endMs: frameToMs(timed.endFrame, fps),
-      id: timed.lineId,
-      startMs: frameToMs(timed.startFrame, fps),
-      text: lines.get(timed.lineId)?.text ?? "",
-    })
+  const lines = new Map(
+    Arr.map(planLines(plan), ({ id, line }): [string, Line] => [id, line])
   );
+
+  return Arr.map(timedLines(plan.timeline), ({ id, timed }) => ({
+    endMs: frameToMs(timed.endFrame, fps),
+    id,
+    startMs: frameToMs(timed.startFrame, fps),
+    text: lines.get(id)?.text ?? "",
+  }));
 };

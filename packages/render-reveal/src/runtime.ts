@@ -1,6 +1,7 @@
-// The page runtime: the reveal.js configuration, the effect of each fragment (a `show` or `focus` effect), the sounds
-// that ride along with a fragment or a slide and `window.tsukuriDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that `deck.html` works
-// from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
+// The page runtime: the reveal.js configuration, the effect of each fragment (the start of a `show` or `focus` effect, or
+// the end of a `focus` ring, `data-effect-edge="end"`), the sounds that ride along with a fragment or a slide and
+// `window.tsukuriDeck`, the handle the capture drives. It is plain JavaScript text (no framework, no module system) so that
+// `deck.html` works from `file://`. The text is generated here and written to `assets/deck.js` by the build program.
 import { Array as Arr } from "effect";
 
 import { fontFaces } from "./theme.ts";
@@ -46,7 +47,9 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     return slide.getAttribute("data-scene");
   });
   var focused = null;
+  var focusedBy = null;
   var focusBefore = new Map();
+  var ringBefore = new Map();
 
   function target(fragment, id) {
     var slide = fragment.closest("section");
@@ -74,6 +77,34 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
     });
   }
 
+  // The ring has ONE owner: the effect whose start put it on its target (\`focusedBy\`, an effect id). The end of a ring
+  // (\`data-effect-edge="end"\`) takes it off only while its own effect still owns it: a later focus, on another target
+  // or on the same one, has taken the ring over, and the Timeline says that focus lasts to its own end, so the earlier
+  // end is then a no-op. Stepping back restores the ring and its owner as they were.
+  function isEnd(fragment) {
+    return fragment.getAttribute("data-effect-edge") === "end";
+  }
+
+  function takeRingOff(fragment) {
+    var ringed = target(fragment, fragment.getAttribute("data-target"));
+    var owned = ringed !== null && focused === ringed && focusedBy === fragment.getAttribute("data-effect-id");
+    ringBefore.set(fragment, { element: ringed, owned: owned });
+    if (owned) {
+      setFocus(ringed, false);
+      focused = null;
+      focusedBy = null;
+    }
+  }
+
+  function putRingBack(fragment) {
+    var before = ringBefore.get(fragment);
+    if (before && before.owned) {
+      setFocus(before.element, true);
+      focused = before.element;
+      focusedBy = fragment.getAttribute("data-effect-id");
+    }
+  }
+
   function show(fragment) {
     var verb = fragment.getAttribute("data-effect-verb");
     if (verb === "show") {
@@ -82,10 +113,13 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
         revealed.classList.remove("hidden");
         revealed.classList.add("shown");
       }
+    } else if (verb === "focus" && isEnd(fragment)) {
+      takeRingOff(fragment);
     } else if (verb === "focus") {
-      focusBefore.set(fragment, focused);
+      focusBefore.set(fragment, { element: focused, by: focusedBy });
       setFocus(focused, false);
       focused = target(fragment, fragment.getAttribute("data-target"));
+      focusedBy = fragment.getAttribute("data-effect-id");
       setFocus(focused, true);
     }
     playSounds(fragment);
@@ -99,9 +133,13 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
         concealed.classList.remove("shown");
         concealed.classList.add("hidden");
       }
+    } else if (verb === "focus" && isEnd(fragment)) {
+      putRingBack(fragment);
     } else if (verb === "focus") {
       setFocus(focused, false);
-      focused = focusBefore.get(fragment) || null;
+      var previous = focusBefore.get(fragment) || { element: null, by: null };
+      focused = previous.element;
+      focusedBy = previous.by;
       setFocus(focused, true);
     }
   }
@@ -130,6 +168,7 @@ export const runtimeJs = (settings: DeckSettings): string => `(function () {
   });
   Reveal.on("slidechanged", function (event) {
     focused = null;
+    focusedBy = null;
     if (event.currentSlide) {
       playSounds(event.currentSlide);
     }

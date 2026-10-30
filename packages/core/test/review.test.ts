@@ -8,7 +8,13 @@ import { buildPlan } from "../src/build.ts";
 import { reviewText } from "../src/review.ts";
 import { schedule } from "../src/schedule.ts";
 import type { AlignedLine } from "../src/schedule.ts";
-import { asText, fixtureSha256, lifecycle, readFixture } from "./support.ts";
+import {
+  asText,
+  evenlySpoken,
+  fixtureSha256,
+  lifecycle,
+  readFixture,
+} from "./support.ts";
 
 const fixturePlan = Effect.flatMap(readFixture("boxes.fountain"), (source) =>
   buildPlan(source, fixtureSha256)
@@ -101,10 +107,13 @@ describe("reviewText", () => {
           text,
           '"This box sits in the corner. The caption says what it is."'
         );
-        assert.include(text, "first.l1  (speed 0.99)");
+        assert.include(text, "opening.l1  (speed 0.99)");
         assert.include(text, "second.l1  (pause 0.5 s)");
         assert.include(text, '      r1  show cap   word("corner").end\n');
-        assert.include(text, "      s2  sound ding    box.move.50%\n");
+        assert.include(
+          text,
+          "      s2  sound ding    when(box.move.progress >= 50%)\n"
+        );
         assert.include(text, "      f1  focus new     r1.end +3f\n");
       })
   );
@@ -212,7 +221,7 @@ describe("reviewText with timing", () => {
         "slide change at frame 0, frames 0-75 (0.00-2.50 s)"
       );
       assert.include(text, "frames 30-60 (1.00-2.00 s)");
-      assert.include(text, 'word("two").end  ->  frame 42');
+      assert.include(text, 'word("two").end  ->  frame 42 (1.40 s)');
       assert.include(text, "Timeline: 75 frames, 2.50 s at 30 fps");
       assert.notInclude(reviewText(withTimeline), "frames 30-60");
       assert.notInclude(reviewText(withTimeline), "->  frame");
@@ -239,10 +248,10 @@ describe("reviewText with timing", () => {
         );
 
         assert.deepStrictEqual(rows, [
-          '      r1  show note     word("two").end  ->  frame 42',
-          "      s1  sound whoosh  transition.start  ->  frame 0  (rides the slide)",
-          "      s2  sound ding    r1.start  ->  frame 42  (rides step r1)",
-          '      s3  sound pop     word("one").start  ->  frame 30  (plays alone)',
+          '      r1  show note     word("two").end  ->  frame 42 (1.40 s)',
+          "      s1  sound whoosh  transition.start  ->  frame 0 (0.00 s)  (rides the slide)",
+          "      s2  sound ding    r1.start  ->  frame 42 (1.40 s)  (rides step r1)",
+          '      s3  sound pop     word("one").start  ->  frame 30 (1.00 s)  (plays alone)',
         ]);
       })
   );
@@ -261,7 +270,7 @@ describe("reviewText with timing", () => {
         );
         assert.include(
           reviewText(withTimeline, { timing: true }),
-          "      s1  sound whoosh  transition.start  ->  frame 0  (rides the slide)\n"
+          "      s1  sound whoosh  transition.start  ->  frame 0 (0.00 s)  (rides the slide)\n"
         );
       })
   );
@@ -282,5 +291,178 @@ describe("reviewText with timing", () => {
       assert.include(text, '  a s2 (line 9): at 1s because "and again"\n');
       assert.include(text, "\n2 absolute times\n");
     })
+  );
+});
+
+/** A story with every kind of timing: a derived event, a threshold (written as sugar), an offset, an each, a show, a focus with an until, a focus the slide change interrupts, an absolute time. */
+const timingStory = (fourth: string) =>
+  asText([
+    "Title: Timing",
+    "",
+    "# Part",
+    "",
+    "INT. A #a#",
+    "",
+    "Box {id=one cell=ml class=box}",
+    "Tag {id=tag cell=tc class=label}",
+    "",
+    "NARRATOR",
+    "Hello there.",
+    "",
+    "> AUTO-ANIMATE",
+    "",
+    "INT. B #b#",
+    "",
+    "Box {id=one cell=mc class=box}",
+    "Tag {id=tag cell=tc class=accent}",
+    "Hint {id=hint cell=bc class=muted}",
+    "Note {id=note cell=br class=label visible=false}",
+    "",
+    "[[effects",
+    "  let settled = last(one.move.end, tag.update.end)",
+    "  s1: sound whoosh at transition.start",
+    "  s2: sound ding at one.move.50%",
+    "  s3: sound pop at settled +0.1s",
+    `  s4: sound pop at each(word("two").end, word("${fourth}").end)`,
+    '  r1: show note at word("three").end',
+    '  f1: focus hint at word("one").start until word("four").start',
+    '  f2: focus one at word("six").end',
+    '  s5: sound pop at 0.5s because "a beat"',
+    "]]",
+    "",
+    "NARRATOR",
+    "One two three four five six seven.",
+    "",
+  ]);
+
+/** The rows of Scene `b` from its derived events to its Lines. */
+const sceneBEffects = (text: string): readonly string[] => {
+  const rows = Str.split(text, "\n");
+  const from = rows.indexOf("    Events");
+
+  return Arr.take(Arr.drop(rows, from), rows.indexOf("    Lines", from) - from);
+};
+
+describe("reviewText of the timing of a story (F9)", () => {
+  it.effect(
+    "prints each instance's frame and its time, the effect's timing in its canonical form (derived: a sugar is read and never kept), what ended a window, and the derived events with their frames",
+    () =>
+      Effect.gen(function* golden() {
+        const plan = yield* buildPlan(timingStory("four"), fixtureSha256);
+        const timed = yield* schedule(plan, evenlySpoken(plan, 300), lifecycle);
+
+        // 300 ms a word at 30 fps: Scene b's slide change is at frame 63, its Line starts at 93 and word n ends at 93 + 9 n;
+        // the move of `one` runs from the slide change for 24 frames, so `settled` is frame 87 and `+0.1s` is 3 frames.
+        assert.deepStrictEqual(
+          sceneBEffects(reviewText(timed, { timing: true })),
+          [
+            "    Events",
+            "      settled  last(one.move.end, tag.update.end)  ->  frame 87 (2.90 s)",
+            "    Effects",
+            "      s1    sound whoosh  transition.start  ->  frame 63 (2.10 s)  (rides the slide)",
+            "      s2    sound ding    when(one.move.progress >= 50%)  ->  frame 71 (2.37 s)  (rides the slide)",
+            "      s3    sound pop     settled +100ms  ->  frame 90 (3.00 s)  (rides the slide)",
+            '      s4#1  sound pop     each(word("two").end, word("four").end)  ->  frame 111 (3.70 s)  (rides step f1)',
+            '      s4#2  sound pop     each(word("two").end, word("four").end)  ->  frame 129 (4.30 s)  (rides step r1)',
+            '      r1    show note     word("three").end  ->  frame 120 (4.00 s)',
+            "        ends frame 124 (4.13 s), by its window",
+            '      f1    focus hint    word("one").start until word("four").start  ->  frame 93 (3.10 s)',
+            "        ends frame 120 (4.00 s), by until",
+            '      f2    focus one     word("six").end  ->  frame 147 (4.90 s)',
+            "        ends frame 170 (5.67 s), interrupted by the slide change",
+            '      s5    sound pop     0.5s because "a beat"  ->  frame 78 (2.60 s)  (plays alone)',
+          ]
+        );
+
+        // The absolute time is still listed, with its reason, and counted.
+        assert.include(
+          reviewText(timed, { timing: true }),
+          '  b s5 (line 31): at 0.5s because "a beat"\n1 absolute time\n'
+        );
+      })
+  );
+
+  it.effect(
+    "without the Timeline prints the intent only: the same rows with no frame, no end and no instance",
+    () =>
+      Effect.gen(function* intent() {
+        const plan = yield* buildPlan(timingStory("four"), fixtureSha256);
+
+        assert.deepStrictEqual(sceneBEffects(reviewText(plan)), [
+          "    Events",
+          "      settled  last(one.move.end, tag.update.end)",
+          "    Effects",
+          "      s1  sound whoosh  transition.start",
+          "      s2  sound ding    when(one.move.progress >= 50%)",
+          "      s3  sound pop     settled +100ms",
+          '      s4  sound pop     each(word("two").end, word("four").end)',
+          '      r1  show note     word("three").end',
+          '      f1  focus hint    word("one").start until word("four").start',
+          '      f2  focus one     word("six").end',
+          '      s5  sound pop     0.5s because "a beat"',
+        ]);
+      })
+  );
+
+  it.effect(
+    "negative control: editing one word of the story changes the text",
+    () =>
+      Effect.gen(function* edited() {
+        const first = yield* buildPlan(timingStory("four"), fixtureSha256);
+        const second = yield* buildPlan(timingStory("five"), fixtureSha256);
+
+        const timed = (plan: typeof first) =>
+          Effect.map(
+            schedule(plan, evenlySpoken(plan, 300), lifecycle),
+            (scheduled) => reviewText(scheduled, { timing: true })
+          );
+
+        assert.notStrictEqual(yield* timed(first), yield* timed(second));
+      })
+  );
+});
+
+describe("the time printed beside a frame is at the Plan's rate", () => {
+  it.effect(
+    "is frames over fps, over the NTSC fraction when the Plan is NTSC",
+    () =>
+      Effect.gen(function* rates() {
+        const { withTimeline } = yield* oneLine([
+          '  s1: sound pop at word("two").end',
+        ]);
+
+        const totalOf = (settings: Partial<typeof withTimeline.settings>) =>
+          Arr.findFirst(
+            Str.split(
+              reviewText(
+                {
+                  ...withTimeline,
+                  settings: { ...withTimeline.settings, ...settings },
+                  timeline: {
+                    chapters: withTimeline.timeline?.chapters ?? [],
+                    scenes: withTimeline.timeline?.scenes ?? [],
+                    totalFrames: 3000,
+                  },
+                },
+                { timing: true }
+              ),
+              "\n"
+            ),
+            Str.startsWith("Timeline:")
+          );
+
+        assert.deepStrictEqual(
+          totalOf({ fps: 30, ntsc: false }),
+          Option.some("Timeline: 3000 frames, 100.00 s at 30 fps")
+        );
+        assert.deepStrictEqual(
+          totalOf({ fps: 30, ntsc: true }),
+          Option.some("Timeline: 3000 frames, 100.10 s at 30 NTSC fps")
+        );
+        assert.deepStrictEqual(
+          totalOf({ fps: 60, ntsc: false }),
+          Option.some("Timeline: 3000 frames, 50.00 s at 60 fps")
+        );
+      })
   );
 });

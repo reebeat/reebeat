@@ -86,6 +86,56 @@ export const carrySource = asText([
   "One two three four five six seven eight.",
 ]);
 
+/**
+ * A ring that ends by its own `until` (`f1`: a start and an end step), a second focus after it (`f2`), and two sounds
+ * that ride the start of `f1`.
+ */
+export const ringSource = asText([
+  "# One",
+  "",
+  "INT. A - DAY #sc1#",
+  "",
+  "Alpha {id=a cell=ml class=box}",
+  "Beta {id=b cell=mr class=box}",
+  "",
+  "[[effects",
+  '  p1: sound ding at word("two").end',
+  '  f1: focus a at word("one").end until word("three").end',
+  '  f2: focus b at word("five").end',
+  '  s1: sound pop at word("three").end',
+  "]]",
+  "",
+  "NARRATOR",
+  "One two three four five six seven eight.",
+]);
+
+/**
+ * A ring that a later focus takes over, on the same Element (`reringSource`: `f1` rings `a` until "four" ends, `f2`
+ * rings `a` again at "three") and on another (`takeoverSource`: `f2` rings `b`). The ring is the later focus's from
+ * "three" on and lasts to the slide change, so the earlier focus (`endedBy` `replaced`) has no end step: two fragments.
+ */
+const takeover = (second: string): string =>
+  asText([
+    "# One",
+    "",
+    "INT. A - DAY #sc1#",
+    "",
+    "Alpha {id=a cell=ml class=box}",
+    "Beta {id=b cell=mr class=box}",
+    "",
+    "[[effects",
+    '  f1: focus a at word("one").end until word("four").end',
+    `  f2: focus ${second} at word("three").end`,
+    "]]",
+    "",
+    "NARRATOR",
+    "One two three four five six seven eight.",
+  ]);
+
+export const reringSource = takeover("a");
+
+export const takeoverSource = takeover("b");
+
 /** The Plan of a screenplay text, scheduled against the lifecycle reveal.js declares. */
 export const scheduledOf = (source: string) =>
   Effect.flatMap(planOf(source), (plan) =>

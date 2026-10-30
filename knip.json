@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": ["tools/oxlint/anti-slop/**"],
+  "ignore": ["tools/oxlint/anti-slop/**", ".agents/skills/*/scripts/**"],
   "ignoreDependencies": ["@effect/language-service", "vite"],
   "workspaces": {
     "packages/cli": {
@@ -71,6 +71,7 @@
         "checkEffectExceptions.ts",
         "checkTiers.ts",
         "genGrammar.ts",
+        "genJsonSchema.ts",
         "stagePackages.ts"
       ],
       "project": ["*.ts", "test/**/*.ts"]

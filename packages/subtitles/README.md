@@ -5,7 +5,7 @@ depends on `@tsukuri/core` and `effect` only.
 
 | Export | What it is |
 | --- | --- |
-| `vtt(plan)` | WebVTT: `WEBVTT`, a `NOTE source-sha256 <hash>`, then one cue per Line, identified by the Line id. Cue text is the narration text with `&`, `<` and `>` written as `&amp;`, `&lt;` and `&gt;` |
+| `vtt(plan)` | WebVTT: `WEBVTT`, a `NOTE source-sha256 <hash>`, then one cue per Line, identified by the Line id (`lineIdOf` of `@tsukuri/core`: the Scene id and the position, never stored). Cue text is the narration text with `&`, `<` and `>` written as `&amp;`, `&lt;` and `&gt;` |
 | `srt(plan)` | SubRip: cues numbered from 1, `HH:MM:SS,mmm --> HH:MM:SS,mmm`, the narration text, a blank line after each. SubRip has no escapes, so `<`, `>` and `&` pass through unchanged |
 | `parseVtt(text)` | The cues of a WebVTT text (`startMs`, `endMs`, `text` with the entities undone); reads what ffmpeg writes for a `mov_text` stream too |
 | `vttSourceHash(text)` | The hash of the `NOTE source-sha256` row, or undefined |

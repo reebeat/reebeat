@@ -23,6 +23,8 @@ export interface DeckElement {
 
 /** One fragment of a slide; an absent attribute reads as the empty string or the empty list. */
 export interface DeckFragment {
+  /** `data-effect-edge`: `end` for a fragment that takes a `focus` ring off; any other value, or none, is a start. */
+  readonly edge: "end" | "start";
   readonly effectId: string;
   readonly index: string;
   /** `data-sounds`: the sounds that play when the step runs. */
@@ -117,6 +119,7 @@ const readFragment = (element: Element): DeckFragment => {
   const attributes = attributesOf(element);
 
   return {
+    edge: attributes["data-effect-edge"] === "end" ? "end" : "start",
     effectId: attributes["data-effect-id"] ?? "",
     index: attributes["data-fragment-index"] ?? "",
     sounds: soundsOf(attributes),

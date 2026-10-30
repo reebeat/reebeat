@@ -1,24 +1,21 @@
 // The pure parts: the table and exit code, the Plan comparison, the signal helpers.
 import { assert, describe, it } from "@effect/vitest";
-import {
-  buildPlan,
-  referenceLifecycle,
-  requireTimeline,
-  schedule,
-} from "@tsukuri/core";
+import { buildPlan, referenceLifecycle } from "@tsukuri/core";
 import type { PlanJson, RendererLifecycle } from "@tsukuri/core";
 import { audioOffsetMs } from "@tsukuri/encode-ffmpeg";
 import { synthClip } from "@tsukuri/sounds-synth";
 import { Array as Arr, Effect, Option, String as Str } from "effect";
 
-import { heardAs, judge } from "../src/effects.ts";
 import { observationRange } from "../src/events.ts";
 import { exitCode, renderVerdicts } from "../src/index.ts";
 import type { Verdict } from "../src/index.ts";
+import { judge } from "../src/judge.ts";
+import { heardAs } from "../src/own.ts";
 import { planDifference } from "../src/planDiff.ts";
 import { withinOneFrame } from "../src/units.ts";
 import { locateSounds, onsetIndex, soundMatchFloor } from "../src/wav.ts";
 import { cutStoryText, storyText } from "./support.ts";
+import { timedWith } from "./timed.ts";
 
 const holds: Verdict = {
   detail: "all 2 effects hold",
@@ -282,8 +279,11 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
     const timed = {
       commandFrame: 100,
       effectId: "s1",
+      endCommandFrame: null,
+      endFrame: null,
+      endedBy: null,
       fireFrame: 100,
-      intent: "transition.start",
+      instance: 1,
     };
 
     return judge(
@@ -295,24 +295,35 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
         timedScene: {
           effects: [timed],
           endFrame: 200,
+          events: [],
           lines: [],
           sceneId: "sc2",
           slideFrame: 100,
         },
       },
       {
-        end: 100 + soundFrames,
-        reason: "",
-        score: 1,
-        start: 100 + soundFrames,
-      },
-      { frame: 100 + change, length: undefined, tag: "found" },
-      30
+        anchored: {
+          count: 1,
+          expression: "transition.start",
+          frame: 100 + change,
+          instances: 1,
+          tag: "found",
+        },
+        ending: { tag: "none" },
+        leaves: "",
+        own: {
+          end: 100 + soundFrames,
+          reason: "",
+          ring: { tag: "none" },
+          score: 1,
+          start: 100 + soundFrames,
+        },
+      }
     ).problems;
   });
 
   it.effect(
-    "passes a sound 0.99 frame from its resolved frame and from the observed first changed frame, and fails 1.02 frames, on both sides and with the picture moved",
+    "passes a sound and a picture each 0.99 frame from the resolved frame (2 frames from each other), and fails either at 1.02 frames, on both sides",
     () =>
       Effect.gen(function* boundary() {
         // The sound is where its effect says (0.99 frame late), the picture changes at the slide frame.
@@ -322,12 +333,16 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
         assert.deepStrictEqual(yield* problemsOf(0, 1), []);
         assert.deepStrictEqual(yield* problemsOf(0, -1), []);
         assert.deepStrictEqual(yield* problemsOf(0.01, 1), []);
+        // The two are independent observations, each within one frame of the resolved frame: a sound a frame early
+        // under a picture a frame late is 2 frames apart and passes (the sum of the two tolerances).
+        assert.deepStrictEqual(yield* problemsOf(-0.99, 0.99), []);
+        assert.deepStrictEqual(yield* problemsOf(0.99, -0.99), []);
 
         for (const [soundFrames, change, shown] of [
           [1.02, 0, "+1.02"],
           [-1.02, 0, "-1.02"],
-          [-0.02, 1, "-1.02"],
-          [0.02, -1, "+1.02"],
+          [0, 1.02, "+1.02"],
+          [0, -1.02, "-1.02"],
         ] as const) {
           const problems = yield* problemsOf(soundFrames, change);
 
@@ -341,30 +356,6 @@ describe("the anchor comparison of a sound anchored to a transition", () => {
   );
 });
 
-/** The fixture story spoken evenly, 300 ms a word, and scheduled against `lifecycle`. */
-const timedWith = (lifecycle: RendererLifecycle, text: string = storyText) =>
-  Effect.gen(function* timed() {
-    const plan = yield* buildPlan(text, Str.repeat(64)("0"));
-
-    const aligned = Arr.flatMap(plan.scenes, (scene) =>
-      Arr.map(scene.lines, (line) => ({
-        audio: { file: `${Str.repeat(64)("a")}.flac`, sha256: "x" },
-        durationMs: line.words.length * 300,
-        lineId: line.id,
-        words: Arr.map(line.words, (w, at) => ({
-          endMs: (at + 1) * 300,
-          startMs: at * 300,
-          w,
-        })),
-      }))
-    );
-
-    return yield* Effect.flatMap(
-      schedule(plan, aligned, lifecycle),
-      (scheduled) => Effect.fromResult(requireTimeline(scheduled))
-    );
-  });
-
 const slow = (lifecycle: RendererLifecycle): RendererLifecycle => ({
   ...lifecycle,
   showMs: 1000,
@@ -376,7 +367,7 @@ describe("observationRange", () => {
     "ends a step's window at the declared show time plus the margin, and follows a renderer that declares a longer show",
     () =>
       Effect.gen(function* step() {
-        const plan = yield* timedWith(referenceLifecycle);
+        const plan = yield* timedWith(referenceLifecycle, storyText);
 
         const subject = {
           fireFrame: 40,
@@ -402,7 +393,7 @@ describe("observationRange", () => {
     "ends a slide change's window at the longest of the Plan's transition and the declared one plus the margin",
     () =>
       Effect.gen(function* settle() {
-        const plan = yield* timedWith(referenceLifecycle);
+        const plan = yield* timedWith(referenceLifecycle, storyText);
         const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
         const own = { kind: "transition", sceneIndex: 1 } as const;
         const last = plan.timeline.totalFrames - 1;
@@ -464,4 +455,50 @@ describe("observationRange", () => {
         })
     );
   }
+
+  it.effect(
+    "stops an Element's event before the Scene's own next effect on that Element, which would be read as part of the event's settled picture, and leaves the others alone",
+    () =>
+      Effect.gen(function* capped() {
+        const plan = yield* timedWith(referenceLifecycle, storyText);
+        const slide = plan.timeline.scenes[1]?.slideFrame ?? -1;
+
+        // `f1: focus a at word("six").end` of sc2 rings the box that moves: its command is the first frame the cell shows it.
+        const ring = Option.getOrThrow(
+          Arr.findFirst(
+            plan.timeline.scenes[1]?.effects ?? [],
+            (timed) => timed.effectId === "f1"
+          )
+        );
+
+        assert.isAbove(ring.commandFrame, slide);
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            event: "move",
+            id: "a",
+            kind: "element",
+            sceneIndex: 1,
+          }).to,
+          Math.min(ring.commandFrame - 1, slide + 24 + 10)
+        );
+        // The Element that enters has no effect of its own in the Scene: its window is the declared one plus the margin.
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            event: "enter",
+            id: "d",
+            kind: "element",
+            sceneIndex: 1,
+          }).to,
+          slide + 24 + 10
+        );
+        // A slide change is the whole frame: no Element's effect stops it.
+        assert.strictEqual(
+          observationRange(plan, referenceLifecycle, {
+            kind: "transition",
+            sceneIndex: 1,
+          }).to,
+          slide + 24 + 10
+        );
+      })
+  );
 });

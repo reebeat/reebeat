@@ -41,7 +41,7 @@ Plan ──speechStage(plan, { refresh })──▶ AlignedLine[] ──core `sch
 
 `key = AssetCache.key({ adapter: synthesizer.info, input: <narration text>, extra: { aligner: aligner.info, pipeline: 'speech-v2', speed, voice } })`: the SHA-256 of the canonical JSON of the synthesiser's id and settings, the text and that extra object. Changing the voice, the speed, the text, or any setting or id of either adapter is another key; bump `pipelineVersion` when the stage changes what it caches and no other key field names it. The encoder is not in the key: its FLAC is lossless s16 and the asset records its id.
 
-An asset is two files, `flac` (FLAC s16 mono, bit-exact) and `words.json` (`{ durationMs, match, words: [{ endMs, startMs, w }] }`, `words[i].w` is `Line.words[i]`), and a provenance. `AlignedLine.audio.file` is `<key>.flac` and `audio.sha256` is the SHA-256 of the FLAC bytes. The aligner hears the *decoded* FLAC, that is what the cache stores. A match below 0.9 fails `AlignmentBelowThreshold` and caches nothing.
+An asset is two files, `flac` (FLAC s16 mono, bit-exact) and `words.json` (`{ durationMs, match, words: [{ endMs, startMs, w }] }`, `words[i].w` is `wordsOf(Line.text)[i]`: a Line stores its text and no list of words), and a provenance. `AlignedLine.audio.file` is `<key>.flac` and `audio.sha256` is the SHA-256 of the FLAC bytes. The aligner hears the *decoded* FLAC, that is what the cache stores. A match below 0.9 fails `AlignmentBelowThreshold` and caches nothing.
 
 ## Refill the cache
 

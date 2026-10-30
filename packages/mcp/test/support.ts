@@ -27,6 +27,7 @@ import {
   Schema,
   String as Str,
 } from "effect";
+import type { PlatformError } from "effect";
 import type { McpSchema } from "effect/ai";
 import { McpTest } from "effect/ai";
 
@@ -102,6 +103,50 @@ export interface Fixture {
   readonly harbourBuildDir: string;
   readonly totalFrames: number;
 }
+
+/** The five files of a build in `dir`, as `BuildFiles` names them. */
+export const buildFilesIn = (dir: string) =>
+  Effect.map(Path.Path, (path) => ({
+    deck: path.join(dir, "deck.html"),
+    dir,
+    mp4: path.join(dir, "harbour.mp4"),
+    plan: path.join(dir, "plan.json"),
+    vtt: path.join(dir, "harbour.vtt"),
+  }));
+
+/** A directory under the temp directory, and the `stories/` and `build/` beside each other in it. */
+export const scratchWorkspace = (prefix: string) =>
+  Effect.gen(function* scratch() {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const base = yield* fs.makeTempDirectoryScoped({ prefix });
+
+    return {
+      base,
+      builds: path.join(base, "build"),
+      root: path.join(base, "stories"),
+    };
+  });
+
+/** In a directory: a link to `target` at the path of `segments`, in place of what is there (its parents are made). */
+export const linkAt =
+  (target: string, ...segments: readonly string[]) =>
+  (
+    dir: string
+  ): Effect.Effect<
+    void,
+    PlatformError.PlatformError,
+    FileSystem.FileSystem | Path.Path
+  > =>
+    Effect.gen(function* linked() {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const at = path.join(dir, ...segments);
+
+      yield* fs.makeDirectory(path.dirname(at), { recursive: true });
+      yield* fs.remove(at, { force: true });
+      yield* fs.symlink(target, at);
+    });
 
 /** A workspace under `base`: `stories/` and `build/`. */
 export const buildWorkspaceIn = (base: string) =>

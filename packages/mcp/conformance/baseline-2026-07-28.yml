@@ -1,10 +1,4 @@
-# Scored scenarios of `--requirements 2026-07-28` that the fixture server fails, each with its reason (spec 0016, F6).
-# The fixture is the inspector's shared server core (`McpServer.layerHttp`, Effect 4.1.0) plus test-only diagnostic
-# tools; it is not the suite's reference server. A scenario is listed only when the cause is outside this package.
-server:
-  # Three checks fail. Two need the diagnostic tool `test_missing_capability` to answer -32021
-  # (MissingRequiredClientCapabilityError): Effect 4.1.0's McpServer has no such error, a handler can fail only with
-  # InvalidParams or InternalError. One needs the streaming elicitation tool `test_streaming_elicitation`, which the
-  # fixture does not have because the inspector never asks a client for anything (spec 0016, D1).
-  # Retire when: a later Effect release adds the error, or the fixture can emit it through the transport.
-  - server-stateless
+# Scored scenarios of `--requirements 2026-07-28` that the fixture server fails as a whole, each with its reason (spec 0016, F6).
+# None: the one scenario that fails in part, `server-stateless`, is baselined by check in `baseline-checks.json`, so a new
+# failing check inside it is found. A scenario is listed here only when the cause is outside this package.
+server: []

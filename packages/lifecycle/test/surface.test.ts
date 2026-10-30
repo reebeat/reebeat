@@ -77,53 +77,19 @@ describe("the tool declarations (spec 0016, F1)", () => {
 });
 
 /**
- * The plain string fields of each output, every one a decision: a validated id or digest, a literal the tool picks, or
- * the tool's own words, never project content. A new plain string field fails this test until someone decides.
+ * The free-text string fields of each output (no `x-tsukuri-untrusted`, no pattern, enumeration or constant), every one a
+ * decision: only `docs_get`'s `text`, which is the checkout's own document, never a project's. Ids, digests, literals, codec
+ * names, rates and links are fixed in form by the schema. A new free-text field fails this test until someone decides.
  */
 const ownText = {
-  artifact_observe: [
-    ".build",
-    ".frame.mimeType",
-    ".kind",
-    ".project",
-    ".streams.codec",
-    ".streams.fps",
-    ".streams.type",
-  ],
-  build_get: [
-    ".adapters.egress.kind",
-    ".adapters.egress.sends",
-    ".adapters.id",
-    ".adapters.service",
-    ".artifacts.mimeType",
-    ".artifacts.name",
-    ".artifacts.sha256",
-    ".artifacts.uri",
-    ".build",
-    ".files.sha256",
-    ".matchesHead.config",
-    ".project",
-    ".sourceSha256",
-  ],
-  docs_get: [".text", ".topic"],
-  plan_get: [".project", ".revision", ".view"],
-  project_get: [
-    ".allowed",
-    ".build.build",
-    ".build.matchesHead.config",
-    ".project",
-    ".revision",
-    ".stage",
-  ],
-  project_list: [".projects.project", ".projects.revision", ".projects.stage"],
-  story_lint: [
-    ".diagnostics.rule",
-    ".diagnostics.severity",
-    ".project",
-    ".revision",
-    ".timing",
-  ],
-  story_read: [".project", ".revision"],
+  artifact_observe: [],
+  build_get: [],
+  docs_get: [".text"],
+  plan_get: [],
+  project_get: [],
+  project_list: [],
+  story_lint: [],
+  story_read: [],
 } satisfies Readonly<Record<string, readonly string[]>>;
 
 describe("untrusted text is typed (spec 0016, F9)", () => {
@@ -132,19 +98,21 @@ describe("untrusted text is typed (spec 0016, F9)", () => {
     () =>
       Effect.gen(function* plainFields() {
         for (const tool of tools) {
-          const plain = Arr.filter(
-            plainStringPaths(yield* documentOf(tool.output)),
-            (path) =>
-              !Arr.contains(
-                Rec.get(ownText, tool.name).pipe(Option.getOrElse(() => [])),
-                path
-              )
+          const found = plainStringPaths(yield* documentOf(tool.output));
+
+          const decided = Rec.get(ownText, tool.name).pipe(
+            Option.getOrElse((): readonly string[] => [])
           );
 
           assert.deepStrictEqual(
-            plain,
+            Arr.filter(found, (path) => !Arr.contains(decided, path)),
             [],
-            `${tool.name}: unmarked string fields ${Arr.join(plain, ", ")}`
+            `${tool.name}: free-text string fields nobody decided on`
+          );
+          assert.deepStrictEqual(
+            Arr.filter(decided, (path) => !Arr.contains(found, path)),
+            [],
+            `${tool.name}: the allowlist names a field that is not free text`
           );
         }
       })

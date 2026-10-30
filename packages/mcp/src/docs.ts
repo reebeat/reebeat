@@ -4,6 +4,9 @@ import { grammarDocument } from "@tsukuri/core";
 import { Unreadable } from "@tsukuri/lifecycle";
 import { Context, Effect, FileSystem, Layer, Path } from "effect";
 
+/** The largest document served: the glossary and the skill are far below it. */
+const maxDocumentBytes = 1024 * 1024;
+
 export type DocTopic = "glossary" | "grammar" | "lifecycle";
 
 export class Docs extends Context.Service<
@@ -36,25 +39,42 @@ export const fileDocs = (
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
 
+      /** A document of the checkout: a regular file, not a link, under the size cap; the topic is a fixed word. */
+      const readDocument = (file: string, topic: DocTopic) =>
+        Effect.gen(function* documentRead() {
+          const info = yield* fs.lstat(file);
+
+          if (info.type !== "File" || Number(info.size) > maxDocumentBytes) {
+            return yield* new Unreadable({
+              message: `the ${topic} document is not a regular file under ${maxDocumentBytes} bytes`,
+              project: "docs",
+            });
+          }
+
+          return yield* fs.readFileString(file);
+        }).pipe(
+          Effect.catchTag("PlatformError", (cause) =>
+            Effect.logWarning(
+              `reading the ${topic} document failed`,
+              cause
+            ).pipe(
+              Effect.andThen(
+                Effect.fail(
+                  new Unreadable({
+                    message: `cannot read the ${topic} document`,
+                    project: "docs",
+                  })
+                )
+              )
+            )
+          )
+        );
+
       return Docs.of({
         read: (topic) =>
           topic === "grammar"
             ? Effect.succeed(grammarDocument())
-            : fs.readFileString(path.join(checkout, ...sources[topic])).pipe(
-                Effect.tapError((cause) =>
-                  Effect.logWarning(
-                    `reading the ${topic} document failed`,
-                    cause
-                  )
-                ),
-                Effect.mapError(
-                  () =>
-                    new Unreadable({
-                      message: `cannot read the ${topic} document`,
-                      project: "docs",
-                    })
-                )
-              ),
+            : readDocument(path.join(checkout, ...sources[topic]), topic),
       });
     })
   );

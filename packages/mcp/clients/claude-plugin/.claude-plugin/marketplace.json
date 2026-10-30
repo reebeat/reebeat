@@ -1,0 +1,14 @@
+{
+  "description": "Read a tsukuri project from an agent: its Screenplay, lint, Plan, build and a frame of the video. Read-only; release and publish are not tools. Generated from packages/lifecycle/src/distribution.ts by `bun run --cwd packages/mcp generate`; edit the source, never this file.",
+  "name": "tsukuri-local",
+  "owner": {
+    "name": "tsukuri-labs"
+  },
+  "plugins": [
+    {
+      "description": "Read a tsukuri project from an agent: its Screenplay, lint, Plan, build and a frame of the video. Read-only; release and publish are not tools.",
+      "name": "tsukuri",
+      "source": "./plugins/tsukuri"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+$ bunx vp test run test/ffmpegAttack.test.ts test/hostileBuild.test.ts test/docs.test.ts   # AFTER
+✓ Running devenv:files:cleanup in 16.9ms
+✓ Running devenv:enterShell in 9.24ms
+ Test Files  3 passed (3)
+      Tests  9 passed (9)

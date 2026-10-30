@@ -1,16 +1,24 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # The felt journey of the inspector (spec 0018), headless: a real Claude Code session and a real Codex session each list,
 # read, lint and plan a project, read its build and look at one frame of its video through the generated server
 # command, and the transcripts are checked for the calls and the image. It uses the operator's logged-in `claude` and
 # `codex` (a few short turns each) and changes no setting of either: Claude Code gets the server through
 # `--mcp-config --strict-mcp-config`, Codex through `-c` overrides. Run from the repository root inside `devenv shell`:
 #
-#   devenv shell -- sh packages/mcp/scripts/journey.sh [output-directory]
+#   devenv shell -- bash packages/mcp/scripts/journey.sh [output-directory]
 #
 # With TSUKURI_ROOT and TSUKURI_BUILDS set (and JOURNEY_PROJECT, JOURNEY_SCENE, JOURNEY_EFFECT) it reads that workspace,
 # for example `stories` and a directory holding `same-id/` made by `tsukuri build`; otherwise it writes the tests'
 # workspace (`harbour`, with a small real build) to a temporary directory.
-set -eu
+set -euo pipefail
+
+# The producer's exit status is the script's: `pipefail`, and the checker's own status is not hidden by `tee`.
+fingerprint() { # the settings files a session could be tempted to change: names and hashes only
+  for f in "$HOME/.claude/settings.json" "$HOME/.codex/config.toml"; do
+    if [ -f "$f" ]; then printf '%s %s\n' "$(sha256sum < "$f" | cut -c1-16)" "$f"; else printf 'absent %s\n' "$f"; fi
+  done
+}
+before=$(fingerprint)
 
 checkout=$(pwd)
 out=${1:-"$HOME/.local/state/tsukuri-verify/$(date +%F)-journey"}
@@ -47,4 +55,9 @@ codex exec --ephemeral --json -s read-only --skip-git-repo-check -C "$work/cwd" 
   "$prompt" > "$out/codex.jsonl" 2> "$out/codex.err"
 
 bun packages/mcp/bin/journeyCheck.ts "$out/claude.jsonl" "$out/codex.jsonl" | tee "$out/journey.txt"
+
+after=$(fingerprint)
+if [ "$before" != "$after" ]; then echo "FAIL: a client's settings file changed during the journey" | tee -a "$out/journey.txt"; exit 1; fi
+echo "ok: the clients' settings files are unchanged:" | tee -a "$out/journey.txt"
+echo "$after" | tee -a "$out/journey.txt"
 rm -rf "$work"

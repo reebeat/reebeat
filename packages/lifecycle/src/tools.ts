@@ -20,7 +20,12 @@ import {
   RevisionIdSchema,
   UntrustedTextSchema,
 } from "./ids.ts";
-import { BuildAdapterSchema, MatchesHeadSchema } from "./read.ts";
+import {
+  AdapterIdSchema,
+  MatchesHeadSchema,
+  ServiceNameSchema,
+  Sha256Schema,
+} from "./read.ts";
 import { StageSchema } from "./stage.ts";
 
 export const AnnotationsSchema = Schema.Struct({
@@ -114,7 +119,9 @@ const Brief = Schema.Struct({
 const Diagnostic = Schema.Struct({
   line: Schema.optionalKey(Schema.Int),
   message: UntrustedTextSchema,
-  rule: Schema.String,
+  rule: Schema.String.check(
+    Schema.isPattern(/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/u)
+  ),
   sceneId: Schema.optionalKey(UntrustedTextSchema),
   severity: Schema.Literals(["error", "info"]),
 });
@@ -172,7 +179,9 @@ export const projectGet = defineTool({
   input: Schema.Struct({ project }),
   name: "project_get",
   output: Schema.Struct({
-    allowed: Schema.Array(Schema.String),
+    allowed: Schema.Array(
+      Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9_]{0,63}$/u))
+    ),
     build: Schema.optionalKey(
       Schema.Struct({ build: BuildIdSchema, matchesHead: MatchesHeadSchema })
     ),
@@ -200,7 +209,7 @@ export const docsGet = defineTool({
   output: Schema.Struct({
     ...pageFields,
     text: Schema.String,
-    topic: Schema.String,
+    topic: Schema.Literals(["grammar", "glossary", "lifecycle"]),
   }),
   title: "Read the documentation",
 });
@@ -276,9 +285,27 @@ export const planGet = defineTool({
     project: ProjectIdSchema,
     revision: RevisionIdSchema,
     text: UntrustedTextSchema,
-    view: Schema.String,
+    view: Schema.Literals(["review", "json", "timing"]),
   }),
   title: "Get a Plan",
+});
+
+/**
+ * A link to a file of the build: `file://` and a path whose every segment is percent-encoded, so a `#`, a `?` or a space in
+ * a directory of the checkout cannot end the path. The file names in it are constrained when the manifest is decoded.
+ */
+const FileUriSchema = Schema.String.check(
+  Schema.isPattern(/^file:\/\/\/[A-Za-z0-9%/._~!$&'()*+,;=:@-]*$/u)
+);
+
+/** An adapter as `build_get` returns it: a structural id and service; what it says it sends out is foreign text. */
+const AdapterView = Schema.Struct({
+  egress: Schema.Struct({
+    kind: Schema.Literals(["local", "integration"]),
+    sends: Schema.Array(UntrustedTextSchema),
+  }),
+  id: AdapterIdSchema,
+  service: ServiceNameSchema,
 });
 
 export const buildGet = defineTool({
@@ -295,14 +322,19 @@ export const buildGet = defineTool({
   }),
   name: "build_get",
   output: Schema.Struct({
-    adapters: Schema.Array(BuildAdapterSchema),
+    adapters: Schema.Array(AdapterView),
     artifacts: Schema.Array(
       Schema.Struct({
         bytes: Schema.Int,
-        mimeType: Schema.String,
+        mimeType: Schema.Literals([
+          "text/html",
+          "video/mp4",
+          "text/vtt",
+          "application/json",
+        ]),
         name: ArtifactName,
-        sha256: Schema.String,
-        uri: Schema.String,
+        sha256: Sha256Schema,
+        uri: FileUriSchema,
       })
     ),
     build: BuildIdSchema,
@@ -310,13 +342,13 @@ export const buildGet = defineTool({
       Schema.Struct({
         bytes: Schema.Int,
         path: UntrustedTextSchema,
-        sha256: Schema.String,
+        sha256: Sha256Schema,
       })
     ),
     matchesHead: MatchesHeadSchema,
     nextCursor: Schema.optionalKey(Cursor),
     project: ProjectIdSchema,
-    sourceSha256: Schema.String,
+    sourceSha256: Sha256Schema,
     totalFiles: Schema.Int,
   }),
   title: "Get a build",
@@ -324,13 +356,15 @@ export const buildGet = defineTool({
 
 const Stream = Schema.Struct({
   channels: Schema.optionalKey(Schema.Int),
-  codec: Schema.String,
+  codec: Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_.+-]{1,64}$/u)),
   durationMs: Schema.optionalKey(Schema.Int),
-  fps: Schema.optionalKey(Schema.String),
+  fps: Schema.optionalKey(
+    Schema.String.check(Schema.isPattern(/^\d{1,9}\/\d{1,9}$/u))
+  ),
   frames: Schema.optionalKey(Schema.Int),
   height: Schema.optionalKey(Schema.Int),
   sampleRate: Schema.optionalKey(Schema.Int),
-  type: Schema.String,
+  type: Schema.String.check(Schema.isPattern(/^[a-z]{1,16}$/u)),
   width: Schema.optionalKey(Schema.Int),
 });
 
@@ -409,12 +443,18 @@ export const artifactObserve = defineTool({
         bytes: Schema.Int,
         frame: Schema.Int,
         height: Schema.Int,
-        mimeType: Schema.String,
+        mimeType: Schema.Literals(["image/jpeg"]),
         ms: Schema.Int,
         width: Schema.Int,
       })
     ),
-    kind: Schema.String,
+    kind: Schema.Literals([
+      "frame",
+      "audio",
+      "subtitles",
+      "chapters",
+      "streams",
+    ]),
     nextCursor: Schema.optionalKey(Cursor),
     project: ProjectIdSchema,
     streams: Schema.optionalKey(Schema.Array(Stream)),

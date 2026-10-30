@@ -14,18 +14,22 @@ claude mcp add --scope user --transport stdio tsukuri -- sh -c "cd '$PWD' && exe
 # Claude Code, this repository only: put the checkout path into the project file, then approve it in `claude`
 sed "s#__TSUKURI_CHECKOUT__#$PWD#g" packages/mcp/clients/claude-code/.mcp.json > .mcp.json
 
-# Claude Code, as a plugin (includes the skill)
-cp -R packages/mcp/clients/claude-plugin /tmp/tsukuri-claude-plugin
-sed -i "s#__TSUKURI_CHECKOUT__#$PWD#g" /tmp/tsukuri-claude-plugin/.mcp.json
-claude plugin validate --strict /tmp/tsukuri-claude-plugin
+# Claude Code, as a plugin (includes the skill): copy the marketplace to a directory that stays, fill in the path, install
+here="${XDG_DATA_HOME:-$HOME/.local/share}/tsukuri/claude-plugin"
+mkdir -p "$here" && cp -R packages/mcp/clients/claude-plugin/. "$here"
+sed -i "s#__TSUKURI_CHECKOUT__#$PWD#g" "$here/plugins/tsukuri/.mcp.json"
+claude plugin validate --strict "$here"
+claude plugin marketplace add "$here"
+claude plugin install tsukuri@tsukuri-local
 
 # Codex, one command
 codex mcp add tsukuri -- sh -c "cd '$PWD' && exec devenv shell -- bun packages/mcp/bin/tsukuri-mcp.ts"
 
 # Codex, as a plugin (includes the skill)
-cp -R packages/mcp/clients/agent-plugin /tmp/tsukuri-agent-plugin
-sed -i "s#__TSUKURI_CHECKOUT__#$PWD#g" /tmp/tsukuri-agent-plugin/plugins/tsukuri/mcp.json
-codex plugin marketplace add /tmp/tsukuri-agent-plugin
+here="${XDG_DATA_HOME:-$HOME/.local/share}/tsukuri/agent-plugin"
+mkdir -p "$here" && cp -R packages/mcp/clients/agent-plugin/. "$here"
+sed -i "s#__TSUKURI_CHECKOUT__#$PWD#g" "$here/plugins/tsukuri/mcp.json"
+codex plugin marketplace add "$here"
 codex plugin add tsukuri@tsukuri-local
 ```
 

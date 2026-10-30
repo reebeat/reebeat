@@ -138,7 +138,7 @@ describe("the client files (F14)", () => {
         for (const path of [
           "README.md",
           "codex/config.toml",
-          "claude-plugin/skills/tsukuri-lifecycle/SKILL.md",
+          "claude-plugin/plugins/tsukuri/skills/tsukuri-lifecycle/SKILL.md",
           "agent-plugin/plugins/tsukuri/skills/tsukuri-lifecycle/SKILL.md",
         ]) {
           const file = Option.getOrThrow(

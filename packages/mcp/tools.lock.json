@@ -1,17 +1,17 @@
 {
   "contract": "0.1.0",
-  "digest": "1e4eb1f380ac6f43e41eea4d25720923a9267f4980ec8b1b08505e8f78efbffa",
+  "digest": "d7e90f48da2b7c1e0279882a52b8b690221e01a29b882bc9eac7ff9fd0aca42f",
   "tools": [
     {
       "digest": "38375b2ac24e77eb799e31d4309949174d84f5ec052832da8b485b1f438b864b",
       "name": "project_list"
     },
     {
-      "digest": "cdb781f85eaff47924885cf7542c586d326432d2abfbba4a5486b81c1f62d96d",
+      "digest": "1772d9983b7f92f61d30ca10a89e2670f088228f17f0b4f6ffe29b037e4cefb5",
       "name": "project_get"
     },
     {
-      "digest": "8eaf2cde505112238ca4c9ba1bc6dc05f8f88f747abede7b2deb90cc36833159",
+      "digest": "86ce5e2ae3e7f6193bad8501b2eafb044902166f12c04e50384588b6ac0377c4",
       "name": "docs_get"
     },
     {
@@ -19,19 +19,19 @@
       "name": "story_read"
     },
     {
-      "digest": "a31c8605338fb6263995c930ba772322805bbba5e48557a8b713ce25a7cb22b6",
+      "digest": "cd8228a42df699df55f998ede6ff35635d809d0c32b2c3b753bf7d8807a758c0",
       "name": "story_lint"
     },
     {
-      "digest": "554c69a60601ead89d9ef8c8d43bf3320af44f1893893d75242bc72f95e352d4",
+      "digest": "f385857d0dc5617642eeabf8869007996e030991efaa1c9f3f78332a1b32f155",
       "name": "plan_get"
     },
     {
-      "digest": "91e86828f84c401068e21f2f55b8cc4791fb5eb9f164b216c6fe4d19e885368b",
+      "digest": "52b69a35ab737dc119162337c5b1532adb43894d1d23575156e5c11cc7455560",
       "name": "build_get"
     },
     {
-      "digest": "4a8f32b296607ecee3e523e7add93ba3ac785f751633c302002e2fb0de60def0",
+      "digest": "0adc7982151947000a0598ae53cc577794a6d0952852aa583ecec4dac86e4fff",
       "name": "artifact_observe"
     }
   ]

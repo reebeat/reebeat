@@ -4,7 +4,7 @@
 // fits. Capacity: two observations run at once and a third is refused at once (`ObserveFailed`, "busy"), so waiting
 // never piles up; each is cut off after 25 seconds, and a closed Scope kills the process. A failure of ffmpeg is logged
 // for the operator and fails with a fixed message: its output can name a path.
-import { MediaTools, probeMedia } from "@tsukuri/encode-ffmpeg";
+import { MediaInfoSchema, MediaTools } from "@tsukuri/encode-ffmpeg";
 import type { MediaInfo } from "@tsukuri/encode-ffmpeg";
 import { ObserveFailed, Observer } from "@tsukuri/lifecycle";
 import type {
@@ -21,6 +21,7 @@ import {
   Layer,
   Option,
   Result,
+  Schema,
   Semaphore,
 } from "effect";
 
@@ -145,6 +146,8 @@ export const audioStats = (
 
 const failed = (message: string) => new ObserveFailed({ message });
 
+const decodeInfo = Schema.decodeEffect(Schema.fromJsonString(MediaInfoSchema));
+
 const toMs = (seconds: number): number => Math.round(seconds * 1000);
 
 const optionalMs = (seconds: number | undefined): number | undefined =>
@@ -178,6 +181,19 @@ const mediaFacts = (info: MediaInfo): MediaFacts => ({
   streams: Arr.map(info.streams, streamFacts),
 });
 
+/**
+ * The input options of every call (spec 0018, Revision 14). The file is a regular file the manifest names, but its bytes
+ * are whatever a person or an agent wrote there, and ffmpeg's demuxers read scripts (`ffconcat`), playlists (HLS) and
+ * URLs. The container is forced to MP4 (the only one `tsukuri build` writes), so a text file is not a script, and only the
+ * `file` protocol is allowed, so no demuxer can open a network address, a pipe or a `subfile` even if one were chosen.
+ */
+const inputGuard: readonly string[] = [
+  "-protocol_whitelist",
+  "file",
+  "-f",
+  "mov",
+];
+
 /** The ffmpeg arguments that print one JPEG of the `lead`th frame after `startSeconds`, `width` wide. */
 const frameArgs = (
   file: string,
@@ -188,6 +204,7 @@ const frameArgs = (
   "-hide_banner",
   "-loglevel",
   "error",
+  ...inputGuard,
   "-ss",
   startSeconds.toFixed(6),
   "-i",
@@ -214,6 +231,7 @@ const audioArgs = (
   "-hide_banner",
   "-loglevel",
   "error",
+  ...inputGuard,
   "-ss",
   (window.fromMs / 1000).toFixed(3),
   "-t",
@@ -349,12 +367,31 @@ export const ffmpegObserver: Layer.Layer<Observer, never, MediaTools> =
         media: (files) =>
           admitted(
             "the probe",
-            probeMedia(files.mp4).pipe(
-              Effect.provideService(MediaTools, tools),
-              Effect.tapError((cause) =>
-                Effect.logWarning("ffprobe failed", cause)
+            run(
+              "ffprobe",
+              [
+                "-v",
+                "error",
+                ...inputGuard,
+                "-show_streams",
+                "-show_chapters",
+                "-show_format",
+                "-of",
+                "json",
+                files.mp4,
+              ],
+              "read the video"
+            ).pipe(
+              Effect.flatMap((bytes) =>
+                decodeInfo(new TextDecoder().decode(bytes)).pipe(
+                  Effect.tapError((cause) =>
+                    Effect.logWarning("ffprobe output did not decode", cause)
+                  ),
+                  Effect.mapError(() =>
+                    failed("ffprobe did not report a video")
+                  )
+                )
               ),
-              Effect.mapError(() => failed("ffprobe could not read the video")),
               Effect.map(mediaFacts)
             )
           ),

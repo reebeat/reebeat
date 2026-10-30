@@ -15,6 +15,7 @@
           "effect/ai/McpServer",
           "effect/ai/McpTest",
           "effect/crypto/Digest",
+          "effect/encoding/Toml",
           "effect/cli",
           "effect/FileSystem",
           "effect/http/HttpRouter",

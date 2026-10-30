@@ -1,0 +1,9 @@
+$ (control: the fixture loses test_logging_tool, so one more check of server-stateless fails; the old scenario-level baseline accepted this)
+$ bunx vp test run test/conformance.test.ts
+[19:33:36.592] ERROR (#16): Error [AssertionError]: 2026-07-28 server-stateless: the failing checks are not exactly the baselined ones: expected [ …(4) ] to deeply equal [ …(3) ]
+       × passes every scored scenario of each revision it speaks, but the baselined ones 6583ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: 2026-07-28 server-stateless: the failing checks are not exactly the baselined ones: expected [ …(4) ] to deeply equal [ …(3) ]
+      Tests  1 failed (1)
+$ (control reverted)
+      Tests  1 passed (1)

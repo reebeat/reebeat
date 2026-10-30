@@ -1,0 +1,20 @@
+{
+  "2026-07-28": [
+    {
+      "scenario": "server-stateless",
+      "check": "sep-2575-server-rejects-undeclared-capability",
+      "reason": "Needs the diagnostic tool test_missing_capability to answer -32021 (MissingRequiredClientCapabilityError). Effect 4.1.0's McpServer has no such error: a handler can fail only with InvalidParams or InternalError. Retire when a later Effect release adds it."
+    },
+    {
+      "scenario": "server-stateless",
+      "check": "sep-2575-missing-capability-http-400",
+      "reason": "The same error over HTTP: the 400 status of a MissingRequiredClientCapabilityError, which Effect 4.1.0 cannot produce. Retire with the check above."
+    },
+    {
+      "scenario": "server-stateless",
+      "check": "sep-2575-http-server-no-independent-requests-on-stream",
+      "reason": "Needs the streaming elicitation tool test_streaming_elicitation. The fixture has none because the inspector never asks a client for anything (spec 0016, D1: elicitation is never an approval)."
+    }
+  ],
+  "2025-11-25": []
+}

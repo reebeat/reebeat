@@ -264,6 +264,10 @@ const planGetHandler = bind(planGet, (input) =>
   })
 );
 
+/** A `file://` link with every path segment percent-encoded, so a `#`, a `?` or a space cannot end the path. */
+const fileUri = (absolute: string): string =>
+  `file://${Arr.join(Arr.map(Str.split("/")(absolute), encodeURIComponent), "/")}`;
+
 const artifactsOf = (record: BuildRecord) => {
   const rows = [
     ["deck", record.files.deck, "text/html"],
@@ -286,7 +290,7 @@ const artifactsOf = (record: BuildRecord) => {
             mimeType,
             name,
             sha256: file.sha256,
-            uri: `file://${encodeURI(absolute)}`,
+            uri: fileUri(absolute),
           }),
       }
     )
@@ -314,7 +318,14 @@ const buildGetHandler = bind(buildGet, (input) =>
       })),
       summary: `${input.project}: build ${Str.slice(0, 12)(record.id)}, ${count(record.summary.files.length, "file")}, ${where}`,
       value: {
-        adapters: record.summary.adapters,
+        adapters: Arr.map(record.summary.adapters, (adapter) => ({
+          egress: {
+            kind: adapter.egress.kind,
+            sends: Arr.map(adapter.egress.sends, untrusted),
+          },
+          id: adapter.id,
+          service: adapter.service,
+        })),
         artifacts,
         build: record.id,
         files: Arr.map(page.items, (file) => ({

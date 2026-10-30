@@ -49,6 +49,15 @@ export interface Workspace {
 /** The largest file this layer reads: a Screenplay, a manifest or a plan is far below it. */
 const maxBytes = 8 * 1024 * 1024;
 
+/** A file name `tsukuri build` writes (the rule of `requireOutputName`): the only names a manifest may give a linked file. */
+const safeName = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
+
+/** At most this many entries in a build directory: a build has a few dozen, and the walk is bounded. */
+const maxBuildEntries = 20_000;
+
+/** What a file is called in a message: a fixed phrase, never a name taken from a file. */
+type Role = string;
+
 const screenplayName = "story.fountain";
 const configName = "tsukuri.config.json";
 const manifestName = "build.json";
@@ -78,7 +87,8 @@ const locateFiles = (
     Option.map(
       Arr.findFirst(
         summary.files,
-        ({ path: name }) => !Str.includes("/")(name) && matches(name)
+        ({ path: name }) =>
+          safeName.test(name) && !Str.includes("..")(name) && matches(name)
       ),
       ({ path: name }) => join(base, name)
     );
@@ -90,6 +100,27 @@ const locateFiles = (
     plan: listed((name) => name === "plan.json"),
     vtt: listed(Str.endsWith(".vtt")),
   });
+};
+
+/** Why a listing of the build directory is refused (a link, an odd entry, too many entries), or none. */
+const refusalOf = (
+  entries: readonly { readonly type: FileSystem.File.Type }[],
+  seen: number
+): Option.Option<string> => {
+  if (seen > maxBuildEntries) {
+    return Option.some("the build directory holds too many entries");
+  }
+
+  return Option.map(
+    Arr.findFirst(
+      entries,
+      ({ type }) => type !== "File" && type !== "Directory"
+    ),
+    ({ type }) =>
+      type === "SymbolicLink"
+        ? "the build directory holds a symbolic link: refused"
+        : "the build directory holds an entry that is neither a file nor a directory"
+  );
 };
 
 export const fileProjects = (
@@ -111,43 +142,40 @@ export const fileProjects = (
         Effect.provideContext(sha256Hex(bytes), digest);
 
       /** What the file system says about `file`, or none when it is absent; a failure is logged and refused. */
-      const lstatOrNone = (file: string, project: string) =>
+      const lstatOrNone = (file: string, project: string, role: Role) =>
         fs.lstat(file).pipe(
           Effect.asSome,
           Effect.catchIf(isNotFound, () => Effect.succeedNone),
           Effect.tapError((cause) =>
             Effect.logWarning(`lstat ${file} failed`, cause)
           ),
-          Effect.mapError(() =>
-            unreadable(project, `cannot look at ${path.basename(file)}`)
-          )
+          Effect.mapError(() => unreadable(project, `cannot look at ${role}`))
         );
 
       /** A regular file's bytes, or none when absent; a symbolic link, another kind or a large file is refused. */
       const readRegular = Effect.fnUntraced(function* readRegular(
         file: string,
-        project: string
+        project: string,
+        role: Role
       ) {
-        const info = yield* lstatOrNone(file, project);
+        const info = yield* lstatOrNone(file, project, role);
 
         if (Option.isNone(info)) {
           return Option.none<Uint8Array>();
         }
 
-        const name = path.basename(file);
-
         if (info.value.type === "SymbolicLink") {
-          return yield* refuse(project, `${name} is a symbolic link: refused`);
+          return yield* refuse(project, `${role} is a symbolic link: refused`);
         }
 
         if (info.value.type !== "File") {
-          return yield* refuse(project, `${name} is not a regular file`);
+          return yield* refuse(project, `${role} is not a regular file`);
         }
 
         if (Number(info.value.size) > maxBytes) {
           return yield* refuse(
             project,
-            `${name} is larger than ${maxBytes} bytes`
+            `${role} is larger than ${maxBytes} bytes`
           );
         }
 
@@ -155,7 +183,7 @@ export const fileProjects = (
           Effect.tapError((cause) =>
             Effect.logWarning(`reading ${file} failed`, cause)
           ),
-          Effect.mapError(() => unreadable(project, `cannot read ${name}`))
+          Effect.mapError(() => unreadable(project, `cannot read ${role}`))
         );
 
         return Option.some(bytes);
@@ -164,15 +192,13 @@ export const fileProjects = (
       /** A real directory: none when absent or not a directory, refused when it is a symbolic link. */
       const requireDirectory = Effect.fnUntraced(function* requireDirectory(
         dir: string,
-        project: string
+        project: string,
+        role: Role
       ) {
-        const info = yield* lstatOrNone(dir, project);
+        const info = yield* lstatOrNone(dir, project, role);
 
         if (Option.isSome(info) && info.value.type === "SymbolicLink") {
-          return yield* refuse(
-            project,
-            `${path.basename(dir)} is a symbolic link: refused`
-          );
+          return yield* refuse(project, `${role} is a symbolic link: refused`);
         }
 
         return Option.filter(info, ({ type }) => type === "Directory");
@@ -191,7 +217,8 @@ export const fileProjects = (
       ) {
         const dir = yield* requireDirectory(
           path.join(rootDir, project),
-          project
+          project,
+          "the project directory"
         );
 
         if (Option.isNone(dir)) {
@@ -203,7 +230,8 @@ export const fileProjects = (
 
         const story = yield* readRegular(
           path.join(rootDir, project, screenplayName),
-          project
+          project,
+          "the Screenplay"
         );
 
         if (Option.isNone(story)) {
@@ -215,7 +243,8 @@ export const fileProjects = (
 
         const config = yield* readRegular(
           path.join(rootDir, project, configName),
-          project
+          project,
+          "the project config"
         );
 
         const screenplaySha256 = yield* sha(story.value);
@@ -241,20 +270,65 @@ export const fileProjects = (
         return { head, text: decoder.decode(story.value) };
       });
 
-      /** The video must be a regular file too: ffmpeg would follow a link. */
-      const requireVideo = (file: string, project: string) =>
-        Effect.flatMap(lstatOrNone(file, project), (video) =>
-          Option.isSome(video) && video.value.type === "File"
+      /** The file a manifest names for `role` must be a regular file: ffmpeg and a browser would follow a link. */
+      const requireFile = (file: string, project: string, role: Role) =>
+        Effect.flatMap(lstatOrNone(file, project, role), (found) =>
+          Option.isSome(found) && found.value.type === "File"
             ? Effect.void
-            : refuse(project, `${path.basename(file)} is not a regular file`)
+            : refuse(project, `${role} is not a regular file`)
         );
+
+      /**
+       * Walks the whole build directory (spec 0018, Revision 14): no entry may be a symbolic link or anything but a file or
+       * a directory, at any depth, and there are at most `maxBuildEntries` of them. A link inside the build is the way to
+       * reach a file outside the root through a name that looks inside it, so the tree is refused as a whole.
+       */
+      const requireTreeWithoutLinks = (
+        dir: string,
+        project: string
+      ): Effect.Effect<void, Unreadable> => {
+        const seen = { entries: 0 };
+
+        const visit = (here: string): Effect.Effect<void, Unreadable> =>
+          Effect.gen(function* visitDirectory() {
+            const entries = yield* fs.readDirectoryEntries(here).pipe(
+              Effect.tapError((cause) =>
+                Effect.logWarning(`listing ${here} failed`, cause)
+              ),
+              Effect.mapError(() =>
+                unreadable(project, "cannot list the build directory")
+              )
+            );
+
+            seen.entries += entries.length;
+
+            const refusal = refusalOf(entries, seen.entries);
+
+            return yield* Option.match(refusal, {
+              onNone: () =>
+                Effect.forEach(
+                  Arr.filter(entries, ({ type }) => type === "Directory"),
+                  ({ name }) => visit(path.join(here, name)),
+                  { discard: true }
+                ),
+              onSome: (reason) => refuse(project, reason),
+            });
+          });
+
+        return visit(dir);
+      };
 
       const readBuild = Effect.fnUntraced(function* readBuild(
         project: ProjectId,
         head: ProjectHead
       ) {
         const base = path.join(buildsDir, project);
-        const dir = yield* requireDirectory(base, project);
+
+        const dir = yield* requireDirectory(
+          base,
+          project,
+          "the build directory"
+        );
 
         if (Option.isNone(dir)) {
           return Option.none<BuildRecord>();
@@ -262,8 +336,13 @@ export const fileProjects = (
 
         const manifest = yield* readRegular(
           path.join(base, manifestName),
-          project
+          project,
+          "the build manifest"
         );
+
+        if (Option.isSome(manifest)) {
+          yield* requireTreeWithoutLinks(base, project);
+        }
 
         if (Option.isNone(manifest)) {
           return Option.none<BuildRecord>();
@@ -292,7 +371,10 @@ export const fileProjects = (
           );
         }
 
-        yield* requireVideo(files.value.mp4, project);
+        yield* requireFile(files.value.deck, project, "the deck");
+        yield* requireFile(files.value.mp4, project, "the video");
+        yield* requireFile(files.value.plan, project, "the plan");
+        yield* requireFile(files.value.vtt, project, "the subtitles");
 
         const record: BuildRecord = {
           files: files.value,
@@ -340,9 +422,11 @@ export const fileProjects = (
       ) => {
         const file = which === "plan" ? record.files.plan : record.files.vtt;
 
-        return Effect.flatMap(readRegular(file, project), (bytes) =>
+        const role = which === "plan" ? "the plan" : "the subtitles";
+
+        return Effect.flatMap(readRegular(file, project, role), (bytes) =>
           Option.match(bytes, {
-            onNone: () => refuse(project, `${path.basename(file)} is missing`),
+            onNone: () => refuse(project, `${role} is missing`),
             onSome: (value) => Effect.succeed(decoder.decode(value)),
           })
         );

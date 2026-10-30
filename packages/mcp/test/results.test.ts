@@ -33,6 +33,7 @@ import {
   fixtureLayer,
   harbourText,
   platform,
+  scratchWorkspace,
   succeeded,
 } from "./support.ts";
 
@@ -169,9 +170,7 @@ const hugeWorkspace = Effect.gen(function* workspaceOf() {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const fixture = yield* FixtureService;
-  const base = yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-huge-" });
-  const root = path.join(base, "stories");
-  const builds = path.join(base, "build");
+  const { builds, root } = yield* scratchWorkspace("tsukuri-huge-");
   const dir = path.join(builds, "huge");
 
   yield* fs.makeDirectory(path.join(root, "huge"), { recursive: true });

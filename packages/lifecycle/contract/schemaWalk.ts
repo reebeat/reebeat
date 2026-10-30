@@ -13,6 +13,9 @@ import { untrustedKeyword } from "../src/ids.ts";
 
 interface Node {
   readonly $ref?: string;
+  readonly const?: string;
+  readonly enum?: readonly string[];
+  readonly pattern?: string;
   readonly allOf?: readonly Node[];
   readonly anyOf?: readonly Node[];
   readonly items?: Node;
@@ -25,7 +28,10 @@ const NodeSchema: Schema.Codec<Node> = Schema.Struct({
   $ref: Schema.optionalKey(Schema.String),
   allOf: Schema.optionalKey(Schema.Array(Schema.suspend(() => NodeSchema))),
   anyOf: Schema.optionalKey(Schema.Array(Schema.suspend(() => NodeSchema))),
+  const: Schema.optionalKey(Schema.String),
+  enum: Schema.optionalKey(Schema.Array(Schema.String)),
   items: Schema.optionalKey(Schema.suspend(() => NodeSchema)),
+  pattern: Schema.optionalKey(Schema.String),
   properties: Schema.optionalKey(
     Schema.Record(
       Schema.String,
@@ -69,13 +75,23 @@ const marked = (document: SchemaDocument, node: Node): boolean => {
   );
 };
 
+/** A string whose JSON Schema fixes its form (a pattern, an enumeration or a constant) cannot carry a sentence. */
+const constrained = (node: Node): boolean =>
+  node.pattern !== undefined ||
+  node.enum !== undefined ||
+  node.const !== undefined;
+
 const plainIn = (
   document: SchemaDocument,
   node: Node,
   path: string
 ): readonly string[] => {
   const here = resolve(document, node);
-  const own = here.type === "string" && !marked(document, here) ? [path] : [];
+
+  const own =
+    here.type === "string" && !marked(document, here) && !constrained(here)
+      ? [path]
+      : [];
 
   const properties = Arr.flatMap(
     Rec.toEntries(here.properties ?? {}),
@@ -92,7 +108,10 @@ const plainIn = (
   return [...own, ...properties, ...items, ...nested];
 };
 
-/** Every string field of the document that is plain text (no `x-tsukuri-untrusted`), as `.a.b` paths, arrays collapsed. */
+/**
+ * Every string field of the document that is free text: no `x-tsukuri-untrusted`, and no pattern, enumeration or
+ * constant either. Such a field is where project text could hide, so each is a decision in an allowlist.
+ */
 export const plainStringPaths = (document: SchemaDocument): readonly string[] =>
   Arr.dedupe(plainIn(document, document.schema, ""));
 

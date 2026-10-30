@@ -14,6 +14,7 @@ import { Effect, FileSystem, Layer, Path, Schema, String as Str } from "effect";
 import { fileProjects } from "../src/projectsFs.ts";
 import {
   FixtureService,
+  buildFilesIn,
   fixtureLayer,
   harbourText,
   platform,
@@ -35,13 +36,7 @@ const expected = Effect.gen(function* expectedFixture() {
   const summary = yield* decodeSummary(decoder.decode(manifestBytes));
 
   const record: BuildRecord = {
-    files: {
-      deck: path.join(dir, "deck.html"),
-      dir,
-      mp4: path.join(dir, "harbour.mp4"),
-      plan: path.join(dir, "plan.json"),
-      vtt: path.join(dir, "harbour.vtt"),
-    },
+    files: yield* buildFilesIn(dir),
     id: BuildIdSchema.make(yield* sha256Hex(manifestBytes)),
     matchesHead: { config: "absent", screenplay: true },
     summary,

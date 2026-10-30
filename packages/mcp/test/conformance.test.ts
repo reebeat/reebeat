@@ -9,8 +9,12 @@ import {
   Array as Arr,
   Effect,
   Fiber,
+  FileSystem,
   Option,
+  Order,
   Path,
+  Result,
+  Schema,
   Stream,
   String as Str,
 } from "effect";
@@ -77,6 +81,12 @@ const suite = (url: string, revision: (typeof revisions)[number]) =>
       `baseline-${revision}.yml`
     );
 
+    const fs = yield* FileSystem.FileSystem;
+
+    const outputDir = yield* fs.makeTempDirectoryScoped({
+      prefix: "tsukuri-conformance-",
+    });
+
     const handle = yield* spawner.spawn(
       ChildProcess.make(
         "npx",
@@ -90,6 +100,8 @@ const suite = (url: string, revision: (typeof revisions)[number]) =>
           revision,
           "--expected-failures",
           baseline,
+          "--output-dir",
+          outputDir,
         ],
         // Not the repository: its `devEngines` (bun) refuses `npm`, and the suite needs no project.
         {
@@ -110,7 +122,57 @@ const suite = (url: string, revision: (typeof revisions)[number]) =>
 
     const code = yield* handle.exitCode;
 
-    return { code, output: yield* Fiber.join(output) };
+    return { code, output: yield* Fiber.join(output), outputDir };
+  });
+
+const ScenarioChecks = Schema.Array(
+  Schema.Struct({ id: Schema.String, status: Schema.String })
+);
+
+const CheckBaseline = Schema.Record(
+  Schema.String,
+  Schema.Array(
+    Schema.Struct({
+      check: Schema.String,
+      reason: Schema.NonEmptyString,
+      scenario: Schema.String,
+    })
+  )
+);
+
+/** The scored scenarios the run reports as failing and that the scenario baseline does not list. */
+const unexpectedScenarios = (output: string): readonly string[] =>
+  Arr.filterMap(Str.split("\n")(output), (line) => {
+    const name = /^\s+✗ (?<name>[a-z0-9-]+)\s*$/u.exec(line)?.groups?.name;
+
+    return name === undefined ? Result.failVoid : Result.succeed(name);
+  });
+
+/** The ids of the checks of `scenario` that failed, from the suite's own `checks.json`. */
+const failedChecks = (outputDir: string, scenario: string) =>
+  Effect.gen(function* failed() {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const names = yield* fs.readDirectory(outputDir);
+
+    const dir = Arr.findFirst(names, (name) =>
+      Str.startsWith(`server-${scenario}-`)(name)
+    );
+
+    if (Option.isNone(dir)) {
+      return [];
+    }
+
+    const checks = yield* Schema.decodeEffect(
+      Schema.fromJsonString(ScenarioChecks)
+    )(yield* fs.readFileString(path.join(outputDir, dir.value, "checks.json")));
+
+    return Arr.sort(
+      Arr.filterMap(checks, ({ id, status }) =>
+        status === "FAILURE" ? Result.succeed(id) : Result.failVoid
+      ),
+      Order.String
+    );
   });
 
 describe("protocol conformance (F6)", () => {
@@ -124,19 +186,61 @@ describe("protocol conformance (F6)", () => {
             Effect.gen(function* all() {
               const url = yield* runFixture;
 
-              for (const revision of revisions) {
-                const { code, output } = yield* suite(url, revision);
+              const fs = yield* FileSystem.FileSystem;
+              const path = yield* Path.Path;
+              const root = yield* checkout;
 
-                assert.strictEqual(
-                  code,
-                  0,
-                  `${revision}: ${Str.slice(-2500)(output)}`
+              const baselines = yield* Schema.decodeEffect(
+                Schema.fromJsonString(CheckBaseline)
+              )(
+                yield* fs.readFileString(
+                  path.join(
+                    root,
+                    "packages",
+                    "mcp",
+                    "conformance",
+                    "baseline-checks.json"
+                  )
+                )
+              );
+
+              for (const revision of revisions) {
+                const { output, outputDir } = yield* suite(url, revision);
+                const accepted = baselines[revision] ?? [];
+
+                const acceptedScenarios = Arr.dedupe(
+                  Arr.map(accepted, ({ scenario }) => scenario)
                 );
-                assert.include(
-                  output,
-                  "Baseline check passed: all failures are expected.",
-                  revision
+
+                // A scenario baselined by check is not in the scenario baseline: it may fail only in the checks named
+                // here, so a new failing check inside it is found, and a baselined check that passes is stale.
+                assert.deepStrictEqual(
+                  Arr.filter(
+                    unexpectedScenarios(output),
+                    (name) => !Arr.contains(acceptedScenarios, name)
+                  ),
+                  [],
+                  `${revision}: a scored scenario fails that no baseline names: ${Str.slice(-2500)(output)}`
                 );
+
+                for (const scenario of acceptedScenarios) {
+                  assert.deepStrictEqual(
+                    yield* failedChecks(outputDir, scenario),
+                    Arr.sort(
+                      Arr.map(
+                        Arr.filter(
+                          accepted,
+                          (entry) => entry.scenario === scenario
+                        ),
+                        ({ check }) => check
+                      ),
+                      Order.String
+                    ),
+                    `${revision} ${scenario}: the failing checks are not exactly the baselined ones`
+                  );
+                }
+
+                assert.include(output, "=== SUMMARY", revision);
               }
             })
           ).pipe(Effect.provide(platform)),

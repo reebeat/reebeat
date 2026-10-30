@@ -70,4 +70,4 @@ Real: the real `check` over a real build (`verify` tests build a story with the 
 
 ## Revisions
 
-None yet.
+- **2026-10-30, paused for a directory rename (not a plan change).** Built and committed on `feat/0017-speech-cache-errors` (worktree `.worktrees/speech-cache-errors`): the F8 existence check (`packages/verify/src/narration.ts`), the CLI fix text and the shared `refreshSpeechFlag` (`packages/cli/src/report.ts`, `cli.ts`), the new `SpeechCacheMiss` message (`packages/pipeline/src/speechStage.ts`), the two tests (`packages/verify/test/speechCache.test.ts`, `packages/cli/test/plan.test.ts`), the feature-map rows and a changeset. Both new tests pass and both negative controls were observed to fail; `vp check --fix` is clean. Remaining: `bun run ready` on the head (a first run was stopped before it finished, so there is no ready result yet), a `verify-tsukuri` run on the head with the two controls of the feature rows, then the PR with the eight-section body (`Fixes #N` once the issues exist).

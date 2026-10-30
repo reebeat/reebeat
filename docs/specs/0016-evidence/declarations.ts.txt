@@ -1,0 +1,147 @@
+// THROWAWAY (spec 0016): the declarations quoted in the spec, type-checked against the installed Effect 4.1.0.
+import { Array as Arr, Effect, Schema } from "effect";
+
+// ---- identities: content addresses and handles, never paths -------------------------------------------------------
+const Sha256 = Schema.String.check(Schema.isPattern(/^[0-9a-f]{64}$/u));
+
+export const ProjectId = Schema.String.check(
+  Schema.isPattern(/^[a-z0-9][a-z0-9-]{0,62}$/u)
+).pipe(Schema.brand("ProjectId"));
+export const RevisionId = Sha256.pipe(Schema.brand("RevisionId"));
+export const BuildId = Sha256.pipe(Schema.brand("BuildId"));
+export const RecordId = Sha256.pipe(Schema.brand("RecordId"));
+export const ReleaseId = Sha256.pipe(Schema.brand("ReleaseId"));
+export const JobId = Schema.String.check(Schema.isPattern(/^job_[0-9a-f]{32}$/u)).pipe(
+  Schema.brand("JobId")
+);
+export const ApprovalId = Schema.String.check(
+  Schema.isPattern(/^apr_[0-9a-f]{32}$/u)
+).pipe(Schema.brand("ApprovalId"));
+
+// ---- text that came out of a project is untrusted by type ---------------------------------------------------------
+export const UntrustedText = Schema.String.pipe(Schema.brand("UntrustedText"));
+
+// ---- the stage of a revision is derived from facts, never stored --------------------------------------------------
+export const stages = [
+  "drafted",
+  "planned",
+  "built",
+  "verified",
+  "candidate",
+  "released",
+  "published",
+] as const;
+export const Stage = Schema.Literals(stages);
+export type Stage = typeof Stage.Type;
+
+export interface Facts {
+  readonly lintClean: boolean;
+  readonly built: boolean;
+  readonly verifiedByServer: boolean;
+  readonly candidate: boolean;
+  readonly releaseApproved: boolean;
+  readonly published: boolean;
+}
+
+/** Total and pure: the highest stage whose facts all hold. Each fact is read from the project and the state directory. */
+export const stageOf = (facts: Facts): Stage => {
+  const verified = facts.built && facts.verifiedByServer;
+  if (verified && facts.candidate && facts.releaseApproved && facts.published) return "published";
+  if (verified && facts.candidate && facts.releaseApproved) return "released";
+  if (verified && facts.candidate) return "candidate";
+  if (verified) return "verified";
+  if (facts.built) return "built";
+  return facts.lintClean ? "planned" : "drafted";
+};
+
+// ---- the verification record: written by the verifier, bound to digests -------------------------------------------
+export const Verdict = Schema.Struct({
+  detail: Schema.String,
+  id: Schema.Literals(["F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9"]),
+  status: Schema.Literals(["pass", "fail", "na"]),
+});
+
+export const VerificationRecord = Schema.Struct({
+  build: BuildId,
+  environment: Schema.Struct({
+    chromium: Schema.String,
+    ffmpeg: Schema.String,
+    standIns: Schema.Array(Schema.String),
+  }),
+  finishedAt: Schema.DateTimeUtcFromString,
+  revision: RevisionId,
+  trust: Schema.Literals(["witnessed", "attested"]),
+  verdicts: Schema.Array(Verdict),
+  verifier: Schema.Struct({ name: Schema.String, version: Schema.String }),
+});
+export type VerificationRecord = typeof VerificationRecord.Type;
+
+// ---- an approval binds an action to a digest, a target and a deadline ---------------------------------------------
+export const ApprovalSubject = Schema.TaggedUnion({
+  PublishRelease: {
+    channel: Schema.String,
+    release: ReleaseId,
+    target: Schema.String,
+  },
+  ReleaseBuild: { build: BuildId, record: RecordId },
+});
+
+// ---- a tool is declared once, protocol-neutrally: data, no handler, no protocol ------------------------------------
+export const Annotations = Schema.Struct({
+  destructive: Schema.Boolean,
+  idempotent: Schema.Boolean,
+  openWorld: Schema.Boolean,
+  readOnly: Schema.Boolean,
+});
+
+export const Capability = Schema.Literals([
+  "authoring",
+  "build",
+  "verify",
+  "release",
+  "publish",
+]);
+
+export interface ToolDeclaration<I extends Schema.Top, O extends Schema.Top, E extends Schema.Top> {
+  readonly name: string;
+  readonly title: string;
+  readonly description: string;
+  readonly capability: typeof Capability.Type;
+  readonly annotations: typeof Annotations.Type;
+  readonly input: I;
+  readonly output: O;
+  readonly errors: E;
+}
+
+export const makeTool = <I extends Schema.Top, O extends Schema.Top, E extends Schema.Top>(
+  declaration: ToolDeclaration<I, O, E>
+): ToolDeclaration<I, O, E> => declaration;
+
+export const storyLint = makeTool({
+  annotations: { destructive: false, idempotent: true, openWorld: false, readOnly: true },
+  capability: "authoring",
+  description: "Use this when the user asks whether a story is valid or what is wrong with it.",
+  errors: Schema.TaggedStruct("ProjectNotFound", { project: ProjectId }),
+  input: Schema.Struct({
+    project: ProjectId,
+    revision: Schema.optionalKey(RevisionId),
+    timing: Schema.optionalKey(Schema.Boolean),
+  }),
+  name: "story_lint",
+  output: Schema.Struct({
+    diagnostics: Schema.Array(
+      Schema.Struct({
+        line: Schema.optionalKey(Schema.Int),
+        message: UntrustedText,
+        rule: Schema.String,
+        severity: Schema.Literals(["error", "warning", "info"]),
+      })
+    ),
+    revision: RevisionId,
+  }),
+  title: "Lint a story",
+});
+
+// ---- the adapter derives the MCP tool; nothing else imports effect/ai ---------------------------------------------
+export const describe = (tools: readonly ToolDeclaration<Schema.Top, Schema.Top, Schema.Top>[]) =>
+  Effect.succeed(Arr.map(tools, (tool) => tool.name));

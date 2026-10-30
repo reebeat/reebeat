@@ -1,0 +1,25 @@
+# Who can approve a release under D1 = A, on this workstation (run 2026-10-30)
+
+Commands and raw output; token values are never printed (only scope names). The first three were also run by reviewer RevReebeat16 (round 1 of PR #39); `can_admins_bypass: true` is new here: the environment lets a repository administrator bypass its protection rules.
+
+$ gh auth status   (the line that names the token is removed)
+github.com
+  ✓ Logged in to github.com account phibkro (/home/nori/.config/gh/hosts.yml)
+  - Active account: true
+  - Git operations protocol: https
+  - Token scopes: 'gist', 'read:org', 'repo', 'workflow'
+
+$ gh api repos/tsukuri-labs/tsukuri --jq .permissions
+{"admin":true,"maintain":true,"pull":true,"push":true,"triage":true}
+
+$ gh api repos/tsukuri-labs/tsukuri/environments --jq '.environments[]|select(.name=="npm-release")|{name,can_admins_bypass,rules:[.protection_rules[]|{type,prevent_self_review,reviewers:[.reviewers[]?.reviewer.login]}]}'
+{"can_admins_bypass":true,"name":"npm-release","rules":[{"prevent_self_review":false,"reviewers":["phibkro"],"type":"required_reviewers"},{"prevent_self_review":null,"reviewers":[],"type":"branch_policy"}]}
+
+## docs.github.com/en/rest/actions/workflow-runs, "Review pending deployments for a workflow run" (page fetched 2026-10-30)
+> Review pending deployments for a workflow run Approve or reject pending deployments that are waiting on approval by a required reviewer. Required reviewers with read access to the repository contents and deployments can use this endpoint. OAuth app tokens and personal access tokens (classic) need the repo scope to use this endpoint. Fine-grained access tokens for "Review pending deployments for a workflow run" This endpoint works with the following fine-grained token types : GitHub App user access tokens GitHub App installation access tokens Fine-grained personal access tokens The fine-grained token must have the
+
+## docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments (page fetched 2026-10-30)
+> Use required reviewers to require a specific person or team to approve workflow jobs that reference the environment. You can list up to six users or teams as reviewers. The reviewers must have at least read access to the repository. Only one of the required reviewers needs to approve the job for it to proceed. You also have the option to prevent self-reviews for deployments to protected environments. If you enable this setting, users who initiate a deployment cannot approve the deployment job, even if they are a re
+> Use a wait timer to delay a job for a specific amount of time after the job is initially triggered. The time (in minutes) must be an integer between 1 and 43,200 (30 days). Wait time will not count towards your billable time. Note If you are on a GitHub Free, 
+
+The page says nothing, in the text read, about how long a job waits for approval before it fails: the 43,200 minutes (30 days) above is the largest *wait timer*, a delay, not an approval deadline. The spec therefore does not rely on any GitHub deadline: the workflow enforces its own expiry (see the spec, Revisions 2026-10-30 round 1).

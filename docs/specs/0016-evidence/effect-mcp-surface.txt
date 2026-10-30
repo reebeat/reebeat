@@ -1,0 +1,47 @@
+# Installed Effect: the MCP surface (read from node_modules, not from memory)
+$ jq -r .version <effect>/package.json
+4.1.0
+$ ls <effect>/src/ai | grep -i mcp
+McpClient.ts
+McpClientError.ts
+McpProtocol.ts
+McpSchema.ts
+McpServer.ts
+McpTest.ts
+$ grep -n "export type ProtocolVersion" <effect>/src/ai/McpProtocol.ts
+27:export type ProtocolVersion = "2024-11-05" | "2025-03-26" | "2025-06-18" | "2025-11-25" | "2026-07-28"
+$ grep -n "export const \(layer\|layerStdio\|layerHttp\|layerHttpRequestScoped\|toolkit\|elicit\|registerToolkit\) " <effect>/src/ai/McpServer.ts
+2311:export const layer = <
+2388:export const layerStdio = <
+2544:export const layerHttp = <
+2617:export const layerHttpRequestScoped = <
+3003:export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
+3177:export const toolkit = <Tools extends Record<string, Tool.Any>>(
+3724:export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(options: {
+$ grep -c -i "tasks/" <effect>/src/ai/McpSchema.ts <effect>/src/ai/McpServer.ts   # the Tasks extension
+node_modules/.bun/effect@4.1.0/node_modules/effect/src/ai/McpSchema.ts:0
+node_modules/.bun/effect@4.1.0/node_modules/effect/src/ai/McpServer.ts:0
+$ grep -n "const toolResultContent" -A2 <effect>/src/ai/McpServer.ts   # what a Toolkit result puts in content
+2961:const toolResultContent = (encoded: unknown): CallToolResult["content"] =>
+2962-  encoded === undefined ? [] : [{ type: "text", text: JSON.stringify(encoded) }]
+2963-
+$ grep -n "allowedOrigins\|allowSessionTermination\|allowSubscriptions" <effect>/src/ai/McpServer.ts | head -8
+1576:    readonly allowSubscriptions?: boolean | undefined
+1685:    ...(!protocol.supportsNotifications || options.allowSubscriptions === false ? {} : {
+2347:  readonly allowSubscriptions?: boolean | undefined
+2499: * appears in `allowedOrigins`; Origin-less non-browser clients
+2503: * With `allowSessionTermination`, a DELETE carrying `Mcp-Session-Id` ends that
+2511: * Set `allowSubscriptions: false` to disable `v2026_07_28` subscriptions.
+2560:  readonly allowedOrigins?: ReadonlyArray<string> | undefined
+2561:  readonly allowSessionTermination?: boolean | undefined
+$ grep -n "Legacy reverse\|does not support the sessionful\|Only sessionless" <effect>/src/ai/McpServer.ts
+2591: * Only sessionless protocols such as `v2026_07_28` are accepted. Tools,
+2593: * request's own progress and log notifications are supported. Legacy reverse
+2649:        `McpServer.layerHttpRequestScoped does not support the sessionful MCP protocol ${stateful.protocolVersion}`
+$ ls <effect>/ai-docs/src/71_ai ; grep -rli "McpServer" <effect>/ai-docs | wc -l   # installed guidance for MCP
+10_language-model.ts
+20_tools.ts
+30_chat.ts
+fixtures
+index.md
+0

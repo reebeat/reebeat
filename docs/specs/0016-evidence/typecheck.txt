@@ -1,0 +1,15 @@
+# Type-check of the spec declarations and of the spike server, against the installed Effect 4.1.0 and the repository tsconfig
+$ cd packages/cli && ../../node_modules/.bin/tsc --noEmit -p .   # declarations.ts.txt and stdio-spike-source.ts.txt were *.ts files in packages/cli
+spike-mcp.ts(7,19): error TS377136: `effect/ai/Tool#make` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(12,18): error TS377136: `effect/ai/Tool#Readonly` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(13,18): error TS377136: `effect/ai/Tool#Destructive` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(14,18): error TS377136: `effect/ai/Tool#OpenWorld` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(15,18): error TS377136: `effect/ai/Tool#Idempotent` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(16,18): error TS377136: `effect/ai/Tool#Strict` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(18,25): error TS377136: `effect/ai/Toolkit#make` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(28,26): error TS377136: `effect/ai/McpServer#layerStdio` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(31,27): error TS377136: `effect/ai/McpProtocol#v2026_07_28` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(31,52): error TS377136: `effect/ai/McpProtocol#v2025_11_25` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(31,77): error TS377136: `effect/ai/McpProtocol#v2025_06_18` is an unstable API. Breaking changes may happen between versions.
+spike-mcp.ts(32,28): error TS377136: `effect/ai/McpServer#toolkit` is an unstable API. Breaking changes may happen between versions.
+tsc exit status: 1

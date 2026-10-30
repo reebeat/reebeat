@@ -1,0 +1,13 @@
+# M3b feasibility: bubblewrap with an empty HOME hides the gh credential from a process of the same OS user (run 2026-10-30; read-only, nothing is changed)
+$ id -un; ls -d $HOME/.config/gh   (outside)
+nori
+/home/nori/.config/gh
+$ gh auth status 2>&1 | grep -c "Logged in to"   (outside)
+1
+$ bwrap --ro-bind / / --dev /dev --proc /proc --tmpfs $HOME --unshare-pid -- sh -c 'ls -d $HOME/.config/gh; gh auth status; echo gh-exit=$?; cat /proc/1/cmdline | head -c 40; echo'
+ls: cannot access '/home/nori/.config/gh': No such file or directory
+You are not logged into any GitHub hosts. To log in, run: gh auth login
+pid1: bwrap --ro-bind / / --dev /dev --proc /p
+bwrap exit=0
+
+Not covered by this run and named in the spec: the session bus and any secret-service socket under XDG_RUNTIME_DIR, an ssh-agent socket, and the network (a sandbox that keeps the network can still reach api.github.com with whatever token it holds).

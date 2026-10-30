@@ -220,3 +220,39 @@ _Avoid_: Segment (a rendered segment is a cached piece of a run), batch
 **Brief**:
 Everything an engine may depend on for one call. The **plan brief** goes to `run/describe` (anchors and effect times unresolved). The **render brief** adds the Beat windows, the effect fire frames and the digest of the sampled values; its SHA-256 is the cache key of a rendered segment.
 _Avoid_: Request (alone), job
+
+## Agent lifecycle (planned, spec 0016; nothing below is built)
+
+How an agent runs the multimedia creative lifecycle through tools (create, inspect, revise, deliver, verify, release, publish). The decisions are in [`docs/specs/0016-mcp-interface.md`](docs/specs/0016-mcp-interface.md); these are the words.
+
+**Project**:
+A directory in the workspace root that holds one Story: its Screenplay, an optional `tsukuri.config.json` and a speech cache. An agent names it by a plain **project id** (letters, digits and `-`), never by a path.
+_Avoid_: Workspace (the directory that holds the Projects), repository
+
+**Project revision**:
+The Screenplay and config bytes of a Project at one moment, named by their SHA-256. Revising never edits one: it creates a new revision and moves the Project's head.
+_Avoid_: Revision (alone: a spec's `Revisions` section is its dated change log), version (a package's), draft
+
+**Stage**:
+How far a project revision has come: `drafted`, `planned`, `built`, `verified`, `candidate`, `released`, `published`. It is derived from facts (a lint result, a build, a **Verification record**, an approval) by one pure function and is never stored, so no tool can set it.
+_Avoid_: Status, state (a State is a Story's)
+
+**Job**:
+A build or a verification that runs in the background. A tool call starts it and returns a handle at once; the agent polls the handle. One Job runs at a time and a few wait.
+_Avoid_: Task (the MCP Tasks extension is a later layer over a Job), Brief
+
+**Verification record**:
+What the verifier wrote about one build: the verdicts, the digests of the build and the project revision, the verifier's name and version, the environment (including any stand-in) and its trust level. Only the verifier writes one; no tool accepts a verdict, so an agent cannot certify its own work.
+_Avoid_: Report, result
+
+**Project release candidate** and **Project release**:
+A candidate is a verified build frozen as an immutable bundle with a manifest (the files and their SHA-256, the adapters and their egress, the policy outcome); its digest names it. It is a project release once a person has approved it.
+_Avoid_: Release (alone: the npm release of the tsukuri packages, `release.yml`), publish (sending a project release to a channel is a separate step)
+
+**Approval**:
+A person's decision, taken outside the agent's channel, to release or to publish. It binds one action to one digest and one destination, is used once and expires. The agent can ask for one and read its status; it cannot give one.
+_Avoid_: Confirmation (a client's prompt before a tool call is advice, not an Approval)
+
+**Publisher**:
+The integration that sends a project release to one external channel and returns a receipt. No tool the agent can call has it; the approval handler runs it.
+_Avoid_: Exporter, uploader

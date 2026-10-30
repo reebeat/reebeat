@@ -1,0 +1,18 @@
+# Effect 4.1.0 McpServer over stdio, both protocol eras (raw)
+$ bun spike-mcp.ts   # source: stdio-spike-source.ts.txt; protocols v2026_07_28, v2025_11_25, v2025_06_18
+
+## legacy era (2025-11-25): initialize, tools/list, tools/call, input line then output line
+>> {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"1"}}}
+>> {"jsonrpc":"2.0","method":"notifications/initialized"}
+>> {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+>> {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"story_lint","arguments":{"story":"a"}}}
+>> {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"story_lint","arguments":{"story":"a","extra":1}}}
+<< {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","capabilities":{"logging":{},"tools":{"listChanged":true},"completions":{}},"serverInfo":{"name":"tsukuri-spike","version":"0.0.0"},"instructions":"spike"}}
+<< {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"story_lint","description":"Lint a story. Use this when the user asks whether a story is valid.","inputSchema":{"type":"object","properties":{"story":{"type":"string"}},"required":["story"],"additionalProperties":false},"outputSchema":{"type":"object","properties":{"errors":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"story":{"type":"string"}},"required":["errors","story"],"additionalProperties":true},"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}]}}
+<< {"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"Invalid parameters for tool 'story_lint': Expected no excess property\n  at [\"extra\"]"}],"isError":true}}
+<< {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"{\"errors\":0,\"story\":\"a\"}"}],"structuredContent":{"errors":0,"story":"a"},"isError":false}}
+
+## modern era (2026-07-28): server/discover, tools/list, tools/call with per-request _meta
+<< {"jsonrpc":"2.0","id":1,"result":{"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"tsukuri-spike","version":"0.0.0"}},"resultType":"complete","ttlMs":0,"cacheScope":"private","supportedVersions":["2026-07-28","2025-11-25","2025-06-18"],"capabilities":{"logging":{},"completions":{},"tools":{"listChanged":true}},"instructions":"spike"}}
+<< {"jsonrpc":"2.0","id":2,"result":{"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"tsukuri-spike","version":"0.0.0"}},"resultType":"complete","ttlMs":0,"cacheScope":"private","tools":[{"name":"story_lint","description":"Lint a story. Use this when the user asks whether a story is valid.","inputSchema":{"type":"object","properties":{"story":{"type":"string"}},"required":["story"],"additionalProperties":false},"outputSchema":{"type":"object","properties":{"errors":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"story":{"type":"string"}},"required":["errors","story"],"additionalProperties":true},"annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}]}}
+<< {"jsonrpc":"2.0","id":3,"result":{"_meta":{"io.modelcontextprotocol/serverInfo":{"name":"tsukuri-spike","version":"0.0.0"}},"resultType":"complete","content":[{"type":"text","text":"{\"errors\":0,\"story\":\"a\"}"}],"structuredContent":{"errors":0,"story":"a"},"isError":false}}

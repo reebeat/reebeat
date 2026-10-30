@@ -8,6 +8,8 @@ tsukuri turns a Fountain screenplay into a reveal.js Deck and a captured Video. 
 
 Next:
 
+- Watch the first token-free npm publish after the spec 0009 removal merges, including its OIDC dist-tag step.
+
 - Review and merge PR #17 (spec 0004, frozen; later changes are dated Revisions); then start 0005 (exact media time with one rounding at the end, story-wide identity, identity relations, typed transitions) on a stacked branch.
 - Follow-up to 0001, not part of 0004: remove the `(speed 1.05)` interim on one Line of `stories/same-id` (word timings from the synthesiser, or alignment judged by its path).
 - Future work recorded in spec 0004: continuous bindings (a behaviour on the right of a binding), `for <duration>`, `restart` as a declared choice, a Line machine, a statechart interpreter service (XState) behind the pure `occupancies` function.

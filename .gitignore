@@ -12,3 +12,7 @@ coverage/
 *.mov
 # The output of `tsukuri build` and `bun run journey`.
 build/
+# The release rules' scratch trees (`release.ts` under a package, `release.test.ts` under tools/quality): a run creates
+# and removes them, so one left by a crashed run is never committed (spec 0017, Revisions).
+packages/*/.unstable-scan-*/
+tools/quality/.scan-*/

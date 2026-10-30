@@ -1,9 +1,9 @@
-// `reebeat build`: the build program (`@reebeat/pipeline`) run on the adapters the selection picks. This file is the
+// `tsukuri build`: the build program (`@tsukuri/pipeline`) run on the adapters the selection picks. This file is the
 // composition: it turns the selection into Layers (`Composition`), runs the program on them once and says what ran.
 // Everything the build does, and its atomic `<out>.partial` and `build.json` last, is the program's.
-import { buildProgram } from "@reebeat/pipeline";
-import type { AdapterRecord, BuildSummary } from "@reebeat/pipeline";
-import type { Egress, Selection } from "@reebeat/services";
+import { buildProgram } from "@tsukuri/pipeline";
+import type { AdapterRecord, BuildSummary } from "@tsukuri/pipeline";
+import type { Egress, Selection } from "@tsukuri/services";
 import { Array as Arr, Effect } from "effect";
 
 import { Composition, servicesOf } from "./adapters.ts";

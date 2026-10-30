@@ -1,4 +1,4 @@
-# @reebeat/capture-chromium
+# @tsukuri/capture-chromium
 
 The `FrameCapturer` of release 1 (spec 0001, design R3): a written Deck and its Plan become a `Stream` of PNG frames,
 captured from headless Chromium on a controlled clock. It only emits the frames: the Encoder consumes the stream and
@@ -9,11 +9,11 @@ owns the pipe. Nothing leaves the machine (`info.egress` is local).
 | `chromiumCapturer` | `Layer<FrameCapturer, never, FileSystem \| Path \| ChildProcessSpawner>`. `info.id` is `chromium@<version>+timeweb@<version>`, read from the binary (`--version`) and from `timeweb`'s `package.json` when the layer is built (`chromium@unavailable+timeweb@unavailable` when the machine cannot run it); `info.settings` holds the frame rate, the canvas size, the lag table, the settle flag, the clock origin, the Chromium flags, the screenshot retries and the most screenshots of one frame. `frames(plan)` is the Timeline's `totalFrames` (0 without a Timeline). `capture({ deckDir, plan })` launches one browser in the stream's scope and emits frame 0 to `frames(plan) - 1`; a failure is `CaptureError`, or `AdapterUnavailable` on a machine without the binary |
 | `captureSchedule(plan)` | Pure: the Reveal commands per frame (`goToScene`, `stepFragment`), sorted by frame |
 | `captureFrames(schedule, options)` | The capture under the controlled clock (mechanism Hp: `timeweb` virtual clock pre-rolled past `Reveal.initialize`, plus the seek layer in `pageRuntime.ts`); `virtualTimeOf` is the seam of the F6 control |
-| `Browser` | The service over Playwright: the only module that imports it is `browser.ts`. Its layer looks for `REEBEAT_CHROMIUM` (the binary), `timeweb` and, optionally, `REEBEAT_CHROMIUM_NO_SANDBOX=1` when it is built and settles the outcome |
+| `Browser` | The service over Playwright: the only module that imports it is `browser.ts`. Its layer looks for `TSUKURI_CHROMIUM` (the binary), `timeweb` and, optionally, `TSUKURI_CHROMIUM_NO_SANDBOX=1` when it is built and settles the outcome |
 
 A missing requirement does not stop the layer: the first `capture` fails with
 `AdapterUnavailable { service: "FrameCapturer", adapter: "chromium", requirement }`, where `requirement` is
-`env REEBEAT_CHROMIUM`, `binary named by REEBEAT_CHROMIUM` or `package timeweb`. No frame is emitted, there is no
+`env TSUKURI_CHROMIUM`, `binary named by TSUKURI_CHROMIUM` or `package timeweb`. No frame is emitted, there is no
 fallback, and the message never names the path.
 
 ## Frame lag
@@ -37,7 +37,7 @@ are unique per Scene, not in the story (two Scenes may each have an `s1`). A ste
 change: an effect at `transition.start` has `commandFrame` one before the slide frame, which would step the previous slide, so it
 is commanded with the slide change (`max(commandFrame, slide command)`) and appears one frame after its fire frame, inside the
 tolerance of F1. The lags above are the capture's own: the lifecycle of the renderer's slide change (when its Elements move)
-is the Renderer's declaration (`revealLifecycle`), observed by `@reebeat/verify`.
+is the Renderer's declaration (`revealLifecycle`), observed by `@tsukuri/verify`.
 
 ## Settle wait
 
@@ -108,7 +108,7 @@ re-capture.
 
 ## Tests
 
-`bun run test` runs them all on a real Chromium (`REEBEAT_CHROMIUM`, set by `devenv shell`); ffmpeg decodes the PNGs.
+`bun run test` runs them all on a real Chromium (`TSUKURI_CHROMIUM`, set by `devenv shell`); ffmpeg decodes the PNGs.
 
 | File | Proves |
 | --- | --- |
@@ -119,7 +119,7 @@ re-capture.
 | `schedule.test.ts` | `captureSchedule`, a pure function |
 | `boundaries.test.ts` | the manifest and an import scan of `src` (Playwright only in `browser.ts`; no other adapter) |
 
-`test/realDeck.ts` and `lags.test.ts` use `@reebeat/render-reveal` and `@reebeat/sounds-synth`, two other adapters:
+`test/realDeck.ts` and `lags.test.ts` use `@tsukuri/render-reveal` and `@tsukuri/sounds-synth`, two other adapters:
 the lags are a property of the pair. The tier check lists those two `devDependencies`; the test should move to a
 package that may depend on adapters. The one suppression is the Promise adapter in `src/browser.ts` (`EX-0040` in
 `tools/quality/effect-exceptions.json`).

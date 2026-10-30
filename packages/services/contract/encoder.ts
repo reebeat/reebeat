@@ -144,7 +144,7 @@ const muxFixture = Effect.gen(function* mux() {
   const path = yield* Path.Path;
 
   const directory = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-contract-",
+    prefix: "tsukuri-contract-",
   });
 
   const outPath = path.join(directory, "out.mp4");

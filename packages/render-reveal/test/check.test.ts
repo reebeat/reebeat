@@ -2,7 +2,7 @@
 // control below edits the written file (or the Plan) the way a stale or hand-edited output would differ, and the
 // check must fail naming the slide and the position.
 import { assert, describe, it } from "@effect/vitest";
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Array as Arr, Effect, String as Str, pipe } from "effect";
 
 import { checkDeck, DeckMismatch, renderDeck } from "../src/index.ts";
@@ -275,7 +275,7 @@ describe("checkDeck", () => {
   it.effect("F5 control: a changed or missing meta hash fails", () =>
     Effect.gen(function* hash() {
       const { html, plan } = yield* writtenStory;
-      const meta = `<meta name="reebeat:source-sha256" content="${plan.sourceSha256}">`;
+      const meta = `<meta name="tsukuri:source-sha256" content="${plan.sourceSha256}">`;
 
       const changed = yield* failureOf(
         plan,

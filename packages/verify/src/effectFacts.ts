@@ -8,8 +8,8 @@ import type {
   TimedEffect,
   TimedPlan,
   TimedScene,
-} from "@reebeat/core";
-import { showEffectOf } from "@reebeat/core";
+} from "@tsukuri/core";
+import { showEffectOf } from "@tsukuri/core";
 import { Array as Arr, Option } from "effect";
 
 import type { Subject } from "./events.ts";

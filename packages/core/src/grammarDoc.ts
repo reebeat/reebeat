@@ -268,7 +268,7 @@ export const grammarDocument = (): string =>
       ),
       "### Anchors",
       "",
-      "An anchor names a moment of the Plan. It resolves to a frame in the schedule stage, from the aligned words and the renderer's declared lifecycle; `reebeat plan` prints `intent -> frame` for each effect.",
+      "An anchor names a moment of the Plan. It resolves to a frame in the schedule stage, from the aligned words and the renderer's declared lifecycle; `tsukuri plan` prints `intent -> frame` for each effect.",
       "",
       ...table(
         ["anchor", "points at"],
@@ -294,7 +294,7 @@ export const grammarDocument = (): string =>
       ),
       "### Absolute times",
       "",
-      'An effect may be pinned to a time from the slide change, `at 2.5s because "<reason>"`. The reason is mandatory; `reebeat lint` and `reebeat plan` list every absolute time.',
+      'An effect may be pinned to a time from the slide change, `at 2.5s because "<reason>"`. The reason is mandatory; `tsukuri lint` and `tsukuri plan` list every absolute time.',
       "",
       "### Sounds",
       "",

@@ -1,15 +1,15 @@
-// `reebeat lint <story>` (spec 0002, M2): every problem of the screenplay with its line, what was found, what was
+// `tsukuri lint <story>` (spec 0002, M2): every problem of the screenplay with its line, what was found, what was
 // expected and the nearest valid form, then the rules over the Plan (the absolute times and why they were written).
 // Needs no browser and no adapter that makes anything. When the speech cache of the story exists it also schedules the
 // Plan, so an effect that falls outside its Scene is an error with its line here too; without the cache that is left
 // to `plan --timing` and `build`, and a line of the output says which of the two happened. Exits non-zero when
 // anything is an error; an absolute time that has its reason is listed as information only.
-import { buildPlan, collectErrors } from "@reebeat/core";
-import type { PlanError, PlanJson, ScheduleError } from "@reebeat/core";
-import { lintPlan } from "@reebeat/lint";
-import type { Diagnostic } from "@reebeat/lint";
-import { readSource } from "@reebeat/pipeline";
-import type { Selection } from "@reebeat/services";
+import { buildPlan, collectErrors } from "@tsukuri/core";
+import type { PlanError, PlanJson, ScheduleError } from "@tsukuri/core";
+import { lintPlan } from "@tsukuri/lint";
+import type { Diagnostic } from "@tsukuri/lint";
+import { readSource } from "@tsukuri/pipeline";
+import type { Selection } from "@tsukuri/services";
 import { Array as Arr, Console, Effect, Option } from "effect";
 
 import type { RunOptions } from "./adapters.ts";
@@ -103,7 +103,7 @@ const checkedLine =
   "Timing: checked against the speech cache; an effect outside its Scene is an error above.";
 
 const notCheckedLine =
-  "Timing: not checked. An effect that falls outside its Scene needs the speech timing, so `reebeat plan --timing` or `reebeat build` finds it, not `reebeat lint` (lint schedules the Plan only when the speech cache of the story exists).";
+  "Timing: not checked. An effect that falls outside its Scene needs the speech timing, so `tsukuri plan --timing` or `tsukuri build` finds it, not `tsukuri lint` (lint schedules the Plan only when the speech cache of the story exists).";
 
 /** Prints every problem of a story; fails with `LintFailed` when one is an error. */
 export const lintStory = Effect.fn("lintStory")(function* lintStory(

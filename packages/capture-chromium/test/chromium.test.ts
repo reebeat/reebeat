@@ -7,13 +7,13 @@ import {
   FrameCapturer,
   Renderer,
   localEgress,
-} from "@reebeat/services";
+} from "@tsukuri/services";
 import {
   contractLifecycle,
   failingClauses,
   frameCapturerClauses,
   frameCapturerContract,
-} from "@reebeat/services/contract";
+} from "@tsukuri/services/contract";
 import {
   ConfigProvider,
   Effect,
@@ -145,7 +145,7 @@ const firstCapture = (values: Record<string, string>) =>
 
 describe("requirements", () => {
   it.effect(
-    "control: no REEBEAT_CHROMIUM does not stop the layer; the first capture is AdapterUnavailable naming the variable, and no fallback emits a frame",
+    "control: no TSUKURI_CHROMIUM does not stop the layer; the first capture is AdapterUnavailable naming the variable, and no fallback emits a frame",
     () =>
       Effect.gen(function* missing() {
         const error = yield* firstCapture({});
@@ -153,7 +153,7 @@ describe("requirements", () => {
         assert.instanceOf(error, AdapterUnavailable);
         assert.strictEqual(error.service, "FrameCapturer");
         assert.strictEqual(error.adapter, "chromium");
-        assert.strictEqual(error.requirement, "env REEBEAT_CHROMIUM");
+        assert.strictEqual(error.requirement, "env TSUKURI_CHROMIUM");
       })
   );
 
@@ -162,13 +162,13 @@ describe("requirements", () => {
     () =>
       Effect.gen(function* broken() {
         const error = yield* firstCapture({
-          REEBEAT_CHROMIUM: "/nonexistent/chromium",
+          TSUKURI_CHROMIUM: "/nonexistent/chromium",
         });
 
         assert.instanceOf(error, AdapterUnavailable);
         assert.strictEqual(
           error.requirement,
-          "binary named by REEBEAT_CHROMIUM"
+          "binary named by TSUKURI_CHROMIUM"
         );
         assert.notInclude(error.message, "nonexistent");
       })

@@ -1,10 +1,10 @@
 // Rule `effect-fragment-agreement` (spec 0002, F4 of the Deck): a Rendering shows one fragment per `show` or `focus`
 // effect of a Scene, in resolved-time order, with the effect's verb and target. A `sound` is not a fragment: it rides
-// along with a step or the slide (`stepsOf` and `soundsOf` of `@reebeat/core` say which). The rule compares the Plan
+// along with a step or the slide (`stepsOf` and `soundsOf` of `@tsukuri/core` say which). The rule compares the Plan
 // with a neutral list of the fragments a Rendering shows, so any Renderer's reader can use it; for the reveal.js
 // Deck, `readDeck` supplies the list.
-import { stepsOf } from "@reebeat/core";
-import type { PlanJson, Scene } from "@reebeat/core";
+import { stepsOf } from "@tsukuri/core";
+import type { PlanJson, Scene } from "@tsukuri/core";
 import { Array as Arr } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";

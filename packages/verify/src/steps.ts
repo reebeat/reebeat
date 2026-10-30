@@ -5,8 +5,8 @@ import {
   changedPixels,
   decodeGrayFrames,
   firstChangedFrame,
-} from "@reebeat/encode-ffmpeg";
-import type { Box, FrameSize, GrayClip } from "@reebeat/encode-ffmpeg";
+} from "@tsukuri/encode-ffmpeg";
+import type { Box, FrameSize, GrayClip } from "@tsukuri/encode-ffmpeg";
 import { Effect } from "effect";
 
 /** Pixels that differ by at most this many gray levels are compression noise, not a step. */

@@ -5,8 +5,8 @@ import {
   AdapterUnavailable,
   SpeechSynthesizer,
   SynthesisFailed,
-} from "@reebeat/services";
-import { speechSynthesizerContract } from "@reebeat/services/contract";
+} from "@tsukuri/services";
+import { speechSynthesizerContract } from "@tsukuri/services/contract";
 import { ConfigProvider, Effect, Layer, Predicate, Ref } from "effect";
 
 import {
@@ -198,7 +198,7 @@ describe("kokoroSynthesizer, real layer without a model directory", () => {
           Predicate.isTagged(failure, "AdapterUnavailable")
             ? failure.requirement
             : "",
-          "env REEBEAT_KOKORO_CACHE"
+          "env TSUKURI_KOKORO_CACHE"
         );
       })
   );

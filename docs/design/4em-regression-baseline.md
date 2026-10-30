@@ -2,9 +2,9 @@
 
 Status: **record, not a plan to build now.** Date: 2026-10-28.
 
-The first reebeat prototype was a motion-graphic explainer pipeline (Remotion, hand-written actions). Release 1 is
+The first tsukuri prototype was a motion-graphic explainer pipeline (Remotion, hand-written actions). Release 1 is
 screenplay-first ([design R2](keyframe-engine.md#r2-2026-10-28-screenplay-first-fountain-to-deck-and-video),
-[spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md)). A later release will build reebeat's own motion
+[spec 0001](../specs/0001-release-1-screenplay-to-deck-and-video.md)). A later release will build tsukuri's own motion
 engine as a renderer plug-in and use a **pixel-identical port of the existing 4EM explainer** as its regression test.
 This file keeps what was measured while that port was the plan, so the later spec starts from facts, not memory.
 

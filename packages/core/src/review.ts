@@ -1,4 +1,4 @@
-// The review text of `reebeat plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
+// The review text of `tsukuri plan` (design 4.0, modelled on `terraform plan`): per Scene its Elements with `+`
 // (enter), `-` (exit) and `~` (update) across `> AUTO-ANIMATE` boundaries, its effects as `intent -> frame` (spec 0002),
 // its Lines, and one summary line. Deterministic: the same Plan gives the same text. A plain function.
 import { Array as Arr, Match, Option, String as Str } from "effect";
@@ -17,7 +17,7 @@ import { soundsOf } from "./steps.ts";
 import type { Carrier } from "./steps.ts";
 
 export interface ReviewOptions {
-  /** Adds frames and seconds from the Timeline (`reebeat plan --timing`). */
+  /** Adds frames and seconds from the Timeline (`tsukuri plan --timing`). */
   readonly timing?: boolean;
 }
 

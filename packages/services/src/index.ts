@@ -1,6 +1,6 @@
-// Public surface of @reebeat/services: the seven service tags with their request and response types, the shared
+// Public surface of @tsukuri/services: the seven service tags with their request and response types, the shared
 // value types, the tagged errors, the one cache key and the one selection registry. Contract suites are
-// `@reebeat/services/contract`; offline stand-ins are `@reebeat/services/standins`.
+// `@tsukuri/services/contract`; offline stand-ins are `@tsukuri/services/standins`.
 export { AssetCache } from "./assetCache.ts";
 
 export type { KeyRequest } from "./assetCache.ts";

@@ -1,6 +1,6 @@
 // Where two Plans first differ, as a path (`scenes.sc3.lines.sc3.l1.text`). Plain structural comparison with
 // Effect's `Equal`, field by field in document order; the Timeline is not compared (it exists only in `plan.json`).
-import type { Effect, Element, Line, PlanJson, Scene } from "@reebeat/core";
+import type { Effect, Element, Line, PlanJson, Scene } from "@tsukuri/core";
 import { Array as Arr, Equal, Option, Predicate, String as Str } from "effect";
 
 /** What a field of a Plan can hold. */

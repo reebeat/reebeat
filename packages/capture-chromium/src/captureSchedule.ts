@@ -17,12 +17,12 @@
 // so a Scene's slide change is commanded `lag` frames before its `slideFrame` and a fragment step at its effect's
 // `commandFrame` (`fireFrame - 1`). Only `show` and `focus` effects are steps: a `sound` is mixed at its `fireFrame`
 // and needs no command. A step is the same call for every effect: the Nth step shows the Nth fragment, and the
-// fragments are the Scene's `show` and `focus` effects in resolved-time order (`@reebeat/render-reveal`), which is the
+// fragments are the Scene's `show` and `focus` effects in resolved-time order (`@tsukuri/render-reveal`), which is the
 // order of `Timeline.scenes[].effects`, so the steps are commanded in that order. A step is never commanded before
 // its Scene's own slide change (an effect at `transition.start` has its command frame one before the slide frame:
 // stepping then would step the PREVIOUS slide), so it is commanded at the slide change instead and appears one frame
 // after its fire frame, inside the tolerance of F1.
-import type { Scene, TimedPlan, TimedScene } from "@reebeat/core";
+import type { Scene, TimedPlan, TimedScene } from "@tsukuri/core";
 import { Array as Arr, Option, Order } from "effect";
 
 export type CaptureCommand =

@@ -3,7 +3,7 @@
 // and the renderer's lifecycle. The source grammar already refuses an absolute time without a reason; this rule reads
 // the Plan itself (`Effect.when.absoluteMs`), so a Plan that did not come from the parser is held to it too, and it
 // lists every absolute time (severity `info`) so a reviewer sees them all.
-import type { PlanJson } from "@reebeat/core";
+import type { PlanJson } from "@tsukuri/core";
 import { Array as Arr, String as Str } from "effect";
 
 import type { Diagnostic } from "./diagnostic.ts";

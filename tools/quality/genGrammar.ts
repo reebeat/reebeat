@@ -2,7 +2,7 @@
 // a pure function of `packages/core/src/grammar.ts` and `plan.ts`; a test of `packages/core` fails when the checked-in
 // file differs from it, so run this after any change to the syntax.
 import { NodeRuntime, NodeServices } from "@effect/platform-node";
-import { grammarDocument } from "@reebeat/core";
+import { grammarDocument } from "@tsukuri/core";
 import { Effect, FileSystem, Path } from "effect";
 
 const main = Effect.gen(function* main() {

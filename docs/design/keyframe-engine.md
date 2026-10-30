@@ -1,4 +1,4 @@
-# reebeat: keyframe engine for the 4EM explainer pipeline (design)
+# tsukuri: keyframe engine for the 4EM explainer pipeline (design)
 
 Status: design, approved for build planning. No code in the repo was changed for this document.
 Date of research: 2026-10-28. Repo state read: working tree of `work/explainers` on that day.
@@ -17,7 +17,7 @@ authoritative and line numbers are approximate.
 > The core may use Effect v4 for services, errors, resources and the render pipeline; frame math stays plain functions.
 > The core still imports no `react`, `remotion`, `@remotion/*`, DOM global or Node built-in (P10 holds). See "Revisions".
 
-**reebeat** is the working name of the tool this document designs (like "ribbit"; frog mascot). A **Story**, declared as Beats of Keyframes, goes in. A compiler turns it into a **Plan** (what enters, exits, updates or is replaced, per Beat) and then a **Timeline**, and a pure `frameState(story, frame)` plus thin adapters produce **Renderings**: a Video now, a Deck later. The core is plain TypeScript; renderers are adapters (section 3.0).
+**tsukuri** (formerly the working name `reebeat`) is the tool this document designs. A **Story**, declared as Beats of Keyframes, goes in. A compiler turns it into a **Plan** (what enters, exits, updates or is replaced, per Beat) and then a **Timeline**, and a pure `frameState(story, frame)` plus thin adapters produce **Renderings**: a Video now, a Deck later. The core is plain TypeScript; renderers are adapters (section 3.0).
 
 Vocabulary follows [`GLOSSARY.md`](../GLOSSARY.md):
 
@@ -45,13 +45,13 @@ Labels used below:
 
 | Question | Decision |
 |---|---|
-| What is it? | **reebeat** (working name). Our own engine: a plain TypeScript core and thin renderer adapters. |
+| What is it? | **tsukuri** (formerly the working name `reebeat`). Our own engine: a plain TypeScript core and thin renderer adapters. |
 | Adopt an existing tool? | No. **BUILD-THIN.** A survey of about 50 candidates (section 2.6) found none that gives declared Keyframes, Identity diff and frame-deterministic output together, and none with layout across Beats. What is reused, adopted and inspired is in section 11. |
 | Build on Remotion or adopt Reframe? | Build on Remotion as the first Video adapter. Borrow ideas from Reframe, do not depend on it (section 2.3). |
 | Use reveal.js Auto-Animate itself? | **Decided: no spike.** Own engine with reveal.js matching semantics as the spec (`data-id`, unmatched fade, restart groups, per-element overrides): R0+R3 (section 2.5, section 10 item 2). |
 | Which Renderings? | Video first. A reveal.js Deck later; the Story format is designed so it stays possible (section 3.4). Nothing deck-specific is built now. |
 | Where is the core? | Plain TypeScript: Identity diff, Plan, `frameState`, layout bake, contrast check. No React, Remotion or DOM imports, enforced by test P10. Renderers are adapters: Remotion now, HyperFrames as the verified exit, Deck later (section 3.0). |
-| Compiler stages | Story, resolve, identity join, **Plan**, schedule against Lines, **Timeline**, `frameState`, adapters. `reebeat plan <story>` prints the Plan for review, modelled on `terraform plan` (section 4.0). |
+| Compiler stages | Story, resolve, identity join, **Plan**, schedule against Lines, **Timeline**, `frameState`, adapters. `tsukuri plan <story>` prints the Plan for review, modelled on `terraform plan` (section 4.0). |
 | What is the unit of authoring? | Beats: each Beat ends in a full Keyframe with stable Element ids. Today's `reveal/hide/morph/focus` become sugar that compiles to Beats. |
 | Who decides enter, exit, update, replace? | A pure Identity diff of two consecutive Keyframes in one Scene (section 4). Presence decides enter and exit; a kind change is a replace. Hints decide the look. |
 | How is it frame-deterministic? | The schedule stage bakes all segments (integer frames, `from`, `to`, easing) into `timeline.json`. Render calls `frameState(story, frame)`, which returns plain data. No timers, no CSS animation, no wall clock. |
@@ -276,7 +276,7 @@ The spike also gives measured per-frame cost for R1 and R2 (the current `README.
 
 ### 2.6 Survey 2026-10-28: does an existing tool already solve it?
 
-**Question.** Before building reebeat, does a maintained tool already give narrated, frame-deterministic explainers of box-and-arrow notations with: **K** declared keyframes, **I** identity-diff enter/exit/update, **D** frame-deterministic offline rendering, **L** automatic layout per state with stable positions and re-routed arrows, **A** a per-frame contrast check, and Fit (TypeScript/Bun, works with or replaces Remotion 4, licence usable by a student or non-profit, maintained in 2025-2026)?
+**Question.** Before building tsukuri, does a maintained tool already give narrated, frame-deterministic explainers of box-and-arrow notations with: **K** declared keyframes, **I** identity-diff enter/exit/update, **D** frame-deterministic offline rendering, **L** automatic layout per state with stable positions and re-routed arrows, **A** a per-frame contrast check, and Fit (TypeScript/Bun, works with or replaces Remotion 4, licence usable by a student or non-profit, maintained in 2025-2026)?
 
 **Method.** About 50 candidates: the tools in 2.1 to 2.5, then npm and GitHub topic searches (`magic-move`, `shared-element-transition`, `diagram-animation`, `programmatic-video`, `auto-animate`, `animated-diagrams`, `explainer-video`) and docs. Versions, licences and dates were read from the npm registry, the GitHub API and package `LICENSE` files. Where a claim was decisive (seekable, matched by id, same bytes on rerun) it was run: two states, a goal box appears, then moves, is relabelled and recoloured while a second box exits; system Chromium 155 through playwright-core, Bun 1.3.13 and Node 24, at most one browser at a time, small frames, scratch directories under `/tmp` removed afterwards. Per-candidate verdicts are in 2.4; this section keeps the decision and its reasons.
 
@@ -309,10 +309,10 @@ The spike also gives measured per-frame cost for R1 and R2 (the current `README.
 
 ### 3.0 Core and adapters
 
-reebeat's core is plain TypeScript. It owns the data model, the compile step (anchors, Identity diff, layout bake, checks) and `frameState`. It imports no `react`, `remotion`, `@remotion/*` or DOM type. Renderers are adapters that read `FrameState` (plain data) and draw it.
+tsukuri's core is plain TypeScript. It owns the data model, the compile step (anchors, Identity diff, layout bake, checks) and `frameState`. It imports no `react`, `remotion`, `@remotion/*` or DOM type. Renderers are adapters that read `FrameState` (plain data) and draw it.
 
 ```
-src/core/                     reebeat core: pure TypeScript; runs under Bun and in Chromium
+src/core/                     tsukuri core: pure TypeScript; runs under Bun and in Chromium
   story.ts                    Story, Scene, Beat, Keyframe, Element types and the `beat` sugar (this section, 8.1)
   compile/                    prepare time only (Bun): resolve, layout bake (elkjs), plan.ts (the Plan, 4.0), schedule (anchors to frames), checks
   frame-state.ts              frameState(story, frame): FrameState. No elkjs, no fs, no Date, no random (4.2)
@@ -577,10 +577,10 @@ export const plan = (story: Story): Plan => /* identity join over every Scene */
 
 A **replace** is a change of Element kind (3.2 rule 5) or a `hints.morphFrom` continuation (rule 6). Its `how` is `morph` when a shape morph is allowed (3.3) and `exit-then-enter` otherwise. A morph across Element kinds is therefore a replace, not an update.
 
-**`reebeat plan <story>`** prints the Plan in a review form modelled on `terraform plan`: a preview of what will change, with `+` for enter, `-` for exit, `~` for update in place and `-/+` for replace (the symbols and wording are on the [`terraform plan` reference](https://developer.hashicorp.com/terraform/cli/commands/plan), verified 2026-10-28).
+**`tsukuri plan <story>`** prints the Plan in a review form modelled on `terraform plan`: a preview of what will change, with `+` for enter, `-` for exit, `~` for update in place and `-/+` for replace (the symbols and wording are on the [`terraform plan` reference](https://developer.hashicorp.com/terraform/cli/commands/plan), verified 2026-10-28).
 
 ```
-$ reebeat plan 4em --scene s06
+$ tsukuri plan 4em --scene s06
 Scene s06
   Beat s06.3  (line s06.3, on "Increase retention")
     ~ g1   update   x 420→1100, fill goal→signal, label "Increase retention"→"Retain 90%"
@@ -592,14 +592,14 @@ Scene s06
 Plan: 2 to enter, 1 to exit, 1 to update, 1 to replace, 14 unchanged.
 ```
 
-Rules for the review form: one line per op, ordered exit, replace, update, enter within a Beat; properties in `Animatable` order; strings in quotes; colours as token names when the value came from a token; durations as `N f`. `--json` prints the `Plan` itself. The command is read-only: it needs no audio, no alignment and no Chromium, and it reads only the Story and the layout cache. It fails (non-zero exit) on identity errors from 3.2 (a link whose endpoint is missing, an id that vanishes and returns within 30 frames, a duplicate). Today's entry point is `bun scripts/plan.ts`; `reebeat plan` is the same code under the tool's name.
+Rules for the review form: one line per op, ordered exit, replace, update, enter within a Beat; properties in `Animatable` order; strings in quotes; colours as token names when the value came from a token; durations as `N f`. `--json` prints the `Plan` itself. The command is read-only: it needs no audio, no alignment and no Chromium, and it reads only the Story and the layout cache. It fails (non-zero exit) on identity errors from 3.2 (a link whose endpoint is missing, an id that vanishes and returns within 30 frames, a duplicate). Today's entry point is `bun scripts/plan.ts`; `tsukuri plan` is the same code under the tool's name.
 
 The Plan lands in step (b) of section 8: the Plan of the adapter-produced Beats shows what today's `reveal/hide/morph/focus` actions mean, before any pixel changes.
 
 ### 4.1 Two phases
 
 ```
-reebeat core (plain TypeScript: no react, no remotion, no DOM)                                  adapters (thin)
+tsukuri core (plain TypeScript: no react, no remotion, no DOM)                                  adapters (thin)
 prepare (Bun, once)                                                  render (per frame)
   Story (Beats of Keyframes, Hints)
     -> resolve: expand sugar, bake layout (section 5)                  Timeline = PreparedStory (timeline.json, numbers only)
@@ -732,7 +732,7 @@ Rules:
 1. **Defaults, so most Cues need no `at`:** a `sound` Cue anchors to the start of the transition into its Beat; a `music` Cue to its Beat's start; a `pause` to the end of its Beat's Line. An Element's own sound (a "pop" when it enters) is `{ on: "element", id, event: "enter", edge: "start" }`.
 2. **Offsets are relative and may be negative** (a whoosh that leads the move by 4 frames is `offset: { frames: -4 }`). `fraction` scales with the anchored window, so retiming the narration or the motion keeps the intent.
 3. **The events are the compiler's own lifecycle**, named after established hooks: an Element's enter/exit/update start and end (Motion's `AnimatePresence`/`onExitComplete`, the Web Animations `finished` event), a Beat's start, settle and end (reveal.js `slidechanged`/`fragmentshown`), a Scene's start and end, and a word of the Line (the narration alignment that already drives `on:` phrases).
-4. **Absolute timestamps are allowed but discouraged:** they are Scene-relative frames, never Story- or wall-clock time; each needs a `reason`; `reebeat lint` warns on every one and the Plan lists them, so they stay visible in review.
+4. **Absolute timestamps are allowed but discouraged:** they are Scene-relative frames, never Story- or wall-clock time; each needs a `reason`; `tsukuri lint` warns on every one and the Plan lists them, so they stay visible in review.
 5. **Resolution happens in the schedule stage**, after the Plan: anchors become frames from the word alignment and the placed windows. A chain of Cue anchors must be acyclic (compile error otherwise), and an anchor that resolves outside its Scene is an error.
 6. **The Plan shows both forms**: `cue whoosh: element g1 enter start −4 f → frame 312`, so a reviewer sees the intent and its resolved time.
 
@@ -1101,15 +1101,15 @@ Tests in the model for this rule (P6): (i) `labelOut.f1 <= labelIn.f0`; (ii) for
 | # | Question | Decision |
 |---|---|---|
 | 1 | Focus dimming | **Legibility wins.** Dim non-focused shapes to 30% where their labels stay legible; a per-element floor dims less where they would fail, and the focus ring carries the emphasis. Every frame passes WCAG. |
-| 2 | reveal.js spike, R0+R3 versus R2 | **Decided: R0+R3.** reebeat is our own engine with reveal.js semantics as the spec (`data-id` identity, unmatched fade, restart groups, per-element overrides). The spike is not run. The prior-art survey (2.6) found no existing tool to adopt or build on. |
+| 2 | reveal.js spike, R0+R3 versus R2 | **Decided: R0+R3.** tsukuri is our own engine with reveal.js semantics as the spec (`data-id` identity, unmatched fade, restart groups, per-element overrides). The spike is not run. The prior-art survey (2.6) found no existing tool to adopt or build on. |
 | 3 | Layout licence | **ELK at build time only**, under EPL-2.0, unmodified, in the prepare step; videos carry only computed positions. Keep the manual-position mode. |
 | 4 | Remotion licence | **Pin, record and plan an exit.** Confirm individual / non-profit eligibility, pin one exact version, record the check in the repo, re-read the terms before any upgrade, and keep the engine core (diff, `frameState`, layout bake, contrast sampler) free of Remotion imports so the renderer can be swapped. |
 | 5 | Sub-threshold contrast during fades | **12 frames, enter and exit only**, listed in the contrast report; every update passes on every frame. |
 | 6 | Migration | **Two releases**: a pixel-identical port proven by golden frames, then the new motion scene by scene with a reviewed draft render. |
 | 7 | Renderings beyond Video | **Video first, Deck later.** Design the Story so a reveal.js Deck renderer is possible (3.4: full-state Keyframes, stable Element ids per Scene, Hints and Cues optional and ignorable, Lines as plain text for speaker notes). Build nothing deck-specific until the Video path is done. |
 | 8 | Engine boundary | **The core is plain TypeScript**: Identity diff, `frameState`, layout bake and contrast check, with no React, Remotion or DOM imports, enforced by a test (P10). Renderers are thin adapters: Remotion now, HyperFrames as the verified exit (2.6), Deck later. `frameState(story, frame)` returns plain data (3.0, 4.2). |
-| 9 | Name | **reebeat** (working name; like "ribbit", frog mascot). |
-| 10 | Compiler stages | **The Plan is a named stage**: Story, identity join, Plan, schedule against Lines, Timeline, `frameState`, adapters (4.0). `reebeat plan <story>` prints the Plan for human review; the Plan is plain core data and is what golden tests and review compare. |
+| 9 | Name | **tsukuri** (formerly the working name `reebeat`). |
+| 10 | Compiler stages | **The Plan is a named stage**: Story, identity join, Plan, schedule against Lines, Timeline, `frameState`, adapters (4.0). `tsukuri plan <story>` prints the Plan for human review; the Plan is plain core data and is what golden tests and review compare. |
 | 11 | Timing of Cues, Hints and Behaviours | **Anchor to lifecycle events with relative offsets** (4.4.1): word, Beat, Element enter/exit/update, Scene, or another Cue, each with a start/end edge, plus an optional offset in frames, seconds or a fraction of the anchored window. Defaults per Cue kind. Absolute (Scene-relative) frames are an escape hatch that needs a reason, is linted and is listed in the Plan. |
 | 12 | Core imports | Following from item 8: the core imports no `remotion`, `@remotion/*` or `react`. Consequences: `d3-interpolate-path` instead of `@remotion/paths` for path morph, and the core's own easing and spring instead of Remotion's `interpolate`/`Easing`/`spring` (7, 2.2 note). |
 
@@ -1117,11 +1117,11 @@ Tests in the model for this rule (P6): (i) `labelOut.f1 <= labelIn.f0`; (ii) for
 
 ## 11. Lineage: adopted, reused and inspired
 
-Three groups, by how much of the source we carry. Legend for the last column: **[V]** the primary source was opened on 2026-10-28 and the claim checked in it; **[bib]** the bibliographic record (title, authors, venue, year) was checked in Crossref but the paper was not read; **[I]** the mapping to reebeat is our design choice, not a claim by the source.
+Three groups, by how much of the source we carry. Legend for the last column: **[V]** the primary source was opened on 2026-10-28 and the claim checked in it; **[bib]** the bibliographic record (title, authors, venue, year) was checked in Crossref but the paper was not read; **[I]** the mapping to tsukuri is our design choice, not a claim by the source.
 
 ### 11.1 Reused: dependencies and renderers
 
-| Name | What we take | Where it lives in reebeat | Licence | Primary source | Verified |
+| Name | What we take | Where it lives in tsukuri | Licence | Primary source | Verified |
 |---|---|---|---|---|---|
 | culori | OKLCH interpolation, gamut mapping, hex output; its WCAG helpers cross-check ours | core: colour interpolators (4.6), contrast cross-check (6) | MIT | https://culorijs.org/api/ | [V] page; licence from the npm registry (section 7) |
 | d3-interpolate | The perceptual-interpolation idea (`interpolateHcl`, `interpolateLab`) | **Not a dependency** (lead decision, 2026-10-28): culori covers OKLCH and gamut mapping, numbers need only a plain lerp, and we do not animate transform strings. Credited for the idea | ISC | https://d3js.org/d3-interpolate | [V] page; licence from npm |
@@ -1135,10 +1135,10 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 ### 11.2 Adopted patterns
 
-| Name | What we take | Where it lives in reebeat | Primary source | Verified |
+| Name | What we take | Where it lives in tsukuri | Primary source | Verified |
 |---|---|---|---|---|
 | Keyed join (Bostock, "Thinking with Joins") | Enter, update and exit derived from a key function over two collections | The Identity diff: `ElementId` is the key (3.2, 4.0) | https://bost.ocks.org/mike/join/ ; also Bostock, Ogievetsky, Heer, "D³ Data-Driven Documents", IEEE TVCG 2011, doi:10.1109/TVCG.2011.185 | [V] page describes enter, update, exit and the key function; [bib] for the paper |
-| Plan then apply with a reviewable diff (Terraform plan, Alchemy plan, Atlas declarative migrations) | A preview of what will change, in a review form, before anything runs; declare the target state and let the tool derive the steps | The Plan stage and `reebeat plan` (4.0) | https://developer.hashicorp.com/terraform/cli/commands/plan ; https://alchemy.run/guides/cli/ ; https://atlasgo.io/declarative/apply | [V] Terraform page shows the `+`, `-`, `~` and `-/+` symbols and "execution plan with a preview of the changes"; [V] Alchemy CLI page lists `plan # preview changes, apply nothing`; [V] Atlas page: "automatically plans and applies schema changes ... from its current state to the desired state" |
+| Plan then apply with a reviewable diff (Terraform plan, Alchemy plan, Atlas declarative migrations) | A preview of what will change, in a review form, before anything runs; declare the target state and let the tool derive the steps | The Plan stage and `tsukuri plan` (4.0) | https://developer.hashicorp.com/terraform/cli/commands/plan ; https://alchemy.run/guides/cli/ ; https://atlasgo.io/declarative/apply | [V] Terraform page shows the `+`, `-`, `~` and `-/+` symbols and "execution plan with a preview of the changes"; [V] Alchemy CLI page lists `plan # preview changes, apply nothing`; [V] Atlas page: "automatically plans and applies schema changes ... from its current state to the desired state" |
 | Behaviour as a function of time with lerp laws (Fran) | A value is a pure function of time; each segment satisfies `interp(a, b, 0) = a` and `interp(a, b, 1) = b` | `frameState` and the Segment sampler (4.2, 4.7 P1 and P2) | Elliott and Hudak, "Functional Reactive Animation", ICFP 1997, http://conal.net/papers/icfp97/ , doi:10.1145/258948.258973 | [V] abstract: behaviors are time-varying values; [bib] record; [I] the lerp laws as test properties are ours |
 | Build Systems à la Carte | A content-addressed cache keyed by inputs, so unchanged work is not redone | The layout cache key (5.4) and the prepare "compile twice, compare" check (4.7) | Mokhov, Mitchell, Peyton Jones, ICFP 2018 (PACMPL), https://www.microsoft.com/en-us/research/publication/build-systems-a-la-carte/ , doi:10.1145/3236774 | [bib] and the page loads; the paper was not read, so the mapping is [I] |
 | Mental-map preservation in dynamic graph drawing (Misue, Eades, Lai, Sugiyama) | Between layouts, unchanged nodes keep their relative positions so the viewer keeps their mental map | `elk.interactive` plus the previous Keyframe's positions (5.2, 5.3) | Journal of Visual Languages and Computing 1995, doi:10.1006/jvlc.1995.1010 ; ELK option: https://eclipse.dev/elk/reference/options/org-eclipse-elk-interactive.html | [bib] for the paper (not read); [V] ELK option page and our own measurement in section 0 |
@@ -1148,7 +1148,7 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 ### 11.3 Inspired by: ideas only, no code
 
-| Name | The idea | Where it shows in reebeat | Primary source | Verified |
+| Name | The idea | Where it shows in tsukuri | Primary source | Verified |
 |---|---|---|---|---|
 | reveal.js Auto-Animate matching rules | `data-id` beats content matching; unmatched elements fade; restart groups; per-element timing overrides | The R3 spec for the Identity diff (2.5, 3.2) | https://revealjs.com/auto-animate/ | [V] docs and source read (2.5) |
 | Keynote Magic Move, PowerPoint Morph | The next state is an edited copy of the previous one; `!!name` forces a match across shapes | The `beat` sugar (8.1) and `hints.morphFrom` (3.2 rule 6) | https://support.apple.com/guide/keynote/add-transitions-tanff5ae749e/mac ; https://support.microsoft.com/en-us/powerpoint/morph-transition-tips-and-tricks | [V] both pages load; the `!!` rule is on the Microsoft page (read for 2.1); how Keynote matches objects is not stated there [I] |
@@ -1186,16 +1186,16 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 ### R2 (2026-10-28): screenplay-first, Fountain to Deck and Video
 
-**Decided by:** the operator, 2026-10-28. **Supersedes** for release 1: section 0 rows "Build on Remotion or adopt Reframe?" and "Use reveal.js Auto-Animate itself?", "Which Renderings?" and decision 7 ("Video first, Deck later"), decision 2 (own engine, R0+R3, no reveal.js animator), and every statement that Remotion is the first Video adapter. **Keeps:** the vocabulary, the Plan stage and `reebeat plan`, anchoring to spoken words, determinism as a requirement, R1 (Effect in the core).
+**Decided by:** the operator, 2026-10-28. **Supersedes** for release 1: section 0 rows "Build on Remotion or adopt Reframe?" and "Use reveal.js Auto-Animate itself?", "Which Renderings?" and decision 7 ("Video first, Deck later"), decision 2 (own engine, R0+R3, no reveal.js animator), and every statement that Remotion is the first Video adapter. **Keeps:** the vocabulary, the Plan stage and `tsukuri plan`, anchoring to spoken words, determinism as a requirement, R1 (Effect in the core).
 
-**What changed.** reebeat is **screenplay-first**. One [Fountain](https://fountain.io/syntax) file is the source. `reebeat plan` shows the Plan. Two Renderings are generated from the same Plan and cannot disagree:
+**What changed.** tsukuri is **screenplay-first**. One [Fountain](https://fountain.io/syntax) file is the source. `tsukuri plan` shows the Plan. Two Renderings are generated from the same Plan and cannot disagree:
 
 - a **Deck**: reveal.js slides, the narration as speaker notes, the Cues as fragments, Auto-Animate (`data-id`) as the identity diff;
 - a **Video**: the same reveal.js page captured frame by frame on a controlled clock (prior art: `timeweb`, the clock behind `timesnap` and `timecut`), stepped through slides and fragments at the aligned time of each Cue, muxed with narration (Kokoro), sound effects, WebVTT subtitles and chapter marks (ffmpeg). Word timing comes from whisper.cpp alignment, as in the first prototype, with the idea of anchoring to a spoken word taken from manim-voiceover's bookmarks.
 
 **Mapping** (also in `GLOSSARY.md`, "Screenplay mapping"):
 
-| Fountain | reebeat |
+| Fountain | tsukuri |
 |---|---|
 | `# Section`, `= synopsis` | Story and Chapter outline: slide groups, chapter marks |
 | scene heading | Scene (identity boundary): one slide |
@@ -1209,7 +1209,7 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 **What this reopens.** Section 2.5 rejected reveal.js as the animator because Auto-Animate has no exit, no spring, no path morph, and because a seek of the Chromium animation clock can only be falsified, not proved deterministic. Both remain true. Release 1 accepts them: it **measures** whether the controlled clock drives reveal's CSS transitions and whether two builds are frame-identical (spec 0001, F6 and F7), and records the outcome. If the clock does not cover them, the recorded fallback order is a per-frame seek of `document.getAnimations()`, then JS-driven transitions.
 
-**Roadmap (recorded, not built).** (1) reebeat's own motion engine (path morphs, springs, exits, layout, the per-frame contrast gate; sections 3 to 6) as a renderer plug-in behind the same Plan. (2) The pixel-identical port of the existing 4EM explainer as that engine's regression test; what was measured for it is in [`4em-regression-baseline.md`](4em-regression-baseline.md). (3) Cue offsets and further cue kinds, more than one voice, richer Element vocabulary, a theme system.
+**Roadmap (recorded, not built).** (1) tsukuri's own motion engine (path morphs, springs, exits, layout, the per-frame contrast gate; sections 3 to 6) as a renderer plug-in behind the same Plan. (2) The pixel-identical port of the existing 4EM explainer as that engine's regression test; what was measured for it is in [`4em-regression-baseline.md`](4em-regression-baseline.md). (3) Cue offsets and further cue kinds, more than one voice, richer Element vocabulary, a theme system.
 
 **Consequences for earlier sections.** The Remotion licence question (section 9, question 4) no longer blocks release 1: Remotion is not a dependency of it. The `PreparedStory` and `frameState` of section 4 are not built in release 1; reveal.js plus the controlled clock take their place, and the Plan and Timeline stages stay. Property P10 now reads: the core imports no browser, Playwright, ffmpeg, reveal.js or Node built-in.
 
@@ -1217,7 +1217,7 @@ Three groups, by how much of the source we carry. Legend for the last column: **
 
 **Decided by:** the operator, 2026-10-28. **Supersedes** the module layouts of section 3.0 and of spec 0001 "Module layout" (the dependency rule of R1 stays and is made structural).
 
-reebeat is built from pieces that can be replaced one by one. Three categories, with one dependency direction (library, then service, then integration; never back):
+tsukuri is built from pieces that can be replaced one by one. Three categories, with one dependency direction (library, then service, then integration; never back):
 
 | Category | What it is | Release 1 |
 |---|---|---|
@@ -1230,7 +1230,7 @@ Service sketches (release 1 builds the interfaces, the local adapters and the st
 - `SpeechSynthesizer`: text, voice, speed to audio, optionally the provider's own word timings. Adapters: Kokoro (local); a **silent stand-in** that returns silence with synthetic word timings. Later: ElevenLabs (credential-gated; it may return its own timings).
 - `WordAligner`: audio and the expected words to word times and a match ratio. Adapters: whisper.cpp (local); later "provider timings" when the synthesiser supplies them; the stand-in spreads the words evenly.
 - `SoundLibrary`: a sound name to audio. Release 1: sounds synthesised in TypeScript; later local files or generated or third-party sounds.
-- `Renderer`: Plan to a Deck (reveal.js in release 1; reebeat's own motion engine later).
+- `Renderer`: Plan to a Deck (reveal.js in release 1; tsukuri's own motion engine later).
 - `FrameCapturer`: Deck, schedule and a controlled clock to a stream of frames (headless Chromium).
 - `Encoder`: frames, audio mix, subtitles, chapters to a media file, plus lossless audio encode and decode (ffmpeg, local).
 - `AssetCache`: content-addressed; **key = adapter and model or voice and settings and input text**, so re-renders reuse paid or slow outputs and stay deterministic; the output manifest records the provenance of every asset.
@@ -1246,14 +1246,14 @@ Rules:
 
 **Decided by:** the operator's picks of 2026-10-28 and the review of spec 0002. **Supersedes** section 4.4.1 where it differs; the rest of 4.4.1 stands.
 
-The anchor model of 4.4.1 is built as `@reebeat/core` `Anchor`/`Offset`/`Effect` (spec 0002, "plan contract for effects"). Differences, each deliberate:
+The anchor model of 4.4.1 is built as `@tsukuri/core` `Anchor`/`Offset`/`Effect` (spec 0002, "plan contract for effects"). Differences, each deliberate:
 
 | 4.4.1 | As built | Why |
 |---|---|---|
 | Defaults per cue kind, so most cues need no `at` | `at` is mandatory | "no positional magic": every effect names its anchor |
 | `beat` anchor (start, settle, end) | none | a Beat is derived, not written, in the screenplay source; the Scene, the slide transition (`transition.start`, `.end` or `.N%`), an Element's lifecycle and a word cover the moments that exist |
 | Offset `fraction` | `%` of the anchored window | the same quantity |
-| Absolute times: "`reebeat lint` warns on every" | allowed with `because "<reason>"`, listed by `lint` and `plan` at severity info | operator pick 2026-10-28 |
+| Absolute times: "`tsukuri lint` warns on every" | allowed with `because "<reason>"`, listed by `lint` and `plan` at severity info | operator pick 2026-10-28 |
 | Cue chain: end of another cue | `<effect>.start`; `<show>.end` = end of its window; `.end` of a sound or focus is an error | an instant has no end |
 | Element events enter, exit, update | enter, exit, **move**, update; an Element's `move` and `update` percent points follow the renderer's eased progress | a box that moves is the case the operator asked to anchor to ("50% through the move") |
 | The event times | declared by the renderer as a `RendererLifecycle` (plain data) and observed in the output by F1 | a wrong declaration must fail on the observed event |

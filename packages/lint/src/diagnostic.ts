@@ -11,6 +11,6 @@ export interface Diagnostic {
   readonly rule: string;
   /** The Scene the diagnostic concerns, when it concerns one. */
   readonly sceneId?: string;
-  /** `error` (the default) fails `reebeat lint`; `info` only lists, such as an absolute time that has its reason. */
+  /** `error` (the default) fails `tsukuri lint`; `info` only lists, such as an absolute time that has its reason. */
   readonly severity?: "error" | "info";
 }

@@ -1,4 +1,4 @@
-# @reebeat/sounds-synth
+# @tsukuri/sounds-synth
 
 The `SoundLibrary` of release 1 (spec 0001, design R3): the built-in sounds (`pop`, `whoosh`, `ding`), synthesised in
 TypeScript. Original synthesis, mono, 48 kHz; every sound is a pure function of its name (the noise of `whoosh` comes

@@ -6,7 +6,7 @@
 <head>
 <meta charset="utf-8">
 <title>Fixture: a small story</title>
-<meta name="reebeat:source-sha256" content="5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e">
+<meta name="tsukuri:source-sha256" content="5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e5ca1ab1e">
 <link rel="stylesheet" href="assets/reveal.css">
 <style>
 html, body { margin: 0; background: #101820; }
@@ -73,7 +73,7 @@ html, body { margin: 0; background: #101820; }
   Reveal.on("fragmentshown", (event) => {
     for (const fragment of event.fragments) if (fragment.classList.contains("effect")) apply(fragment);
   });
-  window.reebeatDeck = {
+  window.tsukuriDeck = {
     sceneIds,
     goToScene: (sceneId) => Reveal.slide(sceneIds.indexOf(sceneId), 0, -1),
     stepFragment: () => Reveal.nextFragment(),

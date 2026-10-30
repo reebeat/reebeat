@@ -9,9 +9,9 @@
 // duration later; a Scene ends `sceneTail` (0.5 s) after its last Line; an effect fires at `Line start + round(30 *
 // word end)`; `commandFrame` is `fireFrame - 1` for show and focus, `fireFrame` for a sound. `test/fixtures/deck/deck.html` is
 // the page that goes with it.
-import { buildPlan, requireTimeline, schedule } from "@reebeat/core";
-import type { AlignedLine, PlanJson, TimedPlan } from "@reebeat/core";
-import { contractLifecycle } from "@reebeat/services/contract";
+import { buildPlan, requireTimeline, schedule } from "@tsukuri/core";
+import type { AlignedLine, PlanJson, TimedPlan } from "@tsukuri/core";
+import { contractLifecycle } from "@tsukuri/services/contract";
 import { Array as Arr, Effect, String as Str } from "effect";
 
 const source = Arr.join(

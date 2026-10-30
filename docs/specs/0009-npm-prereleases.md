@@ -1,11 +1,11 @@
-# 0009 Publish `@reebeat/*` pre-releases to npm
+# 0009 Publish `@tsukuri/*` pre-releases to npm
 
-Status: **plan** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator, 2026-10-29 (publish pre-releases to npm so `reebeat/studio` can depend on the compiler; no long-lived npm token).
+Status: **plan** (frozen when its PR opens; revisions are dated entries at the end). Date: 2026-10-29. Decided by: the operator, 2026-10-29 (publish pre-releases to npm so `tsukuri-labs/studio` can depend on the compiler; no long-lived npm token).
 Process: [spec 0000](0000-development-lifecycle.md). Number 0009 because 0004 is the open state-machines branch, 0005 and 0006 are named by it, 0007 is PR #11 and 0008 is PR #13 (the licence; this spec builds on it: the published packages carry its `LICENSE` and `NOTICE`). [`docs/design/open-core-boundary.md`](../design/open-core-boundary.md) listed this as "the next spec after the licence".
 
 ## Goal
 
-A maintainer runs one workflow, on `main`, after a version commit, and seven packages appear on npm as `0.1.0-alpha.N` under the `alpha` dist-tag, with a provenance attestation, published by GitHub Actions through npm trusted publishing (OIDC). No npm token is stored in GitHub or anywhere else. `reebeat/studio` installs them with `npm i @reebeat/core@alpha` and imports them in Node and in a Vite browser bundle.
+A maintainer runs one workflow, on `main`, after a version commit, and seven packages appear on npm as `0.1.0-alpha.N` under the `alpha` dist-tag, with a provenance attestation, published by GitHub Actions through npm trusted publishing (OIDC). No npm token is stored in GitHub or anywhere else. `tsukuri-labs/studio` installs them with `npm i @tsukuri/core@alpha` and imports them in Node and in a Vite browser bundle.
 
 Nothing observable changes in the compiler: sources, the journey and every falsifier of specs 0001 to 0003 are untouched. A published package's own manifest changes in these ways: it is no longer `private`; it gains `description`, `publishConfig` (`access: public`, `directory: dist`) and a `prepublishOnly` script that refuses a publish from the source directory (its `license`, `Apache-2.0` since spec 0008, is now required by the release rules); `effect` moves from `dependencies` to `peerDependencies` (and `devDependencies`, as `catalog:`), and `@effect/vitest` becomes an optional peer of `services`. Nothing in `exports` changes: it still points at the sources, and the manifest that ships is generated.
 
@@ -17,7 +17,7 @@ bun run release:version           # one "Version Packages" commit: 0.1.0-alpha.N
 bun run release:stage             # what CI also runs on every PR: build packages/*/dist, check what would ship
 # Actions ▸ Release ▸ Run workflow (branch main; environment npm-release)
 #   checks green for the commit ▸ npm >= 11.5.1 ▸ release:stage ▸ changeset publish (OIDC, provenance)
-npm i @reebeat/core@alpha effect@~4.1.0
+npm i @tsukuri/core@alpha effect@~4.1.0
 ```
 
 The first release also needs the operator steps in the PR body (claim the names, configure each trusted publisher): they are external effects that an agent must not perform.
@@ -33,7 +33,7 @@ The first release also needs the operator steps in the PR body (claim the names,
 | `pipeline` | yes | `buildProgram`, the manifest schema, `sha256Hex`: the compiler's build program over the services. Studio runs it with its own Layers. |
 | `sounds-synth` | yes | Portable (waveforms as pure functions, no runtime); studio previews sounds in the browser. Measured: `sfxWav("pop")` is 17324 bytes in Node and in Chromium. |
 | `render-reveal` | yes | The Deck renderer. Its module bundles for the browser (Vite 8 build, no externalised Node built-in) and runs there (`renderDeck`, `assembleDeck`). `readAssets` reads the installed `reveal.js` and Inter files through Effect's `FileSystem` and `import.meta.resolve`, so it needs a Node platform; the browser does not call it. |
-| `cli` | **no** | Its `bin/reebeat.ts` is TypeScript run by Bun, and it depends on every adapter and on `verify`. Publishing the `reebeat` binary needs a compiled Node entry and decides how Kokoro's native dependencies (`sharp` with LGPL libvips), Chromium and ffmpeg (GPL, [issue #7](https://github.com/reebeat/reebeat/issues/7)) are distributed. Studio needs none of it. Its own spec. |
+| `cli` | **no** | Its `bin/tsukuri.ts` is TypeScript run by Bun, and it depends on every adapter and on `verify`. Publishing the `tsukuri` binary needs a compiled Node entry and decides how Kokoro's native dependencies (`sharp` with LGPL libvips), Chromium and ffmpeg (GPL, [issue #7](https://github.com/tsukuri-labs/tsukuri/issues/7)) are distributed. Studio needs none of it. Its own spec. |
 | `verify` | no | Depends on `encode-ffmpeg` (a Node runtime adapter) and exists to check written files. |
 | `speech-kokoro`, `align-whisper`, `capture-chromium`, `encode-ffmpeg`, `cache-fs` | no | Node-only adapters over models, binaries and a file system. Each is a name to claim and a trusted publisher to configure. Adding one later is a `private` line removed, a name in the Changesets `fixed` group, and its operator step; the gates tell you what you missed. |
 
@@ -61,7 +61,7 @@ The set has one source: a package is published when its manifest has no `"privat
 
 | Source | Published |
 | --- | --- |
-| `"@reebeat/core": "workspace:*"` | the exact version of that published package (`0.1.0-alpha.N`) |
+| `"@tsukuri/core": "workspace:*"` | the exact version of that published package (`0.1.0-alpha.N`) |
 | `"fountain-js": "catalog:"` | the root catalog's version (`1.2.4`) |
 | any other `workspace:` or `catalog:` form, or a name that is not published or not in the catalog | a failure listing every such dependency; nothing is built |
 | `exports` `./src/index.ts` | `{ "types": "./src/index.d.mts", "default": "./src/index.mjs" }` |
@@ -100,18 +100,18 @@ The scan trusts the compiler, and the compiler obeys `@effect-diagnostics` comme
 Run on the branch after `changeset version` (reverted afterwards), with the seven tarballs from `npm pack` on each `dist`:
 
 - **Tarballs** (`npm pack`): core 60319 B packed, 11 files; subtitles 6961 B, 7; lint 8262 B, 7; services 28810 B, 17; pipeline 19142 B, 7; sounds-synth 6772 B, 7; render-reveal 21116 B, 7. Contents are only `*.mjs`, `*.d.mts`, `package.json`, `README.md`, `CHANGELOG.md`, `LICENSE`, `NOTICE`. For `core`, `bun publish --dry-run` and `npm publish --dry-run` (the latter from a directory outside the repository, see the finding above) list the same 11 files.
-- **Node**: a scratch project (`npm install` of the seven tarballs and `effect@4.1.0`) imports every entry point (including `@reebeat/core/steps` and `@reebeat/services/standins`), builds the Plan of `stories/same-id` (7 scenes, 100 review lines) and synthesises a sound.
+- **Node**: a scratch project (`npm install` of the seven tarballs and `effect@4.1.0`) imports every entry point (including `@tsukuri/core/steps` and `@tsukuri/services/standins`), builds the Plan of `stories/same-id` (7 scenes, 100 review lines) and synthesises a sound.
 - **Types**: TypeScript 7 `tsc --noEmit` with `module: nodenext`, `strict`, `skipLibCheck: false` over a file that uses the types of every package: no error.
 - **Browser**: `vite build` (Vite 8.3.5) of a page that imports all seven packages, loaded in Chromium: the Plan builds, `sfxWav("pop")` is 17324 bytes (as in Node), no page error.
-- **Contract suites from npm**: vitest 5 with `@effect/vitest` 4.1.0 installed next to the tarballs ran `speechSynthesizerContract`, `soundLibraryContract` and `wordAlignerContract` against the stand-ins from `@reebeat/services/standins`: 16 tests passed. `@effect/vitest` is an optional peer; without it `@reebeat/services/contract` does not load, which is the intended behaviour.
-- **`changeset publish` itself**, against a local Verdaccio registry with a throwaway token: it published all seven under `alpha`, a second run reported "No unpublished projects to publish", and a fresh project installed `@reebeat/pipeline@alpha` and `@reebeat/render-reveal@alpha` from it (the other five resolved as dependencies) and imported `buildProgram`. What this cannot show is the OIDC exchange and the attestation, which exist only on GitHub with a configured publisher.
+- **Contract suites from npm**: vitest 5 with `@effect/vitest` 4.1.0 installed next to the tarballs ran `speechSynthesizerContract`, `soundLibraryContract` and `wordAlignerContract` against the stand-ins from `@tsukuri/services/standins`: 16 tests passed. `@effect/vitest` is an optional peer; without it `@tsukuri/services/contract` does not load, which is the intended behaviour.
+- **`changeset publish` itself**, against a local Verdaccio registry with a throwaway token: it published all seven under `alpha`, a second run reported "No unpublished projects to publish", and a fresh project installed `@tsukuri/pipeline@alpha` and `@tsukuri/render-reveal@alpha` from it (the other five resolved as dependencies) and imported `buildProgram`. What this cannot show is the OIDC exchange and the attestation, which exist only on GitHub with a configured publisher.
 
 ## Falsifiers
 
 | | Claim | Gate | Falsified by |
 | --- | --- | --- | --- |
-| F-npm1 | Every published package yields a complete manifest: no `workspace:` or `catalog:` left, a licence, `access: public`, `directory: dist`, `.ts` exports | `release.test.ts` ("every published package builds a clean manifest"), `bun run release:stage` | a public package with `"@reebeat/verify": "workspace:*"` (controlled: `release:stage` exits 1 naming it) |
-| F-npm2 | The published set is the Changesets `fixed` group | `release.test.ts` | removing `"private": true` from `packages/verify` (controlled: the fixed-group test fails, `expected [ '@reebeat/core', …(6) ] to deeply equal [ '@reebeat/core', …(7) ]`, and so do the manifest and peer tests) |
+| F-npm1 | Every published package yields a complete manifest: no `workspace:` or `catalog:` left, a licence, `access: public`, `directory: dist`, `.ts` exports | `release.test.ts` ("every published package builds a clean manifest"), `bun run release:stage` | a public package with `"@tsukuri/verify": "workspace:*"` (controlled: `release:stage` exits 1 naming it) |
+| F-npm2 | The published set is the Changesets `fixed` group | `release.test.ts` | removing `"private": true` from `packages/verify` (controlled: the fixed-group test fails, `expected [ '@tsukuri/core', …(6) ] to deeply equal [ '@tsukuri/core', …(7) ]`, and so do the manifest and peer tests) |
 | F-npm3 | Only built output ships | `release:stage` (`npm pack --dry-run --json` allowlist; unit test of the allowlist) | a source, test or map file in `dist` |
 | F-npm4 | The `effect` peer range matches the stability of the APIs used, admits the repository's pin, and is never a dependency | `release.test.ts` | `"effect": "^4.1.0"` in `services` or in `pipeline` (controlled: the test fails with "its published sources reach an unstable API, so the range must be ~") |
 | F-npm7 | No published source hides an unstable use from F-npm4 with an `@effect-diagnostics` directive | `release.test.ts` | `// @effect-diagnostics unstableApiUsage:off` added to `packages/pipeline/src/buildProgram.ts` (controlled: the test names the file; a scan control shows the compiler alone would report nothing) |
@@ -130,7 +130,7 @@ Run on the branch after `changeset version` (reverted afterwards), with the seve
 
 - **2026-10-29, review round 1 on PR #18.**
   - **CI timeout.** The `tsc` scans took 5.07 s for the peer test on a GitHub runner against vitest's 5 s default. Both scan tests now carry an explicit 60 s timeout, and the seven package scans of the peer test run concurrently.
-  - **Directives fail closed (F-npm7, supersedes "any finding is a use, however it was imported" for the case of a suppression).** The scan runs the Effect language service, which honours `@effect-diagnostics` comments, so such a comment in a published source hid an unstable use and let `^4.1.0` through (reviewer's mutation: `// @effect-diagnostics unstableApiUsage:off` in the six `pipeline` files that use `FileSystem`, `Path` or `Digest`, `^4.1.0`: the test passed). The release rules test now refuses any `@effect-diagnostics` directive, in any form and for any rule, registered or not, in a published package's sources. Lint-style suppressions stay with `check:exceptions` ([issue #14](https://github.com/reebeat/reebeat/issues/14)).
+  - **Directives fail closed (F-npm7, supersedes "any finding is a use, however it was imported" for the case of a suppression).** The scan runs the Effect language service, which honours `@effect-diagnostics` comments, so such a comment in a published source hid an unstable use and let `^4.1.0` through (reviewer's mutation: `// @effect-diagnostics unstableApiUsage:off` in the six `pipeline` files that use `FileSystem`, `Path` or `Digest`, `^4.1.0`: the test passed). The release rules test now refuses any `@effect-diagnostics` directive, in any form and for any rule, registered or not, in a published package's sources. Lint-style suppressions stay with `check:exceptions` ([issue #14](https://github.com/tsukuri-labs/tsukuri/issues/14)).
   - **`types` before `default`.** The generated `exports` were key-sorted (`default` first), so TypeScript resolved under `default` and found its declarations only because `.d.mts` sits beside `.mjs`. The condition maps are built from ordered entries (the linter sorts object keys), a test pins the order, and `tsc --traceResolution` in a consumer now prints `Matched 'exports' condition 'types'`.
   - **Line 10 corrected:** the manifest changes are listed in full (Goal section).
   - **F-npm2 control:** removing `"private": true` from `packages/verify` fails three tests (clean manifests, fixed group, peer ranges); the fixture the table promised does not exist and the row no longer claims one.

@@ -1,4 +1,4 @@
-# Publishes the @reebeat/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
+# Publishes the @tsukuri/* packages to npm (spec 0009). Manual only: a maintainer starts it on `main` after the
 # "Version Packages" commit (`bun run release:version`) has merged. No npm token exists anywhere: npm's trusted
 # publishing (OIDC) exchanges this job's identity for a short-lived publish credential, which is why this file's name,
 # `release.yml`, and the environment name `npm-release` are configured on npmjs.com for every package. Renaming either

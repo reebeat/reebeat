@@ -1,4 +1,4 @@
-# @reebeat/core
+# @tsukuri/core
 
 Screenplay in, Plan out. Pure: it depends on `effect` and `fountain-js` only, and reads no file (the CLI reads the
 `.fountain` file and passes its text). Specs: [`0001`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md) (the pipeline) and [`0002`](../../docs/specs/0002-explicit-anchors-and-syntax.md) (explicit ids, the effects block and anchors). The syntax is documented in [`docs/grammar/effects.md`](../../docs/grammar/effects.md), which is generated from `src/grammar.ts` and `src/plan.ts` (`bun tools/quality/genGrammar.ts`); a test fails when it differs and parses every example in it.
@@ -6,7 +6,7 @@ Screenplay in, Plan out. Pure: it depends on `effect` and `fountain-js` only, an
 ```text
 source ──parseFountain──▶ tokens ──adaptTokens──▶ Story ──identityDiff, validateScene──▶ PlanJson   buildPlan
 PlanJson + AlignedLine[] + RendererLifecycle ──schedule (resolveEffects)──▶ PlanJson with a timeline  schedule
-PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`                                     reviewText
+PlanJson ──reviewText──▶ the text of `tsukuri plan [--timing]`                                     reviewText
 ```
 
 | Export | What it is |
@@ -14,7 +14,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 | `buildPlan(source, sourceSha256)` | `Effect<PlanJson, PlanError>`; fails with the first error in document order. The CLI hashes the `.fountain` bytes (Effect's `Digest` service) and passes the hash in; the core copies it into `plan.sourceSha256` and computes nothing |
 | `collectErrors(source)` | every `PlanError`, in document order (plain function) |
 | `schedule(plan, aligned, lifecycle)` | `Effect<PlanJson, ScheduleError>`; adds `timeline`: the Lines, and each effect's `fireFrame`, `commandFrame` and `intent` (the effect's `written` text: its `when` exactly as the author wrote it, including an explicit occurrence and the offset unit). `lifecycle` is the renderer's declared `RendererLifecycle` (plain data, `info.lifecycle` of its adapter) |
-| `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (`show` and `focus`, in resolved-time order) and, for each `sound`, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@reebeat/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
+| `stepsOf(plan, scene)`, `soundsOf(plan, scene)` | The fragment steps of a Scene (`show` and `focus`, in resolved-time order) and, for each `sound`, the step or slide it plays with (or `alone`). The Deck and `verify` both read them. Also the subpath `@tsukuri/core/steps`, which reaches no parser (the Deck never loads the screenplay parser) |
 | `grammarDocument()` | The text of `docs/grammar/effects.md` |
 | `reviewText(plan, { timing })` | the review text, deterministic |
 | `decodePlan(json)`, `encodePlan(plan)` | `plan.json` text in and out; keys are written in alphabetical order, so equal Plans are byte-equal |
@@ -43,7 +43,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
   parenthetical, which applies to the dialogue after it) and names no Scene. It stands alone, between blank lines, right before the
   scene heading it leads into (a `# Section` or `= synopsis` may stand between); anywhere else is a `BadTransition`. A Scene needs
   a Section before it and at least one `NARRATOR` Line. `docs/grammar/effects.md` ends with what is not yet explicit.
-- `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `reebeat plan` shows it.
+- `= synopsis` lines under a `# Section` become the Chapter's `synopsis` (joined by a space); only `tsukuri plan` shows it.
 - No title: the Plan title is `Untitled`.
 - The title page has three keys: `Title:`, `Author:` and `Speed:` (anything else is an error with its line).
 - A Scene with an error on an Element or effect line is not cross-checked, so the one mistake is the one error.
@@ -55,7 +55,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 - `(speed <number>)` before a Line sets that Line's rate absolutely (same range). `(slowly)` and `(quickly)` are
   presets relative to the story default (x 0.9 and x 1.1, rounded to four decimals, clamped to 0.5 to 2.0). `(pause N)`
   is unchanged. A Line takes one speed hint and one pause.
-- The resolved rate of every Line is `Line.hints.speed` in `plan.json`; `reebeat plan` prints it only for a Line that
+- The resolved rate of every Line is `Line.hints.speed` in `plan.json`; `tsukuri plan` prints it only for a Line that
   differs from the default. The rate is part of the speech cache key, so changing it re-synthesises a Line and never
   reuses audio made at another rate.
 - Errors name their line: `BadSpeed` (a `Speed:` or `(speed N)` that is not a number from 0.5 to 2, or a second
@@ -63,7 +63,7 @@ PlanJson ──reviewText──▶ the text of `reebeat plan [--timing]`        
 
 ## When an effect fires
 
-`schedule` resolves every anchor to an integer frame from the aligned words, the Scene's `slideFrame` and the renderer's declared `RendererLifecycle` (windows, lags, easing; the table is the header of `src/resolve.ts` and the doc comment of `RendererLifecycleSchema` in `src/plan.ts`). A sound that belongs to the slide change is anchored to `transition.start`, so it follows the motion and not the voice-over. `reebeat plan --timing` prints `s1  sound whoosh  one.move.start  ->  frame 732  (rides the slide)` for each effect (a sound's last column says where the Deck plays it: `rides the slide`, `rides step r1` or `plays alone`) and lists the absolute times with their reasons. `.end` of a `sound` or a `focus` is an `UnsupportedEdge` error (only a `show` has a window): write `<id>.start`.
+`schedule` resolves every anchor to an integer frame from the aligned words, the Scene's `slideFrame` and the renderer's declared `RendererLifecycle` (windows, lags, easing; the table is the header of `src/resolve.ts` and the doc comment of `RendererLifecycleSchema` in `src/plan.ts`). A sound that belongs to the slide change is anchored to `transition.start`, so it follows the motion and not the voice-over. `tsukuri plan --timing` prints `s1  sound whoosh  one.move.start  ->  frame 732  (rides the slide)` for each effect (a sound's last column says where the Deck plays it: `rides the slide`, `rides step r1` or `plays alone`) and lists the absolute times with their reasons. `.end` of a `sound` or a `focus` is an `UnsupportedEdge` error (only a `show` has a window): write `<id>.start`.
 
 An effect that resolves outside its Scene, or whose command frame would come before the slide change, is an `EffectOutsideScene` error that names the effect; a percent on a window the renderer declares an instant is `EmptyWindow`.
 

@@ -1,6 +1,6 @@
 ---
 name: review-pr
-description: "The automated pull-request loop for reebeat: independent reviewers judge the plan, the implementation and their agreement, a fixer addresses findings, each round is recorded on the PR, and a passing PR is merged. Use when a PR is ready for review, when asked to review or merge a PR, or when a review round finishes."
+description: "The automated pull-request loop for tsukuri: independent reviewers judge the plan, the implementation and their agreement, a fixer addresses findings, each round is recorded on the PR, and a passing PR is merged. Use when a PR is ready for review, when asked to review or merge a PR, or when a review round finishes."
 ---
 
 <!-- Provenance: adapted from phibkro/vektorprogrammet-reimagined @ 797e9e41d96194b9479ff224ac1c40bbc0545888

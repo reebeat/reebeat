@@ -5,7 +5,7 @@ Binding for: every later PR in this repository. Implemented by the PR that carri
 
 ## Goal
 
-Every change to reebeat travels one road: **spec → code → PR**, strictly 1:1, and no change reaches `main` without passing the same gates locally, in CI and in a recorded review round. The road is built from tools that already exist (Vite+, Oxlint, Oxfmt, Ultracite, `@effect/tsgo`, gitleaks, commitlint, knip, jscpd, `gh`). What we write ourselves is only what no tool does: the exception registry check, the Effect-family check, the review-round record and the merge gate.
+Every change to tsukuri travels one road: **spec → code → PR**, strictly 1:1, and no change reaches `main` without passing the same gates locally, in CI and in a recorded review round. The road is built from tools that already exist (Vite+, Oxlint, Oxfmt, Ultracite, `@effect/tsgo`, gitleaks, commitlint, knip, jscpd, `gh`). What we write ourselves is only what no tool does: the exception registry check, the Effect-family check, the review-round record and the merge gate.
 
 ## Journey
 
@@ -81,7 +81,7 @@ A PR carries the spec and its code together (plan and build are one step, Revisi
 
 In scope: everything in *What is built*, committed to `main` by the PR that carries this spec.
 
-Not in scope: any reebeat code (spec 0001 and later), a release process, npm publishing, deployment, a database, browser tests, generated documentation, the store-boundary check, Renovate, and a LICENSE file (the operator deferred the licence; the README says so).
+Not in scope: any tsukuri code (spec 0001 and later), a release process, npm publishing, deployment, a database, browser tests, generated documentation, the store-boundary check, Renovate, and a LICENSE file (the operator deferred the licence; the README says so).
 
 ## Falsifiers
 
@@ -104,7 +104,7 @@ Each falsifier has a negative control that is run and observed to fail, with the
 
 - Free on mechanism, specific on behaviour: the scripts may be arranged differently as long as the names `ready`, `check`, `test`, `check:exceptions`, `knip`, `cpd` and `secrets` exist and the journey above holds.
 - `tools/quality` is the only workspace that holds code in this PR. Tests prove the exception check, the family check and the diagnostic coverage; they use fixtures written to temporary directories, not files outside the repository.
-- No placeholder implementation of reebeat is added. `packages/` holds no package yet (workspace globs may match nothing).
+- No placeholder implementation of tsukuri is added. `packages/` holds no package yet (workspace globs may match nothing).
 - Every copied file names its source in its header or in a `PROVENANCE.md` beside the copied directory (repository, commit, deviations).
 
 ## Risks
@@ -115,7 +115,7 @@ Each falsifier has a negative control that is run and observed to fail, with the
 | `@effect/tsgo` patching of the TypeScript 7 server breaks on a TypeScript or Effect bump | Versions are pinned; `prepare` re-patches on install; an upgrade is its own spec |
 | The exception registry becomes a rubber stamp | Each entry needs a retirement trigger and the review loop's conformance reviewer checks new entries; the check also fails on entries without a live suppression |
 | A donor rule fits the donor domain, not ours | Only the rules in *Anti-slop rules kept* are enabled; adding one is a reviewed change |
-| Branch protection with administrators included blocks the operator in an emergency | The operator can remove the protection with `gh api -X DELETE repos/reebeat/reebeat/branches/main/protection`; the command is in `AGENTS.md` |
+| Branch protection with administrators included blocks the operator in an emergency | The operator can remove the protection with `gh api -X DELETE repos/tsukuri-labs/tsukuri/branches/main/protection`; the command is in `AGENTS.md` |
 
 ## Open questions for the operator
 

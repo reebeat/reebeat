@@ -20,10 +20,10 @@ export const pageRuntime = `
   const realRequestFrame = (callback) =>
     window.timeweb ? window.timeweb.realtime.requestAnimationFrame(callback) : window.requestAnimationFrame(callback);
 
-  window.__reebeatHasNewAnimations = () => document.getAnimations().some((animation) => !tracked.has(animation));
-  window.__reebeatTwoRealFrames = () =>
+  window.__tsukuriHasNewAnimations = () => document.getAnimations().some((animation) => !tracked.has(animation));
+  window.__tsukuriTwoRealFrames = () =>
     new Promise((resolve) => realRequestFrame(() => realRequestFrame(() => resolve(0))));
-  window.__reebeatSeek = (frame, fps, skewMs) => {
+  window.__tsukuriSeek = (frame, fps, skewMs) => {
     const live = document.getAnimations();
 
     for (const animation of live) {

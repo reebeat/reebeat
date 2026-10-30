@@ -1,14 +1,14 @@
 // What the build program's tests run on: the stand-ins of the services, a fake Renderer, a fake FrameCapturer and a
 // fake Encoder that records what `mux` was asked and writes a placeholder file. No model, browser or binary: the
 // tests prove what the program does with the services, not what an adapter does (the contract suites do that).
-import type { RendererLifecycle } from "@reebeat/core";
+import type { RendererLifecycle } from "@tsukuri/core";
 import {
   CaptureError,
   Encoder,
   FrameCapturer,
   Renderer,
   localEgress,
-} from "@reebeat/services";
+} from "@tsukuri/services";
 import type {
   AdapterInfo,
   AssetCache,
@@ -16,14 +16,14 @@ import type {
   SoundLibrary,
   SpeechSynthesizer,
   WordAligner,
-} from "@reebeat/services";
-import { contractLifecycle } from "@reebeat/services/contract";
+} from "@tsukuri/services";
+import { contractLifecycle } from "@tsukuri/services/contract";
 import {
   evenAligner,
   memoryCache,
   silentSynthesizer,
   toneSounds,
-} from "@reebeat/services/standins";
+} from "@tsukuri/services/standins";
 import {
   Array as Arr,
   Effect,

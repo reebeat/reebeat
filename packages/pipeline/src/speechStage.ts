@@ -9,16 +9,16 @@
 //   miss, refresh        -> synthesize -> encodeAudio -> decodeAudio -> align -> put
 //
 // The aligner hears what the cache stores (the decoded FLAC), as the first release's whisper did.
-import { matchThreshold } from "@reebeat/core";
-import type { Line, PlanJson } from "@reebeat/core";
+import { matchThreshold } from "@tsukuri/core";
+import type { Line, PlanJson } from "@tsukuri/core";
 import {
   AssetCache,
   Encoder,
   SpeechSynthesizer,
   WordAligner,
   rejectSecretSettings,
-} from "@reebeat/services";
-import type { Asset, Egress, Provenance } from "@reebeat/services";
+} from "@tsukuri/services";
+import type { Asset, Egress, Provenance } from "@tsukuri/services";
 import type { Schema } from "effect";
 import { Array as Arr, Effect, Option, String as Str } from "effect";
 

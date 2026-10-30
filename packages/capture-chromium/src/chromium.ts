@@ -1,11 +1,11 @@
 // The FrameCapturer adapter of release 1: headless Chromium on a controlled clock. ABI: the Chromium binary named
-// by `REEBEAT_CHROMIUM`, driven by Playwright (`browser.ts`), with `timeweb` as the virtual clock. The capture only
+// by `TSUKURI_CHROMIUM`, driven by Playwright (`browser.ts`), with `timeweb` as the virtual clock. The capture only
 // emits the PNG frames; whoever consumes the stream (the Encoder) owns the pipe. Nothing is sent anywhere.
 // Retirement trigger: an Effect-native browser driver, or a motion engine that renders frames without a browser.
-import { SettingsSchema, requireTimeline } from "@reebeat/core";
-import type { PlanJson } from "@reebeat/core";
-import { CaptureError, FrameCapturer, localEgress } from "@reebeat/services";
-import type { CaptureFailure } from "@reebeat/services";
+import { SettingsSchema, requireTimeline } from "@tsukuri/core";
+import type { PlanJson } from "@tsukuri/core";
+import { CaptureError, FrameCapturer, localEgress } from "@tsukuri/services";
+import type { CaptureFailure } from "@tsukuri/services";
 import type { FileSystem } from "effect";
 import {
   Array as Arr,
@@ -39,7 +39,7 @@ export interface ChromiumOptions {
 }
 
 /**
- * Headless Chromium as a `FrameCapturer`. The layer looks for `REEBEAT_CHROMIUM`, the binary and `timeweb` when it is
+ * Headless Chromium as a `FrameCapturer`. The layer looks for `TSUKURI_CHROMIUM`, the binary and `timeweb` when it is
  * built and settles the outcome: a machine that lacks one does not stop the layer, it fails every `capture` with
  * `AdapterUnavailable` (never a fallback). `capture` launches one browser per stream, in the stream's scope, and
  * emits PNG frame 0 to `frames(plan) - 1` in order.

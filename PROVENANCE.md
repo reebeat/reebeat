@@ -1,5 +1,7 @@
 # Provenance
 
+> Since the rename to tsukuri (formerly the working name `reebeat`) a file listed here as identical to its source may differ from it in that word alone, and the names of the source's own files and packages are written with the current brand although the cited commit carries the old name.
+
 The development lifecycle tooling (spec 0000) is adapted from [`phibkro/vektorprogrammet-reimagined`](https://github.com/phibkro/vektorprogrammet-reimagined) at commit `797e9e41d96194b9479ff224ac1c40bbc0545888` (the donor). Files whose format allows comments also carry a header. Directories with their own record: [`tools/quality/PROVENANCE.md`](tools/quality/PROVENANCE.md), [`tools/oxlint/anti-slop/UPSTREAM.txt`](tools/oxlint/anti-slop/UPSTREAM.txt) (and `provenance.json`).
 
 | File | Deviation from the donor |

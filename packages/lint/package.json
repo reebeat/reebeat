@@ -1,7 +1,7 @@
 {
-  "name": "@reebeat/lint",
+  "name": "@tsukuri/lint",
   "version": "0.0.0",
-  "description": "reebeat lint: pure rules that return diagnostics for a Plan. Pure, no runtime.",
+  "description": "tsukuri lint: pure rules that return diagnostics for a Plan. Pure, no runtime.",
   "license": "Apache-2.0",
   "type": "module",
   "exports": {
@@ -17,7 +17,7 @@
     "prepublishOnly": "echo 'publish the staged dist (bun run release:stage), never this directory' && exit 1"
   },
   "dependencies": {
-    "@reebeat/core": "workspace:*"
+    "@tsukuri/core": "workspace:*"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",

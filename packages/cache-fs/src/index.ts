@@ -1,2 +1,2 @@
-// Public surface of @reebeat/cache-fs: the AssetCache adapter on a directory.
+// Public surface of @tsukuri/cache-fs: the AssetCache adapter on a directory.
 export { fsAssetCache } from "./fsAssetCache.ts";

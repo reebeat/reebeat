@@ -1,18 +1,18 @@
-# @reebeat/cli
+# @tsukuri/cli
 
-The `reebeat` command and the only composition root (spec
+The `tsukuri` command and the only composition root (spec
 [`docs/specs/0001-release-1-screenplay-to-deck-and-video.md`](../../docs/specs/0001-release-1-screenplay-to-deck-and-video.md),
 design R3). It reads a Fountain file, chooses the adapters from the **selection**, and runs the build program
-(`@reebeat/pipeline`) or the checks (`@reebeat/verify`) on them. `bin/reebeat.ts` provides only the platform (file system,
+(`@tsukuri/pipeline`) or the checks (`@tsukuri/verify`) on them. `bin/tsukuri.ts` provides only the platform (file system,
 path, child processes) and the SHA-256 digest; `src/adapters.ts` is the one place that imports an adapter.
 
 ```text
-bun run reebeat plan    <story> [--json] [--timing] [--cache-dir <dir>] [selection flags]
-bun run reebeat build   <story> --out <dir> [--cache-dir <dir>] [--refresh-speech] [--name <n>] [--capture-timeout <s>] [selection flags]
-bun run reebeat check   <dir> --source <story> [--cache-dir <dir>] [selection flags]
-bun run reebeat journey <story> [--out-root <dir>] [--cache-dir <dir>] [--refresh-speech] [selection flags]
-bun run reebeat lint    <story> [--cache-dir <dir>] [selection flags]
-bun run journey         # reebeat journey stories/same-id/story.fountain: build, check, build again, compare the two builds (F6)
+bun run tsukuri plan    <story> [--json] [--timing] [--cache-dir <dir>] [selection flags]
+bun run tsukuri build   <story> --out <dir> [--cache-dir <dir>] [--refresh-speech] [--name <n>] [--capture-timeout <s>] [selection flags]
+bun run tsukuri check   <dir> --source <story> [--cache-dir <dir>] [selection flags]
+bun run tsukuri journey <story> [--out-root <dir>] [--cache-dir <dir>] [--refresh-speech] [selection flags]
+bun run tsukuri lint    <story> [--cache-dir <dir>] [selection flags]
+bun run journey         # tsukuri journey stories/same-id/story.fountain: build, check, build again, compare the two builds (F6)
 ```
 
 Built with the installed `effect/cli` (`Command`, `Flag`, `Argument`; unstable, so `tsconfig.json` allows `effect/cli`).
@@ -23,13 +23,13 @@ process exits 1; a usage error prints the help and exits 1. No stack trace is pr
 | --- | --- |
 | `plan` | `readSource` then `buildPlan`; prints `reviewText` or, with `--json`, `encodePlan`. `--timing` also runs the speech stage **read-only** (it never refreshes) on the selected speech, aligner, encoder and cache, and schedules the Plan against the `lifecycle` the selected Renderer declares, so it shows each effect's intent and resolved frame |
 | `build` | `buildProgram` on the selected adapters, then the summary: files, frames, sizes, and every adapter with its egress |
-| `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@reebeat/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
+| `check` | refuses a directory without a valid `build.json` (`NotABuild`), then asks `@tsukuri/verify` for one verdict per falsifier, prints them and exits 1 if any failed (a `N/A` verdict does not fail) |
 | `journey` | build, `check`, build again, F6 compare; the first failure stops it |
 | `lint` | `collectErrors` (every problem of the screenplay, in document order, each `file:line: error Tag: message` with what was found, what was expected and the nearest valid form), then `lintPlan` (the absolute times, listed with their reasons as `info`). When the story's speech cache exists under the selected adapters (`--cache-dir` and the selection flags say which) it also schedules the Plan, so an effect outside its Scene is an error with its line; without the cache that is **not checked**: `plan --timing` or `build` finds it, not `lint`, and the last output line says which happened. Needs no browser; exits 1 when anything is an error |
 
 ## Selection
 
-Which adapter fills each service is configuration, never a guess: `reebeat.config.json` beside the story (a JSON object,
+Which adapter fills each service is configuration, never a guess: `tsukuri.config.json` beside the story (a JSON object,
 optional), then the flags, which win. The keys and their choices are the registry in
 `packages/services/src/selection.ts`; every key defaults to the local adapter.
 
@@ -66,7 +66,7 @@ seconds (default: 120 plus 0.2 per frame; it does not change a frame, so it is n
 ```
 
 `assets/sfx/<name>.wav` holds only the sounds the Plan's effects play; the speech cache's FLACs are **not** part of a build.
-`build.json` (schema 2, `@reebeat/pipeline`) lists every other file, the hash of the `.fountain` bytes, the adapters with
+`build.json` (schema 2, `@tsukuri/pipeline`) lists every other file, the hash of the `.fountain` bytes, the adapters with
 egress and settings, and the provenance of each cache asset used. It is written last. Failure is loud (F12): the build
 writes into `<out>.partial`, and any failure leaves no directory that `check` accepts (see the pipeline README).
 
@@ -74,13 +74,13 @@ writes into `<out>.partial`, and any failure leaves no directory that `check` ac
 
 | File | Role |
 | --- | --- |
-| `bin/reebeat.ts` | the composition root: the platform services and the arguments; the only file that runs an Effect |
+| `bin/tsukuri.ts` | the composition root: the platform services and the arguments; the only file that runs an Effect |
 | `src/cli.ts` | the commands and flags, `run(args)` |
 | `src/adapters.ts` | the registry: one table per key of the selection (typed over its choices), `Composition` (how a selection becomes Layers; a `Context.Reference` tests replace) |
-| `src/selection.ts` | `reebeat.config.json` and the flags, decoded with the services' `decodeSelection` |
+| `src/selection.ts` | `tsukuri.config.json` and the flags, decoded with the services' `decodeSelection` |
 | `src/plan.ts`, `src/build.ts`, `src/check.ts`, `src/journey.ts` | one program each |
 | `src/source.ts`, `src/manifest.ts`, `src/report.ts`, `src/errors.ts` | story name and cache defaults, reading `build.json` for `check`, the one-line failure report, the CLI's own errors |
-| `src/verifier.ts`, `src/verify.ts` | the `Verifier` service and its adapter to `@reebeat/verify` |
+| `src/verifier.ts`, `src/verify.ts` | the `Verifier` service and its adapter to `@tsukuri/verify` |
 
 ## Tests
 

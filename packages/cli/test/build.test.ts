@@ -1,12 +1,12 @@
-// `reebeat build` on a real file system, the real reveal.js Renderer and a real ffmpeg, with the offline stand-ins
+// `tsukuri build` on a real file system, the real reveal.js Renderer and a real ffmpeg, with the offline stand-ins
 // for narration and a fake capturer (no Chromium starts): what a finished build holds, the adapters it lists, and
 // F12, "failure is loud": a speech-cache miss and a capture failure each stop the build with their typed error and
 // leave neither `<out>` nor `<out>.partial` for `check` to accept.
 import { assert, layer } from "@effect/vitest";
-import { decodePlan } from "@reebeat/core";
-import { MediaTools, probeMedia } from "@reebeat/encode-ffmpeg";
-import { sha256Hex } from "@reebeat/pipeline";
-import { CaptureError } from "@reebeat/services";
+import { decodePlan } from "@tsukuri/core";
+import { MediaTools, probeMedia } from "@tsukuri/encode-ffmpeg";
+import { sha256Hex } from "@tsukuri/pipeline";
+import { CaptureError } from "@tsukuri/services";
 import {
   Array as Arr,
   Effect,
@@ -58,7 +58,7 @@ const absent = Effect.fnUntraced(function* absent(...paths: string[]) {
   }
 });
 
-layer(platform)("reebeat build", (it) => {
+layer(platform)("tsukuri build", (it) => {
   it.effect(
     "writes the files of a finished build, listed in build.json with the adapters and their egress, and no partial directory",
     () =>
@@ -217,14 +217,14 @@ layer(platform)("reebeat build", (it) => {
   );
 
   it.effect(
-    "a story's reebeat.config.json selects the adapters, and a flag beats it",
+    "a story's tsukuri.config.json selects the adapters, and a flag beats it",
     () =>
       Effect.gen(function* configured() {
         const where = yield* setup;
 
         yield* writeText(
           where.dir,
-          "reebeat.config.json",
+          "tsukuri.config.json",
           '{ "speech": "silent", "aligner": "even" }'
         );
 

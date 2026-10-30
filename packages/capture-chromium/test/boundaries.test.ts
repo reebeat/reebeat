@@ -41,7 +41,7 @@ const importsOf = (text: string): readonly Import[] => {
 };
 
 const relative = /^\.{1,2}\//u;
-const allowed = /^(?:effect(?:\/|$)|@reebeat\/(?:core|services)$)/u;
+const allowed = /^(?:effect(?:\/|$)|@tsukuri\/(?:core|services)$)/u;
 
 /** What a file may not import: the parser's package, a package's source path, another adapter, Playwright elsewhere. */
 const violations = (name: string, text: string): readonly string[] =>
@@ -68,8 +68,8 @@ describe("boundaries: packages/capture-chromium", () => {
         const { dependencies } = yield* manifestOf;
 
         const expected = [
-          "@reebeat/core",
-          "@reebeat/services",
+          "@tsukuri/core",
+          "@tsukuri/services",
           "effect",
           "playwright-core",
           "timeweb",
@@ -101,10 +101,10 @@ describe("boundaries: packages/capture-chromium", () => {
   it("control: the scan flags the parser, another adapter, a source path and Playwright outside the browser module", () => {
     for (const bad of [
       'import "fountain-js";',
-      'import { renderDeck } from "@reebeat/render-reveal";',
-      'import { muxArgs } from "@reebeat/encode-ffmpeg";',
+      'import { renderDeck } from "@tsukuri/render-reveal";',
+      'import { muxArgs } from "@tsukuri/encode-ffmpeg";',
       'import { chromium } from "playwright-core";',
-      'import { parse } from "@reebeat/core/src/parse.ts";',
+      'import { parse } from "@tsukuri/core/src/parse.ts";',
     ]) {
       assert.strictEqual(violations("capture.ts", bad).length, 1, bad);
     }
@@ -116,7 +116,7 @@ describe("boundaries: packages/capture-chromium", () => {
     assert.deepStrictEqual(
       violations(
         "capture.ts",
-        'import { requireTimeline } from "@reebeat/core";'
+        'import { requireTimeline } from "@tsukuri/core";'
       ),
       []
     );

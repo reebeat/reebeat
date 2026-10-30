@@ -1,5 +1,5 @@
 // What a check may need, and the one place where an observation that cannot be made becomes a FAIL verdict.
-import type { MediaTools, MediaToolFailed } from "@reebeat/encode-ffmpeg";
+import type { MediaTools, MediaToolFailed } from "@tsukuri/encode-ffmpeg";
 import { Effect } from "effect";
 import type { FileSystem, Path, PlatformError } from "effect";
 import type { Digest } from "effect/crypto";

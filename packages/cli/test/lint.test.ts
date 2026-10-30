@@ -1,4 +1,4 @@
-// `reebeat lint` (spec 0002, M2, F2 to F5): every problem of a story with its file, line and message; the exit is not
+// `tsukuri lint` (spec 0002, M2, F2 to F5): every problem of a story with its file, line and message; the exit is not
 // zero for an error and zero for a story that only lists absolute times that have their reason (F5).
 import { assert, layer } from "@effect/vitest";
 import {
@@ -43,7 +43,7 @@ const lint = (text: string) =>
   Effect.gen(function* run() {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
-    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "reebeat-lint-" });
+    const dir = yield* fs.makeTempDirectoryScoped({ prefix: "tsukuri-lint-" });
     const file = path.join(dir, "story.fountain");
 
     yield* fs.writeFileString(file, text);
@@ -57,7 +57,7 @@ const lint = (text: string) =>
     };
   }).pipe(Effect.provide(Layer.fresh(TestConsole.layer)));
 
-layer(platform)("reebeat lint", (it) => {
+layer(platform)("tsukuri lint", (it) => {
   it.effect(
     "prints nothing but the verdict for a story without a problem and succeeds",
     () =>
@@ -235,7 +235,7 @@ const lintWithCache = (text: string, cached: boolean) =>
 
 const okSecond = ['  r1: show note at word("third").start'];
 
-layer(platform)("reebeat lint with the speech cache of the story", (it) => {
+layer(platform)("tsukuri lint with the speech cache of the story", (it) => {
   it.effect(
     "finds an effect that falls outside its Scene, with its line: a sound 30 s after the word",
     () =>
@@ -303,7 +303,7 @@ layer(platform)("reebeat lint with the speech cache of the story", (it) => {
         assert.include(stdout, "Timing: not checked.");
         assert.include(
           stdout,
-          "`reebeat plan --timing` or `reebeat build` finds it, not `reebeat lint`"
+          "`tsukuri plan --timing` or `tsukuri build` finds it, not `tsukuri lint`"
         );
       })
   );

@@ -83,7 +83,7 @@ _Avoid_: Slides (as the unit), presentation
 
 One Fountain file maps onto the vocabulary above. Anything outside this table is an error, never silently dropped.
 
-| Fountain | reebeat | Deck | Video |
+| Fountain | tsukuri | Deck | Video |
 |---|---|---|---|
 | `Title:`, `Author:`, `Speed:` | Story metadata (`Speed:` is the default speech rate, 0.5 to 2.0, 1.1 when absent) | title | title tag |
 | `# Section`, `= synopsis` | Chapter outline | slide group (`data-chapter`) | chapter mark |
@@ -96,7 +96,7 @@ One Fountain file maps onto the vocabulary above. Anything outside this table is
 
 ## Pieces of the pipeline
 
-reebeat is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
+tsukuri is built from pieces that can be replaced one by one (design R3). The Screenplay says what the explainer is; the pieces say how it is made, and the choice of pieces is configuration, never part of the Screenplay.
 
 **Library**:
 Pure functions and types with no runtime: the Fountain reader and the Plan (`core`), the subtitle writers (`subtitles`), the lint rules (`lint`). A library imports libraries only.
@@ -106,11 +106,11 @@ An Effect interface with a contract that every implementation passes: `SpeechSyn
 _Avoid_: Plug-in, backend
 
 **Adapter**:
-A Layer that fills one service on an outside runtime, such as Kokoro for `SpeechSynthesizer` or ffmpeg for `Encoder`. An adapter imports services and libraries and never another adapter; only the `reebeat` command composes adapters. Release 1 has local adapters only.
+A Layer that fills one service on an outside runtime, such as Kokoro for `SpeechSynthesizer` or ffmpeg for `Encoder`. An adapter imports services and libraries and never another adapter; only the `tsukuri` command composes adapters. Release 1 has local adapters only.
 _Avoid_: Integration (as a package name; it is the tier's description), driver
 
 **Selection**:
-Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `reebeat.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
+Which adapter fills each service: the keys `speech`, `aligner`, `sounds`, `renderer`, `capturer`, `encoder` and `cache`, in `tsukuri.config.json` beside the Screenplay or as flags, local adapters by default. An unknown name fails naming the choices; an adapter whose model, binary or credential is missing fails naming that requirement and nothing takes its place.
 
 **Stand-in**:
 An offline adapter for tests and for running the whole pipeline with no model (`silent` narrator, `even` aligner, tone sounds, in-memory cache). Its id ends `-standin`. A build made with a stand-in narrator has silent narration (its sounds are audible), so the check that finds narration onsets (F8) reports `N/A (silent stand-in)` for it, and only for it.

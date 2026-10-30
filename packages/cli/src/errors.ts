@@ -1,9 +1,9 @@
 import { Schema } from "effect";
 
 // The expected failures that belong to the CLI itself. Failures of the pipeline stages keep their own tagged errors
-// (`@reebeat/core`, `@reebeat/services`, `@reebeat/pipeline`, the adapters) and surface unchanged.
+// (`@tsukuri/core`, `@tsukuri/services`, `@tsukuri/pipeline`, the adapters) and surface unchanged.
 
-/** `reebeat.config.json` cannot be read or is not a JSON object. The choices themselves are `UnknownSelection`. */
+/** `tsukuri.config.json` cannot be read or is not a JSON object. The choices themselves are `UnknownSelection`. */
 export class ConfigInvalid extends Schema.TaggedError<
   ConfigInvalid,
   { readonly brand: unique symbol }
@@ -28,7 +28,7 @@ export class ChecksFailed extends Schema.TaggedError<
   message: Schema.String,
 }) {}
 
-/** `reebeat lint` found at least one error in the story. */
+/** `tsukuri lint` found at least one error in the story. */
 export class LintFailed extends Schema.TaggedError<
   LintFailed,
   { readonly brand: unique symbol }

@@ -2,7 +2,7 @@
 // exactly (no styling) but for the three characters WebVTT reserves in cue text: `&`, `<` and `>` are written as
 // `&amp;`, `&lt;` and `&gt;`, which a reader (and ffmpeg's `mov_text` conversion) turns back into the narration. The file starts with `WEBVTT`, a blank line and a `NOTE` that carries the source hash
 // (spec 0001, F2 and F5). The cue identifier is the Line id, so a check can name the Line.
-import type { TimedPlan } from "@reebeat/core";
+import type { TimedPlan } from "@tsukuri/core";
 import { Array as Arr, String as Str, pipe } from "effect";
 
 import { subtitleCues } from "./cues.ts";

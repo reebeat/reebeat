@@ -5,10 +5,10 @@ import {
   referenceLifecycle,
   requireTimeline,
   schedule,
-} from "@reebeat/core";
-import type { PlanJson, RendererLifecycle } from "@reebeat/core";
-import { audioOffsetMs } from "@reebeat/encode-ffmpeg";
-import { synthClip } from "@reebeat/sounds-synth";
+} from "@tsukuri/core";
+import type { PlanJson, RendererLifecycle } from "@tsukuri/core";
+import { audioOffsetMs } from "@tsukuri/encode-ffmpeg";
+import { synthClip } from "@tsukuri/sounds-synth";
 import { Array as Arr, Effect, Option, String as Str } from "effect";
 
 import { heardAs, judge } from "../src/effects.ts";

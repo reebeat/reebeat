@@ -1,14 +1,14 @@
-import type { PlanJson, Scene } from "@reebeat/core";
+import type { PlanJson, Scene } from "@tsukuri/core";
 // What the Plan says each slide must contain. `renderDeck` writes these values into the page and `checkDeck` compares
 // the written page with them, so the generator and its checker share one derivation of the same facts.
 //
 // A slide's steps and its sounds (spec 0002, "Deck: sounds ride along"): the `show` and `focus` effects of a Scene are
 // its fragment steps, in RESOLVED-TIME order; a `sound` is never a step, it is data (`data-sounds`) on the thing it plays
-// with. `@reebeat/core` says which (`stepsOf`, `soundsOf`: one definition for the Deck and for the check): a sound
+// with. `@tsukuri/core` says which (`stepsOf`, `soundsOf`: one definition for the Deck and for the check): a sound
 // anchored to the slide change, the Scene's start or an Element event of the transition rides on the slide; a sound
 // anchored to a `show` effect's Element enter, to a step, or later in time than a step rides on that step; a sound with
 // no step before it plays alone in the Scene, which a Deck can only do with the slide.
-import { soundsOf, stepsOf } from "@reebeat/core/steps";
+import { soundsOf, stepsOf } from "@tsukuri/core/steps";
 import { Array as Arr } from "effect";
 
 /** One fragment of a slide: the `show` or `focus` effect it stands for and the sounds that play with it. */

@@ -1,4 +1,4 @@
-import type { Point } from "@reebeat/core";
+import type { Point } from "@tsukuri/core";
 // F1, effect timing (spec 0002): every effect of the Timeline is observed in the written files and compared with the
 // frame the Timeline resolved for it, and the frame it is anchored to is observed too.
 //
@@ -12,8 +12,8 @@ import type { Point } from "@reebeat/core";
 // effect's offset is within one frame of it too, and a sound's onset is within one frame of that (so a Timeline that
 // is consistent with itself but puts a sound somewhere else than the picture shows is caught: a renderer that declares
 // the wrong lifecycle). The per-effect offsets are reported, positive when the observed frame is late.
-import { decodeMonoPcm } from "@reebeat/encode-ffmpeg";
-import { synthClip } from "@reebeat/sounds-synth";
+import { decodeMonoPcm } from "@tsukuri/encode-ffmpeg";
+import { synthClip } from "@tsukuri/sounds-synth";
 import { Array as Arr, Effect, Option } from "effect";
 
 import {

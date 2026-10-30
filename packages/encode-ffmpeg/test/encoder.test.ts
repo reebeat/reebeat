@@ -1,9 +1,9 @@
 // The Encoder contract against the real ffmpeg (offline: ffmpeg is in the devenv and the inputs are tiny), and
 // what the contract does not say: the loud failures, nothing left behind, and the adapter without ffmpeg.
 import { assert, layer } from "@effect/vitest";
-import { Encoder, CaptureError } from "@reebeat/services";
-import type { MuxRequest } from "@reebeat/services";
-import { encoderContract } from "@reebeat/services/contract";
+import { Encoder, CaptureError } from "@tsukuri/services";
+import type { MuxRequest } from "@tsukuri/services";
+import { encoderContract } from "@tsukuri/services/contract";
 import {
   Array as Arr,
   Effect,
@@ -44,7 +44,7 @@ const inTemp = Effect.gen(function* temp() {
   const path = yield* Path.Path;
 
   const directory = yield* fs.makeTempDirectoryScoped({
-    prefix: "reebeat-enc-",
+    prefix: "tsukuri-enc-",
   });
 
   return { directory, path };

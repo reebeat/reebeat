@@ -1,6 +1,6 @@
 ---
 name: pr-create
-description: "Open a reebeat pull request: the PR body is the report, in eight fixed sections, and the PR opens only when the whole journey is built and `bun run ready` passed on the head. Use when a spec's code is finished and a PR is to be opened, or when drafting a PR body for this repository."
+description: "Open a tsukuri pull request: the PR body is the report, in eight fixed sections, and the PR opens only when the whole journey is built and `bun run ready` passed on the head. Use when a spec's code is finished and a PR is to be opened, or when drafting a PR body for this repository."
 ---
 
 <!-- Credits: builds on the machine skill `pr` (`skill://pr`), whose Summary, Evidence

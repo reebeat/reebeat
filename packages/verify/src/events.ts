@@ -1,4 +1,4 @@
-import type { ElementEvent, RendererLifecycle, TimedPlan } from "@reebeat/core";
+import type { ElementEvent, RendererLifecycle, TimedPlan } from "@tsukuri/core";
 // F1, the events of the picture: where in the written video a slide change or an Element's enter, exit, move or update
 // really starts, ends and is N percent through (spec 0002, "plan contract for effects"). The Plan says WHEN each
 // happens (`Timeline`, resolved from the renderer's declared lifecycle); this module looks at the decoded frames and
@@ -11,8 +11,8 @@ import type { ElementEvent, RendererLifecycle, TimedPlan } from "@reebeat/core";
 //   N%       a box that moves is N% through when the centre of its ink is N% of the way from its old to its new place,
 //            a colour that changes when the blend of its pixels is; anything else is N% of the way in time
 //            between `start` and `end`
-import { decodeGrayFrames } from "@reebeat/encode-ffmpeg";
-import type { Box, GrayClip } from "@reebeat/encode-ffmpeg";
+import { decodeGrayFrames } from "@tsukuri/encode-ffmpeg";
+import type { Box, GrayClip } from "@tsukuri/encode-ffmpeg";
 import { Effect, Option } from "effect";
 
 import { eventWindow, frameAtFraction } from "./frames.ts";
